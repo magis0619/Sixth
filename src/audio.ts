@@ -149,6 +149,11 @@ export const sfx = {
     [0, 4, 7, 12, 4, 7, 12, 16, 7, 12, 16, 19, 24].forEach((n, i) => tone(NOTE(12 + n), 0.14, { type: 'square', vol: 0.11, delay: i * 0.055 }));
     noise(0.5, { vol: 0.12, freq: 6000, q: 0.4, delay: 0.1 });
   },
+  danger() {
+    [0, -1, -5, -6].forEach((n, i) => tone(NOTE(n), 0.35, { type: 'sawtooth', vol: 0.12, delay: i * 0.16 }));
+    tone(70, 0.9, { type: 'triangle', vol: 0.35, slideTo: 40 });
+    noise(0.6, { vol: 0.15, freq: 300, q: 0.6 });
+  },
   lineHarvest() {
     [0, 4, 7, 12, 16, 19, 24].forEach((n, i) => tone(NOTE(12 + n), 0.2, { type: 'triangle', vol: 0.2, delay: i * 0.05 }));
   },

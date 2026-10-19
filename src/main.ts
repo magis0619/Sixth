@@ -105,7 +105,10 @@ function render(): void {
 /** 今日だけ・明日だけの効果 */
 function renderStatus(): void {
   const chips: string[] = [];
-  if (state.fever.length) chips.push(`<span class="st fever">🔥 フィーバー：${state.fever.map((s) => SYMBOLS[s].name).join('・')}</span>`);
+  const good = state.fever.filter((s) => SYMBOLS[s].rarity !== 'bad');
+  const bad = state.fever.filter((s) => SYMBOLS[s].rarity === 'bad');
+  if (good.length) chips.push(`<span class="st fever">🔥 フィーバー：${good.map((s) => SYMBOLS[s].name).join('・')}</span>`);
+  if (bad.length) chips.push(`<span class="st danger">⚠️ ${bad.map((s) => `${SYMBOLS[s].name}の群れ`).join('・')}</span>`);
   if (state.priceMult > 1) chips.push(`<span class="st merchant">🧑‍🌾 今日の売値 ×${state.priceMult}</span>`);
   if (state.cloverBoost > 1) chips.push(`<span class="st clover">🍀 明日は金の種が出やすい（×${state.cloverBoost}）</span>`);
   el.status.innerHTML = chips.join('');
@@ -216,8 +219,9 @@ function renderReelStates(): void {
     const r = state.results[i];
     const tag = reelTag(i);
     const fever = r && r.power > 1;
-    b.className = `reel ${tag.cls}${r?.symbol === 'goldSeed' ? ' rare' : ''}${fever ? ' fever' : ''}`;
-    b.querySelector('.tag')!.textContent = fever ? `🔥${tag.text}` : tag.text;
+    const badFever = fever && SYMBOLS[r.symbol].rarity === 'bad';
+    b.className = `reel ${tag.cls}${r?.symbol === 'goldSeed' ? ' rare' : ''}${fever ? (badFever ? ' fever-bad' : ' fever') : ''}`;
+    b.querySelector('.tag')!.textContent = fever ? `${badFever ? '⚠️' : '🔥'}${tag.text}` : tag.text;
     renderCount(b, i);
     b.setAttribute('aria-label', r ? `${SYMBOLS[r.symbol].name}: ${tag.text}` : 'リール');
   });
@@ -487,15 +491,37 @@ function showCharmOffer(): Promise<void> {
   });
 }
 
+/** ゾロ目の演出。良い絵柄はフィーバー、カラス・虫は「群れ」として不吉に見せる */
 async function showFever(): Promise<void> {
-  sfx.fever();
-  flash('#ff9ad5', 600);
-  vibrate([50, 40, 50, 40, 120]);
-  confetti(30);
-  shake(el.machine, 8);
+  const good = state.fever.filter((s) => SYMBOLS[s].rarity !== 'bad');
+  const bad = state.fever.filter((s) => SYMBOLS[s].rarity === 'bad');
+  renderReelStates();
+  renderStatus();
+  if (good.length) await feverBanner(good, false);
+  if (bad.length) await feverBanner(bad, true);
+}
+
+async function feverBanner(symbols: SymbolId[], bad: boolean): Promise<void> {
+  const lines = symbols.map((s) => `${SYMBOLS[s].emoji}${SYMBOLS[s].name}：${SYMBOLS[s].feverDesc}`).join('<br>');
   const banner = document.createElement('div');
-  banner.className = 'fever-banner';
-  banner.innerHTML = `🔥 FEVER！ 🔥<small>${state.fever.map((s) => `${SYMBOLS[s].emoji}${SYMBOLS[s].name}：${SYMBOLS[s].feverDesc}`).join('<br>')}</small>`;
+  if (bad) {
+    sfx.danger();
+    flash('#2a0010', 700);
+    vibrate([200, 80, 200]);
+    shake(el.app, 10);
+    const c = center(el.machine);
+    burst(c.x, c.y, ['🪶', '💀', '🖤'], 16, 140);
+    banner.className = 'fever-banner bad';
+    banner.innerHTML = `⚠️ ${symbols.map((s) => `${SYMBOLS[s].name}の群れ`).join('・')}！<small>${lines}</small>`;
+  } else {
+    sfx.fever();
+    flash('#ff9ad5', 600);
+    vibrate([50, 40, 50, 40, 120]);
+    confetti(30);
+    shake(el.machine, 8);
+    banner.className = 'fever-banner';
+    banner.innerHTML = `🔥 FEVER！ 🔥<small>${lines}</small>`;
+  }
   document.body.appendChild(banner);
   banner.animate(
     [
@@ -505,8 +531,6 @@ async function showFever(): Promise<void> {
     ],
     { duration: 500, easing: 'cubic-bezier(.3,1.5,.5,1)', fill: 'forwards' },
   );
-  renderReelStates();
-  renderStatus();
   await sleep(1500);
   banner.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: 'forwards' }).onfinish = () => banner.remove();
 }
@@ -516,7 +540,7 @@ function spinReels(): Promise<void> {
   const h = reels[0].querySelector('.window')!.clientHeight;
   // 最後のリールが金の種なら溜めを入れる。外れでもたまに溜めて読めないようにする
   const last = state.results.length - 1;
-  const suspense = state.results[last].symbol === 'goldSeed' || state.fever.length > 0 || (state.bag.goldSeed > 0 && rng() < 0.15);
+  const suspense = state.results[last].symbol === 'goldSeed' || state.fever.some((s) => SYMBOLS[s].rarity !== 'bad') || (state.bag.goldSeed > 0 && rng() < 0.15);
   let tick = window.setInterval(() => sfx.tick(), 70);
   const promises = reels.map((reel, i) => {
     const strip = reel.querySelector('.strip') as HTMLElement;

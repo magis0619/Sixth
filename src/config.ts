@@ -60,7 +60,7 @@ export const SYMBOLS: Record<SymbolId, SymbolDef> = {
   sun: { id: 'sun', name: '太陽', emoji: '☀️', kind: 'manual', noTarget: true, desc: '畑の全作物の成長＋1', feverDesc: '全作物の成長＋2', rarity: 'normal' },
   fertilizer: { id: 'fertilizer', name: '肥料', emoji: '🧪', kind: 'manual', desc: '作物1つの売値を2倍', feverDesc: '2つの作物に使える', rarity: 'normal' },
   bee: { id: 'bee', name: '蜂', emoji: '🐝', kind: 'manual', desc: '選んだマスと上下左右の作物の成長＋1', feverDesc: '範囲の成長＋2', rarity: 'normal' },
-  crow: { id: 'crow', name: 'カラス', emoji: '🐦', kind: 'auto', desc: '作物を1つ狙う（1/2で食べられる）', feverDesc: 'カラスの群れ：食べる確率が上がる', rarity: 'bad' },
+  crow: { id: 'crow', name: 'カラス', emoji: '🐦', kind: 'auto', desc: '作物を1つ狙う（1/2で食べられる）', feverDesc: '食べる確率 1/2 → 3/4', rarity: 'bad' },
   bug: { id: 'bug', name: '虫', emoji: '🐛', kind: 'auto', desc: '作物1つの成長−1', feverDesc: '成長−2', rarity: 'bad' },
   coin: { id: 'coin', name: '金貨', emoji: '🪙', kind: 'auto', desc: 'その場で金がもらえる', feverDesc: '額が2倍', rarity: 'normal' },
   merchant: { id: 'merchant', name: '商人', emoji: '🧑‍🌾', kind: 'auto', desc: 'その日だけ売値×1.5', feverDesc: '売値の上がり幅が2倍', rarity: 'normal' },

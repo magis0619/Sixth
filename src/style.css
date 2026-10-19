@@ -1080,3 +1080,38 @@ button {
   font-weight: 800;
   padding: 1px 6px;
 }
+
+/* カラス・虫のゾロ目は「群れ」。暗い赤紫で不吉に見せる */
+.reel.fever-bad .window {
+  border-color: #5b1030;
+  box-shadow: 0 0 0 3px #8e1b3f, 0 0 20px #3a0018;
+  background: linear-gradient(#e9d6dc, #b98b98);
+  animation: shiver 0.18s linear infinite;
+}
+
+.reel.fever-bad .tag {
+  background: #5b1030;
+  color: #fff;
+}
+
+.fever-banner.bad {
+  background: linear-gradient(135deg, #2b0a14, #6e1230);
+  border-color: #ff6b6b;
+  color: #ffd0d0;
+}
+
+.st.danger {
+  border-color: #8e1b3f;
+  background: #3a0d1c;
+  color: #ffd0d0;
+  animation: pulse 0.8s ease-in-out infinite;
+}
+
+@keyframes shiver {
+  25% {
+    transform: translateX(-1px);
+  }
+  75% {
+    transform: translateX(1px);
+  }
+}
