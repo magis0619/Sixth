@@ -1,6 +1,6 @@
 import './style.css';
 import {
-  CHARMS, CHARM_ORDER, CHARM_TIER_NAMES, CONFIG, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL,
+  CHARMS, CHARM_ORDER, CHARM_TIER_NAMES, CONFIG, META, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL,
   type CharmId, type SymbolId, type UpgradeId,
 } from './config.ts';
 import {
@@ -8,6 +8,10 @@ import {
   newGame, nextTax, resolveAuto, ripeLines, sell, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState,
 } from './game.ts';
 import { isMuted, sfx, toggleMute, unlockAudio } from './audio.ts';
+import {
+  awardPoints, buyCapacity, capacity, loadMeta, loadoutCost, nextCapacityPrice, setupFrom, toggleLoadout, unlockAdd,
+  unlockCharm, type MetaState,
+} from './meta.ts';
 import { burst, center, confetti, flash, floatText, flyTo, pop, shake, sleep, vibrate } from './fx.ts';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -40,7 +44,8 @@ const CROP_STAGES = ['🌱', '🌿', '🌷'];
 const FRUIT = { normal: '🍅', gold: '🌽' };
 const STAGE_NAMES = ['芽', '若葉', 'つぼみ', '実'];
 
-let state: GameState = newGame();
+const meta: MetaState = loadMeta();
+let state: GameState = newGame(setupFrom(meta));
 let busy = false;
 let selected: number | null = null;
 let armedNextDay = false;
@@ -313,12 +318,20 @@ function upgradeEffect(id: UpgradeId): string {
   const { symbol, delta } = UPGRADE_SYMBOL[id]!;
   if (delta < 0 && state.bag[symbol] === 0) return `${SYMBOLS[symbol].name}はもういない！`;
   const after = { ...state.bag, [symbol]: state.bag[symbol] + delta };
-  return `出る確率 ${bagPct(state.bag, symbol)}% → ${bagPct(after, symbol)}%`;
+  const odds = `出る確率 ${bagPct(state.bag, symbol)}% → ${bagPct(after, symbol)}%`;
+  return delta < 0 ? `${odds}（消すたび価格×${CONFIG.removeGrowth}）` : odds;
+}
+
+/** このゲームのショップに並ぶもの（選んだ「足す」強化＋消す＋リール） */
+function shopItems(): typeof UPGRADES {
+  return UPGRADES.filter((u) => !u.id.startsWith('add') || u.id === 'addReel' || state.shop.includes(u.id as never));
 }
 
 function renderShop(): void {
-  if (el.shop.children.length === 0) {
-    UPGRADES.forEach((u) => {
+  const items = shopItems();
+  if (el.shop.children.length !== items.length) {
+    el.shop.innerHTML = '';
+    items.forEach((u) => {
       const b = document.createElement('button');
       b.className = 'item';
       b.dataset.id = u.id;
@@ -326,7 +339,7 @@ function renderShop(): void {
       el.shop.appendChild(b);
     });
   }
-  UPGRADES.forEach((u, i) => {
+  items.forEach((u, i) => {
     const b = el.shop.children[i] as HTMLButtonElement;
     const available = upgradeAvailable(state, u.id);
     const price = upgradePrice(state, u.id);
@@ -981,11 +994,13 @@ function showGameOver(): void {
   const name = (id: UpgradeId) => UPGRADES.find((u) => u.id === id)!.name;
   const first = state.stats.purchases[0];
   const t = nextTax(state);
+  const earned = awardPoints(meta, state);
   el.overlay.innerHTML = `
     <div class="modal" role="dialog" aria-label="ゲームオーバー">
       <div class="big">🏚️</div>
       <h2>年貢が払えなかった…</h2>
       <div class="record">${state.day}日目まで / 年貢 ${state.taxesPaid}回 納付${isNew ? '<span class="newrec">最高記録！</span>' : ''}</div>
+      <div class="points-earned">🌾 豊穣ポイント <b>+${earned}</b><small>（${state.day}日×${META.pointsPerDay} ＋ 年貢${state.taxesPaid}回×${META.pointsPerTax}）所持 ${meta.points}pt</small></div>
       <table>
         <tr><td>最高記録</td><td>${Math.max(state.day, best.day ?? 0)}日目</td></tr>
         <tr><td>払えなかった年貢</td><td>${t.amount}金（所持 ${state.gold}金）</td></tr>
@@ -1001,7 +1016,7 @@ function showGameOver(): void {
       ${state.stats.purchases.length ? `<ol>${state.stats.purchases.map((p) => `<li>${p.day}日目 ${name(p.id)}</li>`).join('')}</ol>` : '<p>なし</p>'}
       <h3>🎁 選んだお守り</h3>
       ${state.stats.charms.length ? `<ol>${state.stats.charms.map((c) => `<li>${c.day}日目 ${CHARMS[c.id].emoji}${CHARMS[c.id].name}</li>`).join('')}</ol>` : '<p>なし</p>'}
-      <button class="primary" id="restart" disabled>もう一度あそぶ</button>
+      <button class="primary" id="restart" disabled>準備へ（解放・組み合わせ）</button>
     </div>`;
   el.overlay.classList.add('show');
   const btn = $<HTMLButtonElement>('restart');
@@ -1012,13 +1027,115 @@ function showGameOver(): void {
 }
 
 function restart(): void {
-  state = newGame();
+  showPrep();
+}
+
+function startGame(): void {
+  state = newGame(setupFrom(meta));
   selected = null;
   armedNextDay = false;
+  done.spin = false;
   el.overlay.classList.remove('show');
   el.overlay.innerHTML = '';
   el.reels.innerHTML = '';
+  el.shop.innerHTML = '';
   render();
+}
+
+// ---- 準備画面（解放とショップの組み合わせ） ----
+
+const ADD_EMOJI = Object.fromEntries(UPGRADES.map((u) => [u.id, u.emoji]));
+const ADD_NAME = Object.fromEntries(UPGRADES.map((u) => [u.id, u.name]));
+
+function showPrep(): void {
+  const paint = () => {
+    const cap = capacity(meta);
+    const used = loadoutCost(meta.loadout.filter((id) => meta.unlockedAdds.includes(id)));
+    const capPrice = nextCapacityPrice(meta);
+    const adds = (Object.keys(META.adds) as (keyof typeof META.adds)[])
+      .map((id) => {
+        const def = META.adds[id];
+        const unlocked = meta.unlockedAdds.includes(id);
+        const on = unlocked && meta.loadout.includes(id);
+        const fits = on || used + def.cost <= cap;
+        if (!unlocked) {
+          return `<button class="prep-item locked" data-unlock="${id}" ${meta.points < def.unlock ? 'disabled' : ''}>
+            <span class="e">${ADD_EMOJI[id]}</span><b>${ADD_NAME[id]}</b>
+            <small>🔒 ${def.unlock}pt で解放</small><span class="cost">コスト${def.cost}</span></button>`;
+        }
+        return `<button class="prep-item${on ? ' on' : ''}${fits ? '' : ' full'}" data-toggle="${id}">
+          <span class="e">${ADD_EMOJI[id]}</span><b>${ADD_NAME[id]}</b>
+          <small>${on ? '✅ ショップに並べる' : fits ? 'タップで並べる' : 'コストが足りない'}</small><span class="cost">コスト${def.cost}</span></button>`;
+      })
+      .join('');
+    const charms = (Object.keys(META.charmUnlock) as (keyof typeof META.charmUnlock)[])
+      .map((id) => {
+        const c = CHARMS[id];
+        const price = META.charmUnlock[id]!;
+        const unlocked = meta.unlockedCharms.includes(id);
+        return `<button class="prep-item charm-unlock${unlocked ? ' on' : ' locked'}" data-charm="${id}" ${unlocked || meta.points < price ? 'disabled' : ''}>
+          <span class="e">${c.emoji}</span><b>${c.name}</b>
+          <small>${unlocked ? '✅ 年貢のお守りに出る' : `🔒 ${price}pt で解放`}</small><span class="cost">${CHARM_TIER_NAMES[c.tier]}</span></button>`;
+      })
+      .join('');
+    el.overlay.innerHTML = `
+      <div class="modal prep-modal" role="dialog" aria-label="準備">
+        <h2>🌾 畑スロット</h2>
+        <div class="points">豊穣ポイント <b>${meta.points}pt</b><small>遊び終わるたびに「日数＋年貢×${META.pointsPerTax}」がたまる</small></div>
+        <h3>🛠 ショップに並べる強化 <span class="cap${used > cap ? ' over' : ''}">コスト ${used} / ${cap}</span></h3>
+        <div class="prep-grid">${adds}</div>
+        ${capPrice !== null ? `<button class="secondary" id="prep-cap" ${meta.points < capPrice ? 'disabled' : ''}>コスト上限 +${META.capacityStep}（${capPrice}pt）</button>` : '<p class="sub">コスト上限は最大です</p>'}
+        <h3>🎁 レアのお守り</h3>
+        <div class="prep-grid">${charms}</div>
+        <p class="sub">カラス・虫を消す、リールを増やすは毎回ショップに並ぶ</p>
+        <button class="primary" id="prep-start">はじめる！</button>
+      </div>`;
+    el.overlay.classList.add('show');
+    el.overlay.querySelectorAll<HTMLButtonElement>('[data-toggle]').forEach((b) =>
+      b.addEventListener('click', () => {
+        unlockAudio();
+        if (toggleLoadout(meta, b.dataset.toggle as never)) sfx.select();
+        else {
+          sfx.error();
+          shake(b, 4);
+          return;
+        }
+        paint();
+      }),
+    );
+    el.overlay.querySelectorAll<HTMLButtonElement>('[data-unlock]').forEach((b) =>
+      b.addEventListener('click', () => {
+        unlockAudio();
+        if (!unlockAdd(meta, b.dataset.unlock as never)) return;
+        sfx.charmGet();
+        const c = center(b);
+        paint();
+        burst(c.x, c.y, ['✨', '🔓', '⭐'], 14, 80);
+      }),
+    );
+    el.overlay.querySelectorAll<HTMLButtonElement>('.charm-unlock[data-charm]').forEach((b) =>
+      b.addEventListener('click', () => {
+        unlockAudio();
+        if (!unlockCharm(meta, b.dataset.charm as never)) return;
+        sfx.charmGet();
+        const c = center(b);
+        paint();
+        burst(c.x, c.y, ['✨', '🔓', '⭐'], 14, 80);
+      }),
+    );
+    document.getElementById('prep-cap')?.addEventListener('click', () => {
+      unlockAudio();
+      if (!buyCapacity(meta)) return;
+      sfx.buy();
+      paint();
+    });
+    $('prep-start').addEventListener('click', () => {
+      unlockAudio();
+      sfx.select();
+      startGame();
+    });
+  };
+  paint();
 }
 
 // ---- 起動 ----
@@ -1030,3 +1147,4 @@ el.mute.addEventListener('click', () => {
   el.mute.textContent = toggleMute() ? '🔇' : '🔊';
 });
 render();
+showPrep();

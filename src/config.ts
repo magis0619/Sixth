@@ -14,6 +14,8 @@ export type SymbolId =
   | 'clover';
 
 export type UpgradeId =
+  | 'addSeed'
+  | 'addRain'
   | 'addSun'
   | 'addFertilizer'
   | 'addGoldSeed'
@@ -122,6 +124,8 @@ export const CONFIG = {
 
   /** 強化の価格 */
   upgradePrices: {
+    addSeed: 8,
+    addRain: 8,
     addSun: 10,
     addFertilizer: 12,
     addGoldSeed: 25,
@@ -131,14 +135,16 @@ export const CONFIG = {
     removeCrow: 15,
     removeBug: 12,
   } as Record<Exclude<UpgradeId, 'addReel'>, number>,
+  /** カラス・虫を消す価格は、消すたびに removeGrowth 倍になる */
+  removeGrowth: 2,
   /** リール追加の価格 = reelPriceBase × (現在の本数 − 1) */
   reelPriceBase: 20,
 
   /** 年貢：taxPeriod 日ごとに、その日の終わり（次の回転前）に自動で徴収 */
   taxPeriod: 7,
   /** 1回目から順の年貢額。表を超えたら直前の額 × taxGrowth */
-  taxSchedule: [5, 20, 50, 120, 250],
-  taxGrowth: 1.6,
+  taxSchedule: [5, 18, 40, 80, 140],
+  taxGrowth: 1.5,
   /** 年貢が近いことを警告し始める残り日数 */
   taxWarnDays: 2,
 
@@ -160,6 +166,8 @@ export const CONFIG = {
 };
 
 export const UPGRADES: { id: UpgradeId; name: string; emoji: string; desc: string }[] = [
+  { id: 'addSeed', name: '種を足す', emoji: '🌰', desc: '絵柄袋に種を1枚追加' },
+  { id: 'addRain', name: '雨を足す', emoji: '🌧️', desc: '絵柄袋に雨を1枚追加' },
   { id: 'addSun', name: '太陽を足す', emoji: '☀️', desc: '絵柄袋に太陽を1枚追加' },
   { id: 'addFertilizer', name: '肥料を足す', emoji: '🧪', desc: '絵柄袋に肥料を1枚追加' },
   { id: 'addGoldSeed', name: '金の種を足す', emoji: '🌟', desc: '絵柄袋に金の種を1枚追加' },
@@ -173,6 +181,8 @@ export const UPGRADES: { id: UpgradeId; name: string; emoji: string; desc: strin
 
 /** 強化と、それが増減させる絵柄 */
 export const UPGRADE_SYMBOL: Partial<Record<UpgradeId, { symbol: SymbolId; delta: number }>> = {
+  addSeed: { symbol: 'seed', delta: 1 },
+  addRain: { symbol: 'rain', delta: 1 },
   addSun: { symbol: 'sun', delta: 1 },
   addFertilizer: { symbol: 'fertilizer', delta: 1 },
   addGoldSeed: { symbol: 'goldSeed', delta: 1 },
@@ -216,3 +226,36 @@ export const CHARMS: Record<CharmId, CharmDef> = {
 };
 
 export const CHARM_ORDER = Object.keys(CHARMS) as CharmId[];
+
+/** 「足す」強化（ゲーム開始時にショップへ並べるものを選ぶ対象） */
+export type AddUpgradeId = Exclude<UpgradeId, 'removeCrow' | 'removeBug' | 'addReel'>;
+
+/**
+ * 遊ぶたびに増える要素（メタ進行）。
+ * ゲーム終了時に豊穣ポイントを獲得し、準備画面で「足す」強化やレアのお守りを解放する。
+ * 解放した「足す」強化は、毎回コスト上限内でショップに並べるものを選ぶ。
+ */
+export const META = {
+  /** 豊穣ポイント = 到達日数 × perDay + 年貢の納付回数 × perTax */
+  pointsPerDay: 1,
+  pointsPerTax: 5,
+  /** 最初から解放されている「足す」強化 */
+  startUnlocked: ['addSun', 'addRain'] as AddUpgradeId[],
+  /** 「足す」強化の解放ポイントと、ショップに並べるコスト */
+  adds: {
+    addSun: { unlock: 0, cost: 2 },
+    addRain: { unlock: 0, cost: 1 },
+    addSeed: { unlock: 20, cost: 1 },
+    addFertilizer: { unlock: 25, cost: 2 },
+    addBee: { unlock: 35, cost: 2 },
+    addMerchant: { unlock: 35, cost: 2 },
+    addGoldSeed: { unlock: 45, cost: 3 },
+    addClover: { unlock: 60, cost: 3 },
+  } as Record<AddUpgradeId, { unlock: number; cost: number }>,
+  /** レアのお守りは解放するまで出ない */
+  charmUnlock: { sunBlessing: 50, bumper: 50, seedSack: 40 } as Partial<Record<CharmId, number>>,
+  /** ショップに並べられるコストの上限と、その拡張 */
+  baseCapacity: 4,
+  capacityStep: 2,
+  capacityPrices: [30, 50, 80],
+};

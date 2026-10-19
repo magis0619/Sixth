@@ -2,7 +2,7 @@
 
 import {
   CHARMS, CHARM_ORDER, CONFIG, SYMBOLS, SYMBOL_ORDER, UPGRADE_SYMBOL,
-  type CharmId, type SymbolId, type UpgradeId,
+  type AddUpgradeId, type CharmId, type SymbolId, type UpgradeId,
 } from './config.ts';
 
 export type Rng = () => number;
@@ -51,6 +51,12 @@ export interface GameState {
   charmOffer: CharmId[] | null;
   over: boolean;
   taxesPaid: number;
+  /** このゲームでショップに並ぶ「足す」強化（開始時に選ぶ） */
+  shop: AddUpgradeId[];
+  /** このゲームで出るお守り（解放済みのもの） */
+  charmPool: CharmId[];
+  /** これまでに消した枚数（消す価格が上がる） */
+  removed: { crow: number; bug: number };
   stats: {
     spins: number;
     totalEarned: number;
@@ -67,8 +73,18 @@ export interface GameState {
 const emptyCharms = (): Record<CharmId, number> =>
   Object.fromEntries(CHARM_ORDER.map((id) => [id, 0])) as Record<CharmId, number>;
 
-export function newGame(): GameState {
+export interface GameSetup {
+  shop: AddUpgradeId[];
+  charmPool: CharmId[];
+}
+
+export const ALL_ADDS: AddUpgradeId[] = ['addSeed', 'addRain', 'addSun', 'addFertilizer', 'addBee', 'addMerchant', 'addGoldSeed', 'addClover'];
+
+export function newGame(setup: GameSetup = { shop: ALL_ADDS, charmPool: CHARM_ORDER }): GameState {
   return {
+    shop: [...setup.shop],
+    charmPool: [...setup.charmPool],
+    removed: { crow: 0, bug: 0 },
     day: 0,
     gold: CONFIG.initialGold,
     reels: CONFIG.initialReels,
@@ -438,7 +454,10 @@ export function sell(state: GameState, cell: number): SellResult | null {
 // ---- 強化 ----
 
 export function upgradePrice(state: GameState, id: UpgradeId): number {
-  const base = id === 'addReel' ? CONFIG.reelPriceBase * (state.reels - 1) : CONFIG.upgradePrices[id];
+  let base = id === 'addReel' ? CONFIG.reelPriceBase * (state.reels - 1) : CONFIG.upgradePrices[id];
+  // カラス・虫は消すたびに高くなる（全部消して楽になりすぎないように）
+  if (id === 'removeCrow') base *= Math.pow(CONFIG.removeGrowth, state.removed.crow);
+  if (id === 'removeBug') base *= Math.pow(CONFIG.removeGrowth, state.removed.bug);
   const discount = Math.min(0.5, 0.1 * state.charms.bargain);
   return Math.max(1, Math.round(base * (1 - discount)));
 }
@@ -446,7 +465,8 @@ export function upgradePrice(state: GameState, id: UpgradeId): number {
 export function upgradeAvailable(state: GameState, id: UpgradeId): boolean {
   if (id === 'addReel') return state.reels < CONFIG.maxReels;
   const change = UPGRADE_SYMBOL[id]!;
-  return change.delta > 0 || state.bag[change.symbol] > 0;
+  if (change.delta > 0) return state.shop.includes(id as AddUpgradeId);
+  return state.bag[change.symbol] > 0;
 }
 
 export function canBuy(state: GameState, id: UpgradeId): boolean {
@@ -460,6 +480,8 @@ export function buy(state: GameState, id: UpgradeId): boolean {
   else {
     const change = UPGRADE_SYMBOL[id]!;
     state.bag[change.symbol] += change.delta;
+    if (id === 'removeCrow') state.removed.crow++;
+    if (id === 'removeBug') state.removed.bug++;
   }
   state.stats.purchases.push({ day: state.day, id });
   return true;
@@ -468,7 +490,7 @@ export function buy(state: GameState, id: UpgradeId): boolean {
 // ---- お守り ----
 
 export function rollCharmOffer(state: GameState, rng: Rng): CharmId[] {
-  const pool = CHARM_ORDER.filter((id) => state.charms[id] < CHARMS[id].max).map((id) => ({
+  const pool = state.charmPool.filter((id) => state.charms[id] < CHARMS[id].max).map((id) => ({
     id,
     w: CONFIG.charmTierWeights[CHARMS[id].tier],
   }));

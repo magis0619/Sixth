@@ -1167,3 +1167,158 @@ button {
   border-color: var(--gold);
   background: #fffbe6;
 }
+
+/* ---- 準備画面 ---- */
+.prep-modal h2 {
+  font-size: 1.5rem;
+}
+
+.prep-modal h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.prep-modal .points {
+  text-align: center;
+  background: var(--gold-soft);
+  border: 2px solid var(--gold);
+  border-radius: 12px;
+  padding: 6px 10px;
+  margin: 6px 0 4px;
+}
+
+.prep-modal .points b {
+  font-size: 1.3rem;
+}
+
+.prep-modal .points small {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+}
+
+.prep-modal .cap {
+  font-size: 0.8rem;
+  background: var(--leaf);
+  color: #fff;
+  border-radius: 999px;
+  padding: 1px 10px;
+}
+
+.prep-modal .cap.over {
+  background: var(--danger);
+}
+
+.prep-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 6px;
+}
+
+.prep-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  border: 2px solid var(--line);
+  background: #fff;
+  border-radius: 12px;
+  padding: 8px 4px 6px;
+  text-align: center;
+}
+
+.prep-item .e {
+  font-size: 1.6rem;
+}
+
+.prep-item b {
+  font-size: 0.78rem;
+}
+
+.prep-item small {
+  font-size: 0.65rem;
+  color: var(--ink-soft);
+}
+
+.prep-item .cost {
+  font-size: 0.62rem;
+  font-weight: 800;
+  background: #eee6d2;
+  border-radius: 6px;
+  padding: 0 6px;
+}
+
+.prep-item.on {
+  border-color: var(--leaf);
+  background: #f0f9e6;
+  box-shadow: 0 3px 0 var(--leaf-dark);
+}
+
+.prep-item.full {
+  opacity: 0.5;
+}
+
+.prep-item.locked {
+  background: #f1ece2;
+  border-style: dashed;
+}
+
+.prep-item.locked .e {
+  filter: grayscale(1);
+  opacity: 0.6;
+}
+
+.prep-item.locked:not(:disabled) {
+  border-color: var(--gold);
+  background: #fffbe6;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.prep-item:disabled {
+  cursor: default;
+}
+
+.points-earned {
+  text-align: center;
+  background: var(--gold-soft);
+  border: 2px solid var(--gold);
+  border-radius: 12px;
+  padding: 6px;
+  margin-bottom: 8px;
+}
+
+.points-earned b {
+  font-size: 1.2rem;
+}
+
+.points-earned small {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+}
+
+.modal .sub {
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+  margin: 8px 0;
+}
+
+.modal .secondary {
+  margin-top: 8px;
+  width: 100%;
+  border: 2px solid var(--line);
+  background: #fff;
+  border-radius: 12px;
+  padding: 10px;
+  font-weight: 800;
+  font-size: 0.9rem;
+}
+
+.modal .secondary:disabled {
+  opacity: 0.45;
+  cursor: default;
+}

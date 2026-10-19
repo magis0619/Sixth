@@ -1,6 +1,6 @@
 // 貪欲ボットで遊ばせてバランスを確認する。 npm run sim [-- 回数]
 
-import { CONFIG, type UpgradeId } from '../src/config.ts';
+import { CHARM_ORDER, CONFIG, META, type UpgradeId } from '../src/config.ts';
 import {
   buy, canBuy, canUse, isRipe, newGame, nextTax, resolveAllAuto, sell, startDay, upgradePrice, useSymbol, validTargets,
   type GameState,
@@ -14,9 +14,11 @@ function wants(s: GameState, id: UpgradeId): boolean {
   if (id === 'addBee') return s.bag.bee < 2;
   if (id === 'addMerchant') return s.bag.merchant < 2;
   if (id === 'addClover') return s.bag.clover < 1;
+  if (id === 'addSeed') return s.bag.seed < 5;
+  if (id === 'addRain') return s.bag.rain < 4;
   return true;
 }
-const PRIORITY: UpgradeId[] = ['removeBug', 'removeCrow', 'addReel', 'addGoldSeed', 'addSun', 'addBee', 'addFertilizer', 'addMerchant', 'addClover'];
+const PRIORITY: UpgradeId[] = ['removeBug', 'removeCrow', 'addReel', 'addSeed', 'addRain', 'addGoldSeed', 'addSun', 'addBee', 'addFertilizer', 'addMerchant', 'addClover'];
 
 function playDay(s: GameState): void {
   // 種 → 雨・肥料 → 太陽 の順で使う
@@ -47,11 +49,21 @@ function playDay(s: GameState): void {
 }
 
 const runs = Number(process.argv[2] ?? 2000);
+// starter: 初回プレイ相当（太陽・雨のみ、レアのお守りなし） / full: 全解放
+const mode = process.argv[3] ?? 'full';
+// starter: 初回プレイ相当 / full: 全解放 / それ以外: ショップに並べる強化をカンマ区切りで指定（例 addSun,addGoldSeed）
+const setup = mode === 'full'
+  ? undefined
+  : {
+      shop: mode === 'starter' ? META.startUnlocked : (mode.split(',') as typeof META.startUnlocked),
+      charmPool: CHARM_ORDER.filter((id) => !(id in META.charmUnlock)),
+    };
+console.log(`mode=${mode}`);
 const days: number[] = [];
 const firstBuy: number[] = [];
 const goldAtTax: number[][] = [];
 for (let n = 0; n < runs; n++) {
-  const s = newGame();
+  const s = newGame(setup);
   while (!s.over && s.day < 200) {
     if (s.day > 0 && s.day % CONFIG.taxPeriod === 0) (goldAtTax[s.day / CONFIG.taxPeriod - 1] ??= []).push(s.gold);
     const r = startDay(s, Math.random);
