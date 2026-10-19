@@ -18,7 +18,7 @@ function wants(s: GameState, id: UpgradeId): boolean {
   if (id === 'addRain') return s.bag.rain < 4;
   return true;
 }
-const PRIORITY: UpgradeId[] = ['removeBug', 'removeCrow', 'addReel', 'addSeed', 'addRain', 'addGoldSeed', 'addSun', 'addBee', 'addFertilizer', 'addMerchant', 'addClover'];
+const PRIORITY: UpgradeId[] = ['removeBug', 'removeCrow', 'addSeed', 'addRain', 'addGoldSeed', 'addSun', 'addBee', 'addFertilizer', 'addMerchant', 'addClover'];
 
 function playDay(s: GameState): void {
   // 種 → 雨・肥料 → 太陽 の順で使う
@@ -80,7 +80,7 @@ const pct = (a: number[], p: number) => [...a].sort((x, y) => x - y)[Math.floor(
 console.log(`runs=${runs}`);
 console.log(`到達日数 avg=${avg(days).toFixed(1)} p10=${pct(days, 0.1)} p50=${pct(days, 0.5)} p90=${pct(days, 0.9)}`);
 console.log(`最初の強化 avg=${avg(firstBuy).toFixed(1)}日目`);
-goldAtTax.slice(0, 8).forEach((g, i) => {
+goldAtTax.slice(0, 9).forEach((g, i) => {
   const passRate = g.filter((x) => x >= (CONFIG.taxSchedule[i] ?? Infinity)).length / runs;
   console.log(`年貢${i + 1}回目 到達${g.length} 所持金p50=${pct(g, 0.5)} 通過率(全体比)=${(passRate * 100).toFixed(0)}%`);
 });

@@ -62,7 +62,7 @@ export function loadoutCost(ids: AddUpgradeId[]): number {
 
 /** ゲーム終了時のポイント */
 export function pointsFor(state: GameState): number {
-  return state.day * META.pointsPerDay + state.taxesPaid * META.pointsPerTax;
+  return state.day * META.pointsPerDay + state.taxesPaid * META.pointsPerTax + (state.cleared ? META.clearBonus : 0);
 }
 
 export function awardPoints(meta: MetaState, state: GameState): number {

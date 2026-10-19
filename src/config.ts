@@ -23,8 +23,7 @@ export type UpgradeId =
   | 'addMerchant'
   | 'addClover'
   | 'removeCrow'
-  | 'removeBug'
-  | 'addReel';
+  | 'removeBug';
 
 export type CharmId =
   | 'coinPurse'
@@ -38,7 +37,8 @@ export type CharmId =
   | 'bumper'
   | 'goldLuck'
   | 'bugWard'
-  | 'taxRelief';
+  | 'taxRelief'
+  | 'artisan';
 
 export interface SymbolDef {
   id: SymbolId;
@@ -71,6 +71,12 @@ export const SYMBOLS: Record<SymbolId, SymbolDef> = {
 
 /** 絵柄袋・ショップでの表示順 */
 export const SYMBOL_ORDER: SymbolId[] = ['seed', 'goldSeed', 'rain', 'sun', 'fertilizer', 'bee', 'coin', 'merchant', 'clover', 'crow', 'bug'];
+
+/** 感想フォームのURL（Googleフォーム等）。空なら結果画面にボタンを出さない */
+export const FEEDBACK_URL = '';
+
+/** 公開URL（結果の共有に使う） */
+export const SHARE_URL = 'https://magis0619.github.io/Sixth/';
 
 export const CONFIG = {
   /** 畑のマス数（3×3） */
@@ -134,17 +140,17 @@ export const CONFIG = {
     addClover: 20,
     removeCrow: 15,
     removeBug: 12,
-  } as Record<Exclude<UpgradeId, 'addReel'>, number>,
+  } as Record<UpgradeId, number>,
   /** カラス・虫を消す価格は、消すたびに removeGrowth 倍になる */
   removeGrowth: 2,
-  /** リール追加の価格 = reelPriceBase × (現在の本数 − 1) */
-  reelPriceBase: 20,
 
   /** 年貢：taxPeriod 日ごとに、その日の終わり（次の回転前）に自動で徴収 */
   taxPeriod: 7,
-  /** 1回目から順の年貢額。表を超えたら直前の額 × taxGrowth */
-  taxSchedule: [5, 18, 40, 80, 140],
+  /** 1回目から順の年貢額。表を超えたら（エンドレス）直前の額 × taxGrowth */
+  taxSchedule: [5, 18, 40, 75, 115, 160, 210, 270],
   taxGrowth: 1.5,
+  /** この回数の年貢を納めるとクリア（その後はエンドレス） */
+  winTaxes: 8,
   /** 年貢が近いことを警告し始める残り日数 */
   taxWarnDays: 2,
 
@@ -176,7 +182,6 @@ export const UPGRADES: { id: UpgradeId; name: string; emoji: string; desc: strin
   { id: 'addClover', name: '四つ葉を足す', emoji: '🍀', desc: '絵柄袋に四つ葉を1枚追加' },
   { id: 'removeCrow', name: 'カラスを消す', emoji: '🐦', desc: '絵柄袋からカラスを1枚削除' },
   { id: 'removeBug', name: '虫を消す', emoji: '🐛', desc: '絵柄袋から虫を1枚削除' },
-  { id: 'addReel', name: 'リールを増やす', emoji: '🎰', desc: '1日に起きる出来事が1つ増える' },
 ];
 
 /** 強化と、それが増減させる絵柄 */
@@ -222,13 +227,14 @@ export const CHARMS: Record<CharmId, CharmDef> = {
   bumper: { id: 'bumper', tier: 'rare', name: '豊作', emoji: '🧺', desc: (n) => `通常の作物の売値＋${2 * n}`, max: Infinity },
   goldLuck: { id: 'goldLuck', tier: 'uncommon', name: '金運', emoji: '🐱', desc: (n) => `金の作物の売値＋${10 * n}`, max: Infinity },
   bugWard: { id: 'bugWard', tier: 'common', name: '虫よけ', emoji: '🌿', desc: (n) => `虫が${Math.round((1 - Math.pow(0.5, n)) * 100)}%で外れる`, max: 4 },
+  artisan: { id: 'artisan', tier: 'rare', name: 'からくり職人', emoji: '🎰', desc: (n) => `リール＋${n}（1日の出来事が増える）`, max: 2 },
   taxRelief: { id: 'taxRelief', tier: 'common', name: '年貢の減免', emoji: '📜', desc: (n) => `年貢−${Math.min(50, 10 * n)}%`, max: 5 },
 };
 
 export const CHARM_ORDER = Object.keys(CHARMS) as CharmId[];
 
 /** 「足す」強化（ゲーム開始時にショップへ並べるものを選ぶ対象） */
-export type AddUpgradeId = Exclude<UpgradeId, 'removeCrow' | 'removeBug' | 'addReel'>;
+export type AddUpgradeId = Exclude<UpgradeId, 'removeCrow' | 'removeBug'>;
 
 /**
  * 遊ぶたびに増える要素（メタ進行）。
@@ -236,9 +242,10 @@ export type AddUpgradeId = Exclude<UpgradeId, 'removeCrow' | 'removeBug' | 'addR
  * 解放した「足す」強化は、毎回コスト上限内でショップに並べるものを選ぶ。
  */
 export const META = {
-  /** 豊穣ポイント = 到達日数 × perDay + 年貢の納付回数 × perTax */
+  /** 豊穣ポイント = 到達日数 × perDay + 年貢の納付回数 × perTax（クリアしていれば clearBonus を加算） */
   pointsPerDay: 1,
   pointsPerTax: 5,
+  clearBonus: 30,
   /** 最初から解放されている「足す」強化 */
   startUnlocked: ['addSun', 'addRain'] as AddUpgradeId[],
   /** 「足す」強化の解放ポイントと、ショップに並べるコスト */

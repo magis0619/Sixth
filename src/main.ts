@@ -1,6 +1,6 @@
 import './style.css';
 import {
-  CHARMS, CHARM_ORDER, CHARM_TIER_NAMES, CONFIG, META, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL,
+  CHARMS, CHARM_ORDER, CHARM_TIER_NAMES, CONFIG, FEEDBACK_URL, META, SHARE_URL, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL,
   type CharmId, type SymbolId, type UpgradeId,
 } from './config.ts';
 import {
@@ -24,6 +24,7 @@ const el = {
   day: $('day'),
   tax: $('tax'),
   mute: $<HTMLButtonElement>('mute'),
+  help: $<HTMLButtonElement>('help'),
   goal: $('goal'),
   status: $('status'),
   charms: $('charms'),
@@ -92,6 +93,36 @@ function setGold(value: number): void {
 
 // ---- 描画 ----
 
+// ---- 中断セーブ（日をまたぐ処理の途中は保存しない） ----
+
+const RUN_KEY = 'hatake-slot:run';
+
+function saveRun(): void {
+  if (busy || state.over || state.day === 0) return;
+  try {
+    localStorage.setItem(RUN_KEY, JSON.stringify(state));
+  } catch {
+    // 保存できなくても遊べる
+  }
+}
+
+function loadRun(): GameState | null {
+  try {
+    const raw = localStorage.getItem(RUN_KEY);
+    return raw ? (JSON.parse(raw) as GameState) : null;
+  } catch {
+    return null;
+  }
+}
+
+function clearRun(): void {
+  try {
+    localStorage.removeItem(RUN_KEY);
+  } catch {
+    // 何もしない
+  }
+}
+
 function render(): void {
   el.day.textContent = String(state.day);
   if (shownGold !== state.gold) setGold(state.gold);
@@ -105,6 +136,7 @@ function render(): void {
   renderShop();
   renderBag();
   renderCharms();
+  saveRun();
 }
 
 /** 今日だけ・明日だけの効果 */
@@ -314,7 +346,6 @@ function bagPct(bag: Record<SymbolId, number>, id: SymbolId): number {
 }
 
 function upgradeEffect(id: UpgradeId): string {
-  if (id === 'addReel') return state.reels < CONFIG.maxReels ? `リール ${state.reels}本 → ${state.reels + 1}本` : `最大 ${CONFIG.maxReels}本`;
   const { symbol, delta } = UPGRADE_SYMBOL[id]!;
   if (delta < 0 && state.bag[symbol] === 0) return `${SYMBOLS[symbol].name}はもういない！`;
   const after = { ...state.bag, [symbol]: state.bag[symbol] + delta };
@@ -324,7 +355,7 @@ function upgradeEffect(id: UpgradeId): string {
 
 /** このゲームのショップに並ぶもの（選んだ「足す」強化＋消す＋リール） */
 function shopItems(): typeof UPGRADES {
-  return UPGRADES.filter((u) => !u.id.startsWith('add') || u.id === 'addReel' || state.shop.includes(u.id as never));
+  return UPGRADES.filter((u) => !u.id.startsWith('add') || state.shop.includes(u.id as never));
 }
 
 function renderShop(): void {
@@ -397,6 +428,11 @@ async function onSpin(): Promise<void> {
   if (state.charmOffer) {
     render();
     await showCharmOffer();
+  }
+  if (res.cleared && !(await showClear())) {
+    busy = false;
+    showGameOver(true);
+    return;
   }
   drawDay(state, rng);
   render();
@@ -498,6 +534,13 @@ function showCharmOffer(): Promise<void> {
           el.overlay.classList.remove('show');
           el.overlay.innerHTML = '';
           render();
+          if (id === 'artisan') {
+            sfx.newReel();
+            flash('#ffffff', 300);
+            const r = el.reels.lastElementChild as HTMLElement;
+            burst(center(r).x, center(r).y, ['✨', '🎰', '⭐'], 14, 80);
+            floatText(center(r).x, center(r).y - 40, 'リール+1！', { cls: 'good', size: 1 });
+          }
           const got = el.charms.querySelector(`[data-charm="${id}"]`);
           if (got) pop(got, 1.2);
           resolve();
@@ -933,13 +976,7 @@ function onBuy(id: UpgradeId): void {
   done.buy = true;
   render();
   pop(card, 1.1);
-  if (id === 'addReel') {
-    sfx.newReel();
-    flash('#ffffff', 300);
-    const r = el.reels.lastElementChild as HTMLElement;
-    burst(center(r).x, center(r).y, ['✨', '🎰', '⭐'], 14, 80);
-    floatText(center(r).x, center(r).y - 40, '出来事+1！', { cls: 'good', size: 1 });
-  } else if (UPGRADE_SYMBOL[id]!.delta < 0) {
+  if (UPGRADE_SYMBOL[id]!.delta < 0) {
     const sym = UPGRADE_SYMBOL[id]!.symbol;
     sfx.buy();
     sfx.poof();
@@ -987,7 +1024,10 @@ function saveBest(b: Best): void {
   }
 }
 
-function showGameOver(): void {
+/** 結果画面。cleared=true はクリア後にここで終えたとき */
+function showGameOver(endedAfterClear = false): void {
+  clearRun();
+  state.over = true;
   const best = loadBest();
   const isNew = state.day > (best.day ?? 0);
   if (isNew) saveBest({ day: state.day, taxes: state.taxesPaid });
@@ -997,10 +1037,10 @@ function showGameOver(): void {
   const earned = awardPoints(meta, state);
   el.overlay.innerHTML = `
     <div class="modal" role="dialog" aria-label="ゲームオーバー">
-      <div class="big">🏚️</div>
-      <h2>年貢が払えなかった…</h2>
+      <div class="big">${state.cleared ? '🏆' : '🏚️'}</div>
+      <h2>${endedAfterClear ? 'クリア！ おつかれさま' : state.cleared ? 'エンドレス終了！' : '年貢が払えなかった…'}</h2>
       <div class="record">${state.day}日目まで / 年貢 ${state.taxesPaid}回 納付${isNew ? '<span class="newrec">最高記録！</span>' : ''}</div>
-      <div class="points-earned">🌾 豊穣ポイント <b>+${earned}</b><small>（${state.day}日×${META.pointsPerDay} ＋ 年貢${state.taxesPaid}回×${META.pointsPerTax}）所持 ${meta.points}pt</small></div>
+      <div class="points-earned">🌾 豊穣ポイント <b>+${earned}</b><small>（${state.day}日×${META.pointsPerDay} ＋ 年貢${state.taxesPaid}回×${META.pointsPerTax}${state.cleared ? ` ＋ クリア${META.clearBonus}` : ''}）所持 ${meta.points}pt</small></div>
       <table>
         <tr><td>最高記録</td><td>${Math.max(state.day, best.day ?? 0)}日目</td></tr>
         <tr><td>払えなかった年貢</td><td>${t.amount}金（所持 ${state.gold}金）</td></tr>
@@ -1016,6 +1056,10 @@ function showGameOver(): void {
       ${state.stats.purchases.length ? `<ol>${state.stats.purchases.map((p) => `<li>${p.day}日目 ${name(p.id)}</li>`).join('')}</ol>` : '<p>なし</p>'}
       <h3>🎁 選んだお守り</h3>
       ${state.stats.charms.length ? `<ol>${state.stats.charms.map((c) => `<li>${c.day}日目 ${CHARMS[c.id].emoji}${CHARMS[c.id].name}</li>`).join('')}</ol>` : '<p>なし</p>'}
+      <div class="share-row">
+        <button class="secondary" id="share">${typeof navigator.share === 'function' ? '📤 結果をシェア' : '📋 結果をコピー'}</button>
+        ${FEEDBACK_URL ? `<a class="secondary" href="${FEEDBACK_URL}" target="_blank" rel="noopener">✉️ 感想を送る</a>` : ''}
+      </div>
       <button class="primary" id="restart" disabled>準備へ（解放・組み合わせ）</button>
     </div>`;
   el.overlay.classList.add('show');
@@ -1023,6 +1067,7 @@ function showGameOver(): void {
   // 直前の連打で即リトライが暴発しないよう少し待つ
   window.setTimeout(() => (btn.disabled = false), 900);
   btn.addEventListener('click', restart);
+  $('share').addEventListener('click', () => void shareResult(endedAfterClear));
   render();
 }
 
@@ -1030,8 +1075,120 @@ function restart(): void {
   showPrep();
 }
 
-function startGame(): void {
-  state = newGame(setupFrom(meta));
+function resultText(endedAfterClear: boolean): string {
+  const head = state.cleared ? (endedAfterClear ? '🏆 クリア！' : `🏆 クリア後エンドレスで${state.day}日目まで`) : `${state.day}日目まで`;
+  const charms = state.stats.charms.map((c) => CHARMS[c.id].emoji).join('');
+  return [
+    `🌾畑スロット ${head}`,
+    `年貢 ${state.taxesPaid}回納付 / 総収入 ${state.stats.totalEarned}金 / リール${state.reels}本`,
+    charms ? `お守り ${charms}` : '',
+    `フィーバー${state.stats.fevers}回・そろい${state.stats.lineHarvests}回`,
+    SHARE_URL,
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
+async function shareResult(endedAfterClear: boolean): Promise<void> {
+  const text = resultText(endedAfterClear);
+  try {
+    if (typeof navigator.share === 'function') {
+      await navigator.share({ text });
+      return;
+    }
+    await navigator.clipboard.writeText(text);
+    say('結果をコピーした！');
+    floatText(window.innerWidth / 2, window.innerHeight * 0.3, 'コピーした！', { cls: 'good', size: 1 });
+  } catch {
+    // 共有を閉じた・権限がない場合は何もしない
+  }
+}
+
+// ---- 遊び方・図鑑 ----
+
+type HelpTab = 'rules' | 'symbols' | 'charms';
+
+/** onClose：閉じたあとに戻す画面（準備画面から開いたとき） */
+function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
+  const tabs: [HelpTab, string][] = [['rules', '遊び方'], ['symbols', '絵柄'], ['charms', 'お守り']];
+  const rules = `
+    <ol class="help-list">
+      <li><b>まわす</b>：1回転＝1日。リールの数だけ出来事が起きる</li>
+      <li><b>手動の出目</b>はタップ → 畑のマスをタップで使う。使わずに次の日へ進むと消える</li>
+      <li><b>自動の出目</b>（カラス・虫・金貨・商人・四つ葉）は止まった瞬間に効く</li>
+      <li>作物は<b>雨・太陽・蜂</b>でしか育たない。3段階育つと実る。実をタップで売る</li>
+      <li><b>年貢</b>：${CONFIG.taxPeriod}日ごとに自動で徴収。払えないと終わり。${CONFIG.winTaxes}回納めるとクリア</li>
+      <li>年貢を納めるたびに<b>お守り</b>を3つから1つ選べる。代わりに<b>虫</b>が1枚増える</li>
+      <li><b>フィーバー</b>：同じ絵柄が${CONFIG.feverCount}つ以上で効果2倍。カラス・虫がそろうと「群れ」で危険</li>
+      <li><b>そろい収穫</b>：縦・横・斜めに実が並ぶと、1つタップで列ごと売値×${CONFIG.lineBonus}</li>
+      <li><b>ショップ</b>：準備画面で選んだ「足す」強化と、カラス・虫を消す（消すたび価格×${CONFIG.removeGrowth}）</li>
+      <li><b>豊穣ポイント</b>：遊び終わるたびに「日数＋年貢×${META.pointsPerTax}」（クリアで+${META.clearBonus}）。準備画面で解放に使う</li>
+    </ol>`;
+  const symbols = SYMBOL_ORDER.map((id) => {
+    const d = SYMBOLS[id];
+    return `<div class="dex-row${d.rarity === 'bad' ? ' bad' : ''}"><span class="e">${symHtml(id)}</span>
+      <div><b>${d.name}</b> <span class="tag-k">${d.kind === 'manual' ? '手動' : '自動'}</span>
+      <small>${d.desc}</small><small class="fv">フィーバー：${d.feverDesc}</small></div>
+      <span class="own">袋に${state.bag[id]}枚</span></div>`;
+  }).join('');
+  const charms = CHARM_ORDER.map((id) => {
+    const c = CHARMS[id];
+    const locked = id in META.charmUnlock && !meta.unlockedCharms.includes(id);
+    return `<div class="dex-row tier-${c.tier}${locked ? ' locked' : ''}"><span class="e">${c.emoji}</span>
+      <div><b>${c.name}</b> <span class="tag-k">${CHARM_TIER_NAMES[c.tier]}</span>
+      <small>${c.desc(1)}${Number.isFinite(c.max) ? `（最大${c.max}個）` : ''}</small>
+      ${locked ? `<small class="fv">🔒 準備画面で${META.charmUnlock[id]}ptで解放</small>` : ''}</div>
+      <span class="own">${state.charms[id] ? `所持${state.charms[id]}` : ''}</span></div>`;
+  }).join('');
+  el.overlay.innerHTML = `
+    <div class="modal help-modal" role="dialog" aria-label="遊び方と図鑑">
+      <div class="help-tabs">${tabs.map(([k, label]) => `<button class="${k === tab ? 'on' : ''}" data-tab="${k}">${label}</button>`).join('')}</div>
+      <div class="help-body">${tab === 'rules' ? rules : tab === 'symbols' ? symbols : charms}</div>
+      <button class="primary" id="help-close">閉じる</button>
+    </div>`;
+  el.overlay.classList.add('show');
+  el.overlay.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((b) =>
+    b.addEventListener('click', () => showHelp(b.dataset.tab as HelpTab, onClose)),
+  );
+  $('help-close').addEventListener('click', () => {
+    el.overlay.classList.remove('show');
+    el.overlay.innerHTML = '';
+    onClose?.();
+  });
+}
+
+/** クリア画面。エンドレスで続けるなら true */
+function showClear(): Promise<boolean> {
+  sfx.bigBuy();
+  confetti(80);
+  flash('#ffe680', 700);
+  vibrate([60, 40, 60, 40, 200]);
+  el.overlay.innerHTML = `
+    <div class="modal clear-modal" role="dialog" aria-label="クリア">
+      <div class="big">🏆</div>
+      <h2>年貢を${CONFIG.winTaxes}回 完納！ クリア！</h2>
+      <div class="record">${state.day}日目でクリア / 総収入 ${state.stats.totalEarned}金</div>
+      <p class="sub">クリアで豊穣ポイント +${META.clearBonus}。続けるとエンドレスになり、年貢はどんどん重くなる</p>
+      <button class="primary" id="clear-continue" disabled>エンドレスで続ける</button>
+      <button class="secondary" id="clear-end" disabled>ここで終えて結果を見る</button>
+    </div>`;
+  el.overlay.classList.add('show');
+  window.setTimeout(() => el.overlay.querySelectorAll<HTMLButtonElement>('button').forEach((b) => (b.disabled = false)), 900);
+  return new Promise((resolve) => {
+    const close = (v: boolean) => {
+      el.overlay.classList.remove('show');
+      el.overlay.innerHTML = '';
+      resolve(v);
+    };
+    $('clear-continue').addEventListener('click', () => close(true));
+    $('clear-end').addEventListener('click', () => close(false));
+  });
+}
+
+function startGame(resume: GameState | null = null): void {
+  state = resume ?? newGame(setupFrom(meta));
+  if (resume) Object.keys(done).forEach((k) => (done[k as keyof typeof done] = true));
+  else clearRun();
   selected = null;
   armedNextDay = false;
   done.spin = false;
@@ -1048,6 +1205,8 @@ const ADD_EMOJI = Object.fromEntries(UPGRADES.map((u) => [u.id, u.emoji]));
 const ADD_NAME = Object.fromEntries(UPGRADES.map((u) => [u.id, u.name]));
 
 function showPrep(): void {
+  const saved = loadRun();
+  let confirmNew = false;
   const paint = () => {
     const cap = capacity(meta);
     const used = loadoutCost(meta.loadout.filter((id) => meta.unlockedAdds.includes(id)));
@@ -1087,8 +1246,10 @@ function showPrep(): void {
         ${capPrice !== null ? `<button class="secondary" id="prep-cap" ${meta.points < capPrice ? 'disabled' : ''}>コスト上限 +${META.capacityStep}（${capPrice}pt）</button>` : '<p class="sub">コスト上限は最大です</p>'}
         <h3>🎁 レアのお守り</h3>
         <div class="prep-grid">${charms}</div>
-        <p class="sub">カラス・虫を消す、リールを増やすは毎回ショップに並ぶ</p>
-        <button class="primary" id="prep-start">はじめる！</button>
+        <p class="sub">カラス・虫を消すは毎回ショップに並ぶ。リールはお守り「からくり職人」で増える</p>
+        <button class="secondary" id="prep-help">📖 遊び方・図鑑</button>
+        ${saved ? `<button class="primary" id="prep-resume">続きから（${saved.day}日目・${saved.gold}金）</button>` : ''}
+        <button class="${saved ? 'secondary' : 'primary'}" id="prep-start">${saved ? (confirmNew ? '本当に新しく始める？（続きは消えます）' : '新しく始める') : 'はじめる！'}</button>
       </div>`;
     el.overlay.classList.add('show');
     el.overlay.querySelectorAll<HTMLButtonElement>('[data-toggle]').forEach((b) =>
@@ -1131,8 +1292,20 @@ function showPrep(): void {
     });
     $('prep-start').addEventListener('click', () => {
       unlockAudio();
+      if (saved && !confirmNew) {
+        confirmNew = true;
+        sfx.error();
+        paint();
+        return;
+      }
       sfx.select();
       startGame();
+    });
+    $('prep-help').addEventListener('click', () => showHelp('rules', showPrep));
+    document.getElementById('prep-resume')?.addEventListener('click', () => {
+      unlockAudio();
+      sfx.select();
+      startGame(saved);
     });
   };
   paint();
@@ -1142,6 +1315,13 @@ function showPrep(): void {
 
 el.spin.addEventListener('click', () => void onSpin());
 el.mute.textContent = isMuted() ? '🔇' : '🔊';
+el.help.addEventListener('click', () => {
+  // 年貢・お守り・結果などの画面の上には開かない
+  if (busy || el.overlay.classList.contains('show')) return;
+  unlockAudio();
+  sfx.select();
+  showHelp('rules');
+});
 el.mute.addEventListener('click', () => {
   unlockAudio();
   el.mute.textContent = toggleMute() ? '🔇' : '🔊';

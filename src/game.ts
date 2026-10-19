@@ -51,6 +51,8 @@ export interface GameState {
   charmOffer: CharmId[] | null;
   over: boolean;
   taxesPaid: number;
+  /** 年貢を winTaxes 回納めたか（以降はエンドレス） */
+  cleared: boolean;
   /** このゲームでショップに並ぶ「足す」強化（開始時に選ぶ） */
   shop: AddUpgradeId[];
   /** このゲームで出るお守り（解放済みのもの） */
@@ -98,6 +100,7 @@ export function newGame(setup: GameSetup = { shop: ALL_ADDS, charmPool: CHARM_OR
     charmOffer: null,
     over: false,
     taxesPaid: 0,
+    cleared: false,
     stats: {
       spins: 0, totalEarned: 0, cropsSold: 0, cropsEaten: 0, crowsMissed: 0, fevers: 0, lineHarvests: 0,
       purchases: [], charms: [],
@@ -194,8 +197,8 @@ export function nextTax(state: GameState): TaxInfo {
 // ---- 1日の進行 ----
 
 export type EndDayResult =
-  | { ok: true; tax: number | null; expired: number }
-  | { ok: false; tax: number; expired: number };
+  | { ok: true; tax: number | null; expired: number; cleared: boolean }
+  | { ok: false; tax: number; expired: number; cleared: false };
 
 /**
  * 今日を終える。期日なら年貢を徴収し、払えればお守りの候補を用意する（charmOffer）。
@@ -213,17 +216,19 @@ export function endDay(state: GameState, rng: Rng): EndDayResult {
   // 「今日だけ」の効果はここで終わる
   state.fever = [];
   state.priceMult = 1;
-  if (!(state.day > 0 && state.day % CONFIG.taxPeriod === 0)) return { ok: true, tax: null, expired };
+  if (!(state.day > 0 && state.day % CONFIG.taxPeriod === 0)) return { ok: true, tax: null, expired, cleared: false };
   const t = nextTax(state);
   if (state.gold < t.amount) {
     state.over = true;
-    return { ok: false, tax: t.amount, expired };
+    return { ok: false, tax: t.amount, expired, cleared: false };
   }
   state.gold -= t.amount;
   state.taxesPaid++;
   state.bag.bug += CONFIG.bugPerTax;
   state.charmOffer = rollCharmOffer(state, rng);
-  return { ok: true, tax: t.amount, expired };
+  const cleared = !state.cleared && state.taxesPaid >= CONFIG.winTaxes;
+  if (cleared) state.cleared = true;
+  return { ok: true, tax: t.amount, expired, cleared };
 }
 
 export function drawDay(state: GameState, rng: Rng): void {
@@ -454,7 +459,7 @@ export function sell(state: GameState, cell: number): SellResult | null {
 // ---- 強化 ----
 
 export function upgradePrice(state: GameState, id: UpgradeId): number {
-  let base = id === 'addReel' ? CONFIG.reelPriceBase * (state.reels - 1) : CONFIG.upgradePrices[id];
+  let base = CONFIG.upgradePrices[id];
   // カラス・虫は消すたびに高くなる（全部消して楽になりすぎないように）
   if (id === 'removeCrow') base *= Math.pow(CONFIG.removeGrowth, state.removed.crow);
   if (id === 'removeBug') base *= Math.pow(CONFIG.removeGrowth, state.removed.bug);
@@ -463,7 +468,6 @@ export function upgradePrice(state: GameState, id: UpgradeId): number {
 }
 
 export function upgradeAvailable(state: GameState, id: UpgradeId): boolean {
-  if (id === 'addReel') return state.reels < CONFIG.maxReels;
   const change = UPGRADE_SYMBOL[id]!;
   if (change.delta > 0) return state.shop.includes(id as AddUpgradeId);
   return state.bag[change.symbol] > 0;
@@ -476,13 +480,10 @@ export function canBuy(state: GameState, id: UpgradeId): boolean {
 export function buy(state: GameState, id: UpgradeId): boolean {
   if (!canBuy(state, id)) return false;
   state.gold -= upgradePrice(state, id);
-  if (id === 'addReel') state.reels++;
-  else {
-    const change = UPGRADE_SYMBOL[id]!;
-    state.bag[change.symbol] += change.delta;
-    if (id === 'removeCrow') state.removed.crow++;
-    if (id === 'removeBug') state.removed.bug++;
-  }
+  const change = UPGRADE_SYMBOL[id]!;
+  state.bag[change.symbol] += change.delta;
+  if (id === 'removeCrow') state.removed.crow++;
+  if (id === 'removeBug') state.removed.bug++;
   state.stats.purchases.push({ day: state.day, id });
   return true;
 }
@@ -506,6 +507,7 @@ export function rollCharmOffer(state: GameState, rng: Rng): CharmId[] {
 export function chooseCharm(state: GameState, id: CharmId): boolean {
   if (!state.charmOffer?.includes(id)) return false;
   state.charms[id]++;
+  if (id === 'artisan') state.reels = Math.min(CONFIG.maxReels, state.reels + 1);
   state.charmOffer = null;
   state.stats.charms.push({ day: state.day, id });
   return true;
