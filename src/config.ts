@@ -125,8 +125,8 @@ export const CONFIG = {
   feverCount: 3,
   feverPower: 2,
 
-  /** そろい収穫：縦横斜めに実が並んだ列をまとめて売ったときの売値倍率 */
-  lineBonus: 1.5,
+  /** そろい収穫：タップしたマスを通るそろった列の数ごとの売値倍率（0列・1列・2列・3列・4列） */
+  lineBonusByLines: [1, 1.5, 2, 3, 4],
 
   /** 強化の価格 */
   upgradePrices: {

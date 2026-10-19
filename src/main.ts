@@ -5,7 +5,7 @@ import {
 } from './config.ts';
 import {
   bagTotal, buy, canBuy, canUse, chooseCharm, cropPrice, drawDay, drawSymbol, endDay, isRipe, neighbors,
-  newGame, nextTax, resolveAuto, ripeLines, sell, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState,
+  lineMultiplier, linesThrough, newGame, nextTax, resolveAuto, ripeLines, sell, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState,
 } from './game.ts';
 import { isMuted, sfx, toggleMute, unlockAudio } from './audio.ts';
 import {
@@ -206,7 +206,7 @@ function renderHint(): void {
     return;
   }
   if (state.day > CONFIG.hintUntilDay) {
-    el.hint.textContent = !done.line && ripeLines(state).length > 0 ? '✨ そろった！ 並んだ実をタップで列ごと売値×1.5' : '';
+    el.hint.textContent = !done.line && ripeLines(state).length > 0 ? '✨ そろった！ 並んだ実をタップで列ごとまとめて売れる（列が重なるほど高い）' : '';
     return;
   }
   const anyRipe = state.field.some(isRipe);
@@ -216,7 +216,7 @@ function renderHint(): void {
     const r = state.results[selected];
     text = r.total > 1 ? `👆 光っている空きマスをタップ（あと${r.left}個 植えられる）` : '👆 光っているマスをタップ（出目をもう一度タップで取り消し）';
   }
-  else if (!done.line && ripeLines(state).length > 0) text = '✨ そろった！ 縦・横・斜めに並んだ実をタップすると、列ごと売値×1.5でまとめて売れる';
+  else if (!done.line && ripeLines(state).length > 0) text = '✨ そろった！ 縦・横・斜めに並んだ実をタップで列ごと売れる。列が重なるマスほど倍率が高い';
   else if (!done.use && usableReels().length > 0) text = '✨ 光っている出目をタップ → 畑のマスをタップで使える';
   else if (!done.sell && anyRipe) text = '🍅 実った作物をタップすると売れる！';
   else if (!done.buy && UPGRADES.some((u) => canBuy(state, u.id))) text = '💰 お金がたまった！ ショップでスロットを強化しよう';
@@ -328,11 +328,13 @@ function renderField(): void {
       if (crop.kind === 'gold' && !ripe) html += '<span class="badge-gold">金</span>';
       if (crop.fertilized) html += '<span class="badge-fert">肥×2</span>';
       if (ripe) {
-        const line = lineCells.has(i);
-        if (line) cls.push('line');
-        const price = Math.round(cropPrice(state, crop) * (line ? CONFIG.lineBonus : 1));
+        // このマスをタップしたときに通る列の数で倍率が決まる
+        const lines = lineCells.has(i) ? linesThrough(state, i).length : 0;
+        const mult = lineMultiplier(lines);
+        if (lines) cls.push('line', `lines-${lines}`);
+        const price = Math.round(cropPrice(state, crop) * mult);
         html += `<span class="price">${price}金</span>`;
-        if (line) html += '<span class="badge-line">そろい</span>';
+        if (lines) html += `<span class="badge-line">${lines > 1 ? `${lines}列 ` : ''}×${mult}</span>`;
       }
       else html += `<span class="pips">${Array.from({ length: CONFIG.ripeGrowth }, (_, k) => `<i class="pip${k < crop.growth ? ' on' : ''}"></i>`).join('')}</span>`;
       label = `${crop.kind === 'gold' ? '金の作物' : '作物'} ${STAGE_NAMES[crop.growth]}${ripe ? `、タップで${cropPrice(state, crop)}金で売る` : ''}`;
@@ -931,6 +933,7 @@ function sellCrop(cell: number): void {
   if (res.line) {
     done.line = true;
     sfx.lineHarvest();
+    if (res.lines >= 2) window.setTimeout(() => sfx.fever(), 200);
     res.cells.forEach(({ cell: c, price: each }, k) => {
       const q = centers[c];
       window.setTimeout(() => {
@@ -941,7 +944,13 @@ function sellCrop(cell: number): void {
       }, k * 140);
     });
     window.setTimeout(() => {
-      floatText(p.x, p.y - 70, `そろい収穫！ +${price}`, { cls: 'combo', size: 1.4, rise: 120, dur: 1500 });
+      const name = ['', 'そろい収穫！', 'ダブルそろい！！', 'トリプルそろい！！！', '全そろい！！！！'][Math.min(res.lines, 4)];
+      floatText(p.x, p.y - 70, `${name} ×${res.mult} +${price}`, { cls: 'combo', size: 1.2 + res.lines * 0.2, rise: 120, dur: 1700 });
+      if (res.lines >= 2) {
+        confetti(30 + res.lines * 20);
+        flash('#ff9ad5', 500);
+        shake(el.app, 4 + res.lines * 2);
+      }
     }, res.cells.length * 140);
   } else {
     sfx.sell(price, combo);
@@ -1128,7 +1137,7 @@ function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
       <li><b>年貢</b>：${CONFIG.taxPeriod}日ごとに自動で徴収。払えないと終わり。${CONFIG.winTaxes}回納めるとクリア</li>
       <li>年貢を納めるたびに<b>お守り</b>を3つから1つ選べる。代わりに<b>虫</b>が1枚増える</li>
       <li><b>フィーバー</b>：同じ絵柄が${CONFIG.feverCount}つ以上で効果2倍。カラス・虫がそろうと「群れ」で危険</li>
-      <li><b>そろい収穫</b>：縦・横・斜めに実が並ぶと、1つタップで列ごと売値×${CONFIG.lineBonus}</li>
+      <li><b>そろい収穫</b>：縦・横・斜めに実が並ぶと、1つタップで列ごとまとめて売れる。タップしたマスを通る列が多いほど高い（1列×${lineMultiplier(1)}・2列×${lineMultiplier(2)}・3列×${lineMultiplier(3)}・4列×${lineMultiplier(4)}）</li>
       <li><b>ショップ</b>：準備画面で選んだ「足す」強化と、カラス・虫を消す（消すたび価格×${CONFIG.removeGrowth}）</li>
       <li><b>豊穣ポイント</b>：遊び終わるたびに「日数＋年貢×${META.pointsPerTax}」（クリアで+${META.clearBonus}）。準備画面で解放に使う</li>
     </ol>`;

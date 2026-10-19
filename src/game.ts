@@ -423,12 +423,21 @@ export function ripeLines(state: GameState): number[][] {
   return LINES.filter((line) => line.every((i) => isRipe(state.field[i])));
 }
 
+/** cell を通るそろった列 */
+export function linesThrough(state: GameState, cell: number): number[][] {
+  return ripeLines(state).filter((line) => line.includes(cell));
+}
+
+/** そろった列の数に応じた売値倍率 */
+export function lineMultiplier(lines: number): number {
+  const t = CONFIG.lineBonusByLines;
+  return t[Math.min(lines, t.length - 1)];
+}
+
 /** cell を売ったときに一緒に売れるマス（そろった列があれば列ごと） */
 export function harvestGroup(state: GameState, cell: number): number[] {
   const cells = new Set<number>([cell]);
-  ripeLines(state)
-    .filter((line) => line.includes(cell))
-    .forEach((line) => line.forEach((i) => cells.add(i)));
+  linesThrough(state, cell).forEach((line) => line.forEach((i) => cells.add(i)));
   return [...cells];
 }
 
@@ -436,14 +445,18 @@ export interface SellResult {
   cells: { cell: number; price: number; kind: Crop['kind'] }[];
   total: number;
   line: boolean;
+  /** 一度にそろった列の数（0 はそろいなし） */
+  lines: number;
+  mult: number;
 }
 
 export function sell(state: GameState, cell: number): SellResult | null {
   const crop = state.field[cell];
   if (state.over || !crop || !isRipe(crop)) return null;
   const group = harvestGroup(state, cell);
-  const line = group.length > 1;
-  const mult = line ? CONFIG.lineBonus : 1;
+  const lines = linesThrough(state, cell).length;
+  const line = lines > 0;
+  const mult = lineMultiplier(lines);
   const cells = group.map((i) => {
     const c = state.field[i]!;
     return { cell: i, price: Math.round(cropPrice(state, c) * mult), kind: c.kind };
@@ -453,7 +466,7 @@ export function sell(state: GameState, cell: number): SellResult | null {
   earn(state, total);
   state.stats.cropsSold += cells.length;
   if (line) state.stats.lineHarvests++;
-  return { cells, total, line };
+  return { cells, total, line, lines, mult };
 }
 
 // ---- 強化 ----
