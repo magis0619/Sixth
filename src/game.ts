@@ -1,8 +1,8 @@
 // ゲームのルール本体。画面に依存しない純粋なロジック。
 
 import {
-  CHARMS, CHARM_ORDER, CONFIG, SYMBOLS, SYMBOL_ORDER, UPGRADE_SYMBOL,
-  type CharmId, type SymbolId, type UpgradeId,
+  CHARMS, CHARM_ORDER, CONFIG, SYMBOLS, SYMBOL_ORDER,
+  type CharmId, type DraftTier, type SymbolId, type UpgradeId,
 } from './config.ts';
 
 export type Rng = () => number;
@@ -42,10 +42,18 @@ export interface GameState {
   results: ReelResult[];
   /** 今日フィーバーした絵柄 */
   fever: SymbolId[];
-  /** 今日の売値倍率（商人） */
-  priceMult: number;
-  /** 次の日の金の種の重み倍率（四つ葉）。1 なら効果なし */
-  cloverBoost: number;
+  /** 商人でためた「次の売却×2」の回数 */
+  merchantTokens: number;
+  /** 次の回転で確定する金の種の枚数（四つ葉） */
+  cloverNext: number;
+  /** 今日のドラフトの候補（null なら選択済み・なし） */
+  draftOffer: SymbolId[] | null;
+  /** 今日のドラフトで選び直した回数 */
+  draftRerolls: number;
+  /** 絵柄を消した回数（消す価格が上がる） */
+  removals: number;
+  /** 年貢を winTaxes 回納めたか（以降はエンドレス） */
+  cleared: boolean;
   charms: Record<CharmId, number>;
   /** 年貢を納めた直後に選ぶお守りの候補 */
   charmOffer: CharmId[] | null;
@@ -61,6 +69,8 @@ export interface GameState {
     lineHarvests: number;
     purchases: Purchase[];
     charms: { day: number; id: CharmId }[];
+    drafts: { day: number; id: SymbolId | null }[];
+    removed: { day: number; id: SymbolId }[];
   };
 }
 
@@ -76,15 +86,19 @@ export function newGame(): GameState {
     field: Array.from({ length: CONFIG.fieldCols * CONFIG.fieldRows }, () => null),
     results: [],
     fever: [],
-    priceMult: 1,
-    cloverBoost: 1,
+    merchantTokens: 0,
+    cloverNext: 0,
+    draftOffer: null,
+    draftRerolls: 0,
+    removals: 0,
+    cleared: false,
     charms: emptyCharms(),
     charmOffer: null,
     over: false,
     taxesPaid: 0,
     stats: {
       spins: 0, totalEarned: 0, cropsSold: 0, cropsEaten: 0, crowsMissed: 0, fevers: 0, lineHarvests: 0,
-      purchases: [], charms: [],
+      purchases: [], charms: [], drafts: [], removed: [],
     },
   };
 }
@@ -133,12 +147,6 @@ export function drawSymbol(bag: Record<SymbolId, number>, rng: Rng): SymbolId {
   return SYMBOL_ORDER.find((id) => bag[id] > 0)!;
 }
 
-/** 四つ葉の効果を乗せた、今日の抽選用の絵柄袋 */
-export function drawBag(state: GameState): Record<SymbolId, number> {
-  if (state.cloverBoost <= 1) return state.bag;
-  return { ...state.bag, goldSeed: Math.max(1, state.bag.goldSeed) * state.cloverBoost };
-}
-
 export function rollSeedCount(rng: Rng): number {
   const weights = CONFIG.seedCountWeights;
   let r = rng() * weights.reduce((n, w) => n + w.weight, 0);
@@ -178,8 +186,8 @@ export function nextTax(state: GameState): TaxInfo {
 // ---- 1日の進行 ----
 
 export type EndDayResult =
-  | { ok: true; tax: number | null; expired: number }
-  | { ok: false; tax: number; expired: number };
+  | { ok: true; tax: number | null; expired: number; cleared: boolean }
+  | { ok: false; tax: number; expired: number; cleared: false };
 
 /**
  * 今日を終える。期日なら年貢を徴収し、払えればお守りの候補を用意する（charmOffer）。
@@ -194,26 +202,33 @@ export function endDay(state: GameState, rng: Rng): EndDayResult {
     });
   }
   state.results = [];
-  if (!(state.day > 0 && state.day % CONFIG.taxPeriod === 0)) return { ok: true, tax: null, expired };
+  state.draftOffer = null;
+  if (!(state.day > 0 && state.day % CONFIG.taxPeriod === 0)) return { ok: true, tax: null, expired, cleared: false };
   const t = nextTax(state);
   if (state.gold < t.amount) {
     state.over = true;
-    return { ok: false, tax: t.amount, expired };
+    return { ok: false, tax: t.amount, expired, cleared: false };
   }
   state.gold -= t.amount;
   state.taxesPaid++;
   state.bag.bug += CONFIG.bugPerTax;
   state.charmOffer = rollCharmOffer(state, rng);
-  return { ok: true, tax: t.amount, expired };
+  const cleared = !state.cleared && state.taxesPaid >= CONFIG.winTaxes;
+  if (cleared) state.cleared = true;
+  return { ok: true, tax: t.amount, expired, cleared };
 }
 
 export function drawDay(state: GameState, rng: Rng): void {
   state.day++;
   state.stats.spins++;
-  state.priceMult = 1;
-  const bag = drawBag(state);
-  state.cloverBoost = 1;
-  const symbols = Array.from({ length: state.reels }, () => drawSymbol(bag, rng));
+  const symbols = Array.from({ length: state.reels }, () => drawSymbol(state.bag, rng));
+  // 四つ葉：金の種を確定させる（まだ金の種でないリールを無作為に選んで置き換える）
+  for (let k = 0; k < state.cloverNext; k++) {
+    const others = symbols.flatMap((sym, i) => (sym === 'goldSeed' ? [] : [i]));
+    if (!others.length) break;
+    symbols[others[Math.floor(rng() * others.length)]] = 'goldSeed';
+  }
+  state.cloverNext = 0;
   const counts = new Map<SymbolId, number>();
   symbols.forEach((s) => counts.set(s, (counts.get(s) ?? 0) + 1));
   state.fever = [...counts].filter(([, n]) => n >= CONFIG.feverCount).map(([s]) => s);
@@ -227,7 +242,7 @@ export function drawDay(state: GameState, rng: Rng): void {
   });
 }
 
-/** 年貢とお守りの選択をはさまずに1日進める（シミュレーター用） */
+/** ドラフト・年貢・お守りの選択をはさまずに1日進める（シミュレーター用。ドラフトは呼び出し側で済ませる） */
 export function startDay(state: GameState, rng: Rng): EndDayResult {
   const res = endDay(state, rng);
   if (!res.ok) return res;
@@ -240,8 +255,8 @@ export type AutoEvent =
   | { type: 'crow'; cell: number | null; crop: Crop | null; eaten: boolean; toll: number }
   | { type: 'bug'; cell: number | null; warded: boolean; damage: number }
   | { type: 'coin'; amount: number }
-  | { type: 'merchant'; mult: number }
-  | { type: 'clover'; boost: number };
+  | { type: 'merchant'; tokens: number; added: number }
+  | { type: 'clover'; next: number; added: number };
 
 export function crowEatChance(state: GameState, power: number): number {
   const base = Math.max(0.1, CONFIG.crowEatChance - 0.15 * state.charms.scarecrow);
@@ -265,11 +280,11 @@ export function resolveAuto(state: GameState, reel: number, rng: Rng): AutoEvent
       return { type: 'coin', amount };
     }
     case 'merchant':
-      state.priceMult += CONFIG.merchantBonus * r.power;
-      return { type: 'merchant', mult: state.priceMult };
+      state.merchantTokens += r.power;
+      return { type: 'merchant', tokens: state.merchantTokens, added: r.power };
     case 'clover':
-      state.cloverBoost = Math.max(state.cloverBoost, 1) * CONFIG.cloverMultiplier * r.power;
-      return { type: 'clover', boost: state.cloverBoost };
+      state.cloverNext += r.power;
+      return { type: 'clover', next: state.cloverNext, added: r.power };
     case 'bug': {
       const targets = state.field.flatMap((c, i) => (c && c.growth > 0 ? [i] : []));
       if (targets.length === 0) return { type: 'bug', cell: null, warded: false, damage: 0 };
@@ -387,7 +402,7 @@ export function useSymbol(state: GameState, reel: number, cell: number | null): 
 export function cropPrice(state: GameState, crop: Crop): number {
   const base = crop.kind === 'gold' ? CONFIG.goldPrice + 10 * state.charms.goldLuck : CONFIG.normalPrice + 2 * state.charms.bumper;
   const fert = crop.fertilized ? CONFIG.fertilizerMultiplier : 1;
-  return Math.round((base + crop.bonus) * fert * state.priceMult);
+  return Math.round((base + crop.bonus) * fert);
 }
 
 export function isRipe(crop: Crop | null): boolean {
@@ -409,7 +424,8 @@ export function harvestGroup(state: GameState, cell: number): number[] {
 }
 
 export interface SellResult {
-  cells: { cell: number; price: number; kind: Crop['kind'] }[];
+  /** boosted：商人の「次の売却×2」が使われた */
+  cells: { cell: number; price: number; kind: Crop['kind']; boosted: boolean }[];
   total: number;
   line: boolean;
 }
@@ -420,10 +436,18 @@ export function sell(state: GameState, cell: number): SellResult | null {
   const group = harvestGroup(state, cell);
   const line = group.length > 1;
   const mult = line ? CONFIG.lineBonus : 1;
-  const cells = group.map((i) => {
-    const c = state.field[i]!;
-    return { cell: i, price: Math.round(cropPrice(state, c) * mult), kind: c.kind };
-  });
+  // 高い作物から順に商人の×2を使う
+  const cells = group
+    .map((i) => {
+      const c = state.field[i]!;
+      return { cell: i, price: Math.round(cropPrice(state, c) * mult), kind: c.kind, boosted: false };
+    })
+    .sort((a, b) => b.price - a.price)
+    .map((c) => {
+      if (state.merchantTokens <= 0) return c;
+      state.merchantTokens--;
+      return { ...c, price: c.price * CONFIG.merchantMultiplier, boosted: true };
+    });
   cells.forEach(({ cell: i }) => (state.field[i] = null));
   const total = cells.reduce((n, c) => n + c.price, 0);
   earn(state, total);
@@ -434,31 +458,90 @@ export function sell(state: GameState, cell: number): SellResult | null {
 
 // ---- 強化 ----
 
+const discount = (state: GameState, price: number): number =>
+  Math.max(1, Math.round(price * (1 - Math.min(0.5, 0.1 * state.charms.bargain))));
+
 export function upgradePrice(state: GameState, id: UpgradeId): number {
-  const base = id === 'addReel' ? CONFIG.reelPriceBase * (state.reels - 1) : CONFIG.upgradePrices[id];
-  const discount = Math.min(0.5, 0.1 * state.charms.bargain);
-  return Math.max(1, Math.round(base * (1 - discount)));
+  const base = id === 'addReel' ? CONFIG.reelPriceBase * (state.reels - 1) : CONFIG.removeBase + CONFIG.removeStep * state.removals;
+  return discount(state, base);
 }
 
 export function upgradeAvailable(state: GameState, id: UpgradeId): boolean {
   if (id === 'addReel') return state.reels < CONFIG.maxReels;
-  const change = UPGRADE_SYMBOL[id]!;
-  return change.delta > 0 || state.bag[change.symbol] > 0;
+  return bagTotal(state.bag) > CONFIG.minBagSize;
 }
 
 export function canBuy(state: GameState, id: UpgradeId): boolean {
   return !state.over && upgradeAvailable(state, id) && state.gold >= upgradePrice(state, id);
 }
 
-export function buy(state: GameState, id: UpgradeId): boolean {
-  if (!canBuy(state, id)) return false;
-  state.gold -= upgradePrice(state, id);
-  if (id === 'addReel') state.reels++;
-  else {
-    const change = UPGRADE_SYMBOL[id]!;
-    state.bag[change.symbol] += change.delta;
+export function addReel(state: GameState): boolean {
+  if (!canBuy(state, 'addReel')) return false;
+  state.gold -= upgradePrice(state, 'addReel');
+  state.reels++;
+  state.stats.purchases.push({ day: state.day, id: 'addReel' });
+  return true;
+}
+
+export function removeSymbol(state: GameState, symbol: SymbolId): boolean {
+  if (!canBuy(state, 'removeSymbol') || state.bag[symbol] <= 0) return false;
+  state.gold -= upgradePrice(state, 'removeSymbol');
+  state.bag[symbol]--;
+  state.removals++;
+  state.stats.purchases.push({ day: state.day, id: 'removeSymbol' });
+  state.stats.removed.push({ day: state.day, id: symbol });
+  return true;
+}
+
+// ---- ドラフト ----
+
+export function draftWeight(state: GameState, tier: DraftTier): number {
+  const w = CONFIG.draftTierWeights[tier];
+  return tier === 'rare' ? w + CONFIG.draftRareGrowth * state.taxesPaid : w;
+}
+
+export function rollDraft(state: GameState, rng: Rng): SymbolId[] {
+  const pool = (Object.keys(CONFIG.draftPool) as SymbolId[]).map((id) => ({ id, w: draftWeight(state, CONFIG.draftPool[id]!) }));
+  const offer: SymbolId[] = [];
+  while (offer.length < CONFIG.draftChoices && pool.length) {
+    let r = rng() * pool.reduce((n, p) => n + p.w, 0);
+    const k = Math.max(0, pool.findIndex((p) => (r -= p.w) < 0));
+    offer.push(pool.splice(k, 1)[0].id);
   }
-  state.stats.purchases.push({ day: state.day, id });
+  return offer;
+}
+
+/** 今日のドラフトを用意する（次の日へ進む前に呼ぶ） */
+export function openDraft(state: GameState, rng: Rng): SymbolId[] {
+  state.draftRerolls = 0;
+  state.draftOffer = rollDraft(state, rng);
+  return state.draftOffer;
+}
+
+export function rerollPrice(state: GameState): number {
+  return discount(state, CONFIG.draftRerollBase * (state.draftRerolls + 1));
+}
+
+export function rerollDraft(state: GameState, rng: Rng): boolean {
+  const price = rerollPrice(state);
+  if (!state.draftOffer || state.gold < price) return false;
+  state.gold -= price;
+  state.draftRerolls++;
+  state.draftOffer = rollDraft(state, rng);
+  return true;
+}
+
+/** 候補から1枚選ぶ。null はスキップ（少し金がもらえる） */
+export function chooseDraft(state: GameState, id: SymbolId | null): boolean {
+  if (!state.draftOffer) return false;
+  if (id !== null) {
+    if (!state.draftOffer.includes(id)) return false;
+    state.bag[id]++;
+  } else {
+    earn(state, CONFIG.draftSkipGold);
+  }
+  state.stats.drafts.push({ day: state.day, id });
+  state.draftOffer = null;
   return true;
 }
 

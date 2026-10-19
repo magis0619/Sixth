@@ -1,10 +1,10 @@
 import './style.css';
 import {
-  CHARMS, CHARM_ORDER, CONFIG, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL,
+  CHARMS, CHARM_ORDER, CONFIG, DRAFT_TIER_NAMES, SYMBOLS, SYMBOL_ORDER, UPGRADES,
   type CharmId, type SymbolId, type UpgradeId,
 } from './config.ts';
 import {
-  bagTotal, buy, canBuy, canUse, chooseCharm, cropPrice, drawDay, drawSymbol, endDay, isRipe, neighbors,
+  addReel, bagTotal, canBuy, canUse, chooseDraft, openDraft, removeSymbol, rerollDraft, rerollPrice, chooseCharm, cropPrice, drawDay, drawSymbol, endDay, isRipe, neighbors,
   newGame, nextTax, resolveAuto, ripeLines, sell, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState,
 } from './game.ts';
 import { isMuted, sfx, toggleMute, unlockAudio } from './audio.ts';
@@ -109,8 +109,9 @@ function renderStatus(): void {
   const bad = state.fever.filter((s) => SYMBOLS[s].rarity === 'bad');
   if (good.length) chips.push(`<span class="st fever">🔥 フィーバー：${good.map((s) => SYMBOLS[s].name).join('・')}</span>`);
   if (bad.length) chips.push(`<span class="st danger">⚠️ ${bad.map((s) => `${SYMBOLS[s].name}の群れ`).join('・')}</span>`);
-  if (state.priceMult > 1) chips.push(`<span class="st merchant">🧑‍🌾 今日の売値 ×${state.priceMult}</span>`);
-  if (state.cloverBoost > 1) chips.push(`<span class="st clover">🍀 明日は金の種が出やすい（×${state.cloverBoost}）</span>`);
+  if (state.merchantTokens > 0) chips.push(`<span class="st merchant">🧑‍🌾 次に売る作物 ×${CONFIG.merchantMultiplier}（残り${state.merchantTokens}回）</span>`);
+  if (state.cloverNext > 0) chips.push(`<span class="st clover">🍀 次の回転で金の種${state.cloverNext}枚 確定</span>`);
+  if (state.cleared) chips.push('<span class="st endless">🏆 クリア済み・エンドレス</span>');
   el.status.innerHTML = chips.join('');
 }
 
@@ -176,7 +177,7 @@ function renderHint(): void {
   else if (!done.line && ripeLines(state).length > 0) text = '✨ そろった！ 縦・横・斜めに並んだ実をタップすると、列ごと売値×1.5でまとめて売れる';
   else if (!done.use && usableReels().length > 0) text = '✨ 光っている出目をタップ → 畑のマスをタップで使える';
   else if (!done.sell && anyRipe) text = '🍅 実った作物をタップすると売れる！';
-  else if (!done.buy && UPGRADES.some((u) => canBuy(state, u.id))) text = '💰 お金がたまった！ ショップでスロットを強化しよう';
+  else if (!done.buy && UPGRADES.some((u) => canBuy(state, u.id))) text = '💰 お金がたまった！ ショップでカラスを消したり、リールを増やしたりできる';
   else if (!done.next && done.spin && usableReels().length === 0) text = '▶ 次の日へ進もう。作物は雨と太陽でしか育たない';
   el.hint.textContent = text;
 }
@@ -287,8 +288,9 @@ function renderField(): void {
       if (ripe) {
         const line = lineCells.has(i);
         if (line) cls.push('line');
-        const price = Math.round(cropPrice(state, crop) * (line ? CONFIG.lineBonus : 1));
-        html += `<span class="price">${price}金</span>`;
+        const boost = state.merchantTokens > 0 ? CONFIG.merchantMultiplier : 1;
+        const price = Math.round(cropPrice(state, crop) * (line ? CONFIG.lineBonus : 1)) * boost;
+        html += `<span class="price${boost > 1 ? ' boost' : ''}">${boost > 1 ? '🧑‍🌾' : ''}${price}金</span>`;
         if (line) html += '<span class="badge-line">そろい</span>';
       }
       else html += `<span class="pips">${Array.from({ length: CONFIG.ripeGrowth }, (_, k) => `<i class="pip${k < crop.growth ? ' on' : ''}"></i>`).join('')}</span>`;
@@ -310,10 +312,8 @@ function bagPct(bag: Record<SymbolId, number>, id: SymbolId): number {
 
 function upgradeEffect(id: UpgradeId): string {
   if (id === 'addReel') return state.reels < CONFIG.maxReels ? `リール ${state.reels}本 → ${state.reels + 1}本` : `最大 ${CONFIG.maxReels}本`;
-  const { symbol, delta } = UPGRADE_SYMBOL[id]!;
-  if (delta < 0 && state.bag[symbol] === 0) return `${SYMBOLS[symbol].name}はもういない！`;
-  const after = { ...state.bag, [symbol]: state.bag[symbol] + delta };
-  return `出る確率 ${bagPct(state.bag, symbol)}% → ${bagPct(after, symbol)}%`;
+  if (!upgradeAvailable(state, id)) return `袋は${CONFIG.minBagSize}枚より減らせない`;
+  return `カラス・虫など好きな1枚（消すたびに+${CONFIG.removeStep}金）`;
 }
 
 function renderShop(): void {
@@ -333,7 +333,7 @@ function renderShop(): void {
     const affordable = canBuy(state, u.id);
     b.className = `item${affordable ? ' affordable' : ''}${available ? '' : ' soldout'}`;
     const cost = !available ? '完了' : affordable ? `${price}金で買う` : `${price}金（あと${price - state.gold}）`;
-    const ico = u.id === 'removeCrow' ? symHtml('crow') : u.emoji;
+    const ico = u.emoji;
     const html = `<span class="ico">${ico}</span><span class="name">${u.name}</span><span class="effect">${upgradeEffect(u.id)}</span><span class="cost">${cost}</span>`;
     if (b.innerHTML !== html) b.innerHTML = html;
   });
@@ -371,6 +371,7 @@ async function onSpin(): Promise<void> {
   renderSpinButton();
   renderReelStates();
 
+  if (state.day > 0) await showDraft();
   const res = endDay(state, rng);
   autoOutcome = {};
   if (res.tax !== null) {
@@ -384,6 +385,14 @@ async function onSpin(): Promise<void> {
   if (state.charmOffer) {
     render();
     await showCharmOffer();
+  }
+  if (res.cleared) {
+    const goOn = await showClear();
+    if (!goOn) {
+      busy = false;
+      restart();
+      return;
+    }
   }
   drawDay(state, rng);
   render();
@@ -615,17 +624,17 @@ async function resolveAutos(): Promise<void> {
       floatText(center(el.goldBox).x, center(el.goldBox).y + 28, `+${ev.amount}`, { cls: 'gold', size: 0.9 });
       setGold(state.gold);
     } else if (ev.type === 'merchant') {
-      autoOutcome[i] = `売値×${ev.mult}`;
+      autoOutcome[i] = `売却×2 +${ev.added}回`;
       sfx.merchant();
       burst(from.x, from.y, ['💰', '✨', '🪙'], 10, 70);
-      floatText(from.x, from.y - 40, `今日の売値 ×${ev.mult}！`, { cls: 'gold', size: 0.9 });
+      floatText(from.x, from.y - 40, `次に売る作物 ×2！（残り${ev.tokens}回）`, { cls: 'gold', size: 0.8 });
       render();
       el.field.querySelectorAll('.plot.ripe').forEach((p) => pop(p, 1.12));
     } else if (ev.type === 'clover') {
-      autoOutcome[i] = '明日 金の種↑';
+      autoOutcome[i] = `次 金の種${ev.added}枚`;
       sfx.rare();
       burst(from.x, from.y, ['🍀', '✨', '🌟'], 12, 80);
-      floatText(from.x, from.y - 40, '明日は金の種が出やすい！', { cls: 'good', size: 0.8 });
+      floatText(from.x, from.y - 40, `次の回転で金の種 ${ev.next}枚 確定！`, { cls: 'good', size: 0.8 });
       renderStatus();
     } else if (ev.type === 'bug') {
       if (ev.cell === null) {
@@ -861,6 +870,12 @@ function sellCrop(cell: number): void {
   const price = res.total;
   const big = price >= CONFIG.goldPrice || res.line;
   render();
+  res.cells
+    .filter((c) => c.boosted)
+    .forEach((c) => {
+      const q = centers[c.cell];
+      floatText(q.x, q.y - 45, '🧑‍🌾 ×2！', { cls: 'gold', size: 0.8, dur: 900 });
+    });
   if (res.line) {
     done.line = true;
     sfx.lineHarvest();
@@ -901,7 +916,7 @@ function onBuy(id: UpgradeId): void {
   if (busy || state.over) return;
   const card = el.shop.querySelector(`[data-id="${id}"]`) as HTMLElement;
   if (!upgradeAvailable(state, id)) {
-    say('これ以上は強化できない');
+    say(id === 'addReel' ? 'リールはもう最大' : `絵柄袋は${CONFIG.minBagSize}枚より減らせない`);
     shake(card, 3);
     return;
   }
@@ -911,36 +926,24 @@ function onBuy(id: UpgradeId): void {
     say(`あと${upgradePrice(state, id) - state.gold}金 足りない`);
     return;
   }
-  const first = state.stats.purchases.length === 0;
-  const from = center(card);
-  buy(state, id);
+  if (id === 'removeSymbol') {
+    showRemoveChooser();
+    return;
+  }
+  addReel(state);
+  afterPurchase(card);
+  sfx.newReel();
+  flash('#ffffff', 300);
+  const r = el.reels.lastElementChild as HTMLElement;
+  burst(center(r).x, center(r).y, ['✨', '🎰', '⭐'], 14, 80);
+  floatText(center(r).x, center(r).y - 40, '出来事+1！', { cls: 'good', size: 1 });
+}
+
+function afterPurchase(card: HTMLElement): void {
+  const first = state.stats.purchases.length === 1;
   done.buy = true;
   render();
   pop(card, 1.1);
-  if (id === 'addReel') {
-    sfx.newReel();
-    flash('#ffffff', 300);
-    const r = el.reels.lastElementChild as HTMLElement;
-    burst(center(r).x, center(r).y, ['✨', '🎰', '⭐'], 14, 80);
-    floatText(center(r).x, center(r).y - 40, '出来事+1！', { cls: 'good', size: 1 });
-  } else if (UPGRADE_SYMBOL[id]!.delta < 0) {
-    const sym = UPGRADE_SYMBOL[id]!.symbol;
-    sfx.buy();
-    sfx.poof();
-    const chip = el.bag.querySelector(`[data-sym="${sym}"]`) as HTMLElement;
-    const c = center(chip);
-    burst(c.x, c.y, ['💨', sym === 'crow' ? '🪶' : '🍃', '✨'], 12, 60);
-    floatText(c.x, c.y - 20, `${SYMBOLS[sym].name} −1！`, { cls: 'good', size: 0.9 });
-    pop(chip, 1.3);
-  } else {
-    sfx.buy();
-    const sym = UPGRADE_SYMBOL[id]!.symbol;
-    const chip = el.bag.querySelector(`[data-sym="${sym}"]`) as HTMLElement;
-    flyTo(from, chip, SYMBOLS[sym].emoji, 1, () => {
-      pop(chip, 1.35);
-      burst(center(chip).x, center(chip).y, ['✨'], 6, 30);
-    });
-  }
   if (first) {
     sfx.bigBuy();
     confetti(24);
@@ -948,11 +951,171 @@ function onBuy(id: UpgradeId): void {
   }
 }
 
+/** 消す絵柄を選ぶ。カラス・虫を先頭に並べる */
+function showRemoveChooser(): void {
+  const ids = [...SYMBOL_ORDER]
+    .filter((id) => state.bag[id] > 0)
+    .sort((a, b) => Number(SYMBOLS[b].rarity === 'bad') - Number(SYMBOLS[a].rarity === 'bad'));
+  el.overlay.innerHTML = `
+    <div class="modal" role="dialog" aria-label="消す絵柄を選ぶ">
+      <h2>🧹 どの絵柄を消す？</h2>
+      <p class="sub">${upgradePrice(state, 'removeSymbol')}金で1枚取り除く</p>
+      <div class="remove-list">
+        ${ids
+          .map(
+            (id) => `<button class="remove-item${SYMBOLS[id].rarity === 'bad' ? ' bad' : ''}" data-sym="${id}">
+              <span class="e">${symHtml(id)}</span><b>${SYMBOLS[id].name}</b><small>×${state.bag[id]}（${bagPct(state.bag, id)}%）</small>
+            </button>`,
+          )
+          .join('')}
+      </div>
+      <button class="secondary" id="remove-cancel">やめる</button>
+    </div>`;
+  el.overlay.classList.add('show');
+  const close = () => {
+    el.overlay.classList.remove('show');
+    el.overlay.innerHTML = '';
+  };
+  $('remove-cancel').addEventListener('click', () => {
+    sfx.cancel();
+    close();
+  });
+  el.overlay.querySelectorAll<HTMLButtonElement>('.remove-item').forEach((b) =>
+    b.addEventListener('click', () => {
+      const sym = b.dataset.sym as SymbolId;
+      if (!removeSymbol(state, sym)) return;
+      close();
+      afterPurchase(el.shop.querySelector('[data-id="removeSymbol"]') as HTMLElement);
+      sfx.buy();
+      sfx.poof();
+      const chip = el.bag.querySelector(`[data-sym="${sym}"]`) as HTMLElement | null;
+      const c = chip ? center(chip) : center(el.bag);
+      burst(c.x, c.y, ['💨', sym === 'crow' ? '🪶' : '🍃', '✨'], 12, 60);
+      floatText(c.x, c.y - 20, `${SYMBOLS[sym].name} −1！`, { cls: SYMBOLS[sym].rarity === 'bad' ? 'good' : '', size: 0.9 });
+      if (chip) pop(chip, 1.3);
+    }),
+  );
+}
+
+// ---- ドラフト ----
+
+function draftCard(id: SymbolId): string {
+  const def = SYMBOLS[id];
+  const tier = CONFIG.draftPool[id]!;
+  const after = { ...state.bag, [id]: state.bag[id] + 1 };
+  const isNew = state.bag[id] === 0 && !state.stats.drafts.some((d) => d.id === id);
+  let note = '';
+  if (id === 'merchant') {
+    const best = Math.max(0, ...state.field.filter((c) => c && isRipe(c)).map((c) => cropPrice(state, c!)));
+    note = best > 0 ? `今なら ${best}金 → ${best * CONFIG.merchantMultiplier}金` : 'ため置きできるので無駄にならない';
+  } else if (id === 'goldSeed') note = `実ると ${CONFIG.goldPrice + 10 * state.charms.goldLuck}金`;
+  else if (id === 'bee') note = '最大5マスまとめて育つ';
+  else if (id === 'seed') note = `1個=${CONFIG.normalPrice + 2 * state.charms.bumper}金の作物`;
+  return `<button class="draft-card tier-${tier}" data-sym="${id}" disabled>
+    <span class="tier">${DRAFT_TIER_NAMES[tier]}</span>${isNew ? '<span class="new">NEW</span>' : ''}
+    <span class="e">${symHtml(id)}</span>
+    <b>${def.name}</b>
+    <span class="kind">${def.kind === 'manual' ? '手動：タップして使う' : '自動：止まると発動'}</span>
+    <small>${def.desc}</small>
+    ${note ? `<span class="note">${note}</span>` : ''}
+    <span class="odds">出る確率 ${bagPct(state.bag, id)}% → ${bagPct(after, id)}%</span>
+  </button>`;
+}
+
+/** 次の日へ進む前のドラフト。選ぶかスキップするまで待つ */
+function showDraft(): Promise<void> {
+  openDraft(state, rng);
+  sfx.charmOffer();
+  return new Promise((resolve) => {
+    const paint = () => {
+      const price = rerollPrice(state);
+      el.overlay.innerHTML = `
+        <div class="modal draft-modal" role="dialog" aria-label="今日の1枚を選ぶ">
+          <h2>🌱 今日の1枚を選ぼう</h2>
+          <p class="sub">選んだ絵柄は絵柄袋に入り、${state.day + 1}日目から出るようになる</p>
+          <div class="draft-choices">${state.draftOffer!.map(draftCard).join('')}</div>
+          <div class="draft-actions">
+            <button class="secondary" id="draft-reroll" ${state.gold < price ? 'disabled' : ''}>🔄 選び直す（${price}金）</button>
+            <button class="secondary" id="draft-skip">スキップ（+${CONFIG.draftSkipGold}金）</button>
+          </div>
+        </div>`;
+      el.overlay.classList.add('show');
+      const cards = [...el.overlay.querySelectorAll<HTMLButtonElement>('.draft-card')];
+      cards.forEach((card, k) =>
+        card.animate([{ transform: 'translateY(24px) scale(.85)', opacity: 0 }, { transform: 'none', opacity: 1 }], {
+          duration: 350,
+          delay: 80 + k * 90,
+          easing: 'cubic-bezier(.3,1.5,.5,1)',
+          fill: 'backwards',
+        }),
+      );
+      // 連打で意図しない選択をしないよう少し待つ
+      window.setTimeout(() => cards.forEach((c) => (c.disabled = false)), 450);
+      const finish = (picked: SymbolId | null, from?: HTMLElement) => {
+        chooseDraft(state, picked);
+        const origin = from ? center(from) : null;
+        el.overlay.classList.remove('show');
+        el.overlay.innerHTML = '';
+        render();
+        if (picked && origin) {
+          sfx.charmGet();
+          const chip = el.bag.querySelector(`[data-sym="${picked}"]`);
+          if (chip) flyTo(origin, chip, symHtml(picked), 1, () => pop(chip, 1.35));
+        } else {
+          sfx.coin();
+          floatText(center(el.goldBox).x, center(el.goldBox).y + 28, `+${CONFIG.draftSkipGold}`, { cls: 'gold', size: 0.8 });
+        }
+        resolve();
+      };
+      cards.forEach((card) => card.addEventListener('click', () => finish(card.dataset.sym as SymbolId, card)));
+      $('draft-skip').addEventListener('click', () => finish(null));
+      $('draft-reroll').addEventListener('click', () => {
+        if (!rerollDraft(state, rng)) return;
+        sfx.select();
+        setGold(state.gold);
+        paint();
+      });
+    };
+    paint();
+  });
+}
+
+/** 年貢を winTaxes 回納めたときのクリア画面。続けるなら true */
+function showClear(): Promise<boolean> {
+  sfx.bigBuy();
+  confetti(80);
+  flash('#ffe680', 700);
+  vibrate([60, 40, 60, 40, 200]);
+  const best = loadBest();
+  saveBest({ ...best, clears: (best.clears ?? 0) + 1 });
+  el.overlay.innerHTML = `
+    <div class="modal clear-modal" role="dialog" aria-label="クリア">
+      <div class="big">🏆</div>
+      <h2>年貢を${CONFIG.winTaxes}回 完納！ クリア！</h2>
+      <div class="record">${state.day}日目でクリア / 総収入 ${state.stats.totalEarned}金</div>
+      <p class="sub">続けるとエンドレス。年貢はどんどん重くなる。どこまで耐えられる？</p>
+      <button class="primary" id="clear-continue" disabled>エンドレスで続ける</button>
+      <button class="secondary" id="clear-restart" disabled>最初から遊ぶ</button>
+    </div>`;
+  el.overlay.classList.add('show');
+  window.setTimeout(() => el.overlay.querySelectorAll('button').forEach((b) => ((b as HTMLButtonElement).disabled = false)), 900);
+  return new Promise((resolve) => {
+    const close = (v: boolean) => {
+      el.overlay.classList.remove('show');
+      el.overlay.innerHTML = '';
+      resolve(v);
+    };
+    $('clear-continue').addEventListener('click', () => close(true));
+    $('clear-restart').addEventListener('click', () => close(false));
+  });
+}
+
 // ---- ゲームオーバー ----
 
 interface Best {
   day: number;
   taxes: number;
+  clears?: number;
 }
 
 function loadBest(): Best {
@@ -974,17 +1137,17 @@ function saveBest(b: Best): void {
 function showGameOver(): void {
   const best = loadBest();
   const isNew = state.day > (best.day ?? 0);
-  if (isNew) saveBest({ day: state.day, taxes: state.taxesPaid });
+  if (isNew) saveBest({ ...best, day: state.day, taxes: state.taxesPaid });
   const name = (id: UpgradeId) => UPGRADES.find((u) => u.id === id)!.name;
   const first = state.stats.purchases[0];
   const t = nextTax(state);
   el.overlay.innerHTML = `
     <div class="modal" role="dialog" aria-label="ゲームオーバー">
       <div class="big">🏚️</div>
-      <h2>年貢が払えなかった…</h2>
+      <h2>${state.cleared ? 'エンドレス終了！' : '年貢が払えなかった…'}</h2>
       <div class="record">${state.day}日目まで / 年貢 ${state.taxesPaid}回 納付${isNew ? '<span class="newrec">最高記録！</span>' : ''}</div>
       <table>
-        <tr><td>最高記録</td><td>${Math.max(state.day, best.day ?? 0)}日目</td></tr>
+        <tr><td>最高記録</td><td>${Math.max(state.day, best.day ?? 0)}日目（クリア${best.clears ?? 0}回）</td></tr>
         <tr><td>払えなかった年貢</td><td>${t.amount}金（所持 ${state.gold}金）</td></tr>
         <tr><td>回転数</td><td>${state.stats.spins}回</td></tr>
         <tr><td>総収入</td><td>${state.stats.totalEarned}金</td></tr>
@@ -996,6 +1159,9 @@ function showGameOver(): void {
       </table>
       <h3>📝 強化の購入順（検証ログ）</h3>
       ${state.stats.purchases.length ? `<ol>${state.stats.purchases.map((p) => `<li>${p.day}日目 ${name(p.id)}</li>`).join('')}</ol>` : '<p>なし</p>'}
+      <h3>🌱 ドラフトで選んだ絵柄</h3>
+      ${state.stats.drafts.length ? `<ol>${state.stats.drafts.map((d) => `<li>${d.day}日目 ${d.id ? `${SYMBOLS[d.id].emoji}${SYMBOLS[d.id].name}` : 'スキップ'}</li>`).join('')}</ol>` : '<p>なし</p>'}
+      ${state.stats.removed.length ? `<h3>🧹 消した絵柄</h3><ol>${state.stats.removed.map((d) => `<li>${d.day}日目 ${SYMBOLS[d.id].emoji}${SYMBOLS[d.id].name}</li>`).join('')}</ol>` : ''}
       <h3>🎁 選んだお守り</h3>
       ${state.stats.charms.length ? `<ol>${state.stats.charms.map((c) => `<li>${c.day}日目 ${CHARMS[c.id].emoji}${CHARMS[c.id].name}</li>`).join('')}</ol>` : '<p>なし</p>'}
       <button class="primary" id="restart" disabled>もう一度あそぶ</button>

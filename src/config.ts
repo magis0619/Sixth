@@ -13,16 +13,10 @@ export type SymbolId =
   | 'merchant'
   | 'clover';
 
-export type UpgradeId =
-  | 'addSun'
-  | 'addFertilizer'
-  | 'addGoldSeed'
-  | 'addBee'
-  | 'addMerchant'
-  | 'addClover'
-  | 'removeCrow'
-  | 'removeBug'
-  | 'addReel';
+export type UpgradeId = 'removeSymbol' | 'addReel';
+
+/** ドラフトでの出やすさ */
+export type DraftTier = 'common' | 'uncommon' | 'rare';
 
 export type CharmId =
   | 'coinPurse'
@@ -63,8 +57,8 @@ export const SYMBOLS: Record<SymbolId, SymbolDef> = {
   crow: { id: 'crow', name: 'カラス', emoji: '🐦', kind: 'auto', desc: '作物を1つ狙う（1/2で食べられる）', feverDesc: '食べる確率 1/2 → 3/4', rarity: 'bad' },
   bug: { id: 'bug', name: '虫', emoji: '🐛', kind: 'auto', desc: '作物1つの成長−1', feverDesc: '成長−2', rarity: 'bad' },
   coin: { id: 'coin', name: '金貨', emoji: '🪙', kind: 'auto', desc: 'その場で金がもらえる', feverDesc: '額が2倍', rarity: 'normal' },
-  merchant: { id: 'merchant', name: '商人', emoji: '🧑‍🌾', kind: 'auto', desc: 'その日だけ売値×1.5', feverDesc: '売値の上がり幅が2倍', rarity: 'normal' },
-  clover: { id: 'clover', name: '四つ葉', emoji: '🍀', kind: 'auto', desc: '次の日、金の種が出やすくなる', feverDesc: 'さらに出やすくなる', rarity: 'rare' },
+  merchant: { id: 'merchant', name: '商人', emoji: '🧑‍🌾', kind: 'auto', desc: '次に売る作物1つの売値×2（ため置きできる）', feverDesc: '2回分たまる', rarity: 'normal' },
+  clover: { id: 'clover', name: '四つ葉', emoji: '🍀', kind: 'auto', desc: '次の回転で金の種が1枚確定', feverDesc: '金の種が2枚確定', rarity: 'rare' },
 };
 
 /** 絵柄袋・ショップでの表示順 */
@@ -102,10 +96,8 @@ export const CONFIG = {
   bugDamage: 1,
   /** 年貢を納めるたびに絵柄袋に増える虫の枚数 */
   bugPerTax: 1,
-  /** 商人1枚で上がる今日の売値倍率 */
-  merchantBonus: 0.5,
-  /** 四つ葉の翌日の金の種の出やすさ（重みの倍率） */
-  cloverMultiplier: 3,
+  /** 商人がためる「次の売却」の倍率 */
+  merchantMultiplier: 2,
   /** 種1枚で植えられる数とその重み（1個:50%・2個:35%・3個:15%）。金の種は常に1個 */
   seedCountWeights: [
     { count: 1, weight: 50 },
@@ -120,25 +112,37 @@ export const CONFIG = {
   /** そろい収穫：縦横斜めに実が並んだ列をまとめて売ったときの売値倍率 */
   lineBonus: 1.5,
 
-  /** 強化の価格 */
-  upgradePrices: {
-    addSun: 10,
-    addFertilizer: 12,
-    addGoldSeed: 25,
-    addBee: 18,
-    addMerchant: 15,
-    addClover: 20,
-    removeCrow: 15,
-    removeBug: 12,
-  } as Record<Exclude<UpgradeId, 'addReel'>, number>,
+  /** 絵柄を1枚消す価格 = removeBase + removeStep × これまでに消した回数 */
+  removeBase: 10,
+  removeStep: 5,
+  /** 絵柄袋がこの枚数を下回る削除はできない */
+  minBagSize: 5,
   /** リール追加の価格 = reelPriceBase × (現在の本数 − 1) */
   reelPriceBase: 20,
 
+  /** ドラフト：毎日、次の日へ進む前に候補から1枚選んで絵柄袋に入れる */
+  draftChoices: 3,
+  /** スキップしたときにもらえる金 */
+  draftSkipGold: 3,
+  /** 選び直しの価格 = draftRerollBase × (その日に選び直した回数 + 1) */
+  draftRerollBase: 2,
+  /** ドラフトに出る絵柄と出やすさ */
+  draftPool: {
+    seed: 'common', rain: 'common', sun: 'common', coin: 'common',
+    fertilizer: 'uncommon', bee: 'uncommon', merchant: 'uncommon',
+    goldSeed: 'rare', clover: 'rare',
+  } as Partial<Record<SymbolId, DraftTier>>,
+  draftTierWeights: { common: 10, uncommon: 6, rare: 2 } as Record<DraftTier, number>,
+  /** 年貢を納めるたびにレアの重みが増える量 */
+  draftRareGrowth: 1.5,
+
   /** 年貢：taxPeriod 日ごとに、その日の終わり（次の回転前）に自動で徴収 */
   taxPeriod: 7,
-  /** 1回目から順の年貢額。表を超えたら直前の額 × taxGrowth */
-  taxSchedule: [5, 20, 50, 120, 250],
-  taxGrowth: 1.6,
+  /** 1回目から順の年貢額。表を超えたら（エンドレス）直前の額 × taxGrowth */
+  taxSchedule: [6, 25, 65, 140, 240, 360, 520, 720],
+  taxGrowth: 1.8,
+  /** この回数の年貢を納めるとクリア（その後はエンドレス） */
+  winTaxes: 8,
   /** 年貢が近いことを警告し始める残り日数 */
   taxWarnDays: 2,
 
@@ -158,28 +162,11 @@ export const CONFIG = {
 };
 
 export const UPGRADES: { id: UpgradeId; name: string; emoji: string; desc: string }[] = [
-  { id: 'addSun', name: '太陽を足す', emoji: '☀️', desc: '絵柄袋に太陽を1枚追加' },
-  { id: 'addFertilizer', name: '肥料を足す', emoji: '🧪', desc: '絵柄袋に肥料を1枚追加' },
-  { id: 'addGoldSeed', name: '金の種を足す', emoji: '🌟', desc: '絵柄袋に金の種を1枚追加' },
-  { id: 'addBee', name: '蜂を足す', emoji: '🐝', desc: '絵柄袋に蜂を1枚追加' },
-  { id: 'addMerchant', name: '商人を足す', emoji: '🧑‍🌾', desc: '絵柄袋に商人を1枚追加' },
-  { id: 'addClover', name: '四つ葉を足す', emoji: '🍀', desc: '絵柄袋に四つ葉を1枚追加' },
-  { id: 'removeCrow', name: 'カラスを消す', emoji: '🐦', desc: '絵柄袋からカラスを1枚削除' },
-  { id: 'removeBug', name: '虫を消す', emoji: '🐛', desc: '絵柄袋から虫を1枚削除' },
+  { id: 'removeSymbol', name: '絵柄を1枚消す', emoji: '🧹', desc: '絵柄袋から好きな絵柄を1枚取り除く' },
   { id: 'addReel', name: 'リールを増やす', emoji: '🎰', desc: '1日に起きる出来事が1つ増える' },
 ];
 
-/** 強化と、それが増減させる絵柄 */
-export const UPGRADE_SYMBOL: Partial<Record<UpgradeId, { symbol: SymbolId; delta: number }>> = {
-  addSun: { symbol: 'sun', delta: 1 },
-  addFertilizer: { symbol: 'fertilizer', delta: 1 },
-  addGoldSeed: { symbol: 'goldSeed', delta: 1 },
-  addBee: { symbol: 'bee', delta: 1 },
-  addMerchant: { symbol: 'merchant', delta: 1 },
-  addClover: { symbol: 'clover', delta: 1 },
-  removeCrow: { symbol: 'crow', delta: -1 },
-  removeBug: { symbol: 'bug', delta: -1 },
-};
+export const DRAFT_TIER_NAMES: Record<DraftTier, string> = { common: 'コモン', uncommon: 'アンコモン', rare: 'レア' };
 
 export interface CharmDef {
   id: CharmId;

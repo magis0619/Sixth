@@ -1115,3 +1115,186 @@ button {
     transform: translateX(1px);
   }
 }
+
+/* ---- ドラフト・削除・クリア ---- */
+.modal .sub {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  margin: 4px 0 12px;
+}
+
+.modal .secondary {
+  margin-top: 10px;
+  width: 100%;
+  border: 2px solid var(--line);
+  background: #fff;
+  border-radius: 12px;
+  padding: 10px;
+  font-weight: 800;
+  font-size: 0.9rem;
+}
+
+.modal .secondary:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.draft-choices {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.draft-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  text-align: center;
+  border: 3px solid var(--line);
+  background: #fff;
+  border-radius: 14px;
+  padding: 18px 6px 8px;
+  box-shadow: 0 4px 0 var(--line);
+  min-width: 0;
+}
+
+.draft-card:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--line);
+}
+
+.draft-card .tier {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 0.62rem;
+  font-weight: 800;
+  border-radius: 999px;
+  padding: 1px 8px;
+  background: #e9e1cc;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.draft-card.tier-uncommon {
+  border-color: #5aa6e0;
+  box-shadow: 0 4px 0 #3b7fb3;
+}
+
+.draft-card.tier-uncommon .tier {
+  background: #5aa6e0;
+  color: #fff;
+}
+
+.draft-card.tier-rare {
+  border-color: var(--gold);
+  box-shadow: 0 4px 0 #c99a00, 0 0 14px #ffe680;
+  background: linear-gradient(#fffdf2, #fff3c4);
+}
+
+.draft-card.tier-rare .tier {
+  background: var(--gold);
+  color: #4a3200;
+}
+
+.draft-card .new {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 0.6rem;
+  font-weight: 800;
+  background: #ff5fa2;
+  color: #fff;
+  border-radius: 6px;
+  padding: 0 4px;
+}
+
+.draft-card .e {
+  font-size: 2rem;
+  line-height: 1.2;
+}
+
+.draft-card b {
+  font-size: 0.95rem;
+}
+
+.draft-card .kind {
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.draft-card small {
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+  line-height: 1.3;
+}
+
+.draft-card .note {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--leaf-dark);
+  background: #e9f7d9;
+  border-radius: 6px;
+  padding: 1px 4px;
+}
+
+.draft-card .odds {
+  font-size: 0.62rem;
+  color: var(--ink-soft);
+  margin-top: auto;
+}
+
+.draft-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.remove-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 6px;
+}
+
+.remove-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 2px solid var(--line);
+  background: #fff;
+  border-radius: 12px;
+  padding: 6px;
+}
+
+.remove-item .e {
+  font-size: 1.6rem;
+}
+
+.remove-item small {
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+}
+
+.remove-item.bad {
+  border-color: #8e1b3f;
+  background: #fbeef1;
+}
+
+.price.boost {
+  background: #ffd84a;
+  box-shadow: 0 0 0 2px #fff, 0 0 10px var(--gold);
+}
+
+.st.endless {
+  border-color: var(--gold);
+  background: #fff3c4;
+}
+
+.clear-modal .primary {
+  animation: pulse 1s ease-in-out infinite;
+}
