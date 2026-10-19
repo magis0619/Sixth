@@ -1,8 +1,11 @@
 import './style.css';
-import { CONFIG, SYMBOLS, SYMBOL_ORDER, UPGRADES, type SymbolId, type UpgradeId } from './config.ts';
 import {
-  bagTotal, buy, canBuy, canUse, cropPrice, drawSymbol, isRipe, newGame, nextTax, resolveAuto, sell, startDay,
-  upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState,
+  CHARMS, CHARM_ORDER, CONFIG, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL,
+  type CharmId, type SymbolId, type UpgradeId,
+} from './config.ts';
+import {
+  bagTotal, buy, canBuy, canUse, chooseCharm, cropPrice, drawDay, drawSymbol, endDay, isRipe, neighbors,
+  newGame, nextTax, resolveAuto, ripeLines, sell, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState,
 } from './game.ts';
 import { isMuted, sfx, toggleMute, unlockAudio } from './audio.ts';
 import { burst, center, confetti, flash, floatText, flyTo, pop, shake, sleep, vibrate } from './fx.ts';
@@ -18,6 +21,9 @@ const el = {
   tax: $('tax'),
   mute: $<HTMLButtonElement>('mute'),
   goal: $('goal'),
+  status: $('status'),
+  charms: $('charms'),
+  charmPanel: $('charm-panel'),
   hint: $('hint'),
   machine: $('machine'),
   reels: $('reels'),
@@ -44,9 +50,9 @@ let combo = 0;
 let lastSellAt = 0;
 let msgTimer = 0;
 /** 一度でもやった操作。ヒントを順に出すため */
-const done = { spin: false, use: false, sell: false, buy: false, next: false };
-/** その日のカラスの結果（リール番号ごと） */
-let crowOutcome: Record<number, 'eaten' | 'missed' | 'empty'> = {};
+const done = { spin: false, use: false, sell: false, buy: false, next: false, line: false };
+/** その日の自動の絵柄の結果表示（リール番号ごと） */
+let autoOutcome: Record<number, string> = {};
 
 // ---- 表示ヘルパー ----
 
@@ -86,12 +92,35 @@ function render(): void {
   if (shownGold !== state.gold) setGold(state.gold);
   renderTax();
   renderGoal();
+  renderStatus();
   renderHint();
   renderReelStates();
   renderSpinButton();
   renderField();
   renderShop();
   renderBag();
+  renderCharms();
+}
+
+/** 今日だけ・明日だけの効果 */
+function renderStatus(): void {
+  const chips: string[] = [];
+  if (state.fever.length) chips.push(`<span class="st fever">🔥 フィーバー：${state.fever.map((s) => SYMBOLS[s].name).join('・')}</span>`);
+  if (state.priceMult > 1) chips.push(`<span class="st merchant">🧑‍🌾 今日の売値 ×${state.priceMult}</span>`);
+  if (state.cloverBoost > 1) chips.push(`<span class="st clover">🍀 明日は金の種が出やすい（×${state.cloverBoost}）</span>`);
+  el.status.innerHTML = chips.join('');
+}
+
+function renderCharms(): void {
+  const owned = CHARM_ORDER.filter((id) => state.charms[id] > 0);
+  el.charmPanel.hidden = owned.length === 0;
+  el.charms.innerHTML = owned
+    .map((id) => {
+      const c = CHARMS[id];
+      const n = state.charms[id];
+      return `<span class="charm" data-charm="${id}"><span class="e">${c.emoji}</span><span><b>${c.name}${n > 1 ? ` ×${n}` : ''}</b><small>${c.desc(n)}</small></span></span>`;
+    })
+    .join('');
 }
 
 function renderTax(): void {
@@ -131,7 +160,7 @@ function renderHint(): void {
     return;
   }
   if (state.day > CONFIG.hintUntilDay) {
-    el.hint.textContent = '';
+    el.hint.textContent = !done.line && ripeLines(state).length > 0 ? '✨ そろった！ 並んだ実をタップで列ごと売値×1.5' : '';
     return;
   }
   const anyRipe = state.field.some(isRipe);
@@ -141,6 +170,7 @@ function renderHint(): void {
     const r = state.results[selected];
     text = r.total > 1 ? `👆 光っている空きマスをタップ（あと${r.left}個 植えられる）` : '👆 光っているマスをタップ（出目をもう一度タップで取り消し）';
   }
+  else if (!done.line && ripeLines(state).length > 0) text = '✨ そろった！ 縦・横・斜めに並んだ実をタップすると、列ごと売値×1.5でまとめて売れる';
   else if (!done.use && usableReels().length > 0) text = '✨ 光っている出目をタップ → 畑のマスをタップで使える';
   else if (!done.sell && anyRipe) text = '🍅 実った作物をタップすると売れる！';
   else if (!done.buy && UPGRADES.some((u) => canBuy(state, u.id))) text = '💰 お金がたまった！ ショップでスロットを強化しよう';
@@ -153,10 +183,8 @@ function reelTag(i: number): { text: string; cls: string } {
   if (!r) return { text: '—', cls: '' };
   const def = SYMBOLS[r.symbol];
   if (def.kind === 'auto') {
-    if (r.symbol === 'coin') return { text: `+${CONFIG.coinAmount}金`, cls: 'used' };
-    const outcome = crowOutcome[i];
-    const text = outcome === 'eaten' ? '🐦 パクッ…' : outcome === 'missed' ? '🐦 追い払った' : outcome === 'empty' ? '🐦 空振り' : '🐦 自動';
-    return { text, cls: 'auto-bad used' };
+    const text = autoOutcome[i] ?? `${def.name} 自動`;
+    return { text, cls: def.rarity === 'bad' ? 'auto-bad used' : 'used' };
   }
   const name = r.total > 1 && r.left > 0 ? `${def.name}×${r.left}` : def.name;
   if (r.used) return { text: `${def.name} ✓`, cls: 'used' };
@@ -187,8 +215,9 @@ function renderReelStates(): void {
     if (b.classList.contains('spinning')) return;
     const r = state.results[i];
     const tag = reelTag(i);
-    b.className = `reel ${tag.cls}${r?.symbol === 'goldSeed' ? ' rare' : ''}`;
-    b.querySelector('.tag')!.textContent = tag.text;
+    const fever = r && r.power > 1;
+    b.className = `reel ${tag.cls}${r?.symbol === 'goldSeed' ? ' rare' : ''}${fever ? ' fever' : ''}`;
+    b.querySelector('.tag')!.textContent = fever ? `🔥${tag.text}` : tag.text;
     renderCount(b, i);
     b.setAttribute('aria-label', r ? `${SYMBOLS[r.symbol].name}: ${tag.text}` : 'リール');
   });
@@ -228,6 +257,7 @@ function renderSpinButton(): void {
 
 function renderField(): void {
   const targets = selected !== null ? validTargets(state, selected) : null;
+  const lineCells = new Set(ripeLines(state).flat());
   if (el.field.children.length !== state.field.length) {
     el.field.innerHTML = '';
     state.field.forEach((_, i) => {
@@ -250,9 +280,15 @@ function renderField(): void {
       html += `<span class="crop">${cropEmoji(crop.kind, crop.growth)}</span>`;
       if (crop.kind === 'gold' && !ripe) html += '<span class="badge-gold">金</span>';
       if (crop.fertilized) html += '<span class="badge-fert">肥×2</span>';
-      if (ripe) html += `<span class="price">${cropPrice(crop)}金</span>`;
+      if (ripe) {
+        const line = lineCells.has(i);
+        if (line) cls.push('line');
+        const price = Math.round(cropPrice(state, crop) * (line ? CONFIG.lineBonus : 1));
+        html += `<span class="price">${price}金</span>`;
+        if (line) html += '<span class="badge-line">そろい</span>';
+      }
       else html += `<span class="pips">${Array.from({ length: CONFIG.ripeGrowth }, (_, k) => `<i class="pip${k < crop.growth ? ' on' : ''}"></i>`).join('')}</span>`;
-      label = `${crop.kind === 'gold' ? '金の作物' : '作物'} ${STAGE_NAMES[crop.growth]}${ripe ? `、タップで${cropPrice(crop)}金で売る` : ''}`;
+      label = `${crop.kind === 'gold' ? '金の作物' : '作物'} ${STAGE_NAMES[crop.growth]}${ripe ? `、タップで${cropPrice(state, crop)}金で売る` : ''}`;
     } else {
       html = '<span class="empty">空き</span>';
     }
@@ -270,10 +306,10 @@ function bagPct(bag: Record<SymbolId, number>, id: SymbolId): number {
 
 function upgradeEffect(id: UpgradeId): string {
   if (id === 'addReel') return state.reels < CONFIG.maxReels ? `リール ${state.reels}本 → ${state.reels + 1}本` : `最大 ${CONFIG.maxReels}本`;
-  const sym: SymbolId = id === 'addSun' ? 'sun' : id === 'addFertilizer' ? 'fertilizer' : id === 'addGoldSeed' ? 'goldSeed' : 'crow';
-  const after = { ...state.bag, [sym]: state.bag[sym] + (id === 'removeCrow' ? -1 : 1) };
-  if (id === 'removeCrow' && state.bag.crow === 0) return 'カラスはもういない！';
-  return `出る確率 ${bagPct(state.bag, sym)}% → ${bagPct(after, sym)}%`;
+  const { symbol, delta } = UPGRADE_SYMBOL[id]!;
+  if (delta < 0 && state.bag[symbol] === 0) return `${SYMBOLS[symbol].name}はもういない！`;
+  const after = { ...state.bag, [symbol]: state.bag[symbol] + delta };
+  return `出る確率 ${bagPct(state.bag, symbol)}% → ${bagPct(after, symbol)}%`;
 }
 
 function renderShop(): void {
@@ -293,7 +329,7 @@ function renderShop(): void {
     const affordable = canBuy(state, u.id);
     b.className = `item${affordable ? ' affordable' : ''}${available ? '' : ' soldout'}`;
     const cost = !available ? '完了' : affordable ? `${price}金で買う` : `${price}金（あと${price - state.gold}）`;
-    const ico = u.id === 'removeCrow' ? `<span class="sym-crow">${u.emoji}</span>` : u.emoji;
+    const ico = u.id === 'removeCrow' ? symHtml('crow') : u.emoji;
     const html = `<span class="ico">${ico}</span><span class="name">${u.name}</span><span class="effect">${upgradeEffect(u.id)}</span><span class="cost">${cost}</span>`;
     if (b.innerHTML !== html) b.innerHTML = html;
   });
@@ -301,11 +337,11 @@ function renderShop(): void {
 
 function renderBag(): void {
   el.bagTotal.textContent = `全${bagTotal(state.bag)}枚・リール${state.reels}本`;
-  el.bag.innerHTML = SYMBOL_ORDER.filter((id) => state.bag[id] > 0 || id === 'crow' || id === 'goldSeed')
+  el.bag.innerHTML = SYMBOL_ORDER.filter((id) => state.bag[id] > 0 || id === 'crow' || id === 'goldSeed' || id === 'bug')
     .map((id) => {
       const def = SYMBOLS[id];
       const cls = `chip${def.rarity === 'bad' ? ' bad' : ''}${state.bag[id] === 0 ? ' zero' : ''}`;
-      return `<span class="${cls}" data-sym="${id}" title="${def.desc}"><span class="e">${symHtml(id)}</span>${def.name}×${state.bag[id]} <span class="pct">${bagPct(state.bag, id)}%</span></span>`;
+      return `<span class="${cls}" data-sym="${id}" title="${def.desc}（フィーバー：${def.feverDesc}）"><span class="e">${symHtml(id)}</span>${def.name}×${state.bag[id]} <span class="pct">${bagPct(state.bag, id)}%</span></span>`;
     })
     .join('');
 }
@@ -331,20 +367,24 @@ async function onSpin(): Promise<void> {
   renderSpinButton();
   renderReelStates();
 
-  const taxDue = state.day > 0 && state.day % CONFIG.taxPeriod === 0;
-  const t = nextTax(state);
-  const res = startDay(state, rng);
-  crowOutcome = {};
-  if (taxDue) {
-    await showTaxStamp(t.amount, res.ok);
+  const res = endDay(state, rng);
+  autoOutcome = {};
+  if (res.tax !== null) {
+    await showTaxStamp(res.tax, res.ok);
     if (!res.ok) {
       busy = false;
       showGameOver();
       return;
     }
   }
+  if (state.charmOffer) {
+    render();
+    await showCharmOffer();
+  }
+  drawDay(state, rng);
   render();
   await spinReels();
+  if (state.fever.length) await showFever();
   await resolveAutos();
   busy = false;
   render();
@@ -380,7 +420,95 @@ async function showTaxStamp(amount: number, ok: boolean): Promise<void> {
     burst(window.innerWidth / 2, window.innerHeight * 0.4, ['🎊', '✨', '🌾'], 14, 140);
     floatText(window.innerWidth / 2, window.innerHeight * 0.4, `年貢${state.taxesPaid}回 クリア！`, { cls: 'good', size: 1.2 });
     await sleep(500);
+    const chip = el.bag.querySelector('[data-sym="bug"]');
+    if (chip) {
+      render();
+      const c = center(el.bag.querySelector('[data-sym="bug"]')!);
+      floatText(c.x, c.y - 20, '虫が増えた…', { cls: 'bad', size: 0.8 });
+    }
   }
+}
+
+/** 年貢を納めたあとのお守り3択。選ぶまで待つ */
+function showCharmOffer(): Promise<void> {
+  const offer = state.charmOffer!;
+  sfx.charmOffer();
+  el.overlay.innerHTML = `
+    <div class="modal charm-modal" role="dialog" aria-label="お守りを選ぶ">
+      <h2>🎁 お守りを1つ選ぼう</h2>
+      <p class="sub">年貢${state.taxesPaid}回 納付のごほうび。同じお守りは重ねるほど強くなる</p>
+      <div class="charm-choices">
+        ${offer
+          .map((id) => {
+            const c = CHARMS[id];
+            const n = state.charms[id];
+            return `<button class="charm-card" data-charm="${id}" disabled>
+              <span class="e">${c.emoji}</span>
+              <b>${c.name}${n > 0 ? ` <span class="lv">${n}→${n + 1}</span>` : ''}</b>
+              <small>${c.desc(n + 1)}</small>
+            </button>`;
+          })
+          .join('')}
+      </div>
+    </div>`;
+  el.overlay.classList.add('show');
+  const cards = [...el.overlay.querySelectorAll<HTMLButtonElement>('.charm-card')];
+  cards.forEach((card, k) => {
+    card.animate([{ transform: 'translateY(30px) scale(.8)', opacity: 0 }, { transform: 'none', opacity: 1 }], {
+      duration: 400,
+      delay: 150 + k * 120,
+      easing: 'cubic-bezier(.3,1.5,.5,1)',
+      fill: 'backwards',
+    });
+  });
+  // 連打で意図しない選択をしないよう少し待ってから押せるようにする
+  window.setTimeout(() => cards.forEach((c) => (c.disabled = false)), 700);
+  return new Promise((resolve) => {
+    cards.forEach((card) =>
+      card.addEventListener('click', () => {
+        const id = card.dataset.charm as CharmId;
+        chooseCharm(state, id);
+        sfx.charmGet();
+        const c = center(card);
+        burst(c.x, c.y, [CHARMS[id].emoji, '✨', '⭐'], 14, 90);
+        vibrate(40);
+        cards.forEach((other) => other !== card && other.animate([{ opacity: 1 }, { opacity: 0.2 }], { duration: 200, fill: 'forwards' }));
+        card.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.12)' }, { transform: 'scale(1)' }], { duration: 400 });
+        window.setTimeout(() => {
+          el.overlay.classList.remove('show');
+          el.overlay.innerHTML = '';
+          render();
+          const got = el.charms.querySelector(`[data-charm="${id}"]`);
+          if (got) pop(got, 1.2);
+          resolve();
+        }, 650);
+      }),
+    );
+  });
+}
+
+async function showFever(): Promise<void> {
+  sfx.fever();
+  flash('#ff9ad5', 600);
+  vibrate([50, 40, 50, 40, 120]);
+  confetti(30);
+  shake(el.machine, 8);
+  const banner = document.createElement('div');
+  banner.className = 'fever-banner';
+  banner.innerHTML = `🔥 FEVER！ 🔥<small>${state.fever.map((s) => `${SYMBOLS[s].emoji}${SYMBOLS[s].name}：${SYMBOLS[s].feverDesc}`).join('<br>')}</small>`;
+  document.body.appendChild(banner);
+  banner.animate(
+    [
+      { transform: 'translate(-50%, -50%) scale(0.2) rotate(-8deg)', opacity: 0 },
+      { transform: 'translate(-50%, -50%) scale(1.15) rotate(3deg)', opacity: 1, offset: 0.35 },
+      { transform: 'translate(-50%, -50%) scale(1) rotate(0deg)', opacity: 1 },
+    ],
+    { duration: 500, easing: 'cubic-bezier(.3,1.5,.5,1)', fill: 'forwards' },
+  );
+  renderReelStates();
+  renderStatus();
+  await sleep(1500);
+  banner.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: 'forwards' }).onfinish = () => banner.remove();
 }
 
 function spinReels(): Promise<void> {
@@ -388,7 +516,7 @@ function spinReels(): Promise<void> {
   const h = reels[0].querySelector('.window')!.clientHeight;
   // 最後のリールが金の種なら溜めを入れる。外れでもたまに溜めて読めないようにする
   const last = state.results.length - 1;
-  const suspense = state.results[last].symbol === 'goldSeed' || (state.bag.goldSeed > 0 && rng() < 0.15);
+  const suspense = state.results[last].symbol === 'goldSeed' || state.fever.length > 0 || (state.bag.goldSeed > 0 && rng() < 0.15);
   let tick = window.setInterval(() => sfx.tick(), 70);
   const promises = reels.map((reel, i) => {
     const strip = reel.querySelector('.strip') as HTMLElement;
@@ -457,16 +585,52 @@ async function resolveAutos(): Promise<void> {
     if (!ev) continue;
     const from = center(reels[i]);
     if (ev.type === 'coin') {
-      await new Promise<void>((r) => flyTo(from, el.goldBox, '🪙', 3, r));
+      autoOutcome[i] = `+${ev.amount}金`;
+      await new Promise<void>((r) => flyTo(from, el.goldBox, '🪙', Math.min(8, 2 + Math.ceil(ev.amount / 3)), r));
       sfx.coin();
       floatText(center(el.goldBox).x, center(el.goldBox).y + 28, `+${ev.amount}`, { cls: 'gold', size: 0.9 });
       setGold(state.gold);
+    } else if (ev.type === 'merchant') {
+      autoOutcome[i] = `売値×${ev.mult}`;
+      sfx.merchant();
+      burst(from.x, from.y, ['💰', '✨', '🪙'], 10, 70);
+      floatText(from.x, from.y - 40, `今日の売値 ×${ev.mult}！`, { cls: 'gold', size: 0.9 });
+      render();
+      el.field.querySelectorAll('.plot.ripe').forEach((p) => pop(p, 1.12));
+    } else if (ev.type === 'clover') {
+      autoOutcome[i] = '明日 金の種↑';
+      sfx.rare();
+      burst(from.x, from.y, ['🍀', '✨', '🌟'], 12, 80);
+      floatText(from.x, from.y - 40, '明日は金の種が出やすい！', { cls: 'good', size: 0.8 });
+      renderStatus();
+    } else if (ev.type === 'bug') {
+      if (ev.cell === null) {
+        autoOutcome[i] = '🐛 空振り';
+        floatText(from.x, from.y - 30, '虫は空振り', { size: 0.6 });
+      } else {
+        const plot = el.field.children[ev.cell] as HTMLElement;
+        await new Promise<void>((r) => flyTo(from, plot, '🐛', 1, r));
+        const p = center(plot);
+        if (ev.warded) {
+          autoOutcome[i] = '🐛 よけた';
+          sfx.shoo();
+          burst(p.x, p.y, ['🌿', '✨'], 8, 50);
+          floatText(p.x, p.y - 20, '虫よけ成功！', { cls: 'good', size: 0.8 });
+        } else {
+          autoOutcome[i] = `🐛 成長−${ev.damage}`;
+          sfx.bug();
+          burst(p.x, p.y, ['🐛', '🍂'], 6, 40);
+          floatText(p.x, p.y - 20, `かじられた！ 成長−${ev.damage}`, { cls: 'bad', size: 0.8 });
+          shake(plot, 6);
+          renderField();
+        }
+      }
     } else if (ev.cell === null) {
-      crowOutcome[i] = 'empty';
+      autoOutcome[i] = '🐦 空振り';
       sfx.crow();
       floatText(from.x, from.y - 30, 'カラスは空振り', { size: 0.6 });
     } else if (!ev.eaten) {
-      crowOutcome[i] = 'missed';
+      autoOutcome[i] = '🐦 追い払った';
       const plot = el.field.children[ev.cell] as HTMLElement;
       await new Promise<void>((r) => flyTo(from, plot, symHtml('crow'), 1, r));
       sfx.shoo();
@@ -475,14 +639,14 @@ async function resolveAutos(): Promise<void> {
       floatText(p.x, p.y - 20, ev.crop && isRipe(ev.crop) ? 'セーフ！ 守った！' : 'セーフ！', { cls: 'good', size: ev.crop && isRipe(ev.crop) ? 1 : 0.8 });
       pop(plot, 1.12);
     } else {
-      crowOutcome[i] = 'eaten';
+      autoOutcome[i] = '🐦 パクッ…';
       const plot = el.field.children[ev.cell] as HTMLElement;
       await new Promise<void>((r) => flyTo(from, plot, symHtml('crow'), 1, r));
       sfx.crow();
       sfx.poof();
       const p = center(plot);
       burst(p.x, p.y, ['🪶', '💨', '🍂'], 8, 50);
-      const lost = ev.crop ? (isRipe(ev.crop) ? `${cropPrice(ev.crop)}金が…` : STAGE_NAMES[ev.crop.growth]) : '';
+      const lost = ev.crop ? (isRipe(ev.crop) ? `${cropPrice(state, ev.crop)}金が…` : STAGE_NAMES[ev.crop.growth]) : '';
       floatText(p.x, p.y - 20, `パクッ！ ${lost}`, { cls: 'bad', size: ev.crop && isRipe(ev.crop) ? 1 : 0.8 });
       shake(plot, 8);
       if (ev.crop && isRipe(ev.crop)) {
@@ -490,6 +654,11 @@ async function resolveAutos(): Promise<void> {
         vibrate(120);
       }
       renderField();
+    }
+    if (ev.type === 'crow' && ev.toll > 0) {
+      sfx.coin();
+      floatText(center(el.goldBox).x, center(el.goldBox).y + 28, `通行料 +${ev.toll}`, { cls: 'gold', size: 0.8 });
+      setGold(state.gold);
     }
     renderReelStates();
     await sleep(CONFIG.timing.autoStep);
@@ -546,7 +715,7 @@ function applySun(i: number): void {
   const c = center(el.reels.children[i]);
   burst(c.x, c.y, ['☀️', '✨'], 8, 60);
   render();
-  afterGrowth(affected, '+1');
+  afterGrowth(affected, `+${CONFIG.sunGrowth * state.results[i].power + state.charms.sunBlessing}`);
 }
 
 function onPlotTap(cell: number): void {
@@ -561,10 +730,21 @@ function onPlotTap(cell: number): void {
       sfx.error();
       shake(plot, 5);
       const crop = state.field[cell];
-      say(sym === 'seed' || sym === 'goldSeed' ? 'そこにはもう作物がある' : !crop ? '作物がないマスには使えない' : sym === 'rain' ? 'もう実っている' : 'もう肥料をまいた');
+      say(
+        sym === 'seed' || sym === 'goldSeed'
+          ? 'そこにはもう作物がある'
+          : sym === 'bee'
+            ? 'そのまわりに育てる作物がない'
+            : !crop
+              ? '作物がないマスには使えない'
+              : sym === 'rain'
+                ? 'もう実っている'
+                : 'もう肥料をまいた',
+      );
       return;
     }
-    useSymbol(state, reel, cell);
+    const power = state.results[reel].power;
+    const affected = useSymbol(state, reel, cell) ?? [];
     const left = state.results[reel].left;
     selected = left > 0 && canUse(state, reel, null) ? reel : null;
     done.use = true;
@@ -577,10 +757,23 @@ function onPlotTap(cell: number): void {
       const more = left > 0 ? `（あと${left}）` : '';
       floatText(p.x, p.y - 20, sym === 'goldSeed' ? '金の種を植えた！' : `植えた！${more}`, { size: 0.7, cls: sym === 'goldSeed' ? 'gold' : 'good' });
       if (left > 0 && selected === null) say('空きマスがないので残りの種は使えない');
+    } else if (sym === 'fertilizer' && left > 0) {
+      sfx.fertilizer();
+      floatText(p.x, p.y - 20, '売値×2！（あと1つ）', { cls: 'combo', size: 0.9 });
     } else if (sym === 'rain') {
       sfx.rain();
       rainDrops(plot);
-      afterGrowth([cell], `+${CONFIG.rainGrowth}`);
+      afterGrowth([cell], `+${CONFIG.rainGrowth * power}`);
+      const extra = affected.filter((c) => c !== cell);
+      if (extra.length) afterGrowth(extra, `☔+${state.charms.gentleRain}`);
+    } else if (sym === 'bee') {
+      sfx.bee();
+      [cell, ...neighbors(cell)].forEach((c, k) => {
+        const q = center(el.field.children[c]);
+        window.setTimeout(() => burst(q.x, q.y, ['🐝', '🌼'], 3, 30), k * 70);
+      });
+      afterGrowth(affected, `+${CONFIG.beeGrowth * power}`);
+      if (left > 0 && selected === null) say('もう使える場所がない');
     } else if (sym === 'fertilizer') {
       sfx.fertilizer();
       burst(p.x, p.y, ['✨', '💜'], 10, 50);
@@ -620,7 +813,7 @@ function afterGrowth(cells: number[], label: string): void {
       if (crop && isRipe(crop)) {
         sfx.grow();
         burst(p.x, p.y, ['✨', crop.kind === 'gold' ? '🌟' : '⭐'], 8, 50);
-        floatText(p.x, p.y - 20, crop.kind === 'gold' ? `実った！ ${cropPrice(crop)}金` : '実った！', {
+        floatText(p.x, p.y - 20, crop.kind === 'gold' ? `実った！ ${cropPrice(state, crop)}金` : '実った！', {
           cls: crop.kind === 'gold' ? 'gold' : 'good',
           size: crop.kind === 'gold' ? 1 : 0.8,
         });
@@ -634,20 +827,39 @@ function afterGrowth(cells: number[], label: string): void {
 function sellCrop(cell: number): void {
   const plot = el.field.children[cell] as HTMLElement;
   const p = center(plot);
-  const price = sell(state, cell);
-  if (price === null) return;
+  const centers = state.field.map((_, i) => center(el.field.children[i]));
+  const res = sell(state, cell);
+  if (res === null) return;
   done.sell = true;
   const now = performance.now();
   combo = now - lastSellAt < CONFIG.timing.comboWindow ? combo + 1 : 1;
   lastSellAt = now;
-  sfx.sell(price, combo);
-  const big = price >= CONFIG.goldPrice;
-  const size = Math.min(2, 0.8 + price / 25);
-  floatText(p.x, p.y - 10, `+${price}`, { cls: 'gold', size, rise: big ? 110 : 70 });
-  burst(p.x, p.y, big ? ['🪙', '✨', '🌟', '💰'] : ['🪙', '✨'], big ? 22 : 8, big ? 140 : 60);
-  if (combo >= 2) floatText(p.x, p.y - 60, `COMBO ×${combo}`, { cls: 'combo', size: 0.7 + Math.min(combo, 6) * 0.08, dur: 900 });
+  const price = res.total;
+  const big = price >= CONFIG.goldPrice || res.line;
   render();
-  flyTo(p, el.goldBox, '🪙', Math.min(8, Math.ceil(price / 6)), () => setGold(state.gold));
+  if (res.line) {
+    done.line = true;
+    sfx.lineHarvest();
+    res.cells.forEach(({ cell: c, price: each }, k) => {
+      const q = centers[c];
+      window.setTimeout(() => {
+        sfx.sell(each, combo + k);
+        burst(q.x, q.y, ['🪙', '✨', '🌟'], 10, 70);
+        floatText(q.x, q.y - 10, `+${each}`, { cls: 'gold', size: Math.min(1.6, 0.8 + each / 25) });
+        pop(el.field.children[c], 1.15);
+      }, k * 140);
+    });
+    window.setTimeout(() => {
+      floatText(p.x, p.y - 70, `そろい収穫！ +${price}`, { cls: 'combo', size: 1.4, rise: 120, dur: 1500 });
+    }, res.cells.length * 140);
+  } else {
+    sfx.sell(price, combo);
+    const size = Math.min(2, 0.8 + price / 25);
+    floatText(p.x, p.y - 10, `+${price}`, { cls: 'gold', size, rise: big ? 110 : 70 });
+    burst(p.x, p.y, big ? ['🪙', '✨', '🌟', '💰'] : ['🪙', '✨'], big ? 22 : 8, big ? 140 : 60);
+  }
+  if (combo >= 2) floatText(p.x, p.y - 60, `COMBO ×${combo}`, { cls: 'combo', size: 0.7 + Math.min(combo, 6) * 0.08, dur: 900 });
+  flyTo(p, el.goldBox, '🪙', Math.min(10, Math.ceil(price / 6)), () => setGold(state.gold));
   if (big) {
     flash('#ffe680', 500);
     confetti(36);
@@ -687,17 +899,18 @@ function onBuy(id: UpgradeId): void {
     const r = el.reels.lastElementChild as HTMLElement;
     burst(center(r).x, center(r).y, ['✨', '🎰', '⭐'], 14, 80);
     floatText(center(r).x, center(r).y - 40, '出来事+1！', { cls: 'good', size: 1 });
-  } else if (id === 'removeCrow') {
+  } else if (UPGRADE_SYMBOL[id]!.delta < 0) {
+    const sym = UPGRADE_SYMBOL[id]!.symbol;
     sfx.buy();
     sfx.poof();
-    const chip = el.bag.querySelector('[data-sym="crow"]') as HTMLElement;
+    const chip = el.bag.querySelector(`[data-sym="${sym}"]`) as HTMLElement;
     const c = center(chip);
-    burst(c.x, c.y, ['💨', '🪶', '✨'], 12, 60);
-    floatText(c.x, c.y - 20, 'カラス −1！', { cls: 'good', size: 0.9 });
+    burst(c.x, c.y, ['💨', sym === 'crow' ? '🪶' : '🍃', '✨'], 12, 60);
+    floatText(c.x, c.y - 20, `${SYMBOLS[sym].name} −1！`, { cls: 'good', size: 0.9 });
     pop(chip, 1.3);
   } else {
     sfx.buy();
-    const sym: SymbolId = id === 'addSun' ? 'sun' : id === 'addFertilizer' ? 'fertilizer' : 'goldSeed';
+    const sym = UPGRADE_SYMBOL[id]!.symbol;
     const chip = el.bag.querySelector(`[data-sym="${sym}"]`) as HTMLElement;
     flyTo(from, chip, SYMBOLS[sym].emoji, 1, () => {
       pop(chip, 1.35);
@@ -753,11 +966,14 @@ function showGameOver(): void {
         <tr><td>総収入</td><td>${state.stats.totalEarned}金</td></tr>
         <tr><td>売った作物 / 食べられた作物</td><td>${state.stats.cropsSold} / ${state.stats.cropsEaten}</td></tr>
         <tr><td>追い払ったカラス</td><td>${state.stats.crowsMissed}回</td></tr>
+        <tr><td>フィーバー / そろい収穫</td><td>${state.stats.fevers}回 / ${state.stats.lineHarvests}回</td></tr>
         <tr><td>最初の強化</td><td>${first ? `${first.day}日目（${name(first.id)}）` : 'なし'}</td></tr>
         <tr><td>リール本数</td><td>${state.reels}本</td></tr>
       </table>
       <h3>📝 強化の購入順（検証ログ）</h3>
       ${state.stats.purchases.length ? `<ol>${state.stats.purchases.map((p) => `<li>${p.day}日目 ${name(p.id)}</li>`).join('')}</ol>` : '<p>なし</p>'}
+      <h3>🎁 選んだお守り</h3>
+      ${state.stats.charms.length ? `<ol>${state.stats.charms.map((c) => `<li>${c.day}日目 ${CHARMS[c.id].emoji}${CHARMS[c.id].name}</li>`).join('')}</ol>` : '<p>なし</p>'}
       <button class="primary" id="restart" disabled>もう一度あそぶ</button>
     </div>`;
   el.overlay.classList.add('show');

@@ -892,6 +892,7 @@ button {
   }
   .hud,
   .goal,
+  .status,
   .hint {
     grid-column: 1 / -1;
   }
@@ -899,4 +900,183 @@ button {
     grid-column: 2;
     grid-row: span 2;
   }
+}
+
+/* ---- 今日の効果・お守り・フィーバー・そろい ---- */
+.status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+
+.status:empty {
+  display: none;
+}
+
+.st {
+  font-size: 0.78rem;
+  font-weight: 800;
+  border-radius: 999px;
+  padding: 3px 10px;
+  border: 2px solid var(--line);
+  background: var(--card);
+}
+
+.st.fever {
+  border-color: #ff5fa2;
+  background: #ffe3f0;
+  color: #a1145a;
+  animation: pulse 0.8s ease-in-out infinite;
+}
+
+.st.merchant {
+  border-color: var(--gold);
+  background: var(--gold-soft);
+}
+
+.st.clover {
+  border-color: var(--leaf);
+  background: #e9f7d9;
+}
+
+.charms {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 6px;
+}
+
+.charm {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  padding: 5px 8px;
+}
+
+.charm .e {
+  font-size: 1.4rem;
+}
+
+.charm b {
+  display: block;
+  font-size: 0.8rem;
+}
+
+.charm small {
+  display: block;
+  font-size: 0.68rem;
+  color: var(--ink-soft);
+}
+
+.charm-modal .sub {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  margin: 4px 0 12px;
+}
+
+.charm-choices {
+  display: grid;
+  gap: 10px;
+}
+
+.charm-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 10px;
+  align-items: center;
+  text-align: left;
+  border: 3px solid var(--gold);
+  background: linear-gradient(#fffdf2, #fff3c4);
+  border-radius: 16px;
+  padding: 10px 12px;
+  box-shadow: 0 5px 0 #c99a00;
+}
+
+.charm-card:disabled {
+  cursor: default;
+}
+
+.charm-card:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 1px 0 #c99a00;
+}
+
+.charm-card .e {
+  grid-row: 1 / 3;
+  font-size: 2.2rem;
+}
+
+.charm-card b {
+  font-size: 1rem;
+}
+
+.charm-card .lv {
+  font-size: 0.75rem;
+  background: var(--leaf);
+  color: #fff;
+  border-radius: 6px;
+  padding: 0 5px;
+}
+
+.charm-card small {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+.reel.fever .window {
+  border-color: #ff5fa2;
+  box-shadow: 0 0 0 3px #ff5fa2, 0 0 20px #ff9ad5;
+  background: linear-gradient(#fff, #ffe3f0);
+}
+
+.reel.fever .tag {
+  background: #ff5fa2;
+  color: #fff;
+}
+
+.fever-banner {
+  position: fixed;
+  left: 50%;
+  top: 35%;
+  z-index: 30;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(135deg, #ff5fa2, #ffb347);
+  color: #fff;
+  border: 4px solid #fff;
+  border-radius: 20px;
+  padding: 12px 22px;
+  font-size: 2rem;
+  font-weight: 800;
+  text-align: center;
+  text-shadow: 0 3px 0 #0003;
+  box-shadow: 0 10px 30px #0005;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.fever-banner small {
+  display: block;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin-top: 4px;
+}
+
+.plot.line {
+  box-shadow: inset 0 -5px 0 var(--soil-dark), 0 0 0 3px #ff5fa2, 0 0 18px #ff9ad5;
+}
+
+.badge-line {
+  position: absolute;
+  bottom: 4px;
+  background: #ff5fa2;
+  color: #fff;
+  border-radius: 8px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 1px 6px;
 }

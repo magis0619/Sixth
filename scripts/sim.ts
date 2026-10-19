@@ -11,13 +11,16 @@ function wants(s: GameState, id: UpgradeId): boolean {
   if (id === 'addSun') return s.bag.sun < 3;
   if (id === 'addGoldSeed') return s.bag.goldSeed < 3;
   if (id === 'addFertilizer') return s.bag.fertilizer < 2;
+  if (id === 'addBee') return s.bag.bee < 2;
+  if (id === 'addMerchant') return s.bag.merchant < 2;
+  if (id === 'addClover') return s.bag.clover < 1;
   return true;
 }
-const PRIORITY: UpgradeId[] = ['removeCrow', 'addReel', 'addGoldSeed', 'addSun', 'addFertilizer'];
+const PRIORITY: UpgradeId[] = ['removeBug', 'removeCrow', 'addReel', 'addGoldSeed', 'addSun', 'addBee', 'addFertilizer', 'addMerchant', 'addClover'];
 
 function playDay(s: GameState): void {
   // 種 → 雨・肥料 → 太陽 の順で使う
-  const order = ['goldSeed', 'seed', 'rain', 'fertilizer', 'sun'];
+  const order = ['goldSeed', 'seed', 'rain', 'bee', 'fertilizer', 'sun'];
   const idx = s.results.map((r, i) => i).sort((a, b) => order.indexOf(s.results[a].symbol) - order.indexOf(s.results[b].symbol));
   for (const i of idx) while (canUse(s, i, null)) {
     const sym = s.results[i].symbol;

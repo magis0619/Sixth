@@ -135,6 +135,29 @@ export const sfx = {
   bonus() {
     [0, 4, 7, 12].forEach((n, i) => tone(NOTE(16 + n), 0.15, { type: 'triangle', vol: 0.2, delay: i * 0.04 }));
   },
+  bug() {
+    for (let i = 0; i < 4; i++) tone(300 + i * 40, 0.05, { type: 'square', vol: 0.08, delay: i * 0.06 });
+  },
+  bee() {
+    tone(220, 0.4, { type: 'sawtooth', vol: 0.06, slideTo: 260 });
+    [12, 16, 19].forEach((n, i) => tone(NOTE(12 + n), 0.12, { type: 'sine', vol: 0.18, delay: 0.1 + i * 0.06 }));
+  },
+  merchant() {
+    [0, 7, 12, 7, 12, 16].forEach((n, i) => tone(NOTE(12 + n), 0.1, { type: 'square', vol: 0.1, delay: i * 0.05 }));
+  },
+  fever() {
+    [0, 4, 7, 12, 4, 7, 12, 16, 7, 12, 16, 19, 24].forEach((n, i) => tone(NOTE(12 + n), 0.14, { type: 'square', vol: 0.11, delay: i * 0.055 }));
+    noise(0.5, { vol: 0.12, freq: 6000, q: 0.4, delay: 0.1 });
+  },
+  lineHarvest() {
+    [0, 4, 7, 12, 16, 19, 24].forEach((n, i) => tone(NOTE(12 + n), 0.2, { type: 'triangle', vol: 0.2, delay: i * 0.05 }));
+  },
+  charmOffer() {
+    [0, 7, 12, 19].forEach((n, i) => tone(NOTE(12 + n), 0.35, { type: 'sine', vol: 0.2, delay: i * 0.09 }));
+  },
+  charmGet() {
+    [0, 4, 7, 12, 16].forEach((n, i) => tone(NOTE(17 + n), 0.2, { type: 'triangle', vol: 0.22, delay: i * 0.05 }));
+  },
   poof() {
     noise(0.25, { vol: 0.25, freq: 400 });
   },
