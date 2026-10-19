@@ -1,6 +1,6 @@
 import './style.css';
 import {
-  CHARMS, CHARM_ORDER, CONFIG, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL,
+  CHARMS, CHARM_ORDER, CHARM_TIER_NAMES, CONFIG, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL,
   type CharmId, type SymbolId, type UpgradeId,
 } from './config.ts';
 import {
@@ -121,7 +121,7 @@ function renderCharms(): void {
     .map((id) => {
       const c = CHARMS[id];
       const n = state.charms[id];
-      return `<span class="charm" data-charm="${id}"><span class="e">${c.emoji}</span><span><b>${c.name}${n > 1 ? ` ×${n}` : ''}</b><small>${c.desc(n)}</small></span></span>`;
+      return `<span class="charm tier-${c.tier}" data-charm="${id}"><span class="e">${c.emoji}</span><span><b>${c.name}${n > 1 ? ` ×${n}` : ''}</b><small>${c.desc(n)}</small></span></span>`;
     })
     .join('');
 }
@@ -437,6 +437,8 @@ async function showTaxStamp(amount: number, ok: boolean): Promise<void> {
 function showCharmOffer(): Promise<void> {
   const offer = state.charmOffer!;
   sfx.charmOffer();
+  // レアが混ざっていたら当たりの合図
+  if (offer.some((id) => CHARMS[id].tier === 'rare')) window.setTimeout(() => sfx.rare(), 450);
   el.overlay.innerHTML = `
     <div class="modal charm-modal" role="dialog" aria-label="お守りを選ぶ">
       <h2>🎁 お守りを1つ選ぼう</h2>
@@ -446,7 +448,8 @@ function showCharmOffer(): Promise<void> {
           .map((id) => {
             const c = CHARMS[id];
             const n = state.charms[id];
-            return `<button class="charm-card" data-charm="${id}" disabled>
+            return `<button class="charm-card tier-${c.tier}" data-charm="${id}" disabled>
+              <span class="tier">${CHARM_TIER_NAMES[c.tier]}</span>
               <span class="e">${c.emoji}</span>
               <b>${c.name}${n > 0 ? ` <span class="lv">${n}→${n + 1}</span>` : ''}</b>
               <small>${c.desc(n + 1)}</small>

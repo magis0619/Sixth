@@ -194,6 +194,9 @@ export function endDay(state: GameState, rng: Rng): EndDayResult {
     });
   }
   state.results = [];
+  // 「今日だけ」の効果はここで終わる
+  state.fever = [];
+  state.priceMult = 1;
   if (!(state.day > 0 && state.day % CONFIG.taxPeriod === 0)) return { ok: true, tax: null, expired };
   const t = nextTax(state);
   if (state.gold < t.amount) {
@@ -465,10 +468,15 @@ export function buy(state: GameState, id: UpgradeId): boolean {
 // ---- お守り ----
 
 export function rollCharmOffer(state: GameState, rng: Rng): CharmId[] {
-  const pool = CHARM_ORDER.filter((id) => state.charms[id] < CHARMS[id].max);
+  const pool = CHARM_ORDER.filter((id) => state.charms[id] < CHARMS[id].max).map((id) => ({
+    id,
+    w: CONFIG.charmTierWeights[CHARMS[id].tier],
+  }));
   const offer: CharmId[] = [];
   while (offer.length < CONFIG.charmChoices && pool.length) {
-    offer.push(pool.splice(Math.floor(rng() * pool.length), 1)[0]);
+    let r = rng() * pool.reduce((n, p) => n + p.w, 0);
+    const k = Math.max(0, pool.findIndex((p) => (r -= p.w) < 0));
+    offer.push(pool.splice(k, 1)[0].id);
   }
   return offer;
 }

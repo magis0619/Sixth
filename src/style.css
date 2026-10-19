@@ -1115,3 +1115,55 @@ button {
     transform: translateX(1px);
   }
 }
+
+/* お守りのレア度。色と文字の両方で示す */
+.charm-card {
+  position: relative;
+  border-color: var(--line);
+  background: #fff;
+  box-shadow: 0 5px 0 var(--line);
+}
+
+.charm-card .tier {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  border-radius: 999px;
+  padding: 1px 8px;
+  background: #e9e1cc;
+  color: var(--ink);
+}
+
+.charm-card.tier-uncommon {
+  border-color: #5aa6e0;
+  background: linear-gradient(#f7fbff, #e3f1fc);
+  box-shadow: 0 5px 0 #3b7fb3;
+}
+
+.charm-card.tier-uncommon .tier {
+  background: #5aa6e0;
+  color: #fff;
+}
+
+.charm-card.tier-rare {
+  border-color: var(--gold);
+  background: linear-gradient(#fffdf2, #fff3c4);
+  box-shadow: 0 5px 0 #c99a00, 0 0 18px #ffe680;
+  animation: shimmer 1.2s ease-in-out infinite;
+}
+
+.charm-card.tier-rare .tier {
+  background: var(--gold);
+  color: #4a3200;
+}
+
+.charm.tier-uncommon {
+  border-color: #5aa6e0;
+}
+
+.charm.tier-rare {
+  border-color: var(--gold);
+  background: #fffbe6;
+}

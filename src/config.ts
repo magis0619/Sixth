@@ -144,6 +144,8 @@ export const CONFIG = {
 
   /** 年貢を納めたときに出るお守りの選択肢の数 */
   charmChoices: 3,
+  /** お守りのレア度ごとの出やすさ（強いお守りほど出にくい） */
+  charmTierWeights: { common: 10, uncommon: 5, rare: 1.5 } as Record<CharmTier, number>,
 
   /** 演出のタイミング（ミリ秒） */
   timing: {
@@ -181,8 +183,14 @@ export const UPGRADE_SYMBOL: Partial<Record<UpgradeId, { symbol: SymbolId; delta
   removeBug: { symbol: 'bug', delta: -1 },
 };
 
+/** お守りのレア度。強さ（シミュレーターでの生存日数の伸び）で決めている */
+export type CharmTier = 'common' | 'uncommon' | 'rare';
+
+export const CHARM_TIER_NAMES: Record<CharmTier, string> = { common: 'コモン', uncommon: 'アンコモン', rare: 'レア' };
+
 export interface CharmDef {
   id: CharmId;
+  tier: CharmTier;
   name: string;
   emoji: string;
   /** n 個持っているときの効果の説明 */
@@ -193,18 +201,18 @@ export interface CharmDef {
 
 /** お守り。年貢を納めるたびに charmChoices 個から1つ選ぶ。同じものは重ねて効果アップ */
 export const CHARMS: Record<CharmId, CharmDef> = {
-  coinPurse: { id: 'coinPurse', name: '金貨袋', emoji: '👛', desc: (n) => `金貨の額＋${2 * n}`, max: Infinity },
-  gentleRain: { id: 'gentleRain', name: '恵みの雨', emoji: '☔', desc: (n) => `雨を使うと上下左右の作物も成長＋${n}`, max: Infinity },
-  crowToll: { id: 'crowToll', name: 'カラスの通行料', emoji: '🪶', desc: (n) => `カラスが来るたびに＋${2 * n}金`, max: Infinity },
-  aging: { id: 'aging', name: '熟成', emoji: '🍷', desc: (n) => `実ったまま日をまたぐと売値＋${n}`, max: Infinity },
-  seedSack: { id: 'seedSack', name: '大きな種袋', emoji: '🎒', desc: (n) => `種で植えられる数＋${n}`, max: Infinity },
-  sunBlessing: { id: 'sunBlessing', name: '日だまり', emoji: '🌻', desc: (n) => `太陽の成長＋${n}`, max: Infinity },
-  bargain: { id: 'bargain', name: '値切り上手', emoji: '🏷️', desc: (n) => `強化の価格−${Math.min(50, 10 * n)}%`, max: 5 },
-  scarecrow: { id: 'scarecrow', name: 'かかし', emoji: '🎃', desc: (n) => `カラスが食べる確率−${15 * n}%（下限10%）`, max: 3 },
-  bumper: { id: 'bumper', name: '豊作', emoji: '🧺', desc: (n) => `通常の作物の売値＋${2 * n}`, max: Infinity },
-  goldLuck: { id: 'goldLuck', name: '金運', emoji: '🐱', desc: (n) => `金の作物の売値＋${10 * n}`, max: Infinity },
-  bugWard: { id: 'bugWard', name: '虫よけ', emoji: '🌿', desc: (n) => `虫が${Math.round((1 - Math.pow(0.5, n)) * 100)}%で外れる`, max: 4 },
-  taxRelief: { id: 'taxRelief', name: '年貢の減免', emoji: '📜', desc: (n) => `年貢−${Math.min(50, 10 * n)}%`, max: 5 },
+  coinPurse: { id: 'coinPurse', tier: 'uncommon', name: '金貨袋', emoji: '👛', desc: (n) => `金貨の額＋${2 * n}`, max: Infinity },
+  gentleRain: { id: 'gentleRain', tier: 'uncommon', name: '恵みの雨', emoji: '☔', desc: (n) => `雨を使うと上下左右の作物も成長＋${n}`, max: Infinity },
+  crowToll: { id: 'crowToll', tier: 'common', name: 'カラスの通行料', emoji: '🪶', desc: (n) => `カラスが来るたびに＋${2 * n}金`, max: Infinity },
+  aging: { id: 'aging', tier: 'common', name: '熟成', emoji: '🍷', desc: (n) => `実ったまま日をまたぐと売値＋${n}`, max: Infinity },
+  seedSack: { id: 'seedSack', tier: 'rare', name: '大きな種袋', emoji: '🎒', desc: (n) => `種で植えられる数＋${n}`, max: Infinity },
+  sunBlessing: { id: 'sunBlessing', tier: 'rare', name: '日だまり', emoji: '🌻', desc: (n) => `太陽の成長＋${n}`, max: 2 },
+  bargain: { id: 'bargain', tier: 'uncommon', name: '値切り上手', emoji: '🏷️', desc: (n) => `強化の価格−${Math.min(50, 10 * n)}%`, max: 5 },
+  scarecrow: { id: 'scarecrow', tier: 'common', name: 'かかし', emoji: '🎃', desc: (n) => `カラスが食べる確率−${15 * n}%（下限10%）`, max: 3 },
+  bumper: { id: 'bumper', tier: 'rare', name: '豊作', emoji: '🧺', desc: (n) => `通常の作物の売値＋${2 * n}`, max: Infinity },
+  goldLuck: { id: 'goldLuck', tier: 'uncommon', name: '金運', emoji: '🐱', desc: (n) => `金の作物の売値＋${10 * n}`, max: Infinity },
+  bugWard: { id: 'bugWard', tier: 'common', name: '虫よけ', emoji: '🌿', desc: (n) => `虫が${Math.round((1 - Math.pow(0.5, n)) * 100)}%で外れる`, max: 4 },
+  taxRelief: { id: 'taxRelief', tier: 'common', name: '年貢の減免', emoji: '📜', desc: (n) => `年貢−${Math.min(50, 10 * n)}%`, max: 5 },
 };
 
 export const CHARM_ORDER = Object.keys(CHARMS) as CharmId[];
