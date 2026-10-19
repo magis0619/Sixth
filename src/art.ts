@@ -245,9 +245,11 @@ const ART = {
     <path d="M22 8 V18 M42 8 V18" fill="none" ${S}/>
     <circle cx="22" cy="36" r="2.5" fill="${INK}"/><circle cx="32" cy="36" r="2.5" fill="${INK}"/><circle cx="42" cy="36" r="2.5" fill="${INK}"/><circle cx="22" cy="45" r="2.5" fill="${INK}"/><circle cx="32" cy="45" r="2.5" fill="${INK}"/>`,
   bale: `
-    <ellipse cx="32" cy="34" rx="24" ry="18" fill="${C.straw}" ${S}/>
-    <path d="M20 18 Q16 34 20 50 M44 18 Q48 34 44 50" fill="none" stroke="${C.brown}" stroke-width="4"/>
-    <path d="M14 30 Q32 26 50 30" fill="none" stroke="#c9a24a" stroke-width="2"/>`,
+    <path d="M14 18 H50 Q58 32 50 48 H14 Q6 32 14 18Z" fill="${C.straw}" ${S}/>
+    <ellipse cx="14" cy="33" rx="6" ry="15" fill="#d9a93e" ${S}/>
+    <path d="M24 20 V46 M40 20 V46" fill="none" stroke="${C.brown}" stroke-width="4"/>
+    <path d="M18 26 H50 M18 33 H52 M18 40 H50" fill="none" stroke="#c99a3a" stroke-width="1.5"/>
+    <path d="M11 27 L15 30 M11 36 L16 37" fill="none" stroke="#a87a28" stroke-width="1.5" stroke-linecap="round"/>`,
   sparkle: sparkle(32, 32, 24),
   star: star5(32, 33, 25, C.gold),
   drop: drop(32, 10, 3.6),

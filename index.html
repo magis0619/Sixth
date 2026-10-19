@@ -3,9 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#f3eedb" />
+    <meta name="theme-color" content="#bfe3f7" />
     <title>畑スロット</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌱</text></svg>" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><path d='M32 58V36' stroke='%233f7a22' stroke-width='5' stroke-linecap='round'/><path d='M32 42Q16 40 14 26Q30 26 32 42Z' fill='%239bd56a' stroke='%233d3326' stroke-width='3'/><path d='M32 40Q48 38 50 24Q34 24 32 40Z' fill='%236fb03e' stroke='%233d3326' stroke-width='3'/></svg>" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&display=swap" rel="stylesheet" />
@@ -13,42 +13,56 @@
   <body>
     <div id="app">
       <header class="hud">
-        <div class="stat stat-gold" id="gold-box"><span class="stat-icon">💰</span><span id="gold">0</span><small>金</small></div>
-        <div class="stat stat-day"><span class="stat-icon">📅</span><span id="day">0</span><small>日目</small></div>
+        <div class="hud-row">
+          <div class="stat stat-gold" id="gold-box"><span class="stat-icon"></span><span id="gold">0</span><small>金</small></div>
+          <div class="stat stat-day"><span class="stat-icon"></span><span id="day">0</span><small>日目</small></div>
+          <button class="icon-btn" id="help" aria-label="遊び方と図鑑">？</button>
+          <button class="icon-btn" id="mute" aria-label="音のオン・オフ">🔊</button>
+        </div>
         <div class="tax" id="tax"></div>
-        <button class="icon-btn" id="help" aria-label="遊び方と図鑑">？</button>
-        <button class="icon-btn" id="mute" aria-label="音のオン・オフ">🔊</button>
       </header>
-      <div class="goal" id="goal"></div>
+
       <div class="status" id="status" aria-live="polite"></div>
       <div class="hint" id="hint" aria-live="polite"></div>
 
-      <section class="machine" id="machine">
-        <div class="machine-top">🌾 畑スロット 🌾</div>
-        <div class="reels" id="reels"></div>
-        <button class="spin" id="spin">まわす！</button>
-        <div class="msg" id="msg" aria-live="polite"></div>
-      </section>
-
-      <section class="field-wrap">
+      <section class="farm" aria-label="畑">
         <div class="field" id="field"></div>
       </section>
 
-      <section class="panel" id="charm-panel" hidden>
-        <h2>🎁 お守り</h2>
-        <div class="charms" id="charms"></div>
+      <section class="machine" id="machine" aria-label="スロット">
+        <div class="machine-top"></div>
+        <div class="reels-frame"><div class="reels" id="reels"></div></div>
+        <div class="msg" id="msg" aria-live="polite"></div>
+        <button class="spin" id="spin">まわす！</button>
       </section>
 
-      <section class="panel">
-        <h2>🛠 スロットを強化</h2>
-        <div class="shop" id="shop"></div>
-      </section>
-
-      <section class="panel">
-        <h2>👜 絵柄袋 <small id="bag-total"></small></h2>
-        <div class="bag" id="bag"></div>
-      </section>
+      <nav class="tabs" aria-label="メニュー">
+        <button class="tab" data-sheet="shop"><span class="tab-ico" data-art="bargain"></span>ショップ<span class="tab-note" id="goal"></span></button>
+        <button class="tab" data-sheet="bag"><span class="tab-ico" data-art="seed"></span>絵柄袋<span class="tab-note" id="bag-total"></span></button>
+        <button class="tab" data-sheet="charms"><span class="tab-ico" data-art="coinPurse"></span>お守り<span class="tab-note" id="charm-count"></span></button>
+      </nav>
     </div>
+
+    <div class="sheet-backdrop" id="sheet-backdrop"></div>
+    <aside class="sheet" id="sheet" aria-hidden="true">
+      <div class="sheet-head">
+        <h2 id="sheet-title"></h2>
+        <button class="sheet-close" id="sheet-close" aria-label="閉じる">×</button>
+      </div>
+      <div class="sheet-pane" data-pane="shop">
+        <p class="sheet-lead">選んだ「足す」強化と、カラス・虫を消すが並ぶ</p>
+        <div class="shop" id="shop"></div>
+      </div>
+      <div class="sheet-pane" data-pane="bag">
+        <p class="sheet-lead">スロットはこの袋から1枚ずつ引く。出る確率つき</p>
+        <div class="bag" id="bag"></div>
+      </div>
+      <div class="sheet-pane" data-pane="charms">
+        <p class="sheet-lead" id="charm-panel">まだお守りはない。年貢を納めると3つから1つ選べる</p>
+        <div class="charms" id="charms"></div>
+      </div>
+    </aside>
+
     <div id="overlay"></div>
     <div id="fx" aria-hidden="true"></div>
     <script type="module" src="/src/main.ts"></script>

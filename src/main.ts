@@ -40,7 +40,47 @@ const el = {
   bag: $('bag'),
   bagTotal: $('bag-total'),
   overlay: $('overlay'),
+  charmCount: $('charm-count'),
+  sheet: $('sheet'),
+  sheetBackdrop: $('sheet-backdrop'),
+  sheetTitle: $('sheet-title'),
 };
+
+// ---- 引き出し（ショップ・絵柄袋・お守り） ----
+
+type SheetName = 'shop' | 'bag' | 'charms';
+const SHEET_TITLES: Record<SheetName, string> = { shop: 'ショップ', bag: '絵柄袋', charms: 'お守り' };
+let openSheetName: SheetName | null = null;
+
+function openSheet(name: SheetName): void {
+  openSheetName = name;
+  el.sheetTitle.textContent = SHEET_TITLES[name];
+  el.sheet.querySelectorAll<HTMLElement>('.sheet-pane').forEach((p) => (p.hidden = p.dataset.pane !== name));
+  document.querySelectorAll<HTMLElement>('.tab').forEach((t) => t.classList.toggle('on', t.dataset.sheet === name));
+  el.sheet.classList.add('open');
+  el.sheetBackdrop.classList.add('open');
+  el.sheet.setAttribute('aria-hidden', 'false');
+}
+
+function closeSheet(): void {
+  openSheetName = null;
+  el.sheet.classList.remove('open');
+  el.sheetBackdrop.classList.remove('open');
+  el.sheet.setAttribute('aria-hidden', 'true');
+  document.querySelectorAll<HTMLElement>('.tab').forEach((t) => t.classList.remove('on'));
+}
+
+/** 引き出しが閉じていて見えない要素は、代わりにそのタブを演出の的にする */
+function visibleOr(target: Element | null, sheet: SheetName): Element {
+  if (target && (target as HTMLElement).offsetParent !== null) return target;
+  return document.querySelector(`.tab[data-sheet="${sheet}"]`)!;
+}
+
+/** 絵柄の役割ごとの色分け（手動＝緑・自動の良いもの＝青・外れ＝赤紫） */
+function roleClass(id: SymbolId): string {
+  const d = SYMBOLS[id];
+  return d.kind === 'manual' ? 'role-manual' : d.rarity === 'bad' ? 'role-bad' : 'role-good';
+}
 
 const CROP_STAGES: ArtId[] = ['sprout', 'leaf', 'bud'];
 const FRUIT: Record<'normal' | 'gold', ArtId> = { normal: 'tomato', gold: 'corn' };
@@ -143,7 +183,32 @@ function render(): void {
   renderBag();
   renderCharms();
   saveRun();
+  fitLayout();
 }
+
+// ---- 画面の高さに合わせて畑のマスの大きさを決める（まわすボタンが必ず画面内に入るように） ----
+
+const WIDE = window.matchMedia('(min-width: 860px) and (orientation: landscape)');
+let fitRaf = 0;
+
+function fitLayout(): void {
+  cancelAnimationFrame(fitRaf);
+  fitRaf = requestAnimationFrame(() => {
+    const root = document.documentElement;
+    const colWidth = WIDE.matches ? el.app.clientWidth / 2 - 18 : el.app.clientWidth - 24;
+    // 畑の枠（左右の余白・溝）を除いた幅を3等分
+    let cell = Math.min(124, Math.floor((colWidth - 48) / 3));
+    root.style.setProperty('--cell', `${cell}px`);
+    for (let k = 0; k < 3; k++) {
+      const excess = root.scrollHeight - window.innerHeight;
+      if (excess <= 0) break;
+      cell = Math.max(44, cell - Math.ceil(excess / 3));
+      root.style.setProperty('--cell', `${cell}px`);
+    }
+  });
+}
+
+window.addEventListener('resize', fitLayout);
 
 /** 今日だけ・明日だけの効果 */
 function renderStatus(): void {
@@ -159,7 +224,8 @@ function renderStatus(): void {
 
 function renderCharms(): void {
   const owned = CHARM_ORDER.filter((id) => state.charms[id] > 0);
-  el.charmPanel.hidden = owned.length === 0;
+  el.charmPanel.hidden = owned.length > 0;
+  el.charmCount.textContent = owned.length ? `${owned.reduce((n, id) => n + state.charms[id], 0)}個` : '';
   el.charms.innerHTML = owned
     .map((id) => {
       const c = CHARMS[id];
@@ -180,14 +246,15 @@ function renderTax(): void {
 
 function renderGoal(): void {
   const available = UPGRADES.filter((u) => upgradeAvailable(state, u.id));
-  if (available.some((u) => canBuy(state, u.id))) {
-    el.goal.innerHTML = '<span class="ready">✨ 強化できる！ 下のショップをチェック</span>';
+  const tab = document.querySelector('.tab[data-sheet="shop"]')!;
+  const ready = available.some((u) => canBuy(state, u.id));
+  tab.classList.toggle('ready', ready);
+  if (ready) {
+    el.goal.textContent = '買える！';
     return;
   }
   const next = available.sort((a, b) => upgradePrice(state, a.id) - upgradePrice(state, b.id))[0];
-  el.goal.innerHTML = next
-    ? `次の強化 ${upgradeArt(next.id)}<b>${next.name}</b> まで あと <b>${upgradePrice(state, next.id) - state.gold}金</b>`
-    : '';
+  el.goal.textContent = next ? `あと${upgradePrice(state, next.id) - state.gold}金` : '';
 }
 
 function usableReels(): number[] {
@@ -198,12 +265,11 @@ function renderHint(): void {
   const t = nextTax(state);
   el.hint.className = 'hint';
   if (state.day > 0 && t.daysLeft <= CONFIG.taxWarnDays && state.gold < t.amount) {
-    el.hint.className = 'hint danger';
-    el.hint.textContent =
-      t.daysLeft === 0
-        ? `⚠️ 今日の終わりに年貢 ${t.amount}金！ あと${t.amount - state.gold}金 足りない — 作物を売ろう`
-        : `⚠️ 年貢まであと${t.daysLeft}日：${t.amount}金 必要（あと${t.amount - state.gold}金）`;
-    return;
+    // 不足は年貢の札が示すので、ここでは打てる手だけを言う
+    const ripe = state.field.some(isRipe);
+    el.hint.className = ripe ? 'hint danger' : 'hint';
+    el.hint.textContent = ripe ? '実った作物を売って年貢に備えよう' : '';
+    if (ripe) return;
   }
   if (state.day > CONFIG.hintUntilDay) {
     el.hint.textContent = !done.line && ripeLines(state).length > 0 ? '✨ そろった！ 並んだ実をタップで列ごとまとめて売れる（列が重なるほど高い）' : '';
@@ -229,14 +295,14 @@ function reelTag(i: number): { text: string; cls: string } {
   if (!r) return { text: '—', cls: '' };
   const def = SYMBOLS[r.symbol];
   if (def.kind === 'auto') {
-    const text = autoOutcome[i] ?? `${def.name} 自動`;
+    // 絵柄はイラストで分かるので、札には結果だけを短く書く
+    const text = autoOutcome[i] ?? '自動';
     return { text, cls: def.rarity === 'bad' ? 'auto-bad used' : 'used' };
   }
-  const name = r.total > 1 && r.left > 0 ? `${def.name}×${r.left}` : def.name;
-  if (r.used) return { text: `${def.name} ✓`, cls: 'used' };
-  if (selected === i) return { text: `${name} 選択中`, cls: 'selected' };
-  if (canUse(state, i, null)) return { text: `${name} ▶使う`, cls: 'usable' };
-  return { text: `${name}（使えない）`, cls: 'dead' };
+  if (r.used) return { text: '使った ✓', cls: 'used' };
+  if (selected === i) return { text: '選択中', cls: 'selected' };
+  if (canUse(state, i, null)) return { text: '▶ 使う', cls: 'usable' };
+  return { text: '使えない', cls: 'dead' };
 }
 
 function buildReels(): void {
@@ -263,7 +329,7 @@ function renderReelStates(): void {
     const tag = reelTag(i);
     const fever = r && r.power > 1;
     const badFever = fever && SYMBOLS[r.symbol].rarity === 'bad';
-    b.className = `reel ${tag.cls}${r?.symbol === 'goldSeed' ? ' rare' : ''}${fever ? (badFever ? ' fever-bad' : ' fever') : ''}`;
+    b.className = `reel ${r ? roleClass(r.symbol) : ''} ${tag.cls}${r?.symbol === 'goldSeed' ? ' rare' : ''}${fever ? (badFever ? ' fever-bad' : ' fever') : ''}`;
     b.querySelector('.tag')!.textContent = fever ? `${badFever ? '⚠️' : '🔥'}${tag.text}` : tag.text;
     renderCount(b, i);
     b.setAttribute('aria-label', r ? `${SYMBOLS[r.symbol].name}: ${tag.text}` : 'リール');
@@ -392,7 +458,7 @@ function renderShop(): void {
 }
 
 function renderBag(): void {
-  el.bagTotal.textContent = `全${bagTotal(state.bag)}枚・リール${state.reels}本`;
+  el.bagTotal.textContent = `${bagTotal(state.bag)}枚`;
   el.bag.innerHTML = SYMBOL_ORDER.filter((id) => state.bag[id] > 0 || id === 'crow' || id === 'goldSeed' || id === 'bug')
     .map((id) => {
       const def = SYMBOLS[id];
@@ -407,6 +473,7 @@ function renderBag(): void {
 async function onSpin(): Promise<void> {
   unlockAudio();
   if (busy || state.over) return;
+  if (openSheetName) closeSheet();
   const leftover = state.day > 0 ? usableReels().length : 0;
   if (leftover > 0 && !armedNextDay) {
     armedNextDay = true;
@@ -486,7 +553,7 @@ async function showTaxStamp(amount: number, ok: boolean): Promise<void> {
     const chip = el.bag.querySelector('[data-sym="bug"]');
     if (chip) {
       render();
-      const c = center(el.bag.querySelector('[data-sym="bug"]')!);
+      const c = center(visibleOr(el.bag.querySelector('[data-sym="bug"]'), 'bag'));
       floatText(c.x, c.y - 20, '虫が増えた…', { cls: 'bad', size: 0.8 });
     }
   }
@@ -551,7 +618,7 @@ function showCharmOffer(): Promise<void> {
             burst(center(r).x, center(r).y, ['✨', '🎰', '⭐'], 14, 80);
             floatText(center(r).x, center(r).y - 40, 'リール+1！', { cls: 'good', size: 1 });
           }
-          const got = el.charms.querySelector(`[data-charm="${id}"]`);
+          const got = visibleOr(el.charms.querySelector(`[data-charm="${id}"]`), 'charms');
           if (got) pop(got, 1.2);
           resolve();
         }, 650);
@@ -666,7 +733,7 @@ function onReelLanded(i: number, reel: HTMLElement): void {
     }
   }
   const tag = reelTag(i);
-  reel.className = `reel ${sym === 'goldSeed' ? 'rare ' : ''}${SYMBOLS[sym].kind === 'auto' ? '' : tag.cls}`;
+  reel.className = `reel ${roleClass(sym)} ${sym === 'goldSeed' ? 'rare ' : ''}${SYMBOLS[sym].kind === 'auto' ? '' : tag.cls}`;
   reel.querySelector('.tag')!.textContent = SYMBOLS[sym].kind === 'auto' ? '…' : tag.text;
 }
 
@@ -698,19 +765,19 @@ async function resolveAutos(): Promise<void> {
       renderStatus();
     } else if (ev.type === 'bug') {
       if (ev.cell === null) {
-        autoOutcome[i] = '虫 空振り';
+        autoOutcome[i] = '空振り';
         floatText(from.x, from.y - 30, '虫は空振り', { size: 0.6 });
       } else {
         const plot = el.field.children[ev.cell] as HTMLElement;
         await new Promise<void>((r) => flyTo(from, plot, '🐛', 1, r));
         const p = center(plot);
         if (ev.warded) {
-          autoOutcome[i] = '虫 よけた';
+          autoOutcome[i] = 'よけた';
           sfx.shoo();
           burst(p.x, p.y, ['🌿', '✨'], 8, 50);
           floatText(p.x, p.y - 20, '虫よけ成功！', { cls: 'good', size: 0.8 });
         } else {
-          autoOutcome[i] = `虫 成長−${ev.damage}`;
+          autoOutcome[i] = `成長−${ev.damage}`;
           sfx.bug();
           burst(p.x, p.y, ['🐛', '🍂'], 6, 40);
           floatText(p.x, p.y - 20, `かじられた！ 成長−${ev.damage}`, { cls: 'bad', size: 0.8 });
@@ -719,11 +786,11 @@ async function resolveAutos(): Promise<void> {
         }
       }
     } else if (ev.cell === null) {
-      autoOutcome[i] = 'カラス 空振り';
+      autoOutcome[i] = '空振り';
       sfx.crow();
       floatText(from.x, from.y - 30, 'カラスは空振り', { size: 0.6 });
     } else if (!ev.eaten) {
-      autoOutcome[i] = 'カラス 追い払った';
+      autoOutcome[i] = 'セーフ';
       const plot = el.field.children[ev.cell] as HTMLElement;
       await new Promise<void>((r) => flyTo(from, plot, symHtml('crow'), 1, r));
       sfx.shoo();
@@ -732,7 +799,7 @@ async function resolveAutos(): Promise<void> {
       floatText(p.x, p.y - 20, ev.crop && isRipe(ev.crop) ? 'セーフ！ 守った！' : 'セーフ！', { cls: 'good', size: ev.crop && isRipe(ev.crop) ? 1 : 0.8 });
       pop(plot, 1.12);
     } else {
-      autoOutcome[i] = 'カラス パクッ…';
+      autoOutcome[i] = 'パクッ…';
       const plot = el.field.children[ev.cell] as HTMLElement;
       await new Promise<void>((r) => flyTo(from, plot, symHtml('crow'), 1, r));
       sfx.crow();
@@ -997,7 +1064,7 @@ function onBuy(id: UpgradeId): void {
     const sym = UPGRADE_SYMBOL[id]!.symbol;
     sfx.buy();
     sfx.poof();
-    const chip = el.bag.querySelector(`[data-sym="${sym}"]`) as HTMLElement;
+    const chip = visibleOr(el.bag.querySelector(`[data-sym="${sym}"]`), 'bag');
     const c = center(chip);
     burst(c.x, c.y, ['💨', sym === 'crow' ? '🪶' : '🍃', '✨'], 12, 60);
     floatText(c.x, c.y - 20, `${SYMBOLS[sym].name} −1！`, { cls: 'good', size: 0.9 });
@@ -1005,7 +1072,7 @@ function onBuy(id: UpgradeId): void {
   } else {
     sfx.buy();
     const sym = UPGRADE_SYMBOL[id]!.symbol;
-    const chip = el.bag.querySelector(`[data-sym="${sym}"]`) as HTMLElement;
+    const chip = visibleOr(el.bag.querySelector(`[data-sym="${sym}"]`), 'bag');
     flyTo(from, chip, symHtml(sym), 1, () => {
       pop(chip, 1.35);
       burst(center(chip).x, center(chip).y, ['✨'], 6, 30);
@@ -1256,7 +1323,7 @@ function showPrep(): void {
       .join('');
     el.overlay.innerHTML = `
       <div class="modal prep-modal" role="dialog" aria-label="準備">
-        <h2>${art('bale')} 畑スロット ${art('bale')}</h2>
+        <h2>${art('sprout')} 畑スロット ${art('sprout')}</h2>
         <div class="points">豊穣ポイント <b>${meta.points}pt</b><small>遊び終わるたびに「日数＋年貢×${META.pointsPerTax}」がたまる</small></div>
         <h3>🛠 ショップに並べる強化 <span class="cap${used > cap ? ' over' : ''}">コスト ${used} / ${cap}</span></h3>
         <div class="prep-grid">${adds}</div>
@@ -1334,7 +1401,22 @@ el.spin.addEventListener('click', () => void onSpin());
 el.mute.textContent = isMuted() ? '🔇' : '🔊';
 el.goldBox.querySelector('.stat-icon')!.innerHTML = art('coin');
 document.querySelector('.stat-day .stat-icon')!.innerHTML = art('calendar');
-document.querySelector('.machine-top')!.innerHTML = `${art('bale')} 畑スロット ${art('bale')}`;
+document.querySelector('.machine-top')!.innerHTML = `${art('coin')} 畑スロット ${art('coin')}`;
+document.querySelectorAll<HTMLElement>('.tab-ico[data-art]').forEach((n) => (n.innerHTML = art(n.dataset.art as ArtId)));
+document.querySelectorAll<HTMLButtonElement>('.tab').forEach((t) =>
+  t.addEventListener('click', () => {
+    unlockAudio();
+    if (busy) return;
+    const name = t.dataset.sheet as SheetName;
+    if (openSheetName === name) closeSheet();
+    else {
+      sfx.select();
+      openSheet(name);
+    }
+  }),
+);
+el.sheetBackdrop.addEventListener('click', closeSheet);
+$('sheet-close').addEventListener('click', closeSheet);
 el.help.addEventListener('click', () => {
   // 年貢・お守り・結果などの画面の上には開かない
   if (busy || el.overlay.classList.contains('show')) return;
