@@ -12,6 +12,7 @@ import {
   awardPoints, buyCapacity, capacity, loadMeta, loadoutCost, nextCapacityPrice, setupFrom, toggleLoadout, unlockAdd,
   unlockCharm, type MetaState,
 } from './meta.ts';
+import { art, type ArtId } from './art.ts';
 import { burst, center, confetti, flash, floatText, flyTo, pop, shake, sleep, vibrate } from './fx.ts';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -41,8 +42,8 @@ const el = {
   overlay: $('overlay'),
 };
 
-const CROP_STAGES = ['🌱', '🌿', '🌷'];
-const FRUIT = { normal: '🍅', gold: '🌽' };
+const CROP_STAGES: ArtId[] = ['sprout', 'leaf', 'bud'];
+const FRUIT: Record<'normal' | 'gold', ArtId> = { normal: 'tomato', gold: 'corn' };
 const STAGE_NAMES = ['芽', '若葉', 'つぼみ', '実'];
 
 const meta: MetaState = loadMeta();
@@ -63,11 +64,16 @@ let autoOutcome: Record<number, string> = {};
 // ---- 表示ヘルパー ----
 
 function symHtml(id: SymbolId): string {
-  return `<span class="${id === 'crow' ? 'sym-crow' : ''}">${SYMBOLS[id].emoji}</span>`;
+  return art(id);
+}
+
+/** ショップ・準備画面の強化アイコン（増減させる絵柄のイラスト） */
+function upgradeArt(id: UpgradeId): string {
+  return symHtml(UPGRADE_SYMBOL[id]!.symbol);
 }
 
 function cropEmoji(kind: 'normal' | 'gold', growth: number): string {
-  return growth >= CONFIG.ripeGrowth ? FRUIT[kind] : CROP_STAGES[growth];
+  return art(growth >= CONFIG.ripeGrowth ? FRUIT[kind] : CROP_STAGES[growth]);
 }
 
 function say(text: string, ms = 2200): void {
@@ -158,7 +164,7 @@ function renderCharms(): void {
     .map((id) => {
       const c = CHARMS[id];
       const n = state.charms[id];
-      return `<span class="charm tier-${c.tier}" data-charm="${id}"><span class="e">${c.emoji}</span><span><b>${c.name}${n > 1 ? ` ×${n}` : ''}</b><small>${c.desc(n)}</small></span></span>`;
+      return `<span class="charm tier-${c.tier}" data-charm="${id}"><span class="e">${art(id)}</span><span><b>${c.name}${n > 1 ? ` ×${n}` : ''}</b><small>${c.desc(n)}</small></span></span>`;
     })
     .join('');
 }
@@ -169,7 +175,7 @@ function renderTax(): void {
   const warn = short && t.daysLeft <= CONFIG.taxWarnDays;
   const when = t.daysLeft === 0 ? '今日の終わり' : `あと${t.daysLeft}日`;
   el.tax.className = `tax${warn ? ' warn' : ''}`;
-  el.tax.innerHTML = `${warn ? '⚠️' : '🏯'} 年貢 <b>${t.amount}金</b>（${when}）<br>${short ? `不足 ${t.amount - state.gold}金` : '✅ 払える'}`;
+  el.tax.innerHTML = `${warn ? '⚠️' : art('bale')} 年貢 <b>${t.amount}金</b>（${when}）<span class="tax-state">${short ? `不足 ${t.amount - state.gold}金` : '払える ✓'}</span>`;
 }
 
 function renderGoal(): void {
@@ -180,7 +186,7 @@ function renderGoal(): void {
   }
   const next = available.sort((a, b) => upgradePrice(state, a.id) - upgradePrice(state, b.id))[0];
   el.goal.innerHTML = next
-    ? `次の強化 ${next.emoji}<b>${next.name}</b> まで あと <b>${upgradePrice(state, next.id) - state.gold}金</b>`
+    ? `次の強化 ${upgradeArt(next.id)}<b>${next.name}</b> まで あと <b>${upgradePrice(state, next.id) - state.gold}金</b>`
     : '';
 }
 
@@ -290,7 +296,7 @@ function renderSpinButton(): void {
   } else if (armedNextDay) {
     el.spin.innerHTML = `本当に次の日へ？<small>使える出目が${usableReels().length}つ残っています（消えます）</small>`;
   } else if (t.daysLeft === 0) {
-    el.spin.innerHTML = `年貢を納めて 次の日へ<small>🏯 ${t.amount}金を徴収されます</small>`;
+    el.spin.innerHTML = `年貢を納めて 次の日へ<small>${art('bale')} ${t.amount}金を徴収されます</small>`;
   } else {
     el.spin.innerHTML = `次の日へ ▶ まわす<small>${state.day + 1}日目</small>`;
   }
@@ -377,7 +383,7 @@ function renderShop(): void {
     const affordable = canBuy(state, u.id);
     b.className = `item${affordable ? ' affordable' : ''}${available ? '' : ' soldout'}`;
     const cost = !available ? '完了' : affordable ? `${price}金で買う` : `${price}金（あと${price - state.gold}）`;
-    const ico = u.id === 'removeCrow' ? symHtml('crow') : u.emoji;
+    const ico = upgradeArt(u.id);
     const html = `<span class="ico">${ico}</span><span class="name">${u.name}</span><span class="effect">${upgradeEffect(u.id)}</span><span class="cost">${cost}</span>`;
     if (b.innerHTML !== html) b.innerHTML = html;
   });
@@ -448,7 +454,9 @@ async function showTaxStamp(amount: number, ok: boolean): Promise<void> {
   shake(el.app, 8);
   const stamp = document.createElement('div');
   stamp.className = `stamp${ok ? ' ok' : ''}`;
-  stamp.innerHTML = ok ? `🏯 年貢 納付！<small>−${amount}金</small>` : `🏯 年貢 未納…<small>${amount}金 払えなかった</small>`;
+  stamp.innerHTML = ok
+    ? `${art('bale')} 年貢 納付！<small>−${amount}金</small>`
+    : `${art('bale')} 年貢 未納…<small>${amount}金 払えなかった</small>`;
   document.body.appendChild(stamp);
   stamp.animate(
     [
@@ -499,7 +507,7 @@ function showCharmOffer(): Promise<void> {
             const n = state.charms[id];
             return `<button class="charm-card tier-${c.tier}" data-charm="${id}" disabled>
               <span class="tier">${CHARM_TIER_NAMES[c.tier]}</span>
-              <span class="e">${c.emoji}</span>
+              <span class="e">${art(id)}</span>
               <b>${c.name}${n > 0 ? ` <span class="lv">${n}→${n + 1}</span>` : ''}</b>
               <small>${c.desc(n + 1)}</small>
             </button>`;
@@ -526,7 +534,7 @@ function showCharmOffer(): Promise<void> {
         chooseCharm(state, id);
         sfx.charmGet();
         const c = center(card);
-        burst(c.x, c.y, [CHARMS[id].emoji, '✨', '⭐'], 14, 90);
+        burst(c.x, c.y, [art(id), '✨', '⭐'], 14, 90);
         vibrate(40);
         cards.forEach((other) => other !== card && other.animate([{ opacity: 1 }, { opacity: 0.2 }], { duration: 200, fill: 'forwards' }));
         card.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.12)' }, { transform: 'scale(1)' }], { duration: 400 });
@@ -561,7 +569,7 @@ async function showFever(): Promise<void> {
 }
 
 async function feverBanner(symbols: SymbolId[], bad: boolean): Promise<void> {
-  const lines = symbols.map((s) => `${SYMBOLS[s].emoji}${SYMBOLS[s].name}：${SYMBOLS[s].feverDesc}`).join('<br>');
+  const lines = symbols.map((s) => `${symHtml(s)}${SYMBOLS[s].name}：${SYMBOLS[s].feverDesc}`).join('<br>');
   const banner = document.createElement('div');
   if (bad) {
     sfx.danger();
@@ -688,19 +696,19 @@ async function resolveAutos(): Promise<void> {
       renderStatus();
     } else if (ev.type === 'bug') {
       if (ev.cell === null) {
-        autoOutcome[i] = '🐛 空振り';
+        autoOutcome[i] = '虫 空振り';
         floatText(from.x, from.y - 30, '虫は空振り', { size: 0.6 });
       } else {
         const plot = el.field.children[ev.cell] as HTMLElement;
         await new Promise<void>((r) => flyTo(from, plot, '🐛', 1, r));
         const p = center(plot);
         if (ev.warded) {
-          autoOutcome[i] = '🐛 よけた';
+          autoOutcome[i] = '虫 よけた';
           sfx.shoo();
           burst(p.x, p.y, ['🌿', '✨'], 8, 50);
           floatText(p.x, p.y - 20, '虫よけ成功！', { cls: 'good', size: 0.8 });
         } else {
-          autoOutcome[i] = `🐛 成長−${ev.damage}`;
+          autoOutcome[i] = `虫 成長−${ev.damage}`;
           sfx.bug();
           burst(p.x, p.y, ['🐛', '🍂'], 6, 40);
           floatText(p.x, p.y - 20, `かじられた！ 成長−${ev.damage}`, { cls: 'bad', size: 0.8 });
@@ -709,11 +717,11 @@ async function resolveAutos(): Promise<void> {
         }
       }
     } else if (ev.cell === null) {
-      autoOutcome[i] = '🐦 空振り';
+      autoOutcome[i] = 'カラス 空振り';
       sfx.crow();
       floatText(from.x, from.y - 30, 'カラスは空振り', { size: 0.6 });
     } else if (!ev.eaten) {
-      autoOutcome[i] = '🐦 追い払った';
+      autoOutcome[i] = 'カラス 追い払った';
       const plot = el.field.children[ev.cell] as HTMLElement;
       await new Promise<void>((r) => flyTo(from, plot, symHtml('crow'), 1, r));
       sfx.shoo();
@@ -722,7 +730,7 @@ async function resolveAutos(): Promise<void> {
       floatText(p.x, p.y - 20, ev.crop && isRipe(ev.crop) ? 'セーフ！ 守った！' : 'セーフ！', { cls: 'good', size: ev.crop && isRipe(ev.crop) ? 1 : 0.8 });
       pop(plot, 1.12);
     } else {
-      autoOutcome[i] = '🐦 パクッ…';
+      autoOutcome[i] = 'カラス パクッ…';
       const plot = el.field.children[ev.cell] as HTMLElement;
       await new Promise<void>((r) => flyTo(from, plot, symHtml('crow'), 1, r));
       sfx.crow();
@@ -989,7 +997,7 @@ function onBuy(id: UpgradeId): void {
     sfx.buy();
     const sym = UPGRADE_SYMBOL[id]!.symbol;
     const chip = el.bag.querySelector(`[data-sym="${sym}"]`) as HTMLElement;
-    flyTo(from, chip, SYMBOLS[sym].emoji, 1, () => {
+    flyTo(from, chip, symHtml(sym), 1, () => {
       pop(chip, 1.35);
       burst(center(chip).x, center(chip).y, ['✨'], 6, 30);
     });
@@ -1055,7 +1063,7 @@ function showGameOver(endedAfterClear = false): void {
       <h3>📝 強化の購入順（検証ログ）</h3>
       ${state.stats.purchases.length ? `<ol>${state.stats.purchases.map((p) => `<li>${p.day}日目 ${name(p.id)}</li>`).join('')}</ol>` : '<p>なし</p>'}
       <h3>🎁 選んだお守り</h3>
-      ${state.stats.charms.length ? `<ol>${state.stats.charms.map((c) => `<li>${c.day}日目 ${CHARMS[c.id].emoji}${CHARMS[c.id].name}</li>`).join('')}</ol>` : '<p>なし</p>'}
+      ${state.stats.charms.length ? `<ol>${state.stats.charms.map((c) => `<li>${c.day}日目 ${art(c.id)}${CHARMS[c.id].name}</li>`).join('')}</ol>` : '<p>なし</p>'}
       <div class="share-row">
         <button class="secondary" id="share">${typeof navigator.share === 'function' ? '📤 結果をシェア' : '📋 結果をコピー'}</button>
         ${FEEDBACK_URL ? `<a class="secondary" href="${FEEDBACK_URL}" target="_blank" rel="noopener">✉️ 感想を送る</a>` : ''}
@@ -1134,7 +1142,7 @@ function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
   const charms = CHARM_ORDER.map((id) => {
     const c = CHARMS[id];
     const locked = id in META.charmUnlock && !meta.unlockedCharms.includes(id);
-    return `<div class="dex-row tier-${c.tier}${locked ? ' locked' : ''}"><span class="e">${c.emoji}</span>
+    return `<div class="dex-row tier-${c.tier}${locked ? ' locked' : ''}"><span class="e">${art(id)}</span>
       <div><b>${c.name}</b> <span class="tag-k">${CHARM_TIER_NAMES[c.tier]}</span>
       <small>${c.desc(1)}${Number.isFinite(c.max) ? `（最大${c.max}個）` : ''}</small>
       ${locked ? `<small class="fv">🔒 準備画面で${META.charmUnlock[id]}ptで解放</small>` : ''}</div>
@@ -1201,7 +1209,7 @@ function startGame(resume: GameState | null = null): void {
 
 // ---- 準備画面（解放とショップの組み合わせ） ----
 
-const ADD_EMOJI = Object.fromEntries(UPGRADES.map((u) => [u.id, u.emoji]));
+const ADD_EMOJI = Object.fromEntries(UPGRADES.map((u) => [u.id, upgradeArt(u.id)]));
 const ADD_NAME = Object.fromEntries(UPGRADES.map((u) => [u.id, u.name]));
 
 function showPrep(): void {
@@ -1233,13 +1241,13 @@ function showPrep(): void {
         const price = META.charmUnlock[id]!;
         const unlocked = meta.unlockedCharms.includes(id);
         return `<button class="prep-item charm-unlock${unlocked ? ' on' : ' locked'}" data-charm="${id}" ${unlocked || meta.points < price ? 'disabled' : ''}>
-          <span class="e">${c.emoji}</span><b>${c.name}</b>
+          <span class="e">${art(id as ArtId)}</span><b>${c.name}</b>
           <small>${unlocked ? '✅ 年貢のお守りに出る' : `🔒 ${price}pt で解放`}</small><span class="cost">${CHARM_TIER_NAMES[c.tier]}</span></button>`;
       })
       .join('');
     el.overlay.innerHTML = `
       <div class="modal prep-modal" role="dialog" aria-label="準備">
-        <h2>🌾 畑スロット</h2>
+        <h2>${art('bale')} 畑スロット ${art('bale')}</h2>
         <div class="points">豊穣ポイント <b>${meta.points}pt</b><small>遊び終わるたびに「日数＋年貢×${META.pointsPerTax}」がたまる</small></div>
         <h3>🛠 ショップに並べる強化 <span class="cap${used > cap ? ' over' : ''}">コスト ${used} / ${cap}</span></h3>
         <div class="prep-grid">${adds}</div>
@@ -1315,6 +1323,9 @@ function showPrep(): void {
 
 el.spin.addEventListener('click', () => void onSpin());
 el.mute.textContent = isMuted() ? '🔇' : '🔊';
+el.goldBox.querySelector('.stat-icon')!.innerHTML = art('coin');
+document.querySelector('.stat-day .stat-icon')!.innerHTML = art('calendar');
+document.querySelector('.machine-top')!.innerHTML = `${art('bale')} 畑スロット ${art('bale')}`;
 el.help.addEventListener('click', () => {
   // 年貢・お守り・結果などの画面の上には開かない
   if (busy || el.overlay.classList.contains('show')) return;

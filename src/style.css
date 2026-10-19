@@ -408,11 +408,11 @@ button {
 }
 
 .plot.g0 .crop {
-  font-size: 1.6rem;
+  font-size: 2.3rem;
 }
 
 .plot.g1 .crop {
-  font-size: 1.9rem;
+  font-size: 2.4rem;
 }
 
 .plot.ripe .crop {
@@ -1431,4 +1431,51 @@ button {
   text-align: center;
   text-decoration: none;
   color: var(--ink);
+}
+
+/* ---- イラスト ---- */
+.art {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.14em;
+  overflow: visible;
+}
+
+.cell-sym .art,
+.plot .crop .art {
+  filter: drop-shadow(0 2px 0 rgba(61, 51, 38, 0.18));
+}
+
+.machine-top .art {
+  font-size: 1.1rem;
+}
+
+.stat-icon .art {
+  font-size: 1.15rem;
+}
+
+/* HUD：所持金・日数・ボタンを1行目、年貢を2行目に置いて詰まらないようにする */
+.hud {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+
+.hud .tax {
+  order: 5;
+  flex: 1 1 100%;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  padding: 4px 10px;
+}
+
+.hud .tax .tax-state {
+  margin-left: auto;
+  font-weight: 800;
+}
+
+.hud .stat-day {
+  margin-right: auto;
 }

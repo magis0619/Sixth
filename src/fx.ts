@@ -1,5 +1,7 @@
 // 画面演出（数字の飛び出し、粒子、揺れ、フラッシュ）。すべて fx レイヤー上に一時要素を出して消す。
 
+import { glyph } from './art.ts';
+
 const layer = (): HTMLElement => document.getElementById('fx')!;
 
 const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
@@ -40,7 +42,7 @@ export function floatText(x: number, y: number, text: string, opts: { cls?: stri
 export function burst(x: number, y: number, chars: string[], count = 10, spread = 90): void {
   const n = reduceMotion ? Math.min(count, 4) : count;
   for (let i = 0; i < n; i++) {
-    const el = spawn(chars[i % chars.length], 'fx-particle', x, y);
+    const el = spawn(glyph(chars[i % chars.length]), 'fx-particle', x, y);
     const angle = (Math.PI * 2 * i) / n + Math.random() * 0.6;
     const dist = spread * (0.5 + Math.random() * 0.7);
     const dx = Math.cos(angle) * dist;
@@ -61,7 +63,7 @@ export function burst(x: number, y: number, chars: string[], count = 10, spread 
 export function flyTo(from: { x: number; y: number }, toEl: Element, char: string, count = 1, onArrive?: () => void): void {
   const to = center(toEl);
   for (let i = 0; i < count; i++) {
-    const el = spawn(char, 'fx-fly', from.x, from.y);
+    const el = spawn(glyph(char), 'fx-fly', from.x, from.y);
     const mx = (from.x + to.x) / 2 + (Math.random() - 0.5) * 120;
     const my = Math.min(from.y, to.y) - 40 - Math.random() * 60;
     const anim = el.animate(
@@ -114,7 +116,7 @@ export function confetti(count = 40): void {
   const n = reduceMotion ? 8 : count;
   for (let i = 0; i < n; i++) {
     const x = Math.random() * window.innerWidth;
-    const el = spawn(chars[i % chars.length], 'fx-particle', x, -20);
+    const el = spawn(glyph(chars[i % chars.length]), 'fx-particle', x, -20);
     el.style.fontSize = `${1 + Math.random()}rem`;
     const dx = (Math.random() - 0.5) * 160;
     el.animate(
