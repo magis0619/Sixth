@@ -127,6 +127,14 @@ export const sfx = {
     tone(900, 0.18, { type: 'sawtooth', vol: 0.15, slideTo: 500 });
     tone(800, 0.2, { type: 'sawtooth', vol: 0.15, slideTo: 400, delay: 0.22 });
   },
+  shoo() {
+    tone(700, 0.12, { type: 'sawtooth', vol: 0.1, slideTo: 1200 });
+    noise(0.3, { vol: 0.2, freq: 2500, q: 0.7, delay: 0.05 });
+    [7, 12].forEach((n, i) => tone(NOTE(12 + n), 0.15, { type: 'triangle', vol: 0.2, delay: 0.15 + i * 0.07 }));
+  },
+  bonus() {
+    [0, 4, 7, 12].forEach((n, i) => tone(NOTE(16 + n), 0.15, { type: 'triangle', vol: 0.2, delay: i * 0.04 }));
+  },
   poof() {
     noise(0.25, { vol: 0.25, freq: 400 });
   },

@@ -12,7 +12,12 @@ export interface Crop {
 
 export interface ReelResult {
   symbol: SymbolId;
+  /** 使い切ったか（自動の絵柄は効果が出たら true） */
   used: boolean;
+  /** この出目で使える回数（種は1〜3、ほかは1） */
+  total: number;
+  /** 残りの使用回数 */
+  left: number;
 }
 
 export interface Purchase {
@@ -35,6 +40,7 @@ export interface GameState {
     totalEarned: number;
     cropsSold: number;
     cropsEaten: number;
+    crowsMissed: number;
     purchases: Purchase[];
   };
 }
@@ -49,7 +55,7 @@ export function newGame(): GameState {
     results: [],
     over: false,
     taxesPaid: 0,
-    stats: { spins: 0, totalEarned: 0, cropsSold: 0, cropsEaten: 0, purchases: [] },
+    stats: { spins: 0, totalEarned: 0, cropsSold: 0, cropsEaten: 0, crowsMissed: 0, purchases: [] },
   };
 }
 
@@ -66,6 +72,22 @@ export function drawSymbol(bag: Record<SymbolId, number>, rng: Rng): SymbolId {
     if (r < 0) return id;
   }
   return SYMBOL_ORDER.find((id) => bag[id] > 0)!;
+}
+
+export function rollSeedCount(rng: Rng): number {
+  const weights = CONFIG.seedCountWeights;
+  let r = rng() * weights.reduce((n, w) => n + w.weight, 0);
+  for (const w of weights) {
+    r -= w.weight;
+    if (r < 0) return w.count;
+  }
+  return weights[weights.length - 1].count;
+}
+
+function rollResult(bag: Record<SymbolId, number>, rng: Rng): ReelResult {
+  const symbol = drawSymbol(bag, rng);
+  const total = symbol === 'seed' ? rollSeedCount(rng) : 1;
+  return { symbol, used: false, total, left: total };
 }
 
 // ---- 年貢 ----
@@ -119,18 +141,19 @@ export function startDay(state: GameState, rng: Rng): StartDayResult {
   }
   state.day++;
   state.stats.spins++;
-  state.results = Array.from({ length: state.reels }, () => ({ symbol: drawSymbol(state.bag, rng), used: false }));
+  state.results = Array.from({ length: state.reels }, () => rollResult(state.bag, rng));
   return { ok: true, tax, expired };
 }
 
 export type AutoEvent =
-  | { type: 'crow'; cell: number | null; crop: Crop | null }
+  | { type: 'crow'; cell: number | null; crop: Crop | null; eaten: boolean }
   | { type: 'coin'; amount: number };
 
 export function resolveAuto(state: GameState, reel: number, rng: Rng): AutoEvent | null {
   const r = state.results[reel];
   if (!r || r.used || SYMBOLS[r.symbol].kind !== 'auto') return null;
   r.used = true;
+  r.left = 0;
   if (r.symbol === 'coin') {
     state.gold += CONFIG.coinAmount;
     state.stats.totalEarned += CONFIG.coinAmount;
@@ -138,12 +161,16 @@ export function resolveAuto(state: GameState, reel: number, rng: Rng): AutoEvent
   }
   // カラス
   const occupied = state.field.flatMap((c, i) => (c ? [i] : []));
-  if (occupied.length === 0) return { type: 'crow', cell: null, crop: null };
+  if (occupied.length === 0) return { type: 'crow', cell: null, crop: null, eaten: false };
   const cell = occupied[Math.floor(rng() * occupied.length)];
   const crop = state.field[cell];
+  if (rng() >= CONFIG.crowEatChance) {
+    state.stats.crowsMissed++;
+    return { type: 'crow', cell, crop, eaten: false };
+  }
   state.field[cell] = null;
   state.stats.cropsEaten++;
-  return { type: 'crow', cell, crop };
+  return { type: 'crow', cell, crop, eaten: true };
 }
 
 export function resolveAllAuto(state: GameState, rng: Rng): AutoEvent[] {
@@ -189,7 +216,8 @@ export function validTargets(state: GameState, reel: number): number[] {
 export function useSymbol(state: GameState, reel: number, cell: number | null): number[] | null {
   if (!canUse(state, reel, cell)) return null;
   const r = state.results[reel];
-  r.used = true;
+  r.left--;
+  r.used = r.left <= 0;
   switch (r.symbol) {
     case 'seed':
       state.field[cell!] = { kind: 'normal', growth: 0, fertilized: false };

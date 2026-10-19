@@ -19,8 +19,7 @@ function playDay(s: GameState): void {
   // 種 → 雨・肥料 → 太陽 の順で使う
   const order = ['goldSeed', 'seed', 'rain', 'fertilizer', 'sun'];
   const idx = s.results.map((r, i) => i).sort((a, b) => order.indexOf(s.results[a].symbol) - order.indexOf(s.results[b].symbol));
-  for (const i of idx) {
-    if (!canUse(s, i, null)) continue;
+  for (const i of idx) while (canUse(s, i, null)) {
     const sym = s.results[i].symbol;
     if (sym === 'sun') { useSymbol(s, i, null); continue; }
     const targets = validTargets(s, i);

@@ -17,7 +17,7 @@ export interface SymbolDef {
 }
 
 export const SYMBOLS: Record<SymbolId, SymbolDef> = {
-  seed: { id: 'seed', name: '種', emoji: '🌰', kind: 'manual', desc: '空きマスに作物を植える', rarity: 'normal' },
+  seed: { id: 'seed', name: '種', emoji: '🌰', kind: 'manual', desc: '空きマスに作物を1〜3個植える', rarity: 'normal' },
   goldSeed: { id: 'goldSeed', name: '金の種', emoji: '🌟', kind: 'manual', desc: '空きマスに金の作物を植える', rarity: 'rare' },
   rain: { id: 'rain', name: '雨', emoji: '🌧️', kind: 'manual', desc: '作物1つの成長＋2', rarity: 'normal' },
   sun: { id: 'sun', name: '太陽', emoji: '☀️', kind: 'manual', noTarget: true, desc: '畑の全作物の成長＋1', rarity: 'normal' },
@@ -49,8 +49,14 @@ export const CONFIG = {
   fertilizerMultiplier: 2,
   /** 金貨の額 */
   coinAmount: 3,
-  /** カラスが1回に食べる作物の数 */
-  crowEats: 1,
+  /** カラスが狙った作物を食べる確率（外れると追い払える） */
+  crowEatChance: 0.5,
+  /** 種1枚で植えられる数とその重み（1個:50%・2個:35%・3個:15%）。金の種は常に1個 */
+  seedCountWeights: [
+    { count: 1, weight: 50 },
+    { count: 2, weight: 35 },
+    { count: 3, weight: 15 },
+  ],
 
   /** 強化の価格 */
   upgradePrices: {
@@ -65,8 +71,8 @@ export const CONFIG = {
   /** 年貢：taxPeriod 日ごとに、その日の終わり（次の回転前）に自動で徴収 */
   taxPeriod: 7,
   /** 1回目から順の年貢額。表を超えたら直前の額 × taxGrowth */
-  taxSchedule: [5, 15, 35, 70, 130],
-  taxGrowth: 1.5,
+  taxSchedule: [5, 20, 50, 120, 250],
+  taxGrowth: 1.6,
   /** 年貢が近いことを警告し始める残り日数 */
   taxWarnDays: 2,
 

@@ -45,6 +45,8 @@ let lastSellAt = 0;
 let msgTimer = 0;
 /** 一度でもやった操作。ヒントを順に出すため */
 const done = { spin: false, use: false, sell: false, buy: false, next: false };
+/** その日のカラスの結果（リール番号ごと） */
+let crowOutcome: Record<number, 'eaten' | 'missed' | 'empty'> = {};
 
 // ---- 表示ヘルパー ----
 
@@ -135,7 +137,10 @@ function renderHint(): void {
   const anyRipe = state.field.some(isRipe);
   let text = '';
   if (!done.spin) text = '👇「まわす！」でスロットを回そう（1回転＝畑の1日）';
-  else if (selected !== null) text = SYMBOLS[state.results[selected].symbol].noTarget ? '' : '👆 光っているマスをタップ（出目をもう一度タップで取り消し）';
+  else if (selected !== null) {
+    const r = state.results[selected];
+    text = r.total > 1 ? `👆 光っている空きマスをタップ（あと${r.left}個 植えられる）` : '👆 光っているマスをタップ（出目をもう一度タップで取り消し）';
+  }
   else if (!done.use && usableReels().length > 0) text = '✨ 光っている出目をタップ → 畑のマスをタップで使える';
   else if (!done.sell && anyRipe) text = '🍅 実った作物をタップすると売れる！';
   else if (!done.buy && UPGRADES.some((u) => canBuy(state, u.id))) text = '💰 お金がたまった！ ショップでスロットを強化しよう';
@@ -148,12 +153,16 @@ function reelTag(i: number): { text: string; cls: string } {
   if (!r) return { text: '—', cls: '' };
   const def = SYMBOLS[r.symbol];
   if (def.kind === 'auto') {
-    return r.symbol === 'crow' ? { text: '🐦 自動', cls: 'auto-bad used' } : { text: `+${CONFIG.coinAmount}金`, cls: 'used' };
+    if (r.symbol === 'coin') return { text: `+${CONFIG.coinAmount}金`, cls: 'used' };
+    const outcome = crowOutcome[i];
+    const text = outcome === 'eaten' ? '🐦 パクッ…' : outcome === 'missed' ? '🐦 追い払った' : outcome === 'empty' ? '🐦 空振り' : '🐦 自動';
+    return { text, cls: 'auto-bad used' };
   }
+  const name = r.total > 1 && r.left > 0 ? `${def.name}×${r.left}` : def.name;
   if (r.used) return { text: `${def.name} ✓`, cls: 'used' };
-  if (selected === i) return { text: `${def.name} 選択中`, cls: 'selected' };
-  if (canUse(state, i, null)) return { text: `${def.name} ▶使う`, cls: 'usable' };
-  return { text: `${def.name}（使えない）`, cls: 'dead' };
+  if (selected === i) return { text: `${name} 選択中`, cls: 'selected' };
+  if (canUse(state, i, null)) return { text: `${name} ▶使う`, cls: 'usable' };
+  return { text: `${name}（使えない）`, cls: 'dead' };
 }
 
 function buildReels(): void {
@@ -180,8 +189,26 @@ function renderReelStates(): void {
     const tag = reelTag(i);
     b.className = `reel ${tag.cls}${r?.symbol === 'goldSeed' ? ' rare' : ''}`;
     b.querySelector('.tag')!.textContent = tag.text;
+    renderCount(b, i);
     b.setAttribute('aria-label', r ? `${SYMBOLS[r.symbol].name}: ${tag.text}` : 'リール');
   });
+}
+
+/** 種の残り個数バッジ（×2・×3） */
+function renderCount(reel: HTMLElement, i: number): void {
+  const r = state.results[i];
+  const win = reel.querySelector('.window')!;
+  let badge = win.querySelector('.count');
+  if (!r || r.total <= 1 || r.left <= 0) {
+    badge?.remove();
+    return;
+  }
+  if (!badge) {
+    badge = document.createElement('span');
+    badge.className = 'count';
+    win.appendChild(badge);
+  }
+  badge.textContent = `×${r.left}`;
 }
 
 function renderSpinButton(): void {
@@ -307,6 +334,7 @@ async function onSpin(): Promise<void> {
   const taxDue = state.day > 0 && state.day % CONFIG.taxPeriod === 0;
   const t = nextTax(state);
   const res = startDay(state, rng);
+  crowOutcome = {};
   if (taxDue) {
     await showTaxStamp(t.amount, res.ok);
     if (!res.ok) {
@@ -403,6 +431,19 @@ function onReelLanded(i: number, reel: HTMLElement): void {
     floatText(c.x, c.y - 40, 'レア！金の種', { cls: 'gold', size: 1 });
     vibrate([30, 30, 60]);
   }
+  const total = state.results[i].total;
+  if (total > 1) {
+    renderCount(reel, i);
+    pop(reel.querySelector('.count')!, 1.6);
+    if (total >= 3) {
+      sfx.bonus();
+      burst(c.x, c.y, ['🌰', '✨'], 12, 80);
+      floatText(c.x, c.y - 40, `種×${total}！`, { cls: 'gold', size: 1 });
+      vibrate(40);
+    } else {
+      floatText(c.x, c.y - 40, `×${total}`, { cls: 'good', size: 0.8 });
+    }
+  }
   const tag = reelTag(i);
   reel.className = `reel ${sym === 'goldSeed' ? 'rare ' : ''}${SYMBOLS[sym].kind === 'auto' ? '' : tag.cls}`;
   reel.querySelector('.tag')!.textContent = SYMBOLS[sym].kind === 'auto' ? '…' : tag.text;
@@ -421,9 +462,20 @@ async function resolveAutos(): Promise<void> {
       floatText(center(el.goldBox).x, center(el.goldBox).y + 28, `+${ev.amount}`, { cls: 'gold', size: 0.9 });
       setGold(state.gold);
     } else if (ev.cell === null) {
+      crowOutcome[i] = 'empty';
       sfx.crow();
       floatText(from.x, from.y - 30, 'カラスは空振り', { size: 0.6 });
+    } else if (!ev.eaten) {
+      crowOutcome[i] = 'missed';
+      const plot = el.field.children[ev.cell] as HTMLElement;
+      await new Promise<void>((r) => flyTo(from, plot, symHtml('crow'), 1, r));
+      sfx.shoo();
+      const p = center(plot);
+      burst(p.x, p.y, ['💨', '🪶', '✨'], 8, 60);
+      floatText(p.x, p.y - 20, ev.crop && isRipe(ev.crop) ? 'セーフ！ 守った！' : 'セーフ！', { cls: 'good', size: ev.crop && isRipe(ev.crop) ? 1 : 0.8 });
+      pop(plot, 1.12);
     } else {
+      crowOutcome[i] = 'eaten';
       const plot = el.field.children[ev.cell] as HTMLElement;
       await new Promise<void>((r) => flyTo(from, plot, symHtml('crow'), 1, r));
       sfx.crow();
@@ -513,7 +565,8 @@ function onPlotTap(cell: number): void {
       return;
     }
     useSymbol(state, reel, cell);
-    selected = null;
+    const left = state.results[reel].left;
+    selected = left > 0 && canUse(state, reel, null) ? reel : null;
     done.use = true;
     armedNextDay = false;
     render();
@@ -521,7 +574,9 @@ function onPlotTap(cell: number): void {
       sfx.plant();
       burst(p.x, p.y, sym === 'goldSeed' ? ['✨', '🌟'] : ['🌱', '·'], 8, 40);
       pop(plot, 1.15);
-      floatText(p.x, p.y - 20, sym === 'goldSeed' ? '金の種を植えた！' : '植えた！', { size: 0.7, cls: sym === 'goldSeed' ? 'gold' : 'good' });
+      const more = left > 0 ? `（あと${left}）` : '';
+      floatText(p.x, p.y - 20, sym === 'goldSeed' ? '金の種を植えた！' : `植えた！${more}`, { size: 0.7, cls: sym === 'goldSeed' ? 'gold' : 'good' });
+      if (left > 0 && selected === null) say('空きマスがないので残りの種は使えない');
     } else if (sym === 'rain') {
       sfx.rain();
       rainDrops(plot);
@@ -697,6 +752,7 @@ function showGameOver(): void {
         <tr><td>回転数</td><td>${state.stats.spins}回</td></tr>
         <tr><td>総収入</td><td>${state.stats.totalEarned}金</td></tr>
         <tr><td>売った作物 / 食べられた作物</td><td>${state.stats.cropsSold} / ${state.stats.cropsEaten}</td></tr>
+        <tr><td>追い払ったカラス</td><td>${state.stats.crowsMissed}回</td></tr>
         <tr><td>最初の強化</td><td>${first ? `${first.day}日目（${name(first.id)}）` : 'なし'}</td></tr>
         <tr><td>リール本数</td><td>${state.reels}本</td></tr>
       </table>

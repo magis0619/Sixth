@@ -236,6 +236,23 @@ button {
   filter: brightness(0.25) saturate(0);
 }
 
+.count {
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  background: var(--leaf);
+  color: #fff;
+  border-radius: 8px;
+  padding: 0 6px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  box-shadow: 0 2px 0 #0003;
+}
+
+.reel.spinning .count {
+  display: none;
+}
+
 .reel.spinning .strip {
   filter: blur(1.2px);
 }
