@@ -53,7 +53,15 @@ export type CharmId =
   | 'artisan'
   | 'heater'
   | 'goldenWell'
-  | 'queenHive';
+  | 'queenHive'
+  // ---- 条件を満たすと出る特別なお守り ----
+  | 'thunderstorm'
+  | 'tomatoFest'
+  | 'sunshower'
+  | 'moonFeast'
+  | 'bumperHarvest'
+  | 'crowReturn'
+  | 'lastStraw';
 
 export interface SymbolDef {
   id: SymbolId;
@@ -297,6 +305,10 @@ export const CONFIG = {
   charmChoices: 3,
   /** お守りのレア度ごとの出やすさ（強いお守りほど出にくい） */
   charmTierWeights: { common: 10, uncommon: 5, rare: 1.5 } as Record<CharmTier, number>,
+  /** 同じお守りをこの数そろえると金色に進化して効果が2倍 */
+  goldenAt: 3,
+  /** 豊年満作の大当たり（年貢の回数で増える） */
+  bumperJackpot: 30,
 
   /** 演出のタイミング（ミリ秒） */
   timing: {
@@ -370,6 +382,11 @@ export interface CharmDef {
   desc: (n: number) => string;
   /** 重ねられる上限 */
   max: number;
+  /**
+   * 条件で出る特別なお守り。bag＝袋の中身を満たすと次の年貢後の3択に必ず並ぶ（ふだんの抽選には出ない）、
+   * event＝出来事を満たしたその場でもらえる。hint は図鑑で未達成のときに出す短いヒント
+   */
+  special?: { kind: 'bag' | 'event'; hint: string };
 }
 
 /** お守り。年貢を納めるたびに charmChoices 個から1つ選ぶ。同じものは重ねて効果アップ */
@@ -390,9 +407,43 @@ export const CHARMS: Record<CharmId, CharmDef> = {
   heater: { id: 'heater', tier: 'common', name: '湯たんぽ', emoji: '♨️', desc: () => '霜が1日で溶ける', max: 1 },
   artisan: { id: 'artisan', tier: 'rare', name: 'からくり職人', emoji: '🎰', desc: (n) => `リール＋${n}`, max: 2 },
   taxRelief: { id: 'taxRelief', tier: 'common', name: '年貢の減免', emoji: '📜', desc: (n) => `年貢−${Math.min(50, 10 * n)}%`, max: 5 },
+  thunderstorm: { id: 'thunderstorm', tier: 'rare', name: '雷雨', emoji: '⛈️', desc: () => '雨が斜めにも効く', max: 1, special: { kind: 'bag', hint: '雨をたくさん…？' } },
+  tomatoFest: { id: 'tomatoFest', tier: 'rare', name: 'トマト祭り', emoji: '🍅', desc: () => 'トマトだけの列 さらに×1.5', max: 1, special: { kind: 'bag', hint: 'トマトの種をたくさん…？' } },
+  sunshower: { id: 'sunshower', tier: 'rare', name: '天気雨', emoji: '🌦️', desc: () => '同じ日の雨と太陽が重なったマス +1', max: 1, special: { kind: 'bag', hint: '雨と太陽を両方…？' } },
+  moonFeast: { id: 'moonFeast', tier: 'rare', name: '月の宴', emoji: '🎑', desc: () => '満月が全体+2', max: 1, special: { kind: 'bag', hint: '満月と太陽を…？' } },
+  bumperHarvest: { id: 'bumperHarvest', tier: 'rare', name: '豊年満作', emoji: '🌾', desc: () => '畑を一度に全部売ると大当たり', max: 1, special: { kind: 'event', hint: '畑をまるごと…？' } },
+  crowReturn: { id: 'crowReturn', tier: 'rare', name: 'カラス返し', emoji: '🪃', desc: () => 'カラスが来るたび +3金', max: 1, special: { kind: 'event', hint: 'カラスにたくさん食べられると…？' } },
+  lastStraw: { id: 'lastStraw', tier: 'rare', name: '首の皮', emoji: '🧵', desc: () => '次の年貢が半分', max: 1, special: { kind: 'event', hint: '年貢をギリギリで…？' } },
 };
 
 export const CHARM_ORDER = Object.keys(CHARMS) as CharmId[];
+
+/** ふだんの抽選に出るお守り（特別なお守りは条件でしか出ない） */
+export const NORMAL_CHARMS = CHARM_ORDER.filter((id) => !CHARMS[id].special);
+
+/** 袋の中身で開く特別なお守りの条件（この枚数以上） */
+export const BAG_CONDITIONS: Partial<Record<CharmId, Partial<Record<SymbolId, number>>>> = {
+  thunderstorm: { rain: 5 },
+  tomatoFest: { seed: 6 },
+  sunshower: { rain: 3, sun: 3 },
+  moonFeast: { moon: 2, sun: 3 },
+};
+
+/** 出来事で開く特別なお守りの条件の数 */
+export const EVENT_CONDITIONS = {
+  /** カラスに食べられた回数 */
+  crowReturn: 5,
+  /** 年貢を払ったあとの残りがこの金額以下（lastStrawFrom 回目の年貢から） */
+  lastStraw: 10,
+  lastStrawFrom: 3,
+};
+
+/** 道具の進化：この回数働くと上位の道具に変わる */
+export const TOOL_EVOLVE: Partial<Record<PlaceId, { to: PlaceId; need: number; what: string }>> = {
+  scarecrow: { to: 'bigScarecrow', need: 10, what: '守る' },
+  well: { to: 'goldenWell', need: 20, what: '育てる' },
+  hive: { to: 'queenHive', need: 10, what: '列で売る' },
+};
 
 /** 「足す」強化（ゲーム開始時にショップへ並べるものを選ぶ対象） */
 export type AddUpgradeId = Exclude<UpgradeId, `remove${string}`>;

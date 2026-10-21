@@ -1,10 +1,10 @@
 import './style.css';
 import {
-  CHARMS, CHARM_ORDER, CHARM_PLACE, CHARM_TIER_NAMES, CONFIG, CROPS, FEEDBACK_URL, META, PLACES, PLACE_ORDER, SEEDS, SHAPE_NAMES, SHARE_URL, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL,
+  CHARMS, CHARM_ORDER, CHARM_PLACE, TOOL_EVOLVE, CHARM_TIER_NAMES, CONFIG, CROPS, FEEDBACK_URL, META, PLACES, PLACE_ORDER, SEEDS, SHAPE_NAMES, SHARE_URL, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL,
   type CharmId, type CropKind, type PlaceId, type SymbolId, type UpgradeId,
 } from './config.ts';
 import {
-  bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, chooseCharm, cropPrice, drawDay, drawSymbol, endDay,
+  isGolden, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, chooseCharm, cropPrice, drawDay, drawSymbol, endDay,
   expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells,
   ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState,
 } from './game.ts';
@@ -188,6 +188,15 @@ function loadRun(): GameState | null {
     s.bred ??= [];
     s.lastObstacles ??= [];
     s.runId ??= Math.random().toString(36).slice(2, 10);
+    // 特別なお守り・道具の進化を入れる前の保存データ
+    s.ready ??= [];
+    s.specials ??= [];
+    s.toolXp ??= s.field.map(() => 0);
+    s.today ??= { rain: [], sun: [], boosted: [] };
+    s.halfTax ??= false;
+    s.notices ??= [];
+    s.stats.crowEaten ??= 0;
+    CHARM_ORDER.forEach((id) => (s.charms[id] ??= 0));
     s.removed ??= {};
     // 畑の広さを変えられるようにする前（3×3固定）の保存データは、マスの番号を5×5の数え方に直す
     if (s.cols === undefined) {
@@ -240,6 +249,55 @@ function render(): void {
   renderCharms();
   saveRun();
   fitLayout();
+  flushNotices();
+}
+
+/** ルール側から届いた知らせ（特別なお守り・金色・進化・大当たり）を演出する */
+function flushNotices(): void {
+  const list = state.notices.splice(0);
+  // 直前の操作の演出（売った・買った）と重ならないよう少し遅らせる
+  list.forEach((n: Notice, k) => window.setTimeout(() => playNotice(n), 700 + k * 900));
+}
+
+function playNotice(n: Notice): void {
+  const top = { x: window.innerWidth / 2, y: window.innerHeight * 0.3 };
+  const tab = visibleOr(null, 'charms');
+  if (n.kind === 'ready') {
+    sfx.rare();
+    floatText(top.x, top.y, `${CHARMS[n.id].name} 解放！`, { cls: 'gold', size: 1.2, dur: 1800 });
+    floatText(top.x, top.y + 34, '次の年貢で選べる', { size: 0.7, dur: 1800 });
+    burst(top.x, top.y, [art(n.id), '✨', '⭐'], 14, 110);
+    pop(tab, 1.2);
+  } else if (n.kind === 'got') {
+    sfx.charmGet();
+    sfx.rare();
+    flash('#ffe680', 400);
+    void slamText(`${CHARMS[n.id].name}！`, { size: 0.7, dur: 1500 });
+    burst(top.x, top.y + 40, [art(n.id), '✨', '🌟'], 18, 140);
+    vibrate([40, 30, 80]);
+    pop(tab, 1.3);
+  } else if (n.kind === 'golden') {
+    sfx.fever();
+    flash('#ffd84a', 500);
+    void slamText(`✦ ${CHARMS[n.id].name} 金色！`, { size: 0.6, dur: 1500 });
+    coinRain(20);
+  } else if (n.kind === 'evolve') {
+    const plot = el.field.children[n.cell];
+    if (!plot) return;
+    const q = center(plot);
+    sfx.newReel();
+    sfx.rare();
+    burst(q.x, q.y, ['✨', '🌟', '⭐'], 16, 90);
+    pop(plot, 1.3);
+    floatText(q.x, q.y - 30, `${PLACES[n.to].name}に進化！`, { cls: 'gold', size: 1, dur: 1600 });
+  } else if (n.kind === 'jackpot') {
+    sfx.fever();
+    coinRain(50);
+    confetti(40);
+    void slamText('豊年満作!!', { dur: 1500 });
+    const f = center(el.field);
+    void rollNumber(f.x, f.y + 40, n.amount, { prefix: '+', size: 1.1, hold: 700, rise: true });
+  }
 }
 
 // ---- 画面の高さに合わせて畑のマスの大きさを決める（まわすボタンが必ず画面内に入るように） ----
@@ -286,7 +344,8 @@ function renderCharms(): void {
     .map((id) => {
       const c = CHARMS[id];
       const n = state.charms[id];
-      return `<span class="charm tier-${c.tier}" data-charm="${id}"><span class="e">${art(id)}</span><span><b>${c.name}${n > 1 ? ` ×${n}` : ''}</b><small>${c.desc(n)}</small></span></span>`;
+      const gold = isGolden(state, id);
+      return `<span class="charm tier-${c.tier}${gold ? ' golden' : ''}${c.special ? ' special' : ''}" data-charm="${id}"><span class="e">${art(id)}</span><span><b>${c.name}${n > 1 ? ` ×${n}` : ''}${gold ? ' ✦' : ''}</b><small>${c.desc(gold ? n * 2 : n)}</small></span></span>`;
     })
     .join('');
 }
@@ -913,11 +972,13 @@ function showCharmOffer(): Promise<void> {
           .map((id) => {
             const c = CHARMS[id];
             const n = state.charms[id];
-            return `<button class="charm-card tier-${c.tier}" data-charm="${id}" disabled>
-              <span class="tier">${CHARM_TIER_NAMES[c.tier]}</span>
+            // 3個目で金色（効果2倍）
+            const toGold = c.max >= CONFIG.goldenAt && n + 1 === CONFIG.goldenAt;
+            return `<button class="charm-card tier-${c.tier}${c.special ? ' special' : ''}${toGold ? ' golden' : ''}" data-charm="${id}" disabled>
+              <span class="tier">${c.special ? '特別' : CHARM_TIER_NAMES[c.tier]}</span>
               <span class="e">${art(id)}</span>
               <b>${c.name}${n > 0 ? ` <span class="lv">${n}→${n + 1}</span>` : ''}</b>
-              <small>${c.desc(n + 1)}</small>
+              <small>${toGold ? '✦金色に！ ' : ''}${c.desc(toGold ? (n + 1) * 2 : n + 1)}</small>
             </button>`;
           })
           .join('')}
@@ -1595,7 +1656,8 @@ function onPlotTap(cell: number): void {
   }
   const tool = state.tools[cell];
   if (tool) {
-    say(`${PLACES[tool].name}：${PLACES[tool].desc}`);
+    const ev = TOOL_EVOLVE[tool];
+    say(`${PLACES[tool].name}：${PLACES[tool].desc}${ev ? `（進化 ${state.toolXp[cell]}/${ev.need}）` : ''}`);
     pop(plot, 1.08);
     return;
   }

@@ -2,7 +2,7 @@
 // npm run sim -- [回数] [starter|full|addX,addY…] [smart|random]   （FOCUS=1 で買い物を絞る）
 //   smart: 列を狙って置き、列がそろうまで待つ / random: 置き場所・使う場所・買い物を適当に決め、実ったらすぐ売る
 
-import { CHARM_ORDER, CONFIG, META, PLACES, SEEDS, SYMBOLS, type CropKind, type PlaceId, type UpgradeId } from '../src/config.ts';
+import { CHARMS, CHARM_ORDER, CONFIG, META, PLACES, SEEDS, SYMBOLS, type CropKind, type PlaceId, type UpgradeId } from '../src/config.ts';
 import {
   buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, expand, expandPrice, canUse, cellAt, cellX, cellY, chooseCharm, fieldCells,
   isOpen, isRipe, newGame, nextTax, place, placePrice, pullWeed, resolveAllAuto, resolveFever, ripeGroup, sell, shapeCells,
@@ -147,7 +147,7 @@ for (let n = 0; n < runs; n++) {
     const r = startDay(s, Math.random);
     if (!r.ok) break;
     resolveFever(s, Math.random);
-    if (s.charmOffer) chooseCharm(s, smart ? s.charmOffer[0] : pick(s.charmOffer));
+    if (s.charmOffer) chooseCharm(s, smart ? (s.charmOffer.find((id) => !CHARMS[id].special) ?? s.charmOffer[0]) : pick(s.charmOffer));
     resolveAllAuto(s, Math.random);
     playDay(s);
   }

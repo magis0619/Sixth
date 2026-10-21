@@ -310,6 +310,30 @@ const ART = {
     <circle cx="24" cy="26" r="4" fill="#f2df8a"/><circle cx="38" cy="38" r="5" fill="#f2df8a"/><circle cx="40" cy="22" r="2.5" fill="#f2df8a"/>
     <path d="M24 36 Q27 39 30 36 M36 30 Q39 33 42 30" fill="none" stroke="${INK}" stroke-width="2" stroke-linecap="round"/>
     ${sparkle(10, 12, 5, C.white)}${sparkle(56, 52, 4, C.white)}`,
+  // ---- 条件で出る特別なお守り ----
+  thunderstorm: `
+    <path d="M14 34 Q6 34 8 26 Q10 18 18 20 Q20 10 32 12 Q42 6 48 16 Q58 16 56 26 Q60 34 50 34Z" fill="#8a8fa8" ${S}/>
+    <path d="M34 30 L24 46 H32 L26 60 L44 40 H35 L41 30Z" fill="${C.gold}" ${S}/>`,
+  tomatoFest: '',
+  sunshower: `
+    <circle cx="22" cy="22" r="10" fill="${C.gold}" ${S}/>
+    <path d="M22 4 V8 M22 36 V40 M4 22 H8 M36 22 H40 M9 9 L12 12 M32 32 L35 35 M9 35 L12 32" fill="none" ${S}/>
+    <path d="M30 40 Q22 40 24 33 Q26 26 33 28 Q36 20 45 22 Q54 20 56 30 Q62 34 56 40Z" fill="${C.cloud}" ${S}/>
+    ${drop(34, 46, 0.8)}${drop(46, 48, 0.8)}`,
+  moonFeast: `
+    <circle cx="40" cy="20" r="13" fill="#fff4b8" ${S}/>
+    <path d="M18 60 V30" fill="none" stroke="${C.brown}" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="18" cy="30" r="7" fill="${C.white}" ${S}/><circle cx="18" cy="42" r="7" fill="${C.pink}" ${S}/><circle cx="18" cy="54" r="7" fill="${C.greenLight}" ${S}/>`,
+  bumperHarvest: '',
+  crowReturn: `
+    <path d="M10 44 Q26 10 54 14 Q40 24 36 40 Q26 34 10 44Z" fill="${C.blackLight}" ${S}/>
+    <circle cx="44" cy="46" r="11" fill="${C.gold}" ${S}/><rect x="40" y="42" width="8" height="8" fill="${C.goldDark}" ${S}/>`,
+  lastStraw: `
+    <rect x="16" y="14" width="32" height="8" rx="3" fill="${C.tan}" ${S}/>
+    <rect x="16" y="46" width="32" height="8" rx="3" fill="${C.tan}" ${S}/>
+    <rect x="20" y="22" width="24" height="24" fill="${C.red}" ${S}/>
+    <path d="M20 28 H44 M20 34 H44 M20 40 H44" fill="none" stroke="${C.redLight}" stroke-width="2"/>
+    <path d="M44 34 Q56 36 54 50 Q52 58 58 60" fill="none" stroke="${C.red}" stroke-width="3" stroke-linecap="round"/>`,
   // ---- 畑に置くもの ----
   bigScarecrow: `
     <path d="M32 28 V60 M8 36 H56" fill="none" stroke="${C.brown}" stroke-width="5" stroke-linecap="round"/>
@@ -388,6 +412,9 @@ const ART = {
 ART.seed = packet('#e5533d', ART.tomato);
 ART.berrySeed = packet('#ff8fb1', strawberry);
 ART.pumpkinSeed = packet('#f08a24', pumpkin);
+// トマト祭り：トマトに祭りの旗、豊年満作：俵に光
+ART.tomatoFest = `${ART.tomato}<path d="M44 4 V24 M44 4 L58 9 L44 14" fill="${C.red}" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/>`;
+ART.bumperHarvest = `${ART.bale}${sparkle(52, 12, 7, C.gold)}${sparkle(10, 52, 5, C.gold)}`;
 
 
 export type ArtId = keyof typeof ART;

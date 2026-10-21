@@ -3227,3 +3227,24 @@ body::before {
 .plot.tile-compost .tile-label {
   text-shadow: 0 2px 0 rgba(80, 50, 0, 0.7);
 }
+
+/* ---- 特別なお守り・金色のお守り ---- */
+.charm.special,
+.charm-card.special {
+  background: linear-gradient(135deg, #fff6fb, #f3ecff);
+  box-shadow: inset 0 0 0 2px #b98bff;
+}
+
+.charm-card.special .tier {
+  background: #8a5bff;
+}
+
+.charm.golden,
+.charm-card.golden {
+  background: linear-gradient(135deg, #fff6c8, #ffe27a 60%, #fff3b0);
+  box-shadow: inset 0 0 0 3px var(--gold), 0 0 12px rgba(245, 197, 24, 0.7);
+}
+
+.charm.golden b {
+  color: #8a5a00;
+}
