@@ -4,8 +4,8 @@ import {
   type CharmId, type CropKind, type PlaceId, type SymbolId, type UpgradeId,
 } from './config.ts';
 import {
-  bagTotal, buy, buyPlace, canBuy, canBuyPlace, canPlace, canUse, cellMultiplier, chooseCharm, cropPrice, drawDay, drawSymbol, endDay,
-  inField, inSameCropLine, isRipe, place, placePrice, shapeCells,
+  bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, chooseCharm, cropPrice, drawDay, drawSymbol, endDay,
+  expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells,
   ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState,
 } from './game.ts';
 import { isMuted, sfx, toggleMute, unlockAudio } from './audio.ts';
@@ -682,6 +682,17 @@ function showExpanded(): void {
 /** 畑のショップ：道具・特別なマス */
 function renderFarmShop(): void {
   const items: { key: string; ico: string; name: string; effect: string; price: number | null; ok: boolean }[] = [];
+  const ep = expandPrice(state);
+  const nextCols = state.cols <= state.rows ? state.cols + 1 : state.cols;
+  const nextRows = state.cols <= state.rows ? state.rows : state.rows + 1;
+  items.push({
+    key: 'expand',
+    ico: art('expand'),
+    name: '畑を広げる',
+    effect: ep === null ? 'これ以上は広げられない（5×5）' : `${state.cols}×${state.rows} → ${nextCols}×${nextRows}`,
+    price: ep,
+    ok: canExpand(state),
+  });
   PLACE_ORDER.filter((id) => PLACES[id].price !== null).forEach((id) =>
     items.push({ key: id, ico: art(PLACE_ART[id]), name: PLACES[id].name, effect: PLACES[id].desc, price: placePrice(state, id), ok: canBuyPlace(state, id) }),
   );
@@ -691,7 +702,7 @@ function renderFarmShop(): void {
       const b = document.createElement('button');
       b.className = 'item';
       b.dataset.id = it.key;
-      b.addEventListener('click', () => onBuyFarm(it.key as PlaceId));
+      b.addEventListener('click', () => onBuyFarm(it.key as PlaceId | 'expand'));
       el.farmShop.appendChild(b);
     });
   }
@@ -704,10 +715,23 @@ function renderFarmShop(): void {
   });
 }
 
-function onBuyFarm(key: PlaceId): void {
+function onBuyFarm(key: PlaceId | 'expand'): void {
   unlockAudio();
   if (busy || state.over) return;
   const card = el.farmShop.querySelector(`[data-id="${key}"]`) as HTMLElement;
+  if (key === 'expand') {
+    const price = expandPrice(state);
+    if (price === null || !expand(state)) {
+      sfx.error();
+      shake(card, 4);
+      say(price === null ? 'これ以上は広げられない' : `あと${price - state.gold}金 足りない`);
+      return;
+    }
+    closeSheet();
+    render();
+    showExpanded();
+    return;
+  }
   if (!buyPlace(state, key)) {
     sfx.error();
     shake(card, 4);
@@ -926,7 +950,6 @@ function showCharmOffer(): Promise<void> {
           const got = visibleOr(el.charms.querySelector(`[data-charm="${id}"]`), 'charms');
           if (got) pop(got, 1.2);
           if (CHARM_PLACE[id]) say(`${PLACES[CHARM_PLACE[id]!].name}を置くマスをタップ`, 3000);
-          if (id === 'fieldExpand') showExpanded();
           resolve();
         }, 650);
       }),
@@ -1883,7 +1906,7 @@ function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
       <li><b>自動の出目</b>（カラス・虫・金貨・商人・四つ葉）は止まった瞬間に効く</li>
       <li>作物は<b>雨・太陽・蜂</b>でしか育たない。実をタップで売る。<b>苺</b>は2段階で4金、<b>トマト</b>は3段階で6金、<b>かぼちゃ</b>は5段階で24金（カラスに食べられない）、<b>金のとうもろこし</b>は3段階で30金</li>
       <li><b>出目の形</b>：雨は<b>十字</b>、太陽は<b>縦一列</b>、蜂は<b>斜め</b>（選んだマスと斜め4マス）の作物を育てる。どこに落とすかで育つ数が変わる</li>
-      <li><b>畑を広げる・道具</b>：レアのお守り「開墾」で畑が広がる（最大5×5）。<b>満月</b>（全作物＋1）はいつもショップで足せる（足すたび高くなる）。ショップではかかし・井戸・巣箱などの道具や、堆肥・水路のマスを買って好きな所に置ける。道具はマスを1つ使う（植えられず列にも入らない）。堆肥・水路のマスの上にも道具を置ける</li>
+      <li><b>畑を広げる・道具</b>：ショップで畑を広げられる（最大5×5・かなり高い）。<b>満月</b>（全作物＋1）はいつもショップで足せる（足すたび高くなる）。ショップではかかし・井戸・巣箱などの道具や、堆肥・水路のマスを買って好きな所に置ける。道具はマスを1つ使う（植えられず列にも入らない）。堆肥・水路のマスの上にも道具を置ける</li>
       <li><b>お邪魔</b>：年貢を納めるたびに虫・雑草・タヌキ・霜のどれかが袋に増える。<b>雑草</b>は空きマスを塞いで広がる（タップ${CONFIG.weedPullCost}金で抜く）、<b>タヌキ</b>は実ったまま置いた一番高い作物を持っていく（実りがなければお金を盗む）、<b>霜</b>はマスを${CONFIG.frostDays}日凍らせる（植える・育つ・売るができない）。ショップで消せる（消すたび高くなる）</li>
       <li><b>注文</b>：週ごとにお客さんから「◯◯を△個」の注文が来る。期日までに売ると報酬の金がもらえる</li>
       <li><b>年貢</b>：${CONFIG.taxPeriod}日ごとに自動で徴収。払えないと終わり。${CONFIG.winTaxes}回納めるとクリア</li>

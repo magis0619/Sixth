@@ -4,7 +4,7 @@
 
 import { CHARM_ORDER, CONFIG, META, PLACES, SEEDS, SYMBOLS, type CropKind, type PlaceId, type UpgradeId } from '../src/config.ts';
 import {
-  buy, buyPlace, canBuy, canBuyPlace, canPlace, canUse, cellAt, cellX, cellY, chooseCharm, fieldCells,
+  buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, expand, expandPrice, canUse, cellAt, cellX, cellY, chooseCharm, fieldCells,
   isOpen, isRipe, newGame, nextTax, place, placePrice, pullWeed, resolveAllAuto, resolveFever, ripeGroup, sell, shapeCells,
   startDay, upgradePrice, useSymbol, validTargets, type GameState,
 } from '../src/game.ts';
@@ -115,11 +115,13 @@ function playDay(s: GameState): void {
     bought = false;
     if (!smart) {
       const opts: (() => boolean)[] = [];
+      if (canExpand(s) && s.gold - expandPrice(s)! >= reserve) opts.push(() => expand(s));
       (Object.keys(PLACES) as PlaceId[]).forEach((id) => { if (canBuyPlace(s, id) && s.gold - placePrice(s, id)! >= reserve && Math.random() < 0.3) opts.push(() => buyPlace(s, id)); });
       PRIORITY.forEach((id) => { if (wants(s, id) && canBuy(s, id) && s.gold - upgradePrice(s, id) >= reserve) opts.push(() => buy(s, id)); });
       if (opts.length) { pick(opts)(); bought = true; }
       continue;
     }
+    if (canExpand(s) && s.gold - expandPrice(s)! >= reserve) { expand(s); bought = true; continue; }
     if (!s.bought.compost && canBuyPlace(s, 'compost') && s.gold - placePrice(s, 'compost')! >= reserve) { buyPlace(s, 'compost'); bought = true; continue; }
     for (const id of PRIORITY) {
       if (wants(s, id) && canBuy(s, id) && s.gold - upgradePrice(s, id) >= reserve) { buy(s, id); bought = true; break; }
@@ -145,7 +147,7 @@ for (let n = 0; n < runs; n++) {
     const r = startDay(s, Math.random);
     if (!r.ok) break;
     resolveFever(s, Math.random);
-    if (s.charmOffer) chooseCharm(s, smart ? (s.charmOffer.includes('fieldExpand') ? 'fieldExpand' : s.charmOffer[0]) : pick(s.charmOffer));
+    if (s.charmOffer) chooseCharm(s, smart ? s.charmOffer[0] : pick(s.charmOffer));
     resolveAllAuto(s, Math.random);
     playDay(s);
   }

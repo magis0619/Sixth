@@ -60,7 +60,7 @@ export interface GameState {
   /** 手に入れて、まだ畑に置いていない道具・特別なマス */
   stock: PlaceId[];
   /** 買った回数（畑を広げる・道具ごと。価格が上がる） */
-  bought: Partial<Record<PlaceId, number>>;
+  bought: Partial<Record<PlaceId | 'expand', number>>;
   /** 雑草が生えているマス（植えられない。毎日となりへ広がる） */
   weeds: boolean[];
   /** 霜で凍っている残り日数（0 は凍っていない）。凍ったマスは植える・育つ・売るができない */
@@ -912,7 +912,6 @@ export function chooseCharm(state: GameState, id: CharmId): boolean {
   if (id === 'artisan') state.reels = Math.min(CONFIG.maxReels, state.reels + 1);
   const place = CHARM_PLACE[id];
   if (place) state.stock.push(place);
-  if (id === 'fieldExpand') expandField(state);
   state.charmOffer = null;
   state.stats.charms.push({ day: state.day, id });
   return true;
@@ -920,9 +919,22 @@ export function chooseCharm(state: GameState, id: CharmId): boolean {
 
 // ---- 畑を広げる・道具と特別なマス ----
 
-/** 畑を列→行の順に1つ広げる（3×3 → 4×3 → 4×4 → 5×4 → 5×5）。お守り「開墾」で呼ぶ */
-export function expandField(state: GameState): boolean {
-  if (state.cols >= CONFIG.fieldCols && state.rows >= CONFIG.fieldRows) return false;
+export function expandPrice(state: GameState): number | null {
+  const p = CONFIG.expandPrices[state.bought.expand ?? 0];
+  if (p === undefined) return null;
+  return Math.max(1, Math.round(p * (1 - Math.min(0.5, 0.1 * state.charms.bargain))));
+}
+
+export function canExpand(state: GameState): boolean {
+  const p = expandPrice(state);
+  return !state.over && p !== null && state.gold >= p;
+}
+
+/** 列→行の順に1つ広げる（3×3 → 4×3 → 4×4 → 5×4 → 5×5） */
+export function expand(state: GameState): boolean {
+  if (!canExpand(state)) return false;
+  state.gold -= expandPrice(state)!;
+  state.bought.expand = (state.bought.expand ?? 0) + 1;
   if (state.cols <= state.rows) state.cols++;
   else state.rows++;
   return true;

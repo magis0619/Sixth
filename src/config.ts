@@ -53,8 +53,7 @@ export type CharmId =
   | 'artisan'
   | 'heater'
   | 'goldenWell'
-  | 'queenHive'
-  | 'fieldExpand';
+  | 'queenHive';
 
 export interface SymbolDef {
   id: SymbolId;
@@ -152,12 +151,12 @@ export interface PlaceDef {
 export const PLACES: Record<PlaceId, PlaceDef> = {
   scarecrow: { id: 'scarecrow', kind: 'tool', name: 'かかし', desc: '周り8マスの作物をカラスとタヌキから守る', price: 20 },
   bigScarecrow: { id: 'bigScarecrow', kind: 'tool', name: '大かかし', desc: '2マス以内の作物をカラスとタヌキから守る', price: null },
-  well: { id: 'well', kind: 'tool', name: '井戸', desc: '上下左右の作物が毎日成長＋1', price: 40 },
+  well: { id: 'well', kind: 'tool', name: '井戸', desc: '上下左右の作物が毎日成長＋1', price: 60 },
   goldenWell: { id: 'goldenWell', kind: 'tool', name: '黄金の井戸', desc: '周り8マスの作物が毎日成長＋1', price: null },
   hive: { id: 'hive', kind: 'tool', name: '巣箱', desc: '周り8マスの作物の売値＋2', price: 30 },
   queenHive: { id: 'queenHive', kind: 'tool', name: '女王蜂の巣箱', desc: '周り8マスの作物の売値＋6', price: null },
   compost: { id: 'compost', kind: 'tile', name: '堆肥のマス', desc: 'このマスの作物の売値×2', price: 35 },
-  water: { id: 'water', kind: 'tile', name: '水路のマス', desc: 'このマスの作物が毎日成長＋1', price: 30 },
+  water: { id: 'water', kind: 'tile', name: '水路のマス', desc: 'このマスの作物が毎日成長＋1', price: 45 },
 };
 
 export const PLACE_ORDER = Object.keys(PLACES) as PlaceId[];
@@ -175,7 +174,8 @@ export const CONFIG = {
   /** 始めの広さ（3×3）。広げるたびに列→行の順に1つ増える */
   startCols: 3,
   startRows: 3,
-  /** 畑はレアのお守り「開墾」でしか広げられない（3×3 → 4×3 → 4×4 → 5×4 → 5×5） */
+  /** 畑を広げる価格（広げた回数ごと。3×3 → 4×3 → 4×4 → 5×4 → 5×5）。かなり高め */
+  expandPrices: [70, 130, 220, 340],
   /** 道具・特別なマスは同じ物を買うたびにこの倍率で高くなる */
   placeGrowth: 1.5,
   /** 初期リール本数と上限 */
@@ -367,7 +367,6 @@ export const CHARMS: Record<CharmId, CharmDef> = {
   seedSack: { id: 'seedSack', tier: 'rare', name: '大きな種袋', emoji: '🎒', desc: (n) => `種で植えられる数＋${n}`, max: Infinity },
   sunBlessing: { id: 'sunBlessing', tier: 'rare', name: '日だまり', emoji: '🌻', desc: (n) => `太陽の成長＋${n}`, max: 2 },
   goldenWell: { id: 'goldenWell', tier: 'rare', name: '黄金の井戸', emoji: '⛲', desc: () => '黄金の井戸を畑に置く（周り8マスの作物が毎日成長＋1）', max: Infinity },
-  fieldExpand: { id: 'fieldExpand', tier: 'rare', name: '開墾', emoji: '🚜', desc: () => '畑を1列（または1行）広げる。最大5×5', max: 4 },
   queenHive: { id: 'queenHive', tier: 'uncommon', name: '女王蜂の巣箱', emoji: '👑', desc: () => '女王蜂の巣箱を畑に置く（周り8マスの作物の売値＋6）', max: Infinity },
   bargain: { id: 'bargain', tier: 'uncommon', name: '値切り上手', emoji: '🏷️', desc: (n) => `強化の価格−${Math.min(50, 10 * n)}%`, max: 5 },
   scarecrow: { id: 'scarecrow', tier: 'common', name: '大かかし', emoji: '🎃', desc: () => '大かかしを畑に置く（2マス以内の作物をカラスとタヌキから守る）', max: Infinity },

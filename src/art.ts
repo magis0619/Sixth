@@ -310,7 +310,6 @@ const ART = {
     <circle cx="24" cy="26" r="4" fill="#f2df8a"/><circle cx="38" cy="38" r="5" fill="#f2df8a"/><circle cx="40" cy="22" r="2.5" fill="#f2df8a"/>
     <path d="M24 36 Q27 39 30 36 M36 30 Q39 33 42 30" fill="none" stroke="${INK}" stroke-width="2" stroke-linecap="round"/>
     ${sparkle(10, 12, 5, C.white)}${sparkle(56, 52, 4, C.white)}`,
-  fieldExpand: '',
   // ---- 畑に置くもの ----
   bigScarecrow: `
     <path d="M32 28 V60 M8 36 H56" fill="none" stroke="${C.brown}" stroke-width="5" stroke-linecap="round"/>
@@ -389,8 +388,7 @@ const ART = {
 ART.seed = packet('#e5533d', ART.tomato);
 ART.berrySeed = packet('#ff8fb1', strawberry);
 ART.pumpkinSeed = packet('#f08a24', pumpkin);
-// 開墾のお守りは「畑を広げる」の絵
-ART.fieldExpand = ART.expand;
+
 
 export type ArtId = keyof typeof ART;
 
