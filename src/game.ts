@@ -44,6 +44,8 @@ export interface Purchase {
 }
 
 export interface GameState {
+  /** このプレイの識別子（記録の集計用） */
+  runId: string;
   /** 0 = まだ1回も回していない */
   day: number;
   gold: number;
@@ -122,6 +124,7 @@ export const ALL_ADDS: AddUpgradeId[] = ['addSeed', 'addBerrySeed', 'addPumpkinS
 
 export function newGame(setup: GameSetup = { shop: ALL_ADDS, charmPool: CHARM_ORDER }): GameState {
   return {
+    runId: Math.random().toString(36).slice(2, 10),
     shop: [...setup.shop],
     pool: [...(setup.pool ?? setup.shop)],
     weekly: [],

@@ -14,6 +14,7 @@ import {
   unlockCharm, type MetaState,
 } from './meta.ts';
 import { art, type ArtId } from './art.ts';
+import { track } from './telemetry.ts';
 import type { Crop } from './game.ts';
 import {
   burst, center, coinRain, confetti, flash, floatText, flyTo, hitStop, isCalm, pop, rollNumber, scanlines, shake, shakeFor, sleep, slamText, slowFactor,
@@ -186,6 +187,7 @@ function loadRun(): GameState | null {
     s.weekly ??= [];
     s.bred ??= [];
     s.lastObstacles ??= [];
+    s.runId ??= Math.random().toString(36).slice(2, 10);
     s.removed ??= {};
     // 畑の広さを変えられるようにする前（3×3固定）の保存データは、マスの番号を5×5の数え方に直す
     if (s.cols === undefined) {
@@ -341,37 +343,33 @@ function renderHint(): void {
   if (state.stock.length && selected === null) {
     const d = PLACES[state.stock[0]];
     el.hint.className = 'hint place';
-    el.hint.textContent = `👆 ${d.name}を置くマスをタップ（${d.desc}）`;
+    el.hint.textContent = `👆 ${d.name}を置く`;
     return;
   }
   if (state.day > 0 && t.daysLeft <= CONFIG.taxWarnDays && state.gold < t.amount) {
     // 不足は年貢の札が示すので、ここでは打てる手だけを言う
     const ripe = state.field.some(isRipe);
     el.hint.className = ripe ? 'hint danger' : 'hint';
-    el.hint.textContent = ripe ? '実った作物を売って年貢に備えよう' : '';
+    el.hint.textContent = ripe ? '🍅 売って年貢へ' : '';
     if (ripe) return;
   }
   if (state.day > CONFIG.hintUntilDay) {
-    el.hint.textContent = !done.line && hasRipeGroup() ? '✨ 列がそろった！ タップで列ごとまとめて売れる' : '';
+    el.hint.textContent = !done.line && hasRipeGroup() ? '✨ 列！ タップで売る' : '';
     return;
   }
   const anyRipe = state.field.some(isRipe);
   let text = '';
-  if (!done.spin) text = '👇「まわす！」でスロットを回そう（1回転＝畑の1日）';
+  if (!done.spin) text = '👇 まわす';
   else if (selected !== null) {
     const r = state.results[selected];
     const shape = SYMBOLS[r.symbol].shape;
-    text = r.total > 1
-      ? `👆 光っている空きマスをタップ（あと${r.left}個 植えられる）。縦・横・斜めに3つそろえると高く売れる`
-      : shape
-        ? `👆 マスをタップ：そこを中心に${SHAPE_NAMES[shape]}の作物が育つ`
-        : '👆 光っているマスをタップ（出目をもう一度タップで取り消し）';
+    text = r.total > 1 ? `👆 植える ×${r.left}` : shape ? `👆 ${SHAPE_NAMES[shape]}に効く` : '👆 マスを選ぶ';
   }
-  else if (!done.line && hasRipeGroup()) text = '✨ 列がそろった！ 縦・横・斜めに3つそろった実はタップで列ごと売れる（単品は半値）';
-  else if (!done.use && usableReels().length > 0) text = '✨ 光っている出目をタップ → 畑のマスをタップで使える';
-  else if (!done.sell && anyRipe) text = '🍅 実った作物をタップすると売れる。単品は半値なので、列がそろうまで待つのもあり';
-  else if (!done.buy && UPGRADES.some((u) => canBuy(state, u.id))) text = '💰 お金がたまった！ ショップでスロットを強化しよう';
-  else if (!done.next && done.spin && usableReels().length === 0) text = '▶ 次の日へ進もう。作物は雨と太陽でしか育たない';
+  else if (!done.line && hasRipeGroup()) text = '✨ 列！ タップで売る';
+  else if (!done.use && usableReels().length > 0) text = '👆 光る出目 → マス';
+  else if (!done.sell && anyRipe) text = '🍅 3つ並べると高く売れる';
+  else if (!done.buy && UPGRADES.some((u) => canBuy(state, u.id))) text = '💰 ショップへ';
+  else if (!done.next && done.spin && usableReels().length === 0) text = '▶ 次の日へ';
   el.hint.textContent = text;
 }
 
@@ -734,7 +732,7 @@ function onBuyFarm(key: PlaceId | 'expand'): void {
     if (price === null || !expand(state)) {
       sfx.error();
       shake(card, 4);
-      say(price === null ? 'これ以上は広げられない' : `あと${price - state.gold}金 足りない`);
+      say(price === null ? '最大' : `${price - state.gold}金たりない`);
       return;
     }
     closeSheet();
@@ -745,14 +743,14 @@ function onBuyFarm(key: PlaceId | 'expand'): void {
   if (!buyPlace(state, key)) {
     sfx.error();
     shake(card, 4);
-    say(`あと${(placePrice(state, key) ?? 0) - state.gold}金 足りない`);
+    say(`${(placePrice(state, key) ?? 0) - state.gold}金たりない`);
     return;
   }
   sfx.buy();
   selected = null;
   closeSheet();
   render();
-  say(`${PLACES[key].name}を置くマスをタップ`);
+  say(`👆 ${PLACES[key].name}を置く`);
 }
 
 function fieldCells(): number[] {
@@ -799,6 +797,7 @@ async function onSpin(): Promise<void> {
   const res = endDay(state, rng);
   autoOutcome = {};
   if (res.tax !== null) {
+    if (res.ok) track('progress', state, { tax: res.tax });
     await showTaxStamp(res.tax, res.ok);
     if (!res.ok) {
       await witherField();
@@ -908,7 +907,7 @@ function showCharmOffer(): Promise<void> {
   el.overlay.innerHTML = `
     <div class="modal charm-modal" role="dialog" aria-label="お守りを選ぶ">
       <h2>🎁 お守りを1つ選ぼう</h2>
-      <p class="sub">年貢${state.taxesPaid}回 納付のごほうび。同じお守りは重ねるほど強くなる</p>
+      <p class="sub">重ねると強くなる</p>
       <div class="charm-choices">
         ${offer
           .map((id) => {
@@ -960,7 +959,7 @@ function showCharmOffer(): Promise<void> {
           }
           const got = visibleOr(el.charms.querySelector(`[data-charm="${id}"]`), 'charms');
           if (got) pop(got, 1.2);
-          if (CHARM_PLACE[id]) say(`${PLACES[CHARM_PLACE[id]!].name}を置くマスをタップ`, 3000);
+          if (CHARM_PLACE[id]) say(`👆 ${PLACES[CHARM_PLACE[id]!].name}を置く`, 3000);
           resolve();
         }, 650);
       }),
@@ -1457,12 +1456,12 @@ function onReelTap(i: number): void {
   const def = SYMBOLS[r.symbol];
   const reel = el.reels.children[i] as HTMLElement;
   if (def.kind === 'auto') {
-    say(`${def.name}は自動で効果が出る出目`);
+    say(`${def.name}：自動`);
     shake(reel, 3);
     return;
   }
   if (r.used) {
-    say('この出目はもう使った');
+    say('使用済み');
     shake(reel, 3);
     return;
   }
@@ -1475,7 +1474,7 @@ function onReelTap(i: number): void {
   if (!canUse(state, i, null)) {
     sfx.error();
     shake(reel, 4);
-    say(SEEDS[r.symbol] ? '空きマスがない！ 実った作物を売ろう' : r.symbol === 'fertilizer' ? '肥料をまける作物がない' : '育てる作物がない');
+    say(SEEDS[r.symbol] ? '空きマスなし' : '使える作物なし');
     return;
   }
   if (def.shape === 'all') {
@@ -1485,7 +1484,7 @@ function onReelTap(i: number): void {
   selected = i;
   armedNextDay = false;
   sfx.select();
-  say(`${def.name}：${def.desc}`, 3200);
+  say(def.name);
   render();
 }
 
@@ -1525,17 +1524,7 @@ function onPlotTap(cell: number): void {
       sfx.error();
       shake(plot, 5);
       const crop = state.field[cell];
-      say(
-        SEEDS[sym]
-          ? 'そこにはもう作物がある'
-          : SYMBOLS[sym].shape
-            ? `その${SHAPE_NAMES[SYMBOLS[sym].shape!]}に育てる作物がない`
-            : !crop
-              ? '作物がないマスには使えない'
-              : sym === 'rain'
-                ? 'もう実っている'
-                : 'もう肥料をまいた',
-      );
+      say(SEEDS[sym] ? '空きマスへ' : SYMBOLS[sym].shape ? '範囲に作物なし' : !crop ? '作物なし' : '肥料済み');
       return;
     }
     const power = state.results[reel].power;
@@ -1552,7 +1541,7 @@ function onPlotTap(cell: number): void {
       const more = left > 0 ? `（あと${left}）` : '';
       const name = CROPS[SEEDS[sym]!.crop].name;
       floatText(p.x, p.y - 20, `${name}を植えた！${more}`, { size: 0.7, cls: sym === 'goldSeed' ? 'gold' : 'good' });
-      if (left > 0 && selected === null) say('空きマスがないので残りの種は使えない');
+      if (left > 0 && selected === null) say('空きマスなし');
     } else if (sym === 'fertilizer' && left > 0) {
       sfx.fertilizer();
       floatText(p.x, p.y - 20, '売値×2！（あと1つ）', { cls: 'combo', size: 0.9 });
@@ -1577,7 +1566,7 @@ function onPlotTap(cell: number): void {
         window.setTimeout(() => burst(q.x, q.y, ['🌼'], 3, 30), k * 220);
       });
       afterGrowth(affected, `+${CONFIG.beeGrowth * power}`);
-      if (left > 0 && selected === null) say('もう使える場所がない');
+      if (left > 0 && selected === null) say('使える場所なし');
     } else if (sym === 'fertilizer') {
       sfx.fertilizer();
       burst(p.x, p.y, ['✨', '💜'], 10, 50);
@@ -1588,14 +1577,14 @@ function onPlotTap(cell: number): void {
   }
   if (state.frost[cell]) {
     shake(plot, 3);
-    say(`凍っている（あと${state.frost[cell]}日で溶ける）`);
+    say(`❄️ ${state.frost[cell]}日`);
     return;
   }
   if (state.weeds[cell]) {
     if (!pullWeed(state, cell)) {
       sfx.error();
       shake(plot, 4);
-      say(`雑草を抜くには${weedCost(state)}金いる`);
+      say(`${weedCost(state)}金たりない`);
       return;
     }
     sfx.poof();
@@ -1618,9 +1607,9 @@ function onPlotTap(cell: number): void {
   if (crop) {
     shake(plot, 3);
     const def = CROPS[crop.kind];
-    say(`${def.name}：あと${def.ripe - crop.growth}育つと実る（${def.price}金。列なら×${CONFIG.lineMult}〜、単品は半値）`);
+    say(`${def.name} ${def.price}金`);
   } else {
-    say(state.stock.length ? `ここには${PLACES[state.stock[0]].name}を置けない` : '空きマス：種が出たら植えられる');
+    say(state.stock.length ? '置けない' : '空き');
   }
 }
 
@@ -1765,14 +1754,14 @@ function onBuy(id: UpgradeId): void {
   if (busy || state.over) return;
   const card = el.shop.querySelector(`[data-id="${id}"]`) as HTMLElement;
   if (!upgradeAvailable(state, id)) {
-    say('これ以上は強化できない');
+    say('最大');
     shake(card, 3);
     return;
   }
   if (!canBuy(state, id)) {
     sfx.error();
     shake(card, 4);
-    say(`あと${upgradePrice(state, id) - state.gold}金 足りない`);
+    say(`${upgradePrice(state, id) - state.gold}金たりない`);
     return;
   }
   const first = state.stats.purchases.length === 0;
@@ -1839,36 +1828,24 @@ function showGameOver(endedAfterClear = false): void {
   const best = loadBest();
   const isNew = state.day > (best.day ?? 0);
   if (isNew) saveBest({ day: state.day, taxes: state.taxesPaid });
-  const name = (id: UpgradeId) => UPGRADES.find((u) => u.id === id)!.name;
-  const first = state.stats.purchases[0];
   const t = nextTax(state);
   const earned = awardPoints(meta, state);
+  track('result', state, { end: endedAfterClear ? 'clear' : 'tax', tax: t.amount, points: earned });
   el.overlay.innerHTML = `
-    <div class="modal" role="dialog" aria-label="ゲームオーバー">
+    <div class="modal over-modal" role="dialog" aria-label="ゲームオーバー">
       <div class="big">${state.cleared ? '🏆' : '🏚️'}</div>
-      <h2>${endedAfterClear ? 'クリア！ おつかれさま' : state.cleared ? 'エンドレス終了！' : '年貢が払えなかった…'}</h2>
-      <div class="record">${state.day}日目まで / 年貢 ${state.taxesPaid}回 納付${isNew ? '<span class="newrec">最高記録！</span>' : ''}</div>
-      <div class="points-earned">🌾 豊穣ポイント <b>+${earned}</b><small>（${state.day}日×${META.pointsPerDay} ＋ 年貢${state.taxesPaid}回×${META.pointsPerTax}${state.cleared ? ` ＋ クリア${META.clearBonus}` : ''}）所持 ${meta.points}pt</small></div>
-      <table>
-        <tr><td>最高記録</td><td>${Math.max(state.day, best.day ?? 0)}日目</td></tr>
-        <tr><td>払えなかった年貢</td><td>${t.amount}金（所持 ${state.gold}金）</td></tr>
-        <tr><td>回転数</td><td>${state.stats.spins}回</td></tr>
-        <tr><td>総収入</td><td>${state.stats.totalEarned}金</td></tr>
-        <tr><td>売った作物 / 食べられた作物</td><td>${state.stats.cropsSold} / ${state.stats.cropsEaten}</td></tr>
-        <tr><td>追い払ったカラス</td><td>${state.stats.crowsMissed}回</td></tr>
-        <tr><td>フィーバー / つながり収穫</td><td>${state.stats.fevers}回 / ${state.stats.lineHarvests}回</td></tr>
-        <tr><td>最初の強化</td><td>${first ? `${first.day}日目（${name(first.id)}）` : 'なし'}</td></tr>
-        <tr><td>リール本数</td><td>${state.reels}本</td></tr>
-      </table>
-      <h3>📝 強化の購入順（検証ログ）</h3>
-      ${state.stats.purchases.length ? `<ol>${state.stats.purchases.map((p) => `<li>${p.day}日目 ${name(p.id)}</li>`).join('')}</ol>` : '<p>なし</p>'}
-      <h3>🎁 選んだお守り</h3>
-      ${state.stats.charms.length ? `<ol>${state.stats.charms.map((c) => `<li>${c.day}日目 ${art(c.id)}${CHARMS[c.id].name}</li>`).join('')}</ol>` : '<p>なし</p>'}
-      <div class="share-row">
-        <button class="secondary" id="share">${typeof navigator.share === 'function' ? '📤 結果をシェア' : '📋 結果をコピー'}</button>
-        ${FEEDBACK_URL ? `<a class="secondary" href="${FEEDBACK_URL}" target="_blank" rel="noopener">✉️ 感想を送る</a>` : ''}
+      <h2>${endedAfterClear ? 'クリア！' : state.cleared ? 'エンドレス終了' : '年貢が払えなかった…'}</h2>
+      <div class="over-stats">
+        <span>${art('calendar')}<b>${state.day}</b>日${isNew ? '<em>最高！</em>' : ''}</span>
+        <span>${art('bale')}<b>${state.taxesPaid}</b>回</span>
+        <span>${art('coin')}<b>${state.stats.totalEarned}</b>金</span>
       </div>
-      <button class="primary" id="restart" disabled>準備へ（解放・組み合わせ）</button>
+      <div class="points-earned">${art('sprout')} <b>+${earned}pt</b><small>計 ${meta.points}pt</small></div>
+      <div class="share-row">
+        <button class="secondary" id="share">${typeof navigator.share === 'function' ? '📤 シェア' : '📋 コピー'}</button>
+        ${FEEDBACK_URL ? `<a class="secondary" href="${FEEDBACK_URL}" target="_blank" rel="noopener">✉️ 感想</a>` : ''}
+      </div>
+      <button class="primary" id="restart" disabled>タイトルへ</button>
     </div>`;
   el.overlay.classList.add('show');
   const btn = $<HTMLButtonElement>('restart');
@@ -1880,7 +1857,7 @@ function showGameOver(endedAfterClear = false): void {
 }
 
 function restart(): void {
-  showPrep();
+  showTitle();
 }
 
 function resultText(endedAfterClear: boolean): string {
@@ -1905,7 +1882,7 @@ async function shareResult(endedAfterClear: boolean): Promise<void> {
       return;
     }
     await navigator.clipboard.writeText(text);
-    say('結果をコピーした！');
+    say('コピーした');
     floatText(window.innerWidth / 2, window.innerHeight * 0.3, 'コピーした！', { cls: 'good', size: 1 });
   } catch {
     // 共有を閉じた・権限がない場合は何もしない
@@ -1920,22 +1897,16 @@ type HelpTab = 'rules' | 'symbols' | 'charms';
 function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
   const tabs: [HelpTab, string][] = [['rules', '遊び方'], ['symbols', '絵柄'], ['charms', 'お守り']];
   const rules = `
-    <ol class="help-list">
-      <li><b>まわす</b>：1回転＝1日。リールの数だけ出来事が起きる</li>
-      <li><b>手動の出目</b>はタップ → 畑のマスをタップで使う。使わずに次の日へ進むと消える</li>
-      <li><b>自動の出目</b>（カラス・虫・金貨・商人・四つ葉）は止まった瞬間に効く</li>
-      <li>作物は<b>雨・太陽・蜂</b>でしか育たない。実をタップで売る。<b>苺</b>は2段階で4金、<b>トマト</b>は3段階で6金、<b>かぼちゃ</b>は5段階で24金（カラスに食べられない）、<b>金のとうもろこし</b>は3段階で30金</li>
-      <li><b>出目の形</b>：雨は<b>十字</b>、太陽は<b>縦一列</b>、蜂は<b>斜め</b>（選んだマスと斜め4マス）の作物を育てる。どこに落とすかで育つ数が変わる</li>
-      <li><b>畑を広げる・道具</b>：ショップで畑を広げられる（最大5×5・かなり高い）。<b>満月</b>（全作物＋1）はいつもショップで足せる（足すたび高くなる）。ショップではかかし・井戸・巣箱などの道具や、堆肥・水路のマスを買って好きな所に置ける。道具はマスを1つ使う（植えられず列にも入らない）。堆肥・水路のマスの上にも道具を置ける</li>
-      <li><b>お邪魔</b>：年貢を納めるたびに袋に増える。最初は虫・雑草の1枚だけだが、3回目から霜・タヌキ、5回目から2枚（カラスも）、7回目から3枚と、だんだん増える。<b>雑草</b>は空きマスを塞いで広がる（タップ${CONFIG.weedPullCost}金で抜く）、<b>タヌキ</b>は実ったまま置いた一番高い作物を持っていく（実りがなければお金を盗む）、<b>霜</b>はマスを${CONFIG.frostDays}日凍らせる（植える・育つ・売るができない）。ショップで消せる（消すたび高くなる）</li>
-      <li><b>注文</b>：週ごとにお客さんから「◯◯を△個」の注文が来る。期日までに売ると報酬の金がもらえる</li>
-      <li><b>年貢</b>：${CONFIG.taxPeriod}日ごとに自動で徴収。払えないと終わり。${CONFIG.winTaxes}回納めるとクリア</li>
-      <li>年貢を納めるたびに<b>お守り</b>を3つから1つ選べる。代わりにお邪魔が袋に増える</li>
-      <li><b>フィーバー</b>：同じ絵柄が${CONFIG.feverCount}つ以上そろうと、絵柄ごとの役（芽吹き・虹・夏祭り・はちみつ・大商い・幸運など）と金貨の大当たり。カラス・虫がそろうと「群れ」で危険</li>
-      <li><b>列の収穫</b>：縦・横・斜めに3つ以上そろった実は、1つタップで列ごと売れて<b>×${CONFIG.lineMult}</b>。同じ作物だけの列ならさらに<b>×${CONFIG.sameCropMult}</b>、列が交わるマスはさらに上乗せ。<b>列に入らない単品は半値</b></li>
-      <li><b>ショップ</b>：準備画面で選んだ「足す」強化と、カラス・虫を消す（消すたび価格×${CONFIG.removeGrowth}）</li>
-      <li><b>豊穣ポイント</b>：遊び終わるたびに「日数×${META.pointsPerDay}＋年貢×${META.pointsPerTax}」（クリアで+${META.clearBonus}）。準備画面で解放に使う</li>
-    </ol>`;
+    <ul class="help-list icons">
+      <li>${art('calendar')}<span>1回転＝1日</span></li>
+      <li>${art('seed')}<span>光る出目 → マスをタップ</span></li>
+      <li>${art('rain')}<span>雨＝縦横十字　${art('sun')}太陽＝縦一列　${art('bee')}蜂＝斜め　${art('moon')}満月＝全体</span></li>
+      <li>${art('tomato')}${art('tomato')}${art('tomato')}<span>縦・横・斜めに3つ＝高く売れる（単品は½）</span></li>
+      <li>${art('bale')}<span>${CONFIG.taxPeriod}日ごとに年貢。払えないと終わり／${CONFIG.winTaxes}回でクリア</span></li>
+      <li>${art('coinPurse')}<span>年貢のあと：お守り1つ＋お邪魔が増える</span></li>
+      <li>${art('bargain')}<span>ショップ：絵柄・道具・畑を広げる</span></li>
+      <li>${art('sprout')}<span>遊ぶほどポイント → 解放</span></li>
+    </ul>`;
   const symbols = SYMBOL_ORDER.map((id) => {
     const d = SYMBOLS[id];
     return `<div class="dex-row${d.rarity === 'bad' ? ' bad' : ''}"><span class="e">${symHtml(id)}</span>
@@ -1992,11 +1963,11 @@ function showClear(): Promise<boolean> {
   el.overlay.innerHTML = `
     <div class="modal clear-modal" role="dialog" aria-label="クリア">
       <div class="big">🏆</div>
-      <h2>年貢を${CONFIG.winTaxes}回 完納！ クリア！</h2>
+      <h2>クリア！</h2>
       <div class="record">${state.day}日目でクリア / 総収入 ${state.stats.totalEarned}金</div>
-      <p class="sub">クリアで豊穣ポイント +${META.clearBonus}。続けるとエンドレスになり、年貢はどんどん重くなる</p>
-      <button class="primary" id="clear-continue" disabled>エンドレスで続ける</button>
-      <button class="secondary" id="clear-end" disabled>ここで終えて結果を見る</button>
+      <p class="sub">+${META.clearBonus}pt</p>
+      <button class="primary" id="clear-continue" disabled>エンドレスへ</button>
+      <button class="secondary" id="clear-end" disabled>ここで終える</button>
     </div>`;
   el.overlay.classList.add('show');
   window.setTimeout(() => el.overlay.querySelectorAll<HTMLButtonElement>('button').forEach((b) => (b.disabled = false)), 900);
@@ -2019,7 +1990,7 @@ function startGame(resume: GameState | null = null): void {
   selected = null;
   armedNextDay = false;
   if (!resume) done.spin = false;
-  el.overlay.classList.remove('show');
+  el.overlay.classList.remove('show', 'title');
   el.overlay.innerHTML = '';
   el.reels.innerHTML = '';
   el.shop.innerHTML = '';
@@ -2036,63 +2007,152 @@ function shortName(id: keyof typeof META.adds): string {
   return ADD_NAME[id].replace(/を足す$/, '');
 }
 
-function showPrep(): void {
+/** スタート画面：スタート（と続きから）だけ。強化の解放は小さなボタンから */
+function showTitle(): void {
   const saved = loadRun();
-  let confirmNew = false;
+  el.overlay.innerHTML = `
+    <div class="title-screen" role="dialog" aria-label="畑スロット">
+      <div class="title-logo">
+        <span class="title-art">${art('tomato')}${art('coin')}${art('corn')}</span>
+        <h1>畑スロット</h1>
+      </div>
+      <div class="title-actions">
+        <button class="primary title-start" id="title-start">スタート</button>
+        ${saved ? `<button class="secondary" id="title-resume">続きから <small>${saved.day}日目</small></button>` : ''}
+      </div>
+      <div class="title-sub">
+        <button class="icon-pill" id="title-unlock">${art('lock')}<span>解放</span><b>${meta.points}pt</b></button>
+        <button class="icon-pill" id="title-help">?<span>遊び方</span></button>
+      </div>
+    </div>`;
+  el.overlay.classList.add('show', 'title');
+  $('title-start').addEventListener('click', () => {
+    unlockAudio();
+    sfx.select();
+    showPrep();
+  });
+  document.getElementById('title-resume')?.addEventListener('click', () => {
+    unlockAudio();
+    sfx.select();
+    startGame(saved);
+  });
+  $('title-unlock').addEventListener('click', () => {
+    unlockAudio();
+    sfx.select();
+    showUnlock();
+  });
+  $('title-help').addEventListener('click', () => {
+    unlockAudio();
+    showHelp('rules', showTitle);
+  });
+}
+
+function leaveTitle(): void {
+  el.overlay.classList.remove('title');
+}
+
+/** 強化の解放（豊穣ポイントを使う）。スタート画面から開く */
+function showUnlock(): void {
+  leaveTitle();
   const paint = () => {
-    const cap = capacity(meta);
-    const used = loadoutCost(meta.loadout.filter((id) => meta.unlockedAdds.includes(id)));
     const capPrice = nextCapacityPrice(meta);
     const adds = (Object.keys(META.adds) as (keyof typeof META.adds)[])
-      // 満月はいつも並ぶので組み合わせの対象外
       .filter((id) => id !== 'addMoon')
       .map((id) => {
         const def = META.adds[id];
-        const unlocked = meta.unlockedAdds.includes(id);
-        const on = unlocked && meta.loadout.includes(id);
-        const fits = on || used + def.cost <= cap;
-        if (!unlocked) {
-          const can = meta.points >= def.unlock;
-          return `<button class="prep-item locked${can ? ' unlockable' : ''}" data-unlock="${id}" ${can ? '' : 'disabled'}>
-            <span class="e">${ADD_EMOJI[id]}</span><b>${shortName(id)}</b>
-            <small>${can ? `${def.unlock}ptで解放する` : `🔒 ${def.unlock}pt`}</small><span class="cost">コスト${def.cost}</span></button>`;
+        if (meta.unlockedAdds.includes(id)) {
+          return `<div class="prep-item on"><span class="e">${ADD_EMOJI[id]}</span><b>${shortName(id)}</b><small>✓</small></div>`;
         }
-        return `<button class="prep-item${on ? ' on' : ''}${fits ? '' : ' full'}" data-toggle="${id}">
-          <span class="e">${ADD_EMOJI[id]}</span><b>${shortName(id)}</b>
-          <small>${on ? '✓ 並べる' : fits ? 'タップで並べる' : 'コスト不足'}</small><span class="cost">コスト${def.cost}</span></button>`;
+        const can = meta.points >= def.unlock;
+        return `<button class="prep-item locked${can ? ' unlockable' : ''}" data-unlock="${id}" ${can ? '' : 'disabled'}>
+          <span class="e">${ADD_EMOJI[id]}</span><b>${shortName(id)}</b><small>${can ? '' : '🔒'}${def.unlock}pt</small></button>`;
       })
       .join('');
     const charms = (Object.keys(META.charmUnlock) as (keyof typeof META.charmUnlock)[])
       .map((id) => {
         const c = CHARMS[id];
         const price = META.charmUnlock[id]!;
-        const unlocked = meta.unlockedCharms.includes(id);
-        const can = !unlocked && meta.points >= price;
-        return `<button class="prep-item charm-unlock${unlocked ? ' on' : ' locked'}${can ? ' unlockable' : ''}" data-charm="${id}" ${can ? '' : 'disabled'}>
-          <span class="e">${art(id as ArtId)}</span><b>${c.name}</b>
-          <small>${unlocked ? '✓ 出るようになった' : can ? `${price}ptで解放する` : `🔒 ${price}pt`}</small><span class="cost">${CHARM_TIER_NAMES[c.tier]}</span></button>`;
+        if (meta.unlockedCharms.includes(id)) {
+          return `<div class="prep-item on"><span class="e">${art(id as ArtId)}</span><b>${c.name}</b><small>✓</small></div>`;
+        }
+        const can = meta.points >= price;
+        return `<button class="prep-item locked${can ? ' unlockable' : ''}" data-charm="${id}" ${can ? '' : 'disabled'}>
+          <span class="e">${art(id as ArtId)}</span><b>${c.name}</b><small>${can ? '' : '🔒'}${price}pt</small></button>`;
+      })
+      .join('');
+    el.overlay.innerHTML = `
+      <div class="modal prep-modal" role="dialog" aria-label="強化の解放">
+        <h2>${art('lock')} 解放</h2>
+        <div class="points"><b>${meta.points}pt</b></div>
+        <h3>${art('seed')} 絵柄</h3>
+        <div class="prep-grid">${adds}</div>
+        <h3>${art('sunBlessing')} レアのお守り</h3>
+        <div class="prep-grid">${charms}</div>
+        <h3>${art('bargain')} 並べられる数</h3>
+        ${capPrice !== null ? `<button class="secondary prep-cap" id="prep-cap" ${meta.points < capPrice ? 'disabled' : ''}>コスト上限 ${capacity(meta)} → ${capacity(meta) + META.capacityStep}<small>${capPrice}pt</small></button>` : `<p class="sub">コスト上限 ${capacity(meta)}（最大）</p>`}
+        <div class="prep-actions"><button class="secondary" id="unlock-back">← もどる</button></div>
+      </div>`;
+    el.overlay.classList.add('show');
+    const unlocked = (b: HTMLElement) => {
+      sfx.charmGet();
+      const c = center(b);
+      paint();
+      burst(c.x, c.y, ['✨', '🔓', '⭐'], 14, 80);
+    };
+    el.overlay.querySelectorAll<HTMLButtonElement>('[data-unlock]').forEach((b) =>
+      b.addEventListener('click', () => {
+        if (unlockAdd(meta, b.dataset.unlock as never)) unlocked(b);
+      }),
+    );
+    el.overlay.querySelectorAll<HTMLButtonElement>('[data-charm]').forEach((b) =>
+      b.addEventListener('click', () => {
+        if (unlockCharm(meta, b.dataset.charm as never)) unlocked(b);
+      }),
+    );
+    document.getElementById('prep-cap')?.addEventListener('click', () => {
+      if (!buyCapacity(meta)) return;
+      sfx.buy();
+      paint();
+    });
+    $('unlock-back').addEventListener('click', () => {
+      sfx.cancel();
+      showTitle();
+    });
+  };
+  paint();
+}
+
+/** 準備画面：今回ショップに並べる組み合わせを選んで始める（スタートとプレイの間） */
+function showPrep(): void {
+  leaveTitle();
+  const saved = loadRun();
+  let confirmNew = false;
+  const paint = () => {
+    const cap = capacity(meta);
+    const used = loadoutCost(meta.loadout.filter((id) => meta.unlockedAdds.includes(id)));
+    const adds = (Object.keys(META.adds) as (keyof typeof META.adds)[])
+      .filter((id) => id !== 'addMoon' && meta.unlockedAdds.includes(id))
+      .map((id) => {
+        const def = META.adds[id];
+        const on = meta.loadout.includes(id);
+        const fits = on || used + def.cost <= cap;
+        return `<button class="prep-item${on ? ' on' : ''}${fits ? '' : ' full'}" data-toggle="${id}">
+          <span class="e">${ADD_EMOJI[id]}</span><b>${shortName(id)}</b><span class="cost">${'●'.repeat(def.cost)}</span></button>`;
       })
       .join('');
     el.overlay.innerHTML = `
       <div class="modal prep-modal" role="dialog" aria-label="準備">
-        <h2>${art('sprout')} 畑スロット ${art('sprout')}</h2>
-        <div class="points">豊穣ポイント <b>${meta.points}pt</b><small>遊び終わるたびに「日数×${META.pointsPerDay}＋年貢×${META.pointsPerTax}」がたまる</small></div>
-        <h3>🛠 ショップに並べる強化 <span class="cap${used > cap ? ' over' : ''}">コスト ${used} / ${cap}</span></h3>
+        <h2>${art('bargain')} ショップに並べる</h2>
+        <div class="cap-meter${used > cap ? ' over' : ''}">${Array.from({ length: cap }, (_, k) => `<i class="${k < used ? 'on' : ''}"></i>`).join('')}<span>${used} / ${cap}</span></div>
         <div class="prep-grid">${adds}</div>
-        ${capPrice !== null ? `<button class="secondary prep-cap" id="prep-cap" ${meta.points < capPrice ? 'disabled' : ''}>コスト上限を +${META.capacityStep}<small>${meta.points < capPrice ? `${capPrice}pt（あと${capPrice - meta.points}pt）` : `${capPrice}ptで解放する`}</small></button>` : '<p class="sub">コスト上限は最大です</p>'}
-        <h3>🎁 レアのお守り</h3>
-        <div class="prep-grid">${charms}</div>
-        <p class="sub">満月・お邪魔を消す・畑の道具はいつもショップに並ぶ。リールはお守り「からくり職人」で増える</p>
-        <button class="secondary" id="prep-help">📖 遊び方・図鑑</button>
         <div class="prep-actions">
-          ${saved ? `<button class="primary" id="prep-resume">続きから（${saved.day}日目・${saved.gold}金）</button>` : ''}
-          <button class="${saved ? 'secondary' : 'primary'}" id="prep-start">${saved ? (confirmNew ? '本当に新しく始める？（続きは消えます）' : '新しく始める') : 'はじめる！'}</button>
+          <button class="primary" id="prep-start">${saved ? (confirmNew ? 'はじめる（続きは消えます）' : 'はじめる') : 'はじめる！'}</button>
+          <button class="secondary" id="prep-back">← もどる</button>
         </div>
       </div>`;
     el.overlay.classList.add('show');
     el.overlay.querySelectorAll<HTMLButtonElement>('[data-toggle]').forEach((b) =>
       b.addEventListener('click', () => {
-        unlockAudio();
         if (toggleLoadout(meta, b.dataset.toggle as never)) sfx.select();
         else {
           sfx.error();
@@ -2102,34 +2162,7 @@ function showPrep(): void {
         paint();
       }),
     );
-    el.overlay.querySelectorAll<HTMLButtonElement>('[data-unlock]').forEach((b) =>
-      b.addEventListener('click', () => {
-        unlockAudio();
-        if (!unlockAdd(meta, b.dataset.unlock as never)) return;
-        sfx.charmGet();
-        const c = center(b);
-        paint();
-        burst(c.x, c.y, ['✨', '🔓', '⭐'], 14, 80);
-      }),
-    );
-    el.overlay.querySelectorAll<HTMLButtonElement>('.charm-unlock[data-charm]').forEach((b) =>
-      b.addEventListener('click', () => {
-        unlockAudio();
-        if (!unlockCharm(meta, b.dataset.charm as never)) return;
-        sfx.charmGet();
-        const c = center(b);
-        paint();
-        burst(c.x, c.y, ['✨', '🔓', '⭐'], 14, 80);
-      }),
-    );
-    document.getElementById('prep-cap')?.addEventListener('click', () => {
-      unlockAudio();
-      if (!buyCapacity(meta)) return;
-      sfx.buy();
-      paint();
-    });
     $('prep-start').addEventListener('click', () => {
-      unlockAudio();
       if (saved && !confirmNew) {
         confirmNew = true;
         sfx.error();
@@ -2139,11 +2172,9 @@ function showPrep(): void {
       sfx.select();
       startGame();
     });
-    $('prep-help').addEventListener('click', () => showHelp('rules', showPrep));
-    document.getElementById('prep-resume')?.addEventListener('click', () => {
-      unlockAudio();
-      sfx.select();
-      startGame(saved);
+    $('prep-back').addEventListener('click', () => {
+      sfx.cancel();
+      showTitle();
     });
   };
   paint();
@@ -2184,4 +2215,4 @@ el.mute.addEventListener('click', () => {
   el.mute.textContent = toggleMute() ? '🔇' : '🔊';
 });
 render();
-showPrep();
+showTitle();

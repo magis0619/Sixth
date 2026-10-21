@@ -72,24 +72,24 @@ export interface SymbolDef {
 
 // feverDesc：同じ絵柄が3つ以上そろったときの「役」。良い絵柄の役には必ず金貨の大当たりが付く
 export const SYMBOLS: Record<SymbolId, SymbolDef> = {
-  seed: { id: 'seed', name: 'トマトの種', emoji: '🍅', kind: 'manual', desc: '空きマスにトマトを1〜3個植える', feverDesc: '品種改良：今日植えるトマトは1段階育った状態から', rarity: 'normal' },
-  berrySeed: { id: 'berrySeed', name: '苺の種', emoji: '🍓', kind: 'manual', desc: '空きマスに苺を2〜4個植える', feverDesc: '品種改良：今日植える苺は1段階育った状態から', rarity: 'normal' },
-  pumpkinSeed: { id: 'pumpkinSeed', name: 'かぼちゃの種', emoji: '🎃', kind: 'manual', desc: '空きマスにかぼちゃを1個植える', feverDesc: '品種改良：今日植えるかぼちゃは1段階育った状態から', rarity: 'normal' },
-  goldSeed: { id: 'goldSeed', name: '金の種', emoji: '🌟', kind: 'manual', desc: '空きマスに金のとうもろこしを植える', feverDesc: '黄金の実り：大当たり×3', rarity: 'rare' },
-  rain: { id: 'rain', name: '雨', emoji: '🌧️', kind: 'manual', shape: 'cross', desc: '十字（選んだマスの縦と横いっぱい）の作物の成長＋1', feverDesc: '虹：全作物の成長＋1', rarity: 'normal' },
-  sun: { id: 'sun', name: '太陽', emoji: '☀️', kind: 'manual', shape: 'column', desc: '縦一列の作物の成長＋1', feverDesc: '夏祭り：今日の売値×2', rarity: 'normal' },
-  fertilizer: { id: 'fertilizer', name: '肥料', emoji: '🧪', kind: 'manual', desc: '作物1つの売値を2倍', feverDesc: '堆肥：畑の全作物に肥料', rarity: 'normal' },
-  bee: { id: 'bee', name: '蜂', emoji: '🐝', kind: 'manual', shape: 'x', desc: '斜め（選んだマスと斜め4マス）の作物の成長＋1', feverDesc: 'はちみつ：作物1つにつき＋4金', rarity: 'normal' },
-  crow: { id: 'crow', name: 'カラス', emoji: '🐦', kind: 'auto', desc: '作物を1つ狙う（1/2で食べられる。かぼちゃは平気）', feverDesc: '群れ：食べる確率 1/2 → 3/4', rarity: 'bad' },
-  bug: { id: 'bug', name: '虫', emoji: '🐛', kind: 'auto', desc: '作物1つの成長−1', feverDesc: '群れ：成長−2', rarity: 'bad' },
-  coin: { id: 'coin', name: '金貨', emoji: '🪙', kind: 'auto', desc: 'その場で金がもらえる', feverDesc: '大当たり×3', rarity: 'normal' },
-  merchant: { id: 'merchant', name: '商人', emoji: '🧑‍🌾', kind: 'auto', desc: 'その日だけ売値×1.5', feverDesc: '大商い：実った作物を今すぐ×2で全部買い取る', rarity: 'normal' },
-  clover: { id: 'clover', name: '四つ葉', emoji: '🍀', kind: 'auto', desc: '次の日、金の種が出やすくなる', feverDesc: '幸運：お守りを1つ選べる', rarity: 'rare' },
-  moon: { id: 'moon', name: '満月', emoji: '🌕', kind: 'manual', shape: 'all', desc: '畑の全作物の成長＋1（タップするだけで畑全体に効く）', feverDesc: '月の宴：全作物の成長さらに＋1', rarity: 'rare' },
+  seed: { id: 'seed', name: 'トマトの種', emoji: '🍅', kind: 'manual', desc: 'トマトを2〜4個植える', feverDesc: '品種改良：今日植えるトマトは1段階育った状態から', rarity: 'normal' },
+  berrySeed: { id: 'berrySeed', name: '苺の種', emoji: '🍓', kind: 'manual', desc: '苺を3〜5個植える', feverDesc: '品種改良：今日植える苺は1段階育った状態から', rarity: 'normal' },
+  pumpkinSeed: { id: 'pumpkinSeed', name: 'かぼちゃの種', emoji: '🎃', kind: 'manual', desc: 'かぼちゃを1個植える', feverDesc: '品種改良：今日植えるかぼちゃは1段階育った状態から', rarity: 'normal' },
+  goldSeed: { id: 'goldSeed', name: '金の種', emoji: '🌟', kind: 'manual', desc: '金のとうもろこしを植える', feverDesc: '黄金の実り：大当たり×3', rarity: 'rare' },
+  rain: { id: 'rain', name: '雨', emoji: '🌧️', kind: 'manual', shape: 'cross', desc: '縦横十字 成長+1', feverDesc: '虹：全作物の成長＋1', rarity: 'normal' },
+  sun: { id: 'sun', name: '太陽', emoji: '☀️', kind: 'manual', shape: 'column', desc: '縦一列 成長+1', feverDesc: '夏祭り：今日の売値×2', rarity: 'normal' },
+  fertilizer: { id: 'fertilizer', name: '肥料', emoji: '🧪', kind: 'manual', desc: '売値×2', feverDesc: '堆肥：畑の全作物に肥料', rarity: 'normal' },
+  bee: { id: 'bee', name: '蜂', emoji: '🐝', kind: 'manual', shape: 'x', desc: '斜め 成長+1', feverDesc: 'はちみつ：作物1つにつき＋4金', rarity: 'normal' },
+  crow: { id: 'crow', name: 'カラス', emoji: '🐦', kind: 'auto', desc: '作物を1/2で食べる（かぼちゃは平気）', feverDesc: '群れ：食べる確率 1/2 → 3/4', rarity: 'bad' },
+  bug: { id: 'bug', name: '虫', emoji: '🐛', kind: 'auto', desc: '成長−1', feverDesc: '群れ：成長−2', rarity: 'bad' },
+  coin: { id: 'coin', name: '金貨', emoji: '🪙', kind: 'auto', desc: '+金', feverDesc: '大当たり×3', rarity: 'normal' },
+  merchant: { id: 'merchant', name: '商人', emoji: '🧑‍🌾', kind: 'auto', desc: '今日の売値×1.5', feverDesc: '大商い：実った作物を今すぐ×2で全部買い取る', rarity: 'normal' },
+  clover: { id: 'clover', name: '四つ葉', emoji: '🍀', kind: 'auto', desc: '明日 金の種↑', feverDesc: '幸運：お守りを1つ選べる', rarity: 'rare' },
+  moon: { id: 'moon', name: '満月', emoji: '🌕', kind: 'manual', shape: 'all', desc: '全作物 成長+1', feverDesc: '月の宴：全作物の成長さらに＋1', rarity: 'rare' },
   // ---- お邪魔系（年貢を納めるたびにどれかが袋に増える） ----
-  weed: { id: 'weed', name: '雑草', emoji: '🌾', kind: 'auto', desc: '空きマスに生えて塞ぐ。毎日となりへ広がる。タップ3金で抜ける', feverDesc: '群れ：2か所に生える', rarity: 'bad' },
-  tanuki: { id: 'tanuki', name: 'タヌキ', emoji: '🦝', kind: 'auto', desc: '実ったまま置いてある一番高い作物を持っていく。実りがなければお金を盗む', feverDesc: '群れ：2つ持っていく', rarity: 'bad' },
-  frost: { id: 'frost', name: '霜', emoji: '❄️', kind: 'auto', desc: '1マスを凍らせる。溶けるまでそのマスは植える・育つ・売るができない', feverDesc: '群れ：2マスが凍る', rarity: 'bad' },
+  weed: { id: 'weed', name: '雑草', emoji: '🌾', kind: 'auto', desc: '空きマスを塞ぐ・広がる', feverDesc: '群れ：2か所に生える', rarity: 'bad' },
+  tanuki: { id: 'tanuki', name: 'タヌキ', emoji: '🦝', kind: 'auto', desc: '実りを盗む', feverDesc: '群れ：2つ持っていく', rarity: 'bad' },
+  frost: { id: 'frost', name: '霜', emoji: '❄️', kind: 'auto', desc: '3日凍らせる', feverDesc: '群れ：2マスが凍る', rarity: 'bad' },
 };
 
 /** 絵柄袋・ショップでの表示順 */
@@ -149,17 +149,23 @@ export interface PlaceDef {
 }
 
 export const PLACES: Record<PlaceId, PlaceDef> = {
-  scarecrow: { id: 'scarecrow', kind: 'tool', name: 'かかし', desc: '周り8マスの作物をカラスとタヌキから守る', price: 20 },
-  bigScarecrow: { id: 'bigScarecrow', kind: 'tool', name: '大かかし', desc: '2マス以内の作物をカラスとタヌキから守る', price: null },
-  well: { id: 'well', kind: 'tool', name: '井戸', desc: '上下左右の作物が毎日成長＋1', price: 60 },
-  goldenWell: { id: 'goldenWell', kind: 'tool', name: '黄金の井戸', desc: '周り8マスの作物が毎日成長＋1', price: null },
-  hive: { id: 'hive', kind: 'tool', name: '巣箱', desc: '周り8マスの作物の売値＋2', price: 30 },
-  queenHive: { id: 'queenHive', kind: 'tool', name: '女王蜂の巣箱', desc: '周り8マスの作物の売値＋6', price: null },
-  compost: { id: 'compost', kind: 'tile', name: '堆肥のマス', desc: 'このマスの作物の売値×2', price: 35 },
-  water: { id: 'water', kind: 'tile', name: '水路のマス', desc: 'このマスの作物が毎日成長＋1', price: 45 },
+  scarecrow: { id: 'scarecrow', kind: 'tool', name: 'かかし', desc: '周り8マスを守る', price: 20 },
+  bigScarecrow: { id: 'bigScarecrow', kind: 'tool', name: '大かかし', desc: '2マス以内を守る', price: null },
+  well: { id: 'well', kind: 'tool', name: '井戸', desc: '上下左右 毎日+1', price: 60 },
+  goldenWell: { id: 'goldenWell', kind: 'tool', name: '黄金の井戸', desc: '周り8マス 毎日+1', price: null },
+  hive: { id: 'hive', kind: 'tool', name: '巣箱', desc: '周り8マス 売値+2', price: 30 },
+  queenHive: { id: 'queenHive', kind: 'tool', name: '女王蜂の巣箱', desc: '周り8マス 売値+6', price: null },
+  compost: { id: 'compost', kind: 'tile', name: '堆肥のマス', desc: '売値×2', price: 35 },
+  water: { id: 'water', kind: 'tile', name: '水路のマス', desc: '毎日+1', price: 45 },
 };
 
 export const PLACE_ORDER = Object.keys(PLACES) as PlaceId[];
+
+/**
+ * プレイ記録の送り先（Googleスプレッドシートの Apps Script をウェブアプリとして公開したURL）。
+ * 空なら送らない。作り方は scripts/telemetry-apps-script.gs の先頭
+ */
+export const TELEMETRY_URL = '';
 
 /** 感想フォームのURL（Googleフォーム等）。空なら結果画面にボタンを出さない */
 export const FEEDBACK_URL = '';
@@ -369,20 +375,20 @@ export interface CharmDef {
 /** お守り。年貢を納めるたびに charmChoices 個から1つ選ぶ。同じものは重ねて効果アップ */
 export const CHARMS: Record<CharmId, CharmDef> = {
   coinPurse: { id: 'coinPurse', tier: 'uncommon', name: '金貨袋', emoji: '👛', desc: (n) => `金貨の額＋${2 * n}`, max: Infinity },
-  gentleRain: { id: 'gentleRain', tier: 'uncommon', name: '恵みの雨', emoji: '☔', desc: (n) => `雨の真ん中のマスの成長がさらに＋${n}`, max: Infinity },
+  gentleRain: { id: 'gentleRain', tier: 'uncommon', name: '恵みの雨', emoji: '☔', desc: (n) => `雨の中心 さらに成長＋${n}`, max: Infinity },
   crowToll: { id: 'crowToll', tier: 'common', name: 'カラスの通行料', emoji: '🪶', desc: (n) => `カラスが来るたびに＋${2 * n}金`, max: Infinity },
-  aging: { id: 'aging', tier: 'common', name: '熟成', emoji: '🍷', desc: (n) => `実ったまま日をまたぐと売値＋${3 * n}（タヌキに注意）`, max: Infinity },
+  aging: { id: 'aging', tier: 'common', name: '熟成', emoji: '🍷', desc: (n) => `実ったまま1日ごとに売値＋${3 * n}`, max: Infinity },
   seedSack: { id: 'seedSack', tier: 'rare', name: '大きな種袋', emoji: '🎒', desc: (n) => `種で植えられる数＋${n}`, max: Infinity },
   sunBlessing: { id: 'sunBlessing', tier: 'rare', name: '日だまり', emoji: '🌻', desc: (n) => `太陽の成長＋${n}`, max: 2 },
-  goldenWell: { id: 'goldenWell', tier: 'rare', name: '黄金の井戸', emoji: '⛲', desc: () => '黄金の井戸を畑に置く（周り8マスの作物が毎日成長＋1）', max: Infinity },
-  queenHive: { id: 'queenHive', tier: 'uncommon', name: '女王蜂の巣箱', emoji: '👑', desc: () => '女王蜂の巣箱を畑に置く（周り8マスの作物の売値＋6）', max: Infinity },
+  goldenWell: { id: 'goldenWell', tier: 'rare', name: '黄金の井戸', emoji: '⛲', desc: () => '黄金の井戸を置く（周り8マス 毎日+1）', max: Infinity },
+  queenHive: { id: 'queenHive', tier: 'uncommon', name: '女王蜂の巣箱', emoji: '👑', desc: () => '女王蜂の巣箱を置く（周り8マス 売値+6）', max: Infinity },
   bargain: { id: 'bargain', tier: 'uncommon', name: '値切り上手', emoji: '🏷️', desc: (n) => `強化の価格−${Math.min(50, 10 * n)}%`, max: 5 },
-  scarecrow: { id: 'scarecrow', tier: 'common', name: '大かかし', emoji: '🎃', desc: () => '大かかしを畑に置く（2マス以内の作物をカラスとタヌキから守る）', max: Infinity },
-  bumper: { id: 'bumper', tier: 'rare', name: '豊作', emoji: '🧺', desc: (n) => `金以外の作物の売値＋${2 * n}`, max: Infinity },
-  goldLuck: { id: 'goldLuck', tier: 'uncommon', name: '金運', emoji: '🐱', desc: (n) => `金のとうもろこしの売値＋${10 * n}`, max: Infinity },
-  bugWard: { id: 'bugWard', tier: 'common', name: '草よけ', emoji: '🌿', desc: (n) => `虫と雑草が${Math.round((1 - Math.pow(0.5, n)) * 100)}%で外れる。雑草を抜くのが無料`, max: 4 },
+  scarecrow: { id: 'scarecrow', tier: 'common', name: '大かかし', emoji: '🎃', desc: () => '大かかしを置く（2マス以内を守る）', max: Infinity },
+  bumper: { id: 'bumper', tier: 'rare', name: '豊作', emoji: '🧺', desc: (n) => `金以外の作物 売値＋${2 * n}`, max: Infinity },
+  goldLuck: { id: 'goldLuck', tier: 'uncommon', name: '金運', emoji: '🐱', desc: (n) => `金のとうもろこし 売値＋${10 * n}`, max: Infinity },
+  bugWard: { id: 'bugWard', tier: 'common', name: '草よけ', emoji: '🌿', desc: (n) => `虫・雑草を${Math.round((1 - Math.pow(0.5, n)) * 100)}%防ぐ・草むしり無料`, max: 4 },
   heater: { id: 'heater', tier: 'common', name: '湯たんぽ', emoji: '♨️', desc: () => '霜が1日で溶ける', max: 1 },
-  artisan: { id: 'artisan', tier: 'rare', name: 'からくり職人', emoji: '🎰', desc: (n) => `リール＋${n}（1日の出来事が増える）`, max: 2 },
+  artisan: { id: 'artisan', tier: 'rare', name: 'からくり職人', emoji: '🎰', desc: (n) => `リール＋${n}`, max: 2 },
   taxRelief: { id: 'taxRelief', tier: 'common', name: '年貢の減免', emoji: '📜', desc: (n) => `年貢−${Math.min(50, 10 * n)}%`, max: 5 },
 };
 
