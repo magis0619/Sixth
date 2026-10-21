@@ -14,6 +14,7 @@ export type SymbolId =
   | 'coin'
   | 'merchant'
   | 'clover'
+  | 'moon'
   | 'weed'
   | 'tanuki'
   | 'frost';
@@ -29,6 +30,7 @@ export type UpgradeId =
   | 'addBee'
   | 'addMerchant'
   | 'addClover'
+  | 'addMoon'
   | 'removeCrow'
   | 'removeBug'
   | 'removeWeed'
@@ -51,7 +53,8 @@ export type CharmId =
   | 'artisan'
   | 'heater'
   | 'goldenWell'
-  | 'queenHive';
+  | 'queenHive'
+  | 'fieldExpand';
 
 export interface SymbolDef {
   id: SymbolId;
@@ -74,7 +77,7 @@ export const SYMBOLS: Record<SymbolId, SymbolDef> = {
   berrySeed: { id: 'berrySeed', name: '苺の種', emoji: '🍓', kind: 'manual', desc: '空きマスに苺を2〜4個植える', feverDesc: '品種改良：今日植える苺は1段階育った状態から', rarity: 'normal' },
   pumpkinSeed: { id: 'pumpkinSeed', name: 'かぼちゃの種', emoji: '🎃', kind: 'manual', desc: '空きマスにかぼちゃを1個植える', feverDesc: '品種改良：今日植えるかぼちゃは1段階育った状態から', rarity: 'normal' },
   goldSeed: { id: 'goldSeed', name: '金の種', emoji: '🌟', kind: 'manual', desc: '空きマスに金のとうもろこしを植える', feverDesc: '黄金の実り：大当たり×3', rarity: 'rare' },
-  rain: { id: 'rain', name: '雨', emoji: '🌧️', kind: 'manual', shape: 'cross', desc: '十字（選んだマスと上下左右）の作物の成長＋1', feverDesc: '虹：全作物の成長＋1', rarity: 'normal' },
+  rain: { id: 'rain', name: '雨', emoji: '🌧️', kind: 'manual', shape: 'cross', desc: '十字（選んだマスの縦と横いっぱい）の作物の成長＋1', feverDesc: '虹：全作物の成長＋1', rarity: 'normal' },
   sun: { id: 'sun', name: '太陽', emoji: '☀️', kind: 'manual', shape: 'column', desc: '縦一列の作物の成長＋1', feverDesc: '夏祭り：今日の売値×2', rarity: 'normal' },
   fertilizer: { id: 'fertilizer', name: '肥料', emoji: '🧪', kind: 'manual', desc: '作物1つの売値を2倍', feverDesc: '堆肥：畑の全作物に肥料', rarity: 'normal' },
   bee: { id: 'bee', name: '蜂', emoji: '🐝', kind: 'manual', shape: 'x', desc: '斜め（選んだマスと斜め4マス）の作物の成長＋1', feverDesc: 'はちみつ：作物1つにつき＋4金', rarity: 'normal' },
@@ -83,6 +86,7 @@ export const SYMBOLS: Record<SymbolId, SymbolDef> = {
   coin: { id: 'coin', name: '金貨', emoji: '🪙', kind: 'auto', desc: 'その場で金がもらえる', feverDesc: '大当たり×3', rarity: 'normal' },
   merchant: { id: 'merchant', name: '商人', emoji: '🧑‍🌾', kind: 'auto', desc: 'その日だけ売値×1.5', feverDesc: '大商い：実った作物を今すぐ×2で全部買い取る', rarity: 'normal' },
   clover: { id: 'clover', name: '四つ葉', emoji: '🍀', kind: 'auto', desc: '次の日、金の種が出やすくなる', feverDesc: '幸運：お守りを1つ選べる', rarity: 'rare' },
+  moon: { id: 'moon', name: '満月', emoji: '🌕', kind: 'auto', desc: '畑の全作物の成長＋1（止まった瞬間に効く）', feverDesc: '月の宴：全作物の成長さらに＋1', rarity: 'rare' },
   // ---- お邪魔系（年貢を納めるたびにどれかが袋に増える） ----
   weed: { id: 'weed', name: '雑草', emoji: '🌾', kind: 'auto', desc: '空きマスに生えて塞ぐ。毎日となりへ広がる。タップ3金で抜ける', feverDesc: '群れ：2か所に生える', rarity: 'bad' },
   tanuki: { id: 'tanuki', name: 'タヌキ', emoji: '🦝', kind: 'auto', desc: '実ったまま置いてある一番高い作物を持っていく。実りがなければお金を盗む', feverDesc: '群れ：2つ持っていく', rarity: 'bad' },
@@ -91,7 +95,7 @@ export const SYMBOLS: Record<SymbolId, SymbolDef> = {
 
 /** 絵柄袋・ショップでの表示順 */
 export const SYMBOL_ORDER: SymbolId[] = [
-  'seed', 'berrySeed', 'pumpkinSeed', 'goldSeed', 'rain', 'sun', 'fertilizer', 'bee', 'coin', 'merchant', 'clover', 'crow', 'bug', 'weed', 'tanuki', 'frost',
+  'seed', 'berrySeed', 'pumpkinSeed', 'goldSeed', 'rain', 'sun', 'fertilizer', 'bee', 'coin', 'merchant', 'clover', 'moon', 'crow', 'bug', 'weed', 'tanuki', 'frost',
 ];
 
 // ---- 作物 ----
@@ -129,7 +133,7 @@ export const SEEDS: Partial<Record<SymbolId, { crop: CropKind; extra: number; si
 /** 出目の効く範囲の形 */
 export type ShapeId = 'cross' | 'column' | 'x';
 
-export const SHAPE_NAMES: Record<ShapeId, string> = { cross: '十字', column: '縦一列', x: '斜め' };
+export const SHAPE_NAMES: Record<ShapeId, string> = { cross: '縦横十字', column: '縦一列', x: '斜め' };
 
 // ---- 畑に置くもの（道具・特別なマス） ----
 
@@ -171,8 +175,7 @@ export const CONFIG = {
   /** 始めの広さ（3×3）。広げるたびに列→行の順に1つ増える */
   startCols: 3,
   startRows: 3,
-  /** 畑を広げる価格（広げた回数ごと） */
-  expandPrices: [30, 60, 110, 180],
+  /** 畑はレアのお守り「開墾」でしか広げられない（3×3 → 4×3 → 4×4 → 5×4 → 5×5） */
   /** 道具・特別なマスは同じ物を買うたびにこの倍率で高くなる */
   placeGrowth: 1.5,
   /** 初期リール本数と上限 */
@@ -181,7 +184,7 @@ export const CONFIG = {
   /** 初期の絵柄袋 */
   initialBag: {
     seed: 3, berrySeed: 0, pumpkinSeed: 0, goldSeed: 0, rain: 2, sun: 1, fertilizer: 0, bee: 0,
-    crow: 2, bug: 0, coin: 1, merchant: 0, clover: 0, weed: 0, tanuki: 0, frost: 0,
+    crow: 2, bug: 0, coin: 1, merchant: 0, clover: 0, moon: 0, weed: 0, tanuki: 0, frost: 0,
   } as Record<SymbolId, number>,
   initialGold: 0,
   /** 成長（実るまでの成長は作物ごとに CROPS で決める） */
@@ -254,19 +257,22 @@ export const CONFIG = {
     addBee: 18,
     addMerchant: 15,
     addClover: 20,
+    addMoon: 60,
     removeCrow: 15,
     removeBug: 12,
     removeWeed: 12,
     removeTanuki: 15,
     removeFrost: 12,
   } as Record<UpgradeId, number>,
+  /** 満月は足すたびに moonGrowth 倍になる */
+  moonGrowth: 1.5,
   /** カラス・虫を消す価格は、消すたびに removeGrowth 倍になる */
   removeGrowth: 2,
 
   /** 年貢：taxPeriod 日ごとに、その日の終わり（次の回転前）に自動で徴収 */
   taxPeriod: 7,
   /** 1回目から順の年貢額。表を超えたら（エンドレス）直前の額 × taxGrowth */
-  taxSchedule: [5, 25, 80, 170, 280, 400, 540, 700],
+  taxSchedule: [5, 25, 75, 150, 220, 300, 390, 480],
   taxGrowth: 1.5,
   /** この回数の年貢を納めるとクリア（その後はエンドレス） */
   winTaxes: 8,
@@ -301,6 +307,7 @@ export const UPGRADES: { id: UpgradeId; name: string; emoji: string; desc: strin
   { id: 'addBee', name: '蜂を足す', emoji: '🐝', desc: '絵柄袋に蜂を1枚追加' },
   { id: 'addMerchant', name: '商人を足す', emoji: '🧑‍🌾', desc: '絵柄袋に商人を1枚追加' },
   { id: 'addClover', name: '四つ葉を足す', emoji: '🍀', desc: '絵柄袋に四つ葉を1枚追加' },
+  { id: 'addMoon', name: '満月を足す', emoji: '🌕', desc: '絵柄袋に満月（全作物＋1）を1枚追加。足すたびに高くなる' },
   { id: 'removeCrow', name: 'カラスを消す', emoji: '🐦', desc: '絵柄袋からカラスを1枚削除' },
   { id: 'removeBug', name: '虫を消す', emoji: '🐛', desc: '絵柄袋から虫を1枚削除' },
   { id: 'removeWeed', name: '雑草を消す', emoji: '🌾', desc: '絵柄袋から雑草を1枚削除' },
@@ -320,6 +327,7 @@ export const UPGRADE_SYMBOL: Partial<Record<UpgradeId, { symbol: SymbolId; delta
   addBee: { symbol: 'bee', delta: 1 },
   addMerchant: { symbol: 'merchant', delta: 1 },
   addClover: { symbol: 'clover', delta: 1 },
+  addMoon: { symbol: 'moon', delta: 1 },
   removeCrow: { symbol: 'crow', delta: -1 },
   removeBug: { symbol: 'bug', delta: -1 },
   removeWeed: { symbol: 'weed', delta: -1 },
@@ -359,6 +367,7 @@ export const CHARMS: Record<CharmId, CharmDef> = {
   seedSack: { id: 'seedSack', tier: 'rare', name: '大きな種袋', emoji: '🎒', desc: (n) => `種で植えられる数＋${n}`, max: Infinity },
   sunBlessing: { id: 'sunBlessing', tier: 'rare', name: '日だまり', emoji: '🌻', desc: (n) => `太陽の成長＋${n}`, max: 2 },
   goldenWell: { id: 'goldenWell', tier: 'rare', name: '黄金の井戸', emoji: '⛲', desc: () => '黄金の井戸を畑に置く（周り8マスの作物が毎日成長＋1）', max: Infinity },
+  fieldExpand: { id: 'fieldExpand', tier: 'rare', name: '開墾', emoji: '🚜', desc: () => '畑を1列（または1行）広げる。最大5×5', max: 4 },
   queenHive: { id: 'queenHive', tier: 'uncommon', name: '女王蜂の巣箱', emoji: '👑', desc: () => '女王蜂の巣箱を畑に置く（周り8マスの作物の売値＋6）', max: Infinity },
   bargain: { id: 'bargain', tier: 'uncommon', name: '値切り上手', emoji: '🏷️', desc: (n) => `強化の価格−${Math.min(50, 10 * n)}%`, max: 5 },
   scarecrow: { id: 'scarecrow', tier: 'common', name: '大かかし', emoji: '🎃', desc: () => '大かかしを畑に置く（2マス以内の作物をカラスとタヌキから守る）', max: Infinity },
@@ -399,6 +408,8 @@ export const META = {
     addMerchant: { unlock: 35, cost: 2 },
     addGoldSeed: { unlock: 45, cost: 3 },
     addClover: { unlock: 60, cost: 3 },
+    // 満月はいつもショップに並ぶ（組み合わせに入れなくてよい）
+    addMoon: { unlock: 0, cost: 0 },
   } as Record<AddUpgradeId, { unlock: number; cost: number }>,
   /** レアのお守りは解放するまで出ない */
   charmUnlock: { sunBlessing: 50, bumper: 50, seedSack: 40 } as Partial<Record<CharmId, number>>,

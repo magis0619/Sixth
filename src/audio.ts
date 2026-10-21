@@ -224,6 +224,34 @@ export const sfx = {
     });
     noise(1.2, { vol: 0.1, freq: 7000, q: 0.3, delay: t - 0.8 });
   },
+  /** 実った瞬間の「ポンッ」 */
+  pon() {
+    tone(NOTE(19), 0.08, { type: 'sine', vol: 0.3, slideTo: NOTE(31) });
+    noise(0.05, { vol: 0.12, freq: 2500, q: 2 });
+  },
+  /** 年貢が払えそうにないときの鼓動 */
+  heartbeat() {
+    tone(58, 0.14, { type: 'sine', vol: 0.5 });
+    tone(52, 0.16, { type: 'sine', vol: 0.4, delay: 0.18 });
+  },
+  /** 役人の登場（拍子木） */
+  official() {
+    tone(NOTE(24), 0.06, { type: 'square', vol: 0.15 });
+    tone(NOTE(24), 0.06, { type: 'square', vol: 0.15, delay: 0.18 });
+    noise(0.04, { vol: 0.2, freq: 3500, q: 3 });
+    noise(0.04, { vol: 0.2, freq: 3500, q: 3, delay: 0.18 });
+  },
+  /** 花火：打ち上げと破裂 */
+  firework() {
+    tone(300, 0.5, { type: 'sine', vol: 0.08, slideTo: 1400 });
+    noise(0.6, { vol: 0.35, freq: 900, q: 0.5, delay: 0.5 });
+    tone(80, 0.4, { type: 'triangle', vol: 0.3, slideTo: 40, delay: 0.5 });
+  },
+  /** 畑が枯れる */
+  wither() {
+    tone(NOTE(7), 1.2, { type: 'sawtooth', vol: 0.06, slideTo: NOTE(-5) });
+    noise(1, { vol: 0.12, freq: 500, q: 0.4 });
+  },
   newReel() {
     for (let i = 0; i < 6; i++) tone(NOTE(12 + i * 2), 0.1, { type: 'square', vol: 0.1, delay: i * 0.04 });
   },

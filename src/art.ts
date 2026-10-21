@@ -305,6 +305,12 @@ const ART = {
     <path d="M48 30 H54 V16" fill="none" ${S}/><circle cx="54" cy="13" r="4" fill="${C.gold}" ${S}/>
     <rect x="18" y="44" width="22" height="5" rx="2" fill="${C.black}"/>`,
 
+  moon: `
+    <circle cx="32" cy="32" r="22" fill="#fff4b8" ${S}/>
+    <circle cx="24" cy="26" r="4" fill="#f2df8a"/><circle cx="38" cy="38" r="5" fill="#f2df8a"/><circle cx="40" cy="22" r="2.5" fill="#f2df8a"/>
+    <path d="M24 36 Q27 39 30 36 M36 30 Q39 33 42 30" fill="none" stroke="${INK}" stroke-width="2" stroke-linecap="round"/>
+    ${sparkle(10, 12, 5, C.white)}${sparkle(56, 52, 4, C.white)}`,
+  fieldExpand: '',
   // ---- 畑に置くもの ----
   bigScarecrow: `
     <path d="M32 28 V60 M8 36 H56" fill="none" stroke="${C.brown}" stroke-width="5" stroke-linecap="round"/>
@@ -349,6 +355,14 @@ const ART = {
     <path d="M48 41 V55 M41 48 H55" fill="none" stroke="${C.white}" stroke-width="4" stroke-linecap="round"/>`,
 
   // ---- 画面・演出 ----
+  official: `
+    <path d="M14 62 Q14 40 32 38 Q50 40 50 62Z" fill="#3a5a9a" ${S}/>
+    <path d="M32 38 L26 62 M32 38 L38 62" fill="none" stroke="#e8e0d0" stroke-width="3"/>
+    <circle cx="32" cy="26" r="11" fill="${C.skin}" ${S}/>
+    <path d="M27 24 L30 25 M37 24 L34 25" fill="none" ${S}/><path d="M28 31 H36" fill="none" ${S}/>
+    <path d="M22 18 Q32 2 42 18 Z" fill="${C.black}" ${S}/>
+    <path d="M24 14 L40 6" fill="none" stroke="${C.black}" stroke-width="4" stroke-linecap="round"/>
+    <rect x="44" y="40" width="10" height="18" rx="2" fill="#fff6dc" ${S}/>`,
   calendar: `
     <rect x="10" y="14" width="44" height="40" rx="6" fill="${C.white}" ${S}/>
     <path d="M10 26 H54" fill="none" ${S}/><rect x="10" y="14" width="44" height="12" rx="6" fill="${C.red}" ${S}/>
@@ -375,6 +389,8 @@ const ART = {
 ART.seed = packet('#e5533d', ART.tomato);
 ART.berrySeed = packet('#ff8fb1', strawberry);
 ART.pumpkinSeed = packet('#f08a24', pumpkin);
+// 開墾のお守りは「畑を広げる」の絵
+ART.fieldExpand = ART.expand;
 
 export type ArtId = keyof typeof ART;
 

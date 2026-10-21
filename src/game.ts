@@ -60,7 +60,7 @@ export interface GameState {
   /** 手に入れて、まだ畑に置いていない道具・特別なマス */
   stock: PlaceId[];
   /** 買った回数（畑を広げる・道具ごと。価格が上がる） */
-  bought: Partial<Record<PlaceId | 'expand', number>>;
+  bought: Partial<Record<PlaceId, number>>;
   /** 雑草が生えているマス（植えられない。毎日となりへ広がる） */
   weeds: boolean[];
   /** 霜で凍っている残り日数（0 は凍っていない）。凍ったマスは植える・育つ・売るができない */
@@ -202,8 +202,8 @@ export function around(state: GameState, cell: number, r: number): number[] {
 /** 出目の形で効くマス（中心を含む） */
 export function shapeCells(state: GameState, shape: ShapeId, cell: number): number[] {
   if (!inField(state, cell)) return [];
-  if (shape === 'cross') return [cell, ...neighbors(state, cell)];
   if (shape === 'x') return [cell, ...offsets(state, cell, [[-1, -1], [1, -1], [-1, 1], [1, 1]])];
+  if (shape === 'cross') return fieldCells(state).filter((c) => cellX(c) === cellX(cell) || cellY(c) === cellY(cell));
   // 縦一列：その列の全マス
   return fieldCells(state).filter((c) => cellX(c) === cellX(cell));
 }
@@ -466,6 +466,10 @@ export function resolveFever(state: GameState, rng: Rng): FeverEvent[] {
       state.priceMult = prev;
       if (!sold.length) jackpot *= 2;
       events.push({ ...base, jackpot, role: 'bigsale', sold });
+    } else if (symbol === 'moon') {
+      const cells: number[] = [];
+      fieldCells(state).forEach((i) => grow(state, i, 1, cells));
+      events.push({ ...base, jackpot, role: 'grow', cells });
     } else if (symbol === 'clover') {
       state.charmOffer = rollCharmOffer(state, rng);
       events.push({ ...base, jackpot, role: 'luck' });
@@ -500,7 +504,8 @@ export type AutoEvent =
   | { type: 'weed'; cells: number[]; warded: boolean }
   | { type: 'tanuki'; taken: { cell: number; crop: Crop; price: number }[]; escaped: boolean; stolen: number; guarded: number[] }
   | { type: 'frost'; cells: number[] }
-  | { type: 'clover'; boost: number };
+  | { type: 'clover'; boost: number }
+  | { type: 'moon'; cells: number[] };
 
 export function crowEatChance(_state: GameState, power: number): number {
   return Math.min(1, power > 1 ? CONFIG.crowEatChance * CONFIG.crowFeverMultiplier : CONFIG.crowEatChance);
@@ -525,6 +530,11 @@ export function resolveAuto(state: GameState, reel: number, rng: Rng): AutoEvent
     case 'merchant':
       state.priceMult += CONFIG.merchantBonus * r.power;
       return { type: 'merchant', mult: state.priceMult };
+    case 'moon': {
+      const cells: number[] = [];
+      fieldCells(state).forEach((i) => grow(state, i, r.power, cells));
+      return { type: 'moon', cells };
+    }
     case 'clover':
       state.cloverBoost = Math.max(state.cloverBoost, 1) * CONFIG.cloverMultiplier * r.power;
       return { type: 'clover', boost: state.cloverBoost };
@@ -854,12 +864,14 @@ export function upgradePrice(state: GameState, id: UpgradeId): number {
   // お邪魔は消すたびに高くなる（全部消して楽になりすぎないように）
   const change = UPGRADE_SYMBOL[id]!;
   if (change.delta < 0) base *= Math.pow(CONFIG.removeGrowth, state.removed[change.symbol] ?? 0);
+  if (id === 'addMoon') base *= Math.pow(CONFIG.moonGrowth, state.bag.moon);
   const discount = Math.min(0.5, 0.1 * state.charms.bargain);
   return Math.max(1, Math.round(base * (1 - discount)));
 }
 
 export function upgradeAvailable(state: GameState, id: UpgradeId): boolean {
   const change = UPGRADE_SYMBOL[id]!;
+  if (id === 'addMoon') return true;
   if (change.delta > 0) return state.shop.includes(id as AddUpgradeId) || state.weekly.includes(id as AddUpgradeId);
   return state.bag[change.symbol] > 0;
 }
@@ -900,6 +912,7 @@ export function chooseCharm(state: GameState, id: CharmId): boolean {
   if (id === 'artisan') state.reels = Math.min(CONFIG.maxReels, state.reels + 1);
   const place = CHARM_PLACE[id];
   if (place) state.stock.push(place);
+  if (id === 'fieldExpand') expandField(state);
   state.charmOffer = null;
   state.stats.charms.push({ day: state.day, id });
   return true;
@@ -907,22 +920,9 @@ export function chooseCharm(state: GameState, id: CharmId): boolean {
 
 // ---- 畑を広げる・道具と特別なマス ----
 
-export function expandPrice(state: GameState): number | null {
-  const p = CONFIG.expandPrices[state.bought.expand ?? 0];
-  if (p === undefined) return null;
-  return Math.max(1, Math.round(p * (1 - Math.min(0.5, 0.1 * state.charms.bargain))));
-}
-
-export function canExpand(state: GameState): boolean {
-  const p = expandPrice(state);
-  return !state.over && p !== null && state.gold >= p;
-}
-
-/** 列→行の順に1つ広げる（3×3 → 4×3 → 4×4 → 5×4 → 5×5） */
-export function expand(state: GameState): boolean {
-  if (!canExpand(state)) return false;
-  state.gold -= expandPrice(state)!;
-  state.bought.expand = (state.bought.expand ?? 0) + 1;
+/** 畑を列→行の順に1つ広げる（3×3 → 4×3 → 4×4 → 5×4 → 5×5）。お守り「開墾」で呼ぶ */
+export function expandField(state: GameState): boolean {
+  if (state.cols >= CONFIG.fieldCols && state.rows >= CONFIG.fieldRows) return false;
   if (state.cols <= state.rows) state.cols++;
   else state.rows++;
   return true;

@@ -4,7 +4,7 @@
 
 import { CHARM_ORDER, CONFIG, META, PLACES, SEEDS, SYMBOLS, type CropKind, type PlaceId, type UpgradeId } from '../src/config.ts';
 import {
-  buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellAt, cellX, cellY, chooseCharm, expand, expandPrice, fieldCells,
+  buy, buyPlace, canBuy, canBuyPlace, canPlace, canUse, cellAt, cellX, cellY, chooseCharm, fieldCells,
   isOpen, isRipe, newGame, nextTax, place, placePrice, pullWeed, resolveAllAuto, resolveFever, ripeGroup, sell, shapeCells,
   startDay, upgradePrice, useSymbol, validTargets, type GameState,
 } from '../src/game.ts';
@@ -23,6 +23,7 @@ function wants(s: GameState, id: UpgradeId): boolean {
   if (id === 'addBee') return s.bag.bee < 2;
   if (id === 'addMerchant') return s.bag.merchant < 2;
   if (id === 'addClover') return s.bag.clover < 1;
+  if (id === 'addMoon') return s.bag.moon < 3;
   if (id === 'addSeed') return s.bag.seed < 5;
   if (id === 'addRain') return s.bag.rain < 4;
   if (id === 'addBerrySeed') return s.bag.berrySeed < 3;
@@ -31,8 +32,8 @@ function wants(s: GameState, id: UpgradeId): boolean {
 }
 // FOCUS=1 は種をトマトに絞って買う（袋を薄めない買い方）
 const PRIORITY: UpgradeId[] = process.env.FOCUS
-  ? ['removeTanuki', 'removeFrost', 'removeWeed', 'removeBug', 'removeCrow', 'addSeed', 'addRain', 'addSun', 'addBee', 'addFertilizer']
-  : ['removeTanuki', 'removeFrost', 'removeWeed', 'removeBug', 'removeCrow', 'addSeed', 'addBerrySeed', 'addPumpkinSeed', 'addRain', 'addGoldSeed', 'addSun', 'addBee', 'addFertilizer', 'addMerchant', 'addClover'];
+  ? ['removeTanuki', 'removeFrost', 'removeWeed', 'removeBug', 'removeCrow', 'addSeed', 'addRain', 'addSun', 'addMoon', 'addBee', 'addFertilizer']
+  : ['removeTanuki', 'removeFrost', 'removeWeed', 'removeBug', 'removeCrow', 'addSeed', 'addBerrySeed', 'addPumpkinSeed', 'addRain', 'addGoldSeed', 'addSun', 'addMoon', 'addBee', 'addFertilizer', 'addMerchant', 'addClover'];
 
 /** 3マスの並び（縦・横・斜め）全部。列になり得る窓 */
 function windows(s: GameState): number[][] {
@@ -114,13 +115,11 @@ function playDay(s: GameState): void {
     bought = false;
     if (!smart) {
       const opts: (() => boolean)[] = [];
-      if (canExpand(s) && s.gold - expandPrice(s)! >= reserve) opts.push(() => expand(s));
       (Object.keys(PLACES) as PlaceId[]).forEach((id) => { if (canBuyPlace(s, id) && s.gold - placePrice(s, id)! >= reserve && Math.random() < 0.3) opts.push(() => buyPlace(s, id)); });
       PRIORITY.forEach((id) => { if (wants(s, id) && canBuy(s, id) && s.gold - upgradePrice(s, id) >= reserve) opts.push(() => buy(s, id)); });
       if (opts.length) { pick(opts)(); bought = true; }
       continue;
     }
-    if (canExpand(s) && s.gold - expandPrice(s)! >= reserve) { expand(s); bought = true; continue; }
     if (!s.bought.compost && canBuyPlace(s, 'compost') && s.gold - placePrice(s, 'compost')! >= reserve) { buyPlace(s, 'compost'); bought = true; continue; }
     for (const id of PRIORITY) {
       if (wants(s, id) && canBuy(s, id) && s.gold - upgradePrice(s, id) >= reserve) { buy(s, id); bought = true; break; }
@@ -146,7 +145,7 @@ for (let n = 0; n < runs; n++) {
     const r = startDay(s, Math.random);
     if (!r.ok) break;
     resolveFever(s, Math.random);
-    if (s.charmOffer) chooseCharm(s, smart ? s.charmOffer[0] : pick(s.charmOffer));
+    if (s.charmOffer) chooseCharm(s, smart ? (s.charmOffer.includes('fieldExpand') ? 'fieldExpand' : s.charmOffer[0]) : pick(s.charmOffer));
     resolveAllAuto(s, Math.random);
     playDay(s);
   }

@@ -299,3 +299,72 @@ export function slamText(text: string, opts: { cls?: string; size?: number; dur?
     )
     .finished.then(() => el.remove());
 }
+
+/** 雨：マスの上に斜めの雨筋を降らせ、最後にしぶき */
+export function rainShower(plots: Element[]): void {
+  plots.forEach((plot, k) => {
+    const r = plot.getBoundingClientRect();
+    const el = spawn('', 'fx-rainfall', r.left, r.top);
+    el.style.width = `${r.width}px`;
+    el.style.height = `${r.height}px`;
+    el.animate([{ opacity: 0 }, { opacity: 1, offset: 0.2 }, { opacity: 1, offset: 0.75 }, { opacity: 0 }], { duration: 800, delay: k * 40, fill: 'backwards' }).onfinish = () => {
+      el.remove();
+      burst(r.left + r.width / 2, r.top + r.height * 0.75, ['💧'], calm ? 2 : 4, 26);
+    };
+  });
+}
+
+/** 太陽：空から光の柱がマスの列に差し込む */
+export function sunBeam(plots: Element[]): void {
+  if (!plots.length) return;
+  const rects = plots.map((p) => p.getBoundingClientRect());
+  const left = Math.min(...rects.map((r) => r.left));
+  const right = Math.max(...rects.map((r) => r.right));
+  const bottom = Math.max(...rects.map((r) => r.bottom));
+  const el = spawn('', 'fx-sunbeam', left - 10, 0);
+  el.style.width = `${right - left + 20}px`;
+  el.style.height = `${bottom}px`;
+  el.animate([{ opacity: 0, transform: 'scaleX(0.3)' }, { opacity: 1, transform: 'scaleX(1)', offset: 0.25 }, { opacity: 0.9, offset: 0.7 }, { opacity: 0 }], {
+    duration: 1000,
+    easing: 'ease-out',
+  }).onfinish = () => el.remove();
+}
+
+/** 蜂：マスからマスへ飛び回る */
+export function beeFlight(plots: Element[], beeHtml: string): void {
+  if (!plots.length) return;
+  const pts = plots.map((p) => center(p));
+  const el = spawn(beeHtml, 'fx-bee', pts[0].x, pts[0].y);
+  const frames = pts.flatMap((q, i) => {
+    const next = pts[i + 1];
+    const out: Keyframe[] = [{ left: `${q.x}px`, top: `${q.y}px` }];
+    if (next) out.push({ left: `${(q.x + next.x) / 2 + (i % 2 ? 18 : -18)}px`, top: `${(q.y + next.y) / 2 - 24}px` });
+    return out;
+  });
+  el.animate(frames, { duration: 220 * pts.length + 200, easing: 'ease-in-out' }).onfinish = () => el.remove();
+}
+
+/** 花火：下から打ち上がって色つきの火花が広がる */
+export function firework(x: number, y: number, color: string): void {
+  const rocket = spawn('', 'fx-rocket', x, window.innerHeight + 10);
+  rocket.style.background = color;
+  rocket.animate([{ top: `${window.innerHeight + 10}px` }, { top: `${y}px` }], { duration: 600, easing: 'cubic-bezier(.2,.7,.4,1)', fill: 'forwards' }).onfinish = () => {
+    rocket.remove();
+    const n = calm ? 12 : 28;
+    for (let i = 0; i < n; i++) {
+      const spark = spawn('', 'fx-spark', x, y);
+      spark.style.background = color;
+      spark.style.boxShadow = `0 0 8px ${color}`;
+      const a = (Math.PI * 2 * i) / n;
+      const d = 70 + Math.random() * 60;
+      spark.animate(
+        [
+          { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
+          { transform: `translate(calc(-50% + ${Math.cos(a) * d}px), calc(-50% + ${Math.sin(a) * d}px)) scale(0.8)`, opacity: 1, offset: 0.6 },
+          { transform: `translate(calc(-50% + ${Math.cos(a) * d * 1.1}px), calc(-50% + ${Math.sin(a) * d + 40}px)) scale(0.3)`, opacity: 0 },
+        ],
+        { duration: 1100 + Math.random() * 300, easing: 'cubic-bezier(.1,.7,.3,1)' },
+      ).onfinish = () => spark.remove();
+    }
+  };
+}

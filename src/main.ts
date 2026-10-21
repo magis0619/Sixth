@@ -4,8 +4,8 @@ import {
   type CharmId, type CropKind, type PlaceId, type SymbolId, type UpgradeId,
 } from './config.ts';
 import {
-  bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, chooseCharm, cropPrice, drawDay, drawSymbol, endDay,
-  expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells,
+  bagTotal, buy, buyPlace, canBuy, canBuyPlace, canPlace, canUse, cellMultiplier, chooseCharm, cropPrice, drawDay, drawSymbol, endDay,
+  inField, inSameCropLine, isRipe, place, placePrice, shapeCells,
   ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState,
 } from './game.ts';
 import { isMuted, sfx, toggleMute, unlockAudio } from './audio.ts';
@@ -17,7 +17,7 @@ import { art, type ArtId } from './art.ts';
 import type { Crop } from './game.ts';
 import {
   burst, center, coinRain, confetti, flash, floatText, flyTo, hitStop, isCalm, pop, rollNumber, scanlines, shake, shakeFor, sleep, slamText, slowFactor,
-  speedLines, stackMultipliers, toggleCalm, vibrate,
+  speedLines, stackMultipliers, toggleCalm, vibrate, rainShower, sunBeam, beeFlight, firework,
 } from './fx.ts';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -233,6 +233,8 @@ function render(): void {
   renderShop();
   renderFarmShop();
   renderBag();
+  renderSky();
+  renderDanger();
   renderCharms();
   saveRun();
   fitLayout();
@@ -460,6 +462,9 @@ const PLACE_ART: Record<PlaceId, ArtId> = {
   hive: 'hive', queenHive: 'queenHive', compost: 'compost', water: 'water',
 };
 
+/** マスに最後に書いた中身（同じなら書き換えない：押している最中に中身が入れ替わるとクリックが消える） */
+const plotHtml = new WeakMap<Element, string>();
+
 /** 形で効く出目を選んでいるとき、指しているマスに効く範囲を見せる */
 let previewCell: number | null = null;
 
@@ -550,7 +555,11 @@ function renderField(): void {
     if (targets) cls.push(targets.includes(i) ? 'target' : 'dim');
     if (preview.includes(i)) cls.push('preview');
     b.className = cls.join(' ');
-    if (b.innerHTML !== html) b.innerHTML = html;
+    // innerHTML は書いた文字列と読み出しが一致しないことがあるので、前回書いた中身と比べる
+    if (plotHtml.get(b) !== html) {
+      b.innerHTML = html;
+      plotHtml.set(b, html);
+    }
     b.setAttribute('aria-label', label);
   });
 }
@@ -572,6 +581,7 @@ function upgradeEffect(id: UpgradeId): string {
 /** いつも並ぶ品・週替わり・袋に入っているお邪魔を消す品 */
 function shopItems(): typeof UPGRADES {
   return UPGRADES.filter((u) => {
+    if (u.id === 'addMoon') return true;
     if (u.id.startsWith('add')) return state.shop.includes(u.id as never) || state.weekly.includes(u.id as never);
     return state.bag[UPGRADE_SYMBOL[u.id]!.symbol] > 0;
   });
@@ -606,18 +616,72 @@ function renderShop(): void {
   });
 }
 
-/** 畑のショップ：広げる・道具・特別なマス */
+// ---- 空（昼夜と季節）・年貢前の鼓動 ----
+
+const SEASONS = ['spring', 'summer', 'autumn', 'winter'] as const;
+let heartTimer = 0;
+
+/** 1週（年貢1回分）で季節が進み、週の中で朝→昼→夕方→夜（年貢の日）と空が変わる */
+function renderSky(): void {
+  const root = document.documentElement;
+  const week = Math.floor(Math.max(0, state.day - 1) / CONFIG.taxPeriod);
+  const season = SEASONS[week % SEASONS.length];
+  const d = state.day === 0 ? 1 : ((state.day - 1) % CONFIG.taxPeriod) + 1;
+  root.dataset.time = d >= CONFIG.taxPeriod ? 'night' : d >= CONFIG.taxPeriod - 1 ? 'evening' : d <= 1 ? 'morning' : 'noon';
+  if (root.dataset.season !== season) {
+    root.dataset.season = season;
+    buildAmbient(season);
+  }
+}
+
+/** 季節の舞うもの（花びら・落ち葉・雪。夏は無し） */
+function buildAmbient(season: (typeof SEASONS)[number]): void {
+  let layer = document.getElementById('ambient');
+  if (!layer) {
+    layer = document.createElement('div');
+    layer.id = 'ambient';
+    layer.setAttribute('aria-hidden', 'true');
+    document.body.prepend(layer);
+  }
+  layer.className = season;
+  const n = season === 'summer' ? 0 : 14;
+  layer.innerHTML = Array.from({ length: n }, () => {
+    const left = Math.random() * 100;
+    const dur = 7 + Math.random() * 7;
+    const delay = -Math.random() * dur;
+    return `<i style="left:${left.toFixed(1)}%;animation-duration:${dur.toFixed(1)}s;animation-delay:${delay.toFixed(1)}s"></i>`;
+  }).join('');
+}
+
+/** 年貢が明日までなのにお金が足りないとき：画面のふちが赤く脈打ち、鼓動が鳴る */
+function renderDanger(): void {
+  const t = nextTax(state);
+  const danger = state.day > 0 && !state.over && t.daysLeft <= 1 && state.gold < t.amount;
+  document.documentElement.classList.toggle('tax-danger', danger);
+  if (danger && !heartTimer) {
+    sfx.heartbeat();
+    heartTimer = window.setInterval(() => {
+      if (!busy) sfx.heartbeat();
+    }, 1100);
+  } else if (!danger && heartTimer) {
+    clearInterval(heartTimer);
+    heartTimer = 0;
+  }
+}
+
+/** 畑が広がった演出（お守り「開墾」） */
+function showExpanded(): void {
+  sfx.bigBuy();
+  flash('#c8f0a0', 400);
+  const f = center(el.field);
+  burst(f.x, f.y, ['🌱', '✨', '⭐'], 18, 160);
+  floatText(f.x, f.y, `畑が広がった！ ${state.cols}×${state.rows}`, { cls: 'good', size: 1.2, dur: 1500 });
+  fieldCells().forEach((c) => pop(el.field.children[c], 1.08));
+}
+
+/** 畑のショップ：道具・特別なマス */
 function renderFarmShop(): void {
   const items: { key: string; ico: string; name: string; effect: string; price: number | null; ok: boolean }[] = [];
-  const ep = expandPrice(state);
-  items.push({
-    key: 'expand',
-    ico: art('expand'),
-    name: '畑を広げる',
-    effect: ep === null ? 'これ以上は広げられない（5×5）' : `${state.cols}×${state.rows} → ${state.cols <= state.rows ? state.cols + 1 : state.cols}×${state.cols <= state.rows ? state.rows : state.rows + 1}`,
-    price: ep,
-    ok: canExpand(state),
-  });
   PLACE_ORDER.filter((id) => PLACES[id].price !== null).forEach((id) =>
     items.push({ key: id, ico: art(PLACE_ART[id]), name: PLACES[id].name, effect: PLACES[id].desc, price: placePrice(state, id), ok: canBuyPlace(state, id) }),
   );
@@ -627,7 +691,7 @@ function renderFarmShop(): void {
       const b = document.createElement('button');
       b.className = 'item';
       b.dataset.id = it.key;
-      b.addEventListener('click', () => onBuyFarm(it.key as PlaceId | 'expand'));
+      b.addEventListener('click', () => onBuyFarm(it.key as PlaceId));
       el.farmShop.appendChild(b);
     });
   }
@@ -640,28 +704,10 @@ function renderFarmShop(): void {
   });
 }
 
-function onBuyFarm(key: PlaceId | 'expand'): void {
+function onBuyFarm(key: PlaceId): void {
   unlockAudio();
   if (busy || state.over) return;
   const card = el.farmShop.querySelector(`[data-id="${key}"]`) as HTMLElement;
-  if (key === 'expand') {
-    const price = expandPrice(state);
-    if (price === null || !expand(state)) {
-      sfx.error();
-      shake(card, 4);
-      say(price === null ? 'これ以上は広げられない' : `あと${price - state.gold}金 足りない`);
-      return;
-    }
-    sfx.bigBuy();
-    closeSheet();
-    render();
-    flash('#c8f0a0', 400);
-    const f = center(el.field);
-    burst(f.x, f.y, ['🌱', '✨', '⭐'], 18, 160);
-    floatText(f.x, f.y, `畑が広がった！ ${state.cols}×${state.rows}`, { cls: 'good', size: 1.2, dur: 1500 });
-    fieldCells().forEach((c) => pop(el.field.children[c], 1.08));
-    return;
-  }
   if (!buyPlace(state, key)) {
     sfx.error();
     shake(card, 4);
@@ -721,6 +767,7 @@ async function onSpin(): Promise<void> {
   if (res.tax !== null) {
     await showTaxStamp(res.tax, res.ok);
     if (!res.ok) {
+      await witherField();
       busy = false;
       showGameOver();
       return;
@@ -754,7 +801,29 @@ async function onSpin(): Promise<void> {
   render();
 }
 
+/** 年貢が払えず終わるとき、畑が枯れていく */
+async function witherField(): Promise<void> {
+  document.documentElement.classList.remove('tax-danger');
+  sfx.wither();
+  el.field.classList.add('withered');
+  const f = center(el.field);
+  burst(f.x, f.y, ['🍂', '🍂', '💨'], 14, 150);
+  await sleep(1600);
+}
+
 async function showTaxStamp(amount: number, ok: boolean): Promise<void> {
+  // 役人が拍子木を鳴らしてやって来て、印を押す
+  const official = document.createElement('div');
+  official.className = `official${ok ? '' : ' angry'}`;
+  official.innerHTML = `<span class="official-body">${art('official')}</span><span class="official-say">${ok ? '年貢を納めよ！' : '年貢が足りぬ！'}</span>`;
+  document.body.appendChild(official);
+  sfx.official();
+  official.animate([{ transform: 'translateX(120%)' }, { transform: 'translateX(0)' }], { duration: 420, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'forwards' });
+  await sleep(isCalm() ? 450 : 900);
+  official.querySelector('.official-body')!.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-14px) rotate(-8deg)' }, { transform: 'translateY(0)' }], { duration: 260 });
+  window.setTimeout(() => {
+    official.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(130%)' }], { duration: 400, easing: 'ease-in', fill: 'forwards' }).onfinish = () => official.remove();
+  }, 1500);
   sfx.tax();
   shake(el.app, 8);
   const stamp = document.createElement('div');
@@ -857,6 +926,7 @@ function showCharmOffer(): Promise<void> {
           const got = visibleOr(el.charms.querySelector(`[data-charm="${id}"]`), 'charms');
           if (got) pop(got, 1.2);
           if (CHARM_PLACE[id]) say(`${PLACES[CHARM_PLACE[id]!].name}を置くマスをタップ`, 3000);
+          if (id === 'fieldExpand') showExpanded();
           resolve();
         }, 650);
       }),
@@ -1212,6 +1282,15 @@ async function resolveAutos(): Promise<void> {
       floatText(from.x, from.y - 40, `今日の売値 ×${ev.mult}！`, { cls: 'gold', size: 0.9 });
       render();
       el.field.querySelectorAll('.plot.ripe').forEach((p) => pop(p, 1.12));
+    } else if (ev.type === 'moon') {
+      autoOutcome[i] = ev.cells.length ? `${ev.cells.length}つ育った` : '空振り';
+      sfx.rare();
+      flash('#fff4b8', 500);
+      burst(from.x, from.y, ['🌟', '✨', '⭐'], 14, 90);
+      floatText(from.x, from.y - 40, '満月！ 全作物＋1', { cls: 'gold', size: 1 });
+      render();
+      afterGrowth(ev.cells, '+1');
+      await sleep(400);
     } else if (ev.type === 'clover') {
       autoOutcome[i] = '明日 金の種↑';
       sfx.rare();
@@ -1436,21 +1515,23 @@ function onPlotTap(cell: number): void {
       floatText(p.x, p.y - 20, '売値×2！（あと1つ）', { cls: 'combo', size: 0.9 });
     } else if (sym === 'rain') {
       sfx.rain();
-      shapeCells(state, 'cross', cell).forEach((c) => rainDrops(el.field.children[c] as HTMLElement));
+      rainShower(shapeCells(state, 'cross', cell).map((c) => el.field.children[c]));
       afterGrowth(affected, `+${CONFIG.rainGrowth * power}`);
     } else if (sym === 'sun') {
       sfx.sun();
+      sunBeam(shapeCells(state, 'column', cell).map((c) => el.field.children[c]));
       shapeCells(state, 'column', cell).forEach((c, k) => {
         const q = center(el.field.children[c]);
-        window.setTimeout(() => burst(q.x, q.y, ['☀️', '✨'], 4, 36), k * 70);
+        window.setTimeout(() => burst(q.x, q.y, ['✨'], 4, 36), 200 + k * 70);
       });
       flash('#fff3a0', 300);
       afterGrowth(affected, `+${CONFIG.sunGrowth * power + state.charms.sunBlessing}`);
     } else if (sym === 'bee') {
       sfx.bee();
+      beeFlight(shapeCells(state, 'x', cell).map((c) => el.field.children[c]), symHtml('bee'));
       shapeCells(state, 'x', cell).forEach((c, k) => {
         const q = center(el.field.children[c]);
-        window.setTimeout(() => burst(q.x, q.y, ['🐝', '🌼'], 3, 30), k * 70);
+        window.setTimeout(() => burst(q.x, q.y, ['🌼'], 3, 30), k * 220);
       });
       afterGrowth(affected, `+${CONFIG.beeGrowth * power}`);
       if (left > 0 && selected === null) say('もう使える場所がない');
@@ -1500,14 +1581,6 @@ function onPlotTap(cell: number): void {
   }
 }
 
-function rainDrops(plot: HTMLElement): void {
-  const r = plot.getBoundingClientRect();
-  for (let k = 0; k < 6; k++) {
-    const x = r.left + r.width * (0.2 + Math.random() * 0.6);
-    window.setTimeout(() => burst(x, r.top + 10, ['💧'], 1, 30), k * 60);
-  }
-}
-
 function afterGrowth(cells: number[], label: string): void {
   cells.forEach((cell, k) => {
     const plot = el.field.children[cell] as HTMLElement;
@@ -1516,7 +1589,9 @@ function afterGrowth(cells: number[], label: string): void {
     window.setTimeout(() => {
       pop(plot.querySelector('.crop') ?? plot, 1.35);
       if (crop && isRipe(crop)) {
-        sfx.grow();
+        sfx.pon();
+        plot.classList.add('just-ripe');
+        window.setTimeout(() => plot.classList.remove('just-ripe'), 700);
         const big = CROPS[crop.kind].price >= 20;
         burst(p.x, p.y, ['✨', big ? '🌟' : '⭐'], 8, 50);
         floatText(p.x, p.y - 20, big ? `実った！ ${cropPrice(state, crop, cell)}金` : '実った！', {
@@ -1714,6 +1789,9 @@ function saveBest(b: Best): void {
 /** 結果画面。cleared=true はクリア後にここで終えたとき */
 function showGameOver(endedAfterClear = false): void {
   clearRun();
+  document.documentElement.classList.remove('tax-danger');
+  clearInterval(heartTimer);
+  heartTimer = 0;
   state.over = true;
   const best = loadBest();
   const isNew = state.day > (best.day ?? 0);
@@ -1805,7 +1883,7 @@ function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
       <li><b>自動の出目</b>（カラス・虫・金貨・商人・四つ葉）は止まった瞬間に効く</li>
       <li>作物は<b>雨・太陽・蜂</b>でしか育たない。実をタップで売る。<b>苺</b>は2段階で4金、<b>トマト</b>は3段階で6金、<b>かぼちゃ</b>は5段階で24金（カラスに食べられない）、<b>金のとうもろこし</b>は3段階で30金</li>
       <li><b>出目の形</b>：雨は<b>十字</b>、太陽は<b>縦一列</b>、蜂は<b>斜め</b>（選んだマスと斜め4マス）の作物を育てる。どこに落とすかで育つ数が変わる</li>
-      <li><b>畑を広げる・道具</b>：ショップで畑を広げられる（最大5×5）。かかし・井戸・巣箱などの道具や、堆肥・水路のマスを買って好きな所に置ける。道具はマスを1つ使う（植えられず列にも入らない）</li>
+      <li><b>畑を広げる・道具</b>：レアのお守り「開墾」で畑が広がる（最大5×5）。<b>満月</b>（全作物＋1）はいつもショップで足せる（足すたび高くなる）。ショップではかかし・井戸・巣箱などの道具や、堆肥・水路のマスを買って好きな所に置ける。道具はマスを1つ使う（植えられず列にも入らない）</li>
       <li><b>お邪魔</b>：年貢を納めるたびに虫・雑草・タヌキ・霜のどれかが袋に増える。<b>雑草</b>は空きマスを塞いで広がる（タップ${CONFIG.weedPullCost}金で抜く）、<b>タヌキ</b>は実ったまま置いた一番高い作物を持っていく（実りがなければお金を盗む）、<b>霜</b>はマスを${CONFIG.frostDays}日凍らせる（植える・育つ・売るができない）。ショップで消せる（消すたび高くなる）</li>
       <li><b>注文</b>：週ごとにお客さんから「◯◯を△個」の注文が来る。期日までに売ると報酬の金がもらえる</li>
       <li><b>年貢</b>：${CONFIG.taxPeriod}日ごとに自動で徴収。払えないと終わり。${CONFIG.winTaxes}回納めるとクリア</li>
@@ -1858,6 +1936,14 @@ function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
 function showClear(): Promise<boolean> {
   sfx.bigBuy();
   confetti(80);
+  // 大花火
+  const colors = ['#ff5a5a', '#ffd84a', '#5ad1ff', '#b98bff', '#7dff8a', '#ff8fd8'];
+  for (let k = 0; k < 10; k++) {
+    window.setTimeout(() => {
+      sfx.firework();
+      firework(window.innerWidth * (0.15 + Math.random() * 0.7), window.innerHeight * (0.12 + Math.random() * 0.25), colors[k % colors.length]);
+    }, k * 380);
+  }
   flash('#ffe680', 700);
   vibrate([60, 40, 60, 40, 200]);
   el.overlay.innerHTML = `
@@ -1884,6 +1970,7 @@ function showClear(): Promise<boolean> {
 
 function startGame(resume: GameState | null = null): void {
   state = resume ?? newGame(setupFrom(meta));
+  el.field.classList.remove('withered');
   if (resume) Object.keys(done).forEach((k) => (done[k as keyof typeof done] = true));
   else clearRun();
   selected = null;
@@ -1909,6 +1996,8 @@ function showPrep(): void {
     const used = loadoutCost(meta.loadout.filter((id) => meta.unlockedAdds.includes(id)));
     const capPrice = nextCapacityPrice(meta);
     const adds = (Object.keys(META.adds) as (keyof typeof META.adds)[])
+      // 満月はいつも並ぶので組み合わせの対象外
+      .filter((id) => id !== 'addMoon')
       .map((id) => {
         const def = META.adds[id];
         const unlocked = meta.unlockedAdds.includes(id);
