@@ -1,11 +1,12 @@
 import './style.css';
 import {
-  ADJACENCY, CHARMS, CHARM_ORDER, CHARM_TIER_NAMES, CONFIG, CROPS, FEEDBACK_URL, META, SEEDS, SHARE_URL, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL,
-  type CharmId, type CropKind, type SymbolId, type UpgradeId,
+  CHARMS, CHARM_ORDER, CHARM_PLACE, CHARM_TIER_NAMES, CONFIG, CROPS, FEEDBACK_URL, META, PLACES, PLACE_ORDER, SEEDS, SHAPE_NAMES, SHARE_URL, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL,
+  type CharmId, type CropKind, type PlaceId, type SymbolId, type UpgradeId,
 } from './config.ts';
 import {
-  adjacencyBonus, bagTotal, buy, canBuy, canUse, chooseCharm, cropPrice, drawDay, drawSymbol, endDay, isRipe, neighbors,
-  groupMultiplier, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState,
+  bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, chooseCharm, cropPrice, drawDay, drawSymbol, endDay,
+  expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells,
+  ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState,
 } from './game.ts';
 import { isMuted, sfx, toggleMute, unlockAudio } from './audio.ts';
 import {
@@ -38,6 +39,7 @@ const el = {
   msg: $('msg'),
   field: $('field'),
   shop: $('shop'),
+  farmShop: $('farm-shop'),
   bag: $('bag'),
   bagTotal: $('bag-total'),
   overlay: $('overlay'),
@@ -180,6 +182,24 @@ function loadRun(): GameState | null {
     s.bred ??= [];
     s.lastObstacle ??= null;
     s.removed ??= {};
+    // 畑の広さを変えられるようにする前（3×3固定）の保存データは、マスの番号を5×5の数え方に直す
+    if (s.cols === undefined) {
+      const size = CONFIG.fieldCols * CONFIG.fieldRows;
+      const remap = <T>(a: T[], empty: T): T[] => {
+        const out = Array.from({ length: size }, () => empty);
+        a.forEach((v, i) => (out[Math.floor(i / 3) * CONFIG.fieldCols + (i % 3)] = v));
+        return out;
+      };
+      s.field = remap(s.field, null);
+      s.weeds = remap(s.weeds, false);
+      s.frost = remap(s.frost, 0);
+      s.cols = CONFIG.startCols;
+      s.rows = CONFIG.startRows;
+      s.tools = Array.from({ length: size }, () => null);
+      s.tiles = Array.from({ length: size }, () => null);
+      s.stock = [];
+      s.bought = {};
+    }
     return s;
   } catch {
     return null;
@@ -206,6 +226,7 @@ function render(): void {
   renderSpinButton();
   renderField();
   renderShop();
+  renderFarmShop();
   renderBag();
   renderCharms();
   saveRun();
@@ -222,13 +243,13 @@ function fitLayout(): void {
   fitRaf = requestAnimationFrame(() => {
     const root = document.documentElement;
     const colWidth = WIDE.matches ? el.app.clientWidth / 2 - 18 : el.app.clientWidth - 24;
-    // 畑の枠（左右の余白・溝）を除いた幅を3等分
-    let cell = Math.min(124, Math.floor((colWidth - 48) / 3));
+    // 畑の枠（左右の余白・溝）を除いた幅を列の数で割る
+    let cell = Math.min(124, Math.floor((colWidth - 48 - 5 * (state.cols - 3)) / state.cols));
     root.style.setProperty('--cell', `${cell}px`);
     for (let k = 0; k < 3; k++) {
       const excess = root.scrollHeight - window.innerHeight;
       if (excess <= 0) break;
-      cell = Math.max(44, cell - Math.ceil(excess / 3));
+      cell = Math.max(40, cell - Math.ceil(excess / state.rows));
       root.style.setProperty('--cell', `${cell}px`);
     }
   });
@@ -285,9 +306,9 @@ function renderTax(): void {
   el.tax.innerHTML = `${warn ? '⚠️' : art('bale')} 年貢 <b>${t.amount}金</b>（${when}）<span class="tax-state">${short ? `不足 ${t.amount - state.gold}金` : '払える ✓'}</span>`;
 }
 
-/** まとめて売れる実のつながり（2個以上）があるか */
+/** 列（縦・横・斜めに3つ以上）にそろった実があるか */
 function hasRipeGroup(): boolean {
-  return state.field.some((_, i) => ripeGroup(state, i).length >= 2);
+  return state.field.some((_, i) => ripeGroup(state, i).length >= 3);
 }
 
 function renderGoal(): void {
@@ -310,6 +331,12 @@ function usableReels(): number[] {
 function renderHint(): void {
   const t = nextTax(state);
   el.hint.className = 'hint';
+  if (state.stock.length && selected === null) {
+    const d = PLACES[state.stock[0]];
+    el.hint.className = 'hint place';
+    el.hint.textContent = `👆 ${d.name}を置くマスをタップ（${d.desc}）`;
+    return;
+  }
   if (state.day > 0 && t.daysLeft <= CONFIG.taxWarnDays && state.gold < t.amount) {
     // 不足は年貢の札が示すので、ここでは打てる手だけを言う
     const ripe = state.field.some(isRipe);
@@ -318,7 +345,7 @@ function renderHint(): void {
     if (ripe) return;
   }
   if (state.day > CONFIG.hintUntilDay) {
-    el.hint.textContent = !done.line && hasRipeGroup() ? '✨ つながった！ つながった実はタップでまとめて売れる（多いほど高い）' : '';
+    el.hint.textContent = !done.line && hasRipeGroup() ? '✨ 列がそろった！ タップで列ごとまとめて売れる' : '';
     return;
   }
   const anyRipe = state.field.some(isRipe);
@@ -326,11 +353,16 @@ function renderHint(): void {
   if (!done.spin) text = '👇「まわす！」でスロットを回そう（1回転＝畑の1日）';
   else if (selected !== null) {
     const r = state.results[selected];
-    text = r.total > 1 ? `👆 光っている空きマスをタップ（あと${r.left}個 植えられる）` : '👆 光っているマスをタップ（出目をもう一度タップで取り消し）';
+    const shape = SYMBOLS[r.symbol].shape;
+    text = r.total > 1
+      ? `👆 光っている空きマスをタップ（あと${r.left}個 植えられる）。縦・横・斜めに3つそろえると高く売れる`
+      : shape
+        ? `👆 マスをタップ：そこを中心に${SHAPE_NAMES[shape]}の作物が育つ`
+        : '👆 光っているマスをタップ（出目をもう一度タップで取り消し）';
   }
-  else if (!done.line && hasRipeGroup()) text = '✨ つながった！ 上下左右でつながった実はタップでまとめて売れる。数が多いほど倍率が高い';
+  else if (!done.line && hasRipeGroup()) text = '✨ 列がそろった！ 縦・横・斜めに3つそろった実はタップで列ごと売れる（単品は半値）';
   else if (!done.use && usableReels().length > 0) text = '✨ 光っている出目をタップ → 畑のマスをタップで使える';
-  else if (!done.sell && anyRipe) text = '🍅 実った作物をタップすると売れる！';
+  else if (!done.sell && anyRipe) text = '🍅 実った作物をタップすると売れる。単品は半値なので、列がそろうまで待つのもあり';
   else if (!done.buy && UPGRADES.some((u) => canBuy(state, u.id))) text = '💰 お金がたまった！ ショップでスロットを強化しよう';
   else if (!done.next && done.spin && usableReels().length === 0) text = '▶ 次の日へ進もう。作物は雨と太陽でしか育たない';
   el.hint.textContent = text;
@@ -347,7 +379,10 @@ function reelTag(i: number): { text: string; cls: string } {
   }
   if (r.used) return { text: '使った ✓', cls: 'used' };
   if (selected === i) return { text: '選択中', cls: 'selected' };
-  if (canUse(state, i, null)) return { text: '▶ 使う', cls: 'usable' };
+  if (canUse(state, i, null)) {
+    const shape = SYMBOLS[r.symbol].shape;
+    return { text: shape ? `▶ ${SHAPE_NAMES[shape]}` : '▶ 使う', cls: 'usable' };
+  }
   return { text: '使えない', cls: 'dead' };
 }
 
@@ -414,25 +449,63 @@ function renderSpinButton(): void {
   }
 }
 
+/** 道具・特別なマスの絵 */
+const PLACE_ART: Record<PlaceId, ArtId> = {
+  scarecrow: 'scarecrow', bigScarecrow: 'bigScarecrow', well: 'well', goldenWell: 'goldenWell',
+  hive: 'hive', queenHive: 'queenHive', compost: 'compost', water: 'water',
+};
+
+/** 形で効く出目を選んでいるとき、指しているマスに効く範囲を見せる */
+let previewCell: number | null = null;
+
+function previewCells(): number[] {
+  if (selected === null || previewCell === null) return [];
+  const shape = SYMBOLS[state.results[selected].symbol].shape;
+  return shape ? shapeCells(state, shape, previewCell) : [];
+}
+
 function renderField(): void {
-  const targets = selected !== null ? validTargets(state, selected) : null;
-  // マスごとに、タップしたときにまとめて売れる数（つながり）を数えておく
-  const groupSize = state.field.map((_, i) => ripeGroup(state, i).length);
+  const targets = selected !== null ? validTargets(state, selected) : state.stock.length ? state.field.flatMap((_, i) => (canPlace(state, i) ? [i] : [])) : null;
+  const preview = previewCells();
+  el.field.style.setProperty('--cols', String(state.cols));
   if (el.field.children.length !== state.field.length) {
     el.field.innerHTML = '';
     state.field.forEach((_, i) => {
       const b = document.createElement('button');
       b.className = 'plot';
       b.addEventListener('click', () => onPlotTap(i));
+      b.addEventListener('pointerenter', () => {
+        previewCell = i;
+        if (selected !== null && SYMBOLS[state.results[selected].symbol].shape) renderField();
+      });
+      b.addEventListener('pointerleave', () => {
+        if (previewCell !== i) return;
+        previewCell = null;
+        if (selected !== null) renderField();
+      });
       el.field.appendChild(b);
     });
   }
   state.field.forEach((crop, i) => {
     const b = el.field.children[i] as HTMLButtonElement;
+    if (!inField(state, i)) {
+      b.className = 'plot off';
+      return;
+    }
     const cls = ['plot'];
     let html = '';
     let label = '空きマス';
-    if (crop) {
+    const tool = state.tools[i];
+    const tile = state.tiles[i];
+    if (tile) {
+      cls.push(`tile-${tile}`);
+      html += `<span class="badge-tile">${art(PLACE_ART[tile])}</span>`;
+    }
+    if (tool) {
+      cls.push('tool');
+      html += `<span class="crop">${art(PLACE_ART[tool])}</span><span class="tool-name">${PLACES[tool].name}</span>`;
+      label = `${PLACES[tool].name}：${PLACES[tool].desc}`;
+    } else if (crop) {
       const ripe = isRipe(crop);
       const def = CROPS[crop.kind];
       cls.push(`g${stageOf(crop)}`, `crop-${crop.kind}`);
@@ -443,31 +516,34 @@ function renderField(): void {
       if (!ripe) html += `<span class="badge-kind">${art(FRUIT[crop.kind])}</span>`;
       if (crop.fertilized) html += '<span class="badge-fert">肥×2</span>';
       if (ripe) {
-        // このマスをタップしたときに通る列の数で倍率が決まる
-        const size = groupSize[i];
-        const mult = groupMultiplier(size);
-        const lines = size >= 2 ? Math.min(4, Math.ceil(size / 2)) : 0;
-        if (size >= 2) cls.push('line', `lines-${lines}`);
+        // 列に入っていれば倍率、入っていなければ単品（半値）
+        const mult = cellMultiplier(state, i);
+        const inLine = mult > CONFIG.singleMult;
         const price = Math.round(cropPrice(state, crop, i) * mult);
-        const adj = adjacencyBonus(state, i);
-        html += `<span class="price${adj ? ' adj' : ''}">${price}金${adj ? `<small>相性+${adj}</small>` : ''}</span>`;
-        if (size >= 2) html += `<span class="badge-line">${size}つながり ×${mult}</span>`;
+        if (inLine) cls.push('line', inSameCropLine(state, i) ? 'lines-3' : 'lines-1');
+        else cls.push('single');
+        html += `<span class="price">${price}金</span>`;
+        html += inLine ? `<span class="badge-line">列 ×${mult}</span>` : `<span class="badge-single">単品 ×${CONFIG.singleMult}</span>`;
+        label = `${def.name} 実、タップで${price}金で売る${inLine ? '（列ごと）' : '（単品は半値）'}`;
+      } else {
+        html += `<span class="pips">${Array.from({ length: def.ripe }, (_, k) => `<i class="pip${k < crop.growth ? ' on' : ''}"></i>`).join('')}</span>`;
+        label = `${def.name} ${STAGE_NAMES[stageOf(crop)]}`;
       }
-      else html += `<span class="pips">${Array.from({ length: def.ripe }, (_, k) => `<i class="pip${k < crop.growth ? ' on' : ''}"></i>`).join('')}</span>`;
-      label = `${def.name} ${STAGE_NAMES[stageOf(crop)]}${ripe ? `、タップで${cropPrice(state, crop, i)}金で売る` : ''}`;
     } else if (state.weeds[i]) {
       cls.push('weedy');
-      html = `<span class="crop">${art('weed')}</span><span class="pull">${weedCost(state) ? `抜く ${weedCost(state)}金` : '抜く'}</span>`;
+      html += `<span class="crop">${art('weed')}</span><span class="pull">${weedCost(state) ? `抜く ${weedCost(state)}金` : '抜く'}</span>`;
       label = `雑草、タップで抜く（${weedCost(state)}金）`;
     } else {
-      html = '<span class="empty">空き</span>';
+      html += '<span class="empty">空き</span>';
     }
+    if (tile) label += `、${PLACES[tile].name}（${PLACES[tile].desc}）`;
     if (state.frost[i]) {
       cls.push('frozen');
       html += `<span class="ice"></span><span class="badge-frost">${art('frost')}あと${state.frost[i]}日</span>`;
       label += `、凍っている（あと${state.frost[i]}日）`;
     }
     if (targets) cls.push(targets.includes(i) ? 'target' : 'dim');
+    if (preview.includes(i)) cls.push('preview');
     b.className = cls.join(' ');
     if (b.innerHTML !== html) b.innerHTML = html;
     b.setAttribute('aria-label', label);
@@ -523,6 +599,79 @@ function renderShop(): void {
     const html = `${weekly ? '<span class="weekly-tag">週替わり</span>' : ''}<span class="ico">${ico}</span><span class="name">${u.name}</span><span class="effect">${upgradeEffect(u.id)}</span><span class="cost">${cost}</span>`;
     if (b.innerHTML !== html) b.innerHTML = html;
   });
+}
+
+/** 畑のショップ：広げる・道具・特別なマス */
+function renderFarmShop(): void {
+  const items: { key: string; ico: string; name: string; effect: string; price: number | null; ok: boolean }[] = [];
+  const ep = expandPrice(state);
+  items.push({
+    key: 'expand',
+    ico: art('expand'),
+    name: '畑を広げる',
+    effect: ep === null ? 'これ以上は広げられない（5×5）' : `${state.cols}×${state.rows} → ${state.cols <= state.rows ? state.cols + 1 : state.cols}×${state.cols <= state.rows ? state.rows : state.rows + 1}`,
+    price: ep,
+    ok: canExpand(state),
+  });
+  PLACE_ORDER.filter((id) => PLACES[id].price !== null).forEach((id) =>
+    items.push({ key: id, ico: art(PLACE_ART[id]), name: PLACES[id].name, effect: PLACES[id].desc, price: placePrice(state, id), ok: canBuyPlace(state, id) }),
+  );
+  if (el.farmShop.children.length !== items.length) {
+    el.farmShop.innerHTML = '';
+    items.forEach((it) => {
+      const b = document.createElement('button');
+      b.className = 'item';
+      b.dataset.id = it.key;
+      b.addEventListener('click', () => onBuyFarm(it.key as PlaceId | 'expand'));
+      el.farmShop.appendChild(b);
+    });
+  }
+  items.forEach((it, i) => {
+    const b = el.farmShop.children[i] as HTMLButtonElement;
+    b.className = `item${it.ok ? ' affordable' : ''}${it.price === null ? ' soldout' : ''}`;
+    const cost = it.price === null ? '完了' : it.ok ? `${it.price}金で買う` : `${it.price}金（あと${it.price - state.gold}）`;
+    const html = `<span class="ico">${it.ico}</span><span class="name">${it.name}</span><span class="effect">${it.effect}</span><span class="cost">${cost}</span>`;
+    if (b.innerHTML !== html) b.innerHTML = html;
+  });
+}
+
+function onBuyFarm(key: PlaceId | 'expand'): void {
+  unlockAudio();
+  if (busy || state.over) return;
+  const card = el.farmShop.querySelector(`[data-id="${key}"]`) as HTMLElement;
+  if (key === 'expand') {
+    const price = expandPrice(state);
+    if (price === null || !expand(state)) {
+      sfx.error();
+      shake(card, 4);
+      say(price === null ? 'これ以上は広げられない' : `あと${price - state.gold}金 足りない`);
+      return;
+    }
+    sfx.bigBuy();
+    closeSheet();
+    render();
+    flash('#c8f0a0', 400);
+    const f = center(el.field);
+    burst(f.x, f.y, ['🌱', '✨', '⭐'], 18, 160);
+    floatText(f.x, f.y, `畑が広がった！ ${state.cols}×${state.rows}`, { cls: 'good', size: 1.2, dur: 1500 });
+    fieldCells().forEach((c) => pop(el.field.children[c], 1.08));
+    return;
+  }
+  if (!buyPlace(state, key)) {
+    sfx.error();
+    shake(card, 4);
+    say(`あと${(placePrice(state, key) ?? 0) - state.gold}金 足りない`);
+    return;
+  }
+  sfx.buy();
+  selected = null;
+  closeSheet();
+  render();
+  say(`${PLACES[key].name}を置くマスをタップ`);
+}
+
+function fieldCells(): number[] {
+  return state.field.flatMap((_, i) => (inField(state, i) ? [i] : []));
 }
 
 function renderBag(): void {
@@ -702,6 +851,7 @@ function showCharmOffer(): Promise<void> {
           }
           const got = visibleOr(el.charms.querySelector(`[data-charm="${id}"]`), 'charms');
           if (got) pop(got, 1.2);
+          if (CHARM_PLACE[id]) say(`${PLACES[CHARM_PLACE[id]!].name}を置くマスをタップ`, 3000);
           resolve();
         }, 650);
       }),
@@ -1098,7 +1248,8 @@ async function resolveAutos(): Promise<void> {
       if (ev.escaped) {
         autoOutcome[i] = '逃げた';
         sfx.shoo();
-        floatText(from.x, from.y - 30, 'かかしでタヌキが逃げた！', { cls: 'good', size: 0.7 });
+        floatText(from.x, from.y - 30, 'かかしがいてタヌキは近寄れない！', { cls: 'good', size: 0.7 });
+        ev.guarded.forEach((c) => pop(el.field.children[c], 1.12));
       } else if (!ev.taken.length) {
         autoOutcome[i] = ev.stolen ? `−${ev.stolen}金` : '空振り';
         if (ev.stolen) {
@@ -1139,7 +1290,7 @@ async function resolveAutos(): Promise<void> {
     } else if (ev.cell === null) {
       autoOutcome[i] = '空振り';
       sfx.crow();
-      floatText(from.x, from.y - 30, state.charms.scarecrow ? 'かかしでカラスが逃げた' : 'カラスは空振り', { size: 0.6 });
+      floatText(from.x, from.y - 30, 'カラスは空振り', { size: 0.6 });
     } else if (!ev.eaten) {
       autoOutcome[i] = 'セーフ';
       const plot = el.field.children[ev.cell] as HTMLElement;
@@ -1147,7 +1298,7 @@ async function resolveAutos(): Promise<void> {
       sfx.shoo();
       const p = center(plot);
       burst(p.x, p.y, ['💨', '🪶', '✨'], 8, 60);
-      floatText(p.x, p.y - 20, ev.crop && isRipe(ev.crop) ? 'セーフ！ 守った！' : 'セーフ！', { cls: 'good', size: ev.crop && isRipe(ev.crop) ? 1 : 0.8 });
+      floatText(p.x, p.y - 20, ev.guarded ? 'かかしが追い払った！' : ev.crop && isRipe(ev.crop) ? 'セーフ！ 守った！' : 'セーフ！', { cls: 'good', size: ev.crop && isRipe(ev.crop) ? 1 : 0.8 });
       pop(plot, 1.12);
     } else {
       autoOutcome[i] = 'パクッ…';
@@ -1207,26 +1358,11 @@ function onReelTap(i: number): void {
     say(SEEDS[r.symbol] ? '空きマスがない！ 実った作物を売ろう' : r.symbol === 'fertilizer' ? '肥料をまける作物がない' : '育てる作物がない');
     return;
   }
-  if (def.noTarget) {
-    applySun(i);
-    return;
-  }
   selected = i;
   armedNextDay = false;
   sfx.select();
-  say(`${def.name}：${def.desc}`);
+  say(`${def.name}：${def.desc}`, 3200);
   render();
-}
-
-function applySun(i: number): void {
-  const affected = useSymbol(state, i, null) ?? [];
-  done.use = true;
-  sfx.sun();
-  flash('#fff3a0', 450);
-  const c = center(el.reels.children[i]);
-  burst(c.x, c.y, ['☀️', '✨'], 8, 60);
-  render();
-  afterGrowth(affected, `+${CONFIG.sunGrowth * state.results[i].power + state.charms.sunBlessing}`);
 }
 
 function onPlotTap(cell: number): void {
@@ -1234,6 +1370,16 @@ function onPlotTap(cell: number): void {
   if (busy || state.over) return;
   const plot = el.field.children[cell] as HTMLElement;
   const p = center(plot);
+  if (selected === null && state.stock.length && canPlace(state, cell)) {
+    const id = place(state, cell)!;
+    sfx.plant();
+    sfx.charmGet();
+    render();
+    burst(p.x, p.y, ['✨', '⭐', '🌱'], 12, 60);
+    pop(plot, 1.2);
+    floatText(p.x, p.y - 20, `${PLACES[id].name}を置いた！`, { cls: 'good', size: 0.8 });
+    return;
+  }
   if (selected !== null) {
     const reel = selected;
     const sym = state.results[reel].symbol;
@@ -1244,8 +1390,8 @@ function onPlotTap(cell: number): void {
       say(
         SEEDS[sym]
           ? 'そこにはもう作物がある'
-          : sym === 'bee'
-            ? 'そのまわりに育てる作物がない'
+          : SYMBOLS[sym].shape
+            ? `その${SHAPE_NAMES[SYMBOLS[sym].shape!]}に育てる作物がない`
             : !crop
               ? '作物がないマスには使えない'
               : sym === 'rain'
@@ -1268,22 +1414,25 @@ function onPlotTap(cell: number): void {
       const more = left > 0 ? `（あと${left}）` : '';
       const name = CROPS[SEEDS[sym]!.crop].name;
       floatText(p.x, p.y - 20, `${name}を植えた！${more}`, { size: 0.7, cls: sym === 'goldSeed' ? 'gold' : 'good' });
-      // 並びの相性ができたら教える（植える場所を考える理由になる）
-      const adj = adjacencyBonus(state, cell);
-      if (adj > 0) window.setTimeout(() => floatText(p.x, p.y + 10, `相性 +${adj}金`, { cls: 'combo', size: 0.75 }), 250);
       if (left > 0 && selected === null) say('空きマスがないので残りの種は使えない');
     } else if (sym === 'fertilizer' && left > 0) {
       sfx.fertilizer();
       floatText(p.x, p.y - 20, '売値×2！（あと1つ）', { cls: 'combo', size: 0.9 });
     } else if (sym === 'rain') {
       sfx.rain();
-      rainDrops(plot);
-      afterGrowth([cell], `+${CONFIG.rainGrowth * power}`);
-      const extra = affected.filter((c) => c !== cell);
-      if (extra.length) afterGrowth(extra, `☔+${state.charms.gentleRain}`);
+      shapeCells(state, 'cross', cell).forEach((c) => rainDrops(el.field.children[c] as HTMLElement));
+      afterGrowth(affected, `+${CONFIG.rainGrowth * power}`);
+    } else if (sym === 'sun') {
+      sfx.sun();
+      shapeCells(state, 'column', cell).forEach((c, k) => {
+        const q = center(el.field.children[c]);
+        window.setTimeout(() => burst(q.x, q.y, ['☀️', '✨'], 4, 36), k * 70);
+      });
+      flash('#fff3a0', 300);
+      afterGrowth(affected, `+${CONFIG.sunGrowth * power + state.charms.sunBlessing}`);
     } else if (sym === 'bee') {
       sfx.bee();
-      [cell, ...neighbors(cell)].forEach((c, k) => {
+      shapeCells(state, 'x', cell).forEach((c, k) => {
         const q = center(el.field.children[c]);
         window.setTimeout(() => burst(q.x, q.y, ['🐝', '🌼'], 3, 30), k * 70);
       });
@@ -1315,6 +1464,12 @@ function onPlotTap(cell: number): void {
     render();
     return;
   }
+  const tool = state.tools[cell];
+  if (tool) {
+    say(`${PLACES[tool].name}：${PLACES[tool].desc}`);
+    pop(plot, 1.08);
+    return;
+  }
   const crop = state.field[cell];
   if (isRipe(crop)) {
     sellCrop(cell);
@@ -1323,9 +1478,9 @@ function onPlotTap(cell: number): void {
   if (crop) {
     shake(plot, 3);
     const def = CROPS[crop.kind];
-    say(`${def.name}：あと${def.ripe - crop.growth}育つと実る（${def.price}金）`);
+    say(`${def.name}：あと${def.ripe - crop.growth}育つと実る（${def.price}金。列なら×${CONFIG.lineMult}〜、単品は半値）`);
   } else {
-    say('空きマス：種が出たら植えられる');
+    say(state.stock.length ? `ここには${PLACES[state.stock[0]].name}を置けない` : '空きマス：種が出たら植えられる');
   }
 }
 
@@ -1398,8 +1553,8 @@ function sellCrop(cell: number): void {
       }, k * 140);
     });
     window.setTimeout(() => {
-      const name = ['', 'つながり収穫！', 'ごっそり収穫！！', '大収穫！！！', '全部まとめて！！！！'][Math.min(res.lines, 4)];
-      floatText(p.x, p.y - 70, `${name} ${res.size}個 ×${res.mult} +${price}`, { cls: 'combo', size: 1.2 + res.lines * 0.2, rise: 120, dur: 1700 });
+      const name = ['', '一列そろい！', '二列そろい！！', '大収穫！！！', 'ほぼ全部！！！！'][Math.min(res.lines, 4)];
+      floatText(p.x, p.y - 70, `${name} ${res.size}個 最大×${res.mult} +${price}`, { cls: 'combo', size: 1.2 + res.lines * 0.2, rise: 120, dur: 1700 });
       if (res.lines >= 2) {
         confetti(30 + res.lines * 20);
         flash('#ff9ad5', 500);
@@ -1410,6 +1565,7 @@ function sellCrop(cell: number): void {
     sfx.sell(price, combo);
     const size = Math.min(2, 0.8 + price / 25);
     floatText(p.x, p.y - 10, `+${price}`, { cls: 'gold', size, rise: big ? 110 : 70 });
+    floatText(p.x, p.y + 18, `単品（半値）`, { size: 0.6, dur: 900 });
     burst(p.x, p.y, big ? ['🪙', '✨', '🌟', '💰'] : ['🪙', '✨'], big ? 22 : 8, big ? 140 : 60);
   }
   if (combo >= 2) floatText(p.x, p.y - 60, `COMBO ×${combo}`, { cls: 'combo', size: 0.7 + Math.min(combo, 6) * 0.08, dur: 900 });
@@ -1588,13 +1744,14 @@ function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
       <li><b>手動の出目</b>はタップ → 畑のマスをタップで使う。使わずに次の日へ進むと消える</li>
       <li><b>自動の出目</b>（カラス・虫・金貨・商人・四つ葉）は止まった瞬間に効く</li>
       <li>作物は<b>雨・太陽・蜂</b>でしか育たない。実をタップで売る。<b>苺</b>は2段階で4金、<b>トマト</b>は3段階で6金、<b>かぼちゃ</b>は5段階で24金（カラスに食べられない）、<b>金のとうもろこし</b>は3段階で30金</li>
-      <li><b>畑の並びの相性</b>：上下左右に同じ作物があると1つにつき+${ADJACENCY.same}金、トマトと苺・かぼちゃととうもろこしが隣り合うと+${ADJACENCY.pair}金</li>
+      <li><b>出目の形</b>：雨は<b>十字</b>、太陽は<b>縦一列</b>、蜂は<b>斜め</b>（選んだマスと斜め4マス）の作物を育てる。どこに落とすかで育つ数が変わる</li>
+      <li><b>畑を広げる・道具</b>：ショップで畑を広げられる（最大5×5）。かかし・井戸・巣箱などの道具や、堆肥・水路のマスを買って好きな所に置ける。道具はマスを1つ使う（植えられず列にも入らない）</li>
       <li><b>お邪魔</b>：年貢を納めるたびに虫・雑草・タヌキ・霜のどれかが袋に増える。<b>雑草</b>は空きマスを塞いで広がる（タップ${CONFIG.weedPullCost}金で抜く）、<b>タヌキ</b>は実ったまま置いた一番高い作物を持っていく（実りがなければお金を盗む）、<b>霜</b>はマスを${CONFIG.frostDays}日凍らせる（植える・育つ・売るができない）。ショップで消せる（消すたび高くなる）</li>
       <li><b>注文</b>：週ごとにお客さんから「◯◯を△個」の注文が来る。期日までに売ると報酬の金がもらえる</li>
       <li><b>年貢</b>：${CONFIG.taxPeriod}日ごとに自動で徴収。払えないと終わり。${CONFIG.winTaxes}回納めるとクリア</li>
       <li>年貢を納めるたびに<b>お守り</b>を3つから1つ選べる。代わりに<b>虫</b>が1枚増える</li>
       <li><b>フィーバー</b>：同じ絵柄が${CONFIG.feverCount}つ以上そろうと、絵柄ごとの役（芽吹き・虹・夏祭り・はちみつ・大商い・幸運など）と金貨の大当たり。カラス・虫がそろうと「群れ」で危険</li>
-      <li><b>つながり収穫</b>：縦・横・斜めに3個以上そろった実は、1つタップでまとめて売れる。そろった列がつながっていればコの字・十字もOK（3個のL字は不可）。数が多いほど高い（2個×${groupMultiplier(2)}・3個×${groupMultiplier(3)}・5個×${groupMultiplier(5)}・7個×${groupMultiplier(7)}・9個×${groupMultiplier(9)}）</li>
+      <li><b>列の収穫</b>：縦・横・斜めに3つ以上そろった実は、1つタップで列ごと売れて<b>×${CONFIG.lineMult}</b>。同じ作物だけの列ならさらに<b>×${CONFIG.sameCropMult}</b>、列が交わるマスはさらに上乗せ。<b>列に入らない単品は半値</b></li>
       <li><b>ショップ</b>：準備画面で選んだ「足す」強化と、カラス・虫を消す（消すたび価格×${CONFIG.removeGrowth}）</li>
       <li><b>豊穣ポイント</b>：遊び終わるたびに「日数＋年貢×${META.pointsPerTax}」（クリアで+${META.clearBonus}）。準備画面で解放に使う</li>
     </ol>`;

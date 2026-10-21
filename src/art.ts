@@ -305,6 +305,49 @@ const ART = {
     <path d="M48 30 H54 V16" fill="none" ${S}/><circle cx="54" cy="13" r="4" fill="${C.gold}" ${S}/>
     <rect x="18" y="44" width="22" height="5" rx="2" fill="${C.black}"/>`,
 
+  // ---- 畑に置くもの ----
+  bigScarecrow: `
+    <path d="M32 28 V60 M8 36 H56" fill="none" stroke="${C.brown}" stroke-width="5" stroke-linecap="round"/>
+    <path d="M20 34 H44 V54 H20Z" fill="${C.red}" ${S}/>
+    <circle cx="32" cy="22" r="11" fill="${C.tanLight}" ${S}/>
+    <path d="M27 20 L29 22 M37 20 L35 22" fill="none" ${S}/><path d="M26 27 Q32 31 38 27" fill="none" ${S}/>
+    <path d="M14 14 Q32 -4 50 14 Z" fill="${C.gold}" ${S}/>${sparkle(52, 50, 6, C.goldLight)}`,
+  well: `
+    <path d="M14 24 L32 10 L50 24Z" fill="${C.red}" ${S}/>
+    <path d="M18 24 V36 M46 24 V36" fill="none" stroke="${C.brown}" stroke-width="4"/>
+    <path d="M12 36 H52 V56 H12Z" fill="#a9a6a0" ${S}/>
+    <path d="M12 44 H52 M24 36 V44 M40 36 V44 M18 44 V56 M32 44 V56 M46 44 V56" fill="none" stroke="${INK}" stroke-width="2"/>
+    ${drop(32, 24, 1)}`,
+  goldenWell: `
+    <path d="M14 24 L32 10 L50 24Z" fill="${C.gold}" ${S}/>
+    <path d="M18 24 V36 M46 24 V36" fill="none" stroke="${C.goldDark}" stroke-width="4"/>
+    <path d="M12 36 H52 V56 H12Z" fill="${C.goldLight}" ${S}/>
+    <path d="M12 44 H52 M24 36 V44 M40 36 V44 M18 44 V56 M32 44 V56 M46 44 V56" fill="none" stroke="${C.goldDark}" stroke-width="2"/>
+    ${drop(32, 24, 1)}${sparkle(54, 12, 6, C.white)}`,
+  hive: `
+    <path d="M32 6 V12" fill="none" stroke="${C.brown}" stroke-width="4"/>
+    <path d="M20 14 H44 Q52 22 50 30 Q56 40 48 50 Q40 58 24 58 Q8 50 14 40 Q8 30 16 22 Z" fill="${C.straw}" ${S}/>
+    <path d="M14 30 H50 M12 42 H52" fill="none" stroke="#b8862a" stroke-width="3"/>
+    <ellipse cx="32" cy="48" rx="5" ry="4" fill="${INK}"/>`,
+  queenHive: `
+    <path d="M20 16 H44 Q52 24 50 32 Q56 42 48 52 Q40 60 24 60 Q8 52 14 42 Q8 32 16 24 Z" fill="${C.gold}" ${S}/>
+    <path d="M14 32 H50 M12 44 H52" fill="none" stroke="${C.goldDark}" stroke-width="3"/>
+    <ellipse cx="32" cy="50" rx="5" ry="4" fill="${INK}"/>
+    <path d="M20 14 L22 4 L28 10 L32 2 L36 10 L42 4 L44 14Z" fill="${C.goldLight}" ${S}/>`,
+  compost: `
+    <path d="M8 44 Q32 22 56 44 V56 H8Z" fill="${C.brown}" ${S}/>
+    <circle cx="22" cy="42" r="3" fill="#5a3517"/><circle cx="36" cy="38" r="3" fill="#5a3517"/><circle cx="44" cy="46" r="3" fill="#5a3517"/>
+    <path d="M28 30 Q28 16 40 12 Q40 26 28 30Z" fill="${C.green}" ${S}/>
+    <path d="M26 30 Q18 22 20 14 Q28 20 26 30Z" fill="${C.greenLight}" ${S}/>`,
+  water: `
+    <path d="M4 22 Q16 14 28 22 T52 22 T64 22 V44 Q52 52 40 44 T16 44 T0 44Z" fill="${C.blue}" ${S}/>
+    <path d="M10 30 Q18 26 26 30 M34 34 Q42 30 50 34" fill="none" stroke="${C.white}" stroke-width="3" stroke-linecap="round"/>`,
+  expand: `
+    <rect x="10" y="10" width="44" height="44" rx="6" fill="#8a5a33" ${S}/>
+    <path d="M10 25 H54 M10 39 H54 M25 10 V54 M39 10 V54" fill="none" stroke="#5a3517" stroke-width="2.5"/>
+    <circle cx="48" cy="48" r="12" fill="${C.green}" ${S}/>
+    <path d="M48 41 V55 M41 48 H55" fill="none" stroke="${C.white}" stroke-width="4" stroke-linecap="round"/>`,
+
   // ---- 画面・演出 ----
   calendar: `
     <rect x="10" y="14" width="44" height="40" rx="6" fill="${C.white}" ${S}/>

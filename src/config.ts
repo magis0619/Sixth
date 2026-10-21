@@ -49,7 +49,9 @@ export type CharmId =
   | 'bugWard'
   | 'taxRelief'
   | 'artisan'
-  | 'heater';
+  | 'heater'
+  | 'goldenWell'
+  | 'queenHive';
 
 export interface SymbolDef {
   id: SymbolId;
@@ -57,8 +59,8 @@ export interface SymbolDef {
   emoji: string;
   /** manual: 出目をタップして使う / auto: 停止した瞬間に効果が出る */
   kind: 'manual' | 'auto';
-  /** 対象マスの選択が要らない手動絵柄（太陽） */
-  noTarget?: boolean;
+  /** 効く範囲の形（手動の成長系）。選んだマスを中心にこの形のマスへ効く */
+  shape?: ShapeId;
   desc: string;
   /** フィーバー時の効果 */
   feverDesc: string;
@@ -72,10 +74,10 @@ export const SYMBOLS: Record<SymbolId, SymbolDef> = {
   berrySeed: { id: 'berrySeed', name: '苺の種', emoji: '🍓', kind: 'manual', desc: '空きマスに苺を2〜4個植える', feverDesc: '品種改良：今日植える苺は1段階育った状態から', rarity: 'normal' },
   pumpkinSeed: { id: 'pumpkinSeed', name: 'かぼちゃの種', emoji: '🎃', kind: 'manual', desc: '空きマスにかぼちゃを1個植える', feverDesc: '品種改良：今日植えるかぼちゃは1段階育った状態から', rarity: 'normal' },
   goldSeed: { id: 'goldSeed', name: '金の種', emoji: '🌟', kind: 'manual', desc: '空きマスに金のとうもろこしを植える', feverDesc: '黄金の実り：大当たり×3', rarity: 'rare' },
-  rain: { id: 'rain', name: '雨', emoji: '🌧️', kind: 'manual', desc: '作物1つの成長＋2', feverDesc: '虹：全作物の成長＋1', rarity: 'normal' },
-  sun: { id: 'sun', name: '太陽', emoji: '☀️', kind: 'manual', noTarget: true, desc: '畑の全作物の成長＋1', feverDesc: '夏祭り：今日の売値×2', rarity: 'normal' },
+  rain: { id: 'rain', name: '雨', emoji: '🌧️', kind: 'manual', shape: 'cross', desc: '十字（選んだマスと上下左右）の作物の成長＋1', feverDesc: '虹：全作物の成長＋1', rarity: 'normal' },
+  sun: { id: 'sun', name: '太陽', emoji: '☀️', kind: 'manual', shape: 'column', desc: '縦一列の作物の成長＋1', feverDesc: '夏祭り：今日の売値×2', rarity: 'normal' },
   fertilizer: { id: 'fertilizer', name: '肥料', emoji: '🧪', kind: 'manual', desc: '作物1つの売値を2倍', feverDesc: '堆肥：畑の全作物に肥料', rarity: 'normal' },
-  bee: { id: 'bee', name: '蜂', emoji: '🐝', kind: 'manual', desc: '選んだマスと上下左右の作物の成長＋1', feverDesc: 'はちみつ：作物1つにつき＋4金', rarity: 'normal' },
+  bee: { id: 'bee', name: '蜂', emoji: '🐝', kind: 'manual', shape: 'x', desc: '斜め（選んだマスと斜め4マス）の作物の成長＋1', feverDesc: 'はちみつ：作物1つにつき＋4金', rarity: 'normal' },
   crow: { id: 'crow', name: 'カラス', emoji: '🐦', kind: 'auto', desc: '作物を1つ狙う（1/2で食べられる。かぼちゃは平気）', feverDesc: '群れ：食べる確率 1/2 → 3/4', rarity: 'bad' },
   bug: { id: 'bug', name: '虫', emoji: '🐛', kind: 'auto', desc: '作物1つの成長−1', feverDesc: '群れ：成長−2', rarity: 'bad' },
   coin: { id: 'coin', name: '金貨', emoji: '🪙', kind: 'auto', desc: 'その場で金がもらえる', feverDesc: '大当たり×3', rarity: 'normal' },
@@ -124,18 +126,37 @@ export const SEEDS: Partial<Record<SymbolId, { crop: CropKind; extra: number; si
   goldSeed: { crop: 'corn', extra: 0, single: true },
 };
 
-/**
- * 畑の並びの相性（上下左右）。同じ作物どうしは +same、相性の良い組み合わせは +pair。
- * 実ったときの売値に足される。
- */
-export const ADJACENCY = {
-  same: 1,
-  pair: 2,
-  pairs: [
-    ['tomato', 'strawberry'],
-    ['pumpkin', 'corn'],
-  ] as [CropKind, CropKind][],
+/** 出目の効く範囲の形 */
+export type ShapeId = 'cross' | 'column' | 'x';
+
+export const SHAPE_NAMES: Record<ShapeId, string> = { cross: '十字', column: '縦一列', x: '斜め' };
+
+// ---- 畑に置くもの（道具・特別なマス） ----
+
+/** 道具はマスを占める（植えられない・列に入らない）。特別なマスは作物と重ねられる */
+export type PlaceId = 'scarecrow' | 'bigScarecrow' | 'well' | 'goldenWell' | 'hive' | 'queenHive' | 'compost' | 'water';
+
+export interface PlaceDef {
+  id: PlaceId;
+  kind: 'tool' | 'tile';
+  name: string;
+  desc: string;
+  /** ショップの価格（null はお守りでしか手に入らない）。同じ物を買うたびに placeGrowth 倍 */
+  price: number | null;
+}
+
+export const PLACES: Record<PlaceId, PlaceDef> = {
+  scarecrow: { id: 'scarecrow', kind: 'tool', name: 'かかし', desc: '周り8マスの作物をカラスとタヌキから守る', price: 20 },
+  bigScarecrow: { id: 'bigScarecrow', kind: 'tool', name: '大かかし', desc: '2マス以内の作物をカラスとタヌキから守る', price: null },
+  well: { id: 'well', kind: 'tool', name: '井戸', desc: '上下左右の作物が毎日成長＋1', price: 40 },
+  goldenWell: { id: 'goldenWell', kind: 'tool', name: '黄金の井戸', desc: '周り8マスの作物が毎日成長＋1', price: null },
+  hive: { id: 'hive', kind: 'tool', name: '巣箱', desc: '周り8マスの作物の売値＋2', price: 30 },
+  queenHive: { id: 'queenHive', kind: 'tool', name: '女王蜂の巣箱', desc: '周り8マスの作物の売値＋6', price: null },
+  compost: { id: 'compost', kind: 'tile', name: '堆肥のマス', desc: 'このマスの作物の売値×2', price: 35 },
+  water: { id: 'water', kind: 'tile', name: '水路のマス', desc: 'このマスの作物が毎日成長＋1', price: 30 },
 };
+
+export const PLACE_ORDER = Object.keys(PLACES) as PlaceId[];
 
 /** 感想フォームのURL（Googleフォーム等）。空なら結果画面にボタンを出さない */
 export const FEEDBACK_URL = '';
@@ -144,9 +165,16 @@ export const FEEDBACK_URL = '';
 export const SHARE_URL = 'https://magis0619.github.io/Sixth/';
 
 export const CONFIG = {
-  /** 畑のマス数（3×3） */
-  fieldCols: 3,
-  fieldRows: 3,
+  /** 畑の最大の広さ（5×5）。マスの番号はこの広さで数える */
+  fieldCols: 5,
+  fieldRows: 5,
+  /** 始めの広さ（3×3）。広げるたびに列→行の順に1つ増える */
+  startCols: 3,
+  startRows: 3,
+  /** 畑を広げる価格（広げた回数ごと） */
+  expandPrices: [30, 60, 110, 180],
+  /** 道具・特別なマスは同じ物を買うたびにこの倍率で高くなる */
+  placeGrowth: 1.5,
   /** 初期リール本数と上限 */
   initialReels: 3,
   maxReels: 5,
@@ -157,7 +185,7 @@ export const CONFIG = {
   } as Record<SymbolId, number>,
   initialGold: 0,
   /** 成長（実るまでの成長は作物ごとに CROPS で決める） */
-  rainGrowth: 2,
+  rainGrowth: 1,
   sunGrowth: 1,
   beeGrowth: 1,
   /** 肥料の売値倍率（作物ごとの売値は CROPS） */
@@ -186,9 +214,9 @@ export const CONFIG = {
   cloverMultiplier: 3,
   /** 種1枚で植えられる数とその重み（1個:50%・2個:35%・3個:15%）。金の種は常に1個 */
   seedCountWeights: [
-    { count: 1, weight: 50 },
-    { count: 2, weight: 35 },
-    { count: 3, weight: 15 },
+    { count: 2, weight: 40 },
+    { count: 3, weight: 40 },
+    { count: 4, weight: 20 },
   ],
 
   /** ゾロ目：同じ絵柄がこの数以上そろうとフィーバー。良い絵柄は役＋大当たり、カラス・虫は「群れ」で効果2倍 */
@@ -205,10 +233,14 @@ export const CONFIG = {
   orderRewardBase: 5,
 
   /**
-   * つながり収穫：上下左右でつながった実を一度にまとめて売る。添字＝つながった数（0〜9）ごとの売値倍率。
-   * 一列でなくても、コの字・L字などの形でまとめて回収できる
+   * 列の収穫：縦・横・斜めに3つ以上そろった実は列ごとまとめて売る。
+   * 列に入らない単品は売値×singleMult。列の実は×lineMult、同じ作物だけの列に入っていればさらに×sameCropMult。
+   * 1つの実が複数の列に入っていると、2本目以降1本ごとに×(1 + crossBonus) が上乗せされる
    */
-  groupBonusBySize: [1, 1, 1.2, 1.5, 1.75, 2, 2.5, 3, 3.5, 4],
+  singleMult: 0.5,
+  lineMult: 2,
+  sameCropMult: 2,
+  crossBonus: 0.5,
 
   /** 強化の価格 */
   upgradePrices: {
@@ -234,7 +266,7 @@ export const CONFIG = {
   /** 年貢：taxPeriod 日ごとに、その日の終わり（次の回転前）に自動で徴収 */
   taxPeriod: 7,
   /** 1回目から順の年貢額。表を超えたら（エンドレス）直前の額 × taxGrowth */
-  taxSchedule: [5, 22, 60, 140, 260, 420, 620, 880],
+  taxSchedule: [5, 25, 90, 250, 500, 800, 1200, 1700],
   taxGrowth: 1.5,
   /** この回数の年貢を納めるとクリア（その後はエンドレス） */
   winTaxes: 8,
@@ -295,6 +327,13 @@ export const UPGRADE_SYMBOL: Partial<Record<UpgradeId, { symbol: SymbolId; delta
   removeFrost: { symbol: 'frost', delta: -1 },
 };
 
+/** 道具をもらえるお守りと、もらえる道具 */
+export const CHARM_PLACE: Partial<Record<CharmId, PlaceId>> = {
+  scarecrow: 'bigScarecrow',
+  goldenWell: 'goldenWell',
+  queenHive: 'queenHive',
+};
+
 /** お守りのレア度。強さ（シミュレーターでの生存日数の伸び）で決めている */
 export type CharmTier = 'common' | 'uncommon' | 'rare';
 
@@ -314,13 +353,15 @@ export interface CharmDef {
 /** お守り。年貢を納めるたびに charmChoices 個から1つ選ぶ。同じものは重ねて効果アップ */
 export const CHARMS: Record<CharmId, CharmDef> = {
   coinPurse: { id: 'coinPurse', tier: 'uncommon', name: '金貨袋', emoji: '👛', desc: (n) => `金貨の額＋${2 * n}`, max: Infinity },
-  gentleRain: { id: 'gentleRain', tier: 'uncommon', name: '恵みの雨', emoji: '☔', desc: (n) => `雨を使うと上下左右の作物も成長＋${n}`, max: Infinity },
+  gentleRain: { id: 'gentleRain', tier: 'uncommon', name: '恵みの雨', emoji: '☔', desc: (n) => `雨の真ん中のマスの成長がさらに＋${n}`, max: Infinity },
   crowToll: { id: 'crowToll', tier: 'common', name: 'カラスの通行料', emoji: '🪶', desc: (n) => `カラスが来るたびに＋${2 * n}金`, max: Infinity },
   aging: { id: 'aging', tier: 'common', name: '熟成', emoji: '🍷', desc: (n) => `実ったまま日をまたぐと売値＋${3 * n}（タヌキに注意）`, max: Infinity },
   seedSack: { id: 'seedSack', tier: 'rare', name: '大きな種袋', emoji: '🎒', desc: (n) => `種で植えられる数＋${n}`, max: Infinity },
   sunBlessing: { id: 'sunBlessing', tier: 'rare', name: '日だまり', emoji: '🌻', desc: (n) => `太陽の成長＋${n}`, max: 2 },
+  goldenWell: { id: 'goldenWell', tier: 'rare', name: '黄金の井戸', emoji: '⛲', desc: () => '黄金の井戸を畑に置く（周り8マスの作物が毎日成長＋1）', max: Infinity },
+  queenHive: { id: 'queenHive', tier: 'uncommon', name: '女王蜂の巣箱', emoji: '👑', desc: () => '女王蜂の巣箱を畑に置く（周り8マスの作物の売値＋6）', max: Infinity },
   bargain: { id: 'bargain', tier: 'uncommon', name: '値切り上手', emoji: '🏷️', desc: (n) => `強化の価格−${Math.min(50, 10 * n)}%`, max: 5 },
-  scarecrow: { id: 'scarecrow', tier: 'common', name: 'かかし', emoji: '🎃', desc: (n) => `カラスとタヌキが${Math.min(90, 30 * n)}%で逃げていく`, max: 3 },
+  scarecrow: { id: 'scarecrow', tier: 'common', name: '大かかし', emoji: '🎃', desc: () => '大かかしを畑に置く（2マス以内の作物をカラスとタヌキから守る）', max: Infinity },
   bumper: { id: 'bumper', tier: 'rare', name: '豊作', emoji: '🧺', desc: (n) => `金以外の作物の売値＋${2 * n}`, max: Infinity },
   goldLuck: { id: 'goldLuck', tier: 'uncommon', name: '金運', emoji: '🐱', desc: (n) => `金のとうもろこしの売値＋${10 * n}`, max: Infinity },
   bugWard: { id: 'bugWard', tier: 'common', name: '草よけ', emoji: '🌿', desc: (n) => `虫と雑草が${Math.round((1 - Math.pow(0.5, n)) * 100)}%で外れる。雑草を抜くのが無料`, max: 4 },

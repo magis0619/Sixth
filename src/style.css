@@ -296,7 +296,7 @@ button {
 
 .field {
   display: grid;
-  grid-template-columns: repeat(3, var(--cell));
+  grid-template-columns: repeat(var(--cols, 3), var(--cell));
   gap: 5px;
   padding: 5px;
   border-radius: 12px;
@@ -2136,4 +2136,86 @@ button {
 .calm .reel.rainbow-sym .cell-sym,
 .calm .reel.rainbow-sym .window {
   animation: none;
+}
+
+/* ---- 陣取り：畑の広さ・道具・特別なマス・出目の形 ---- */
+.plot.off {
+  display: none;
+}
+
+/* 単品（列に入らない実）は半値なので控えめに */
+.badge-single {
+  position: absolute;
+  bottom: 5%;
+  background: rgba(61, 51, 38, 0.75);
+  color: #fff;
+  border-radius: 8px;
+  font-size: max(0.6rem, calc(var(--cell) * 0.1));
+  font-weight: 800;
+  padding: 0 5px;
+  white-space: nowrap;
+}
+
+/* 道具：木の台に置いたように見せる */
+.plot.tool {
+  background-color: #b98a55;
+  background-image: repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.08) 0 2px, transparent 2px 12px);
+  box-shadow: inset 0 0 0 3px #8a5a33, inset 0 -6px 0 rgba(0, 0, 0, 0.15);
+}
+
+.plot.tool .crop {
+  font-size: calc(var(--cell) * 0.55);
+}
+
+.tool-name {
+  position: absolute;
+  bottom: 4%;
+  font-size: max(0.56rem, calc(var(--cell) * 0.1));
+  font-weight: 800;
+  color: #fff;
+  background: rgba(61, 51, 38, 0.7);
+  border-radius: 6px;
+  padding: 0 4px;
+  white-space: nowrap;
+}
+
+/* 特別なマス：土の色を変え、隅に印 */
+.plot.tile-compost {
+  background-color: #4b2c14;
+  box-shadow: inset 0 0 0 3px #c9a227;
+}
+
+.plot.tile-water {
+  background-color: #5a6f7a;
+  box-shadow: inset 0 0 0 3px #5aa6e0;
+}
+
+.badge-tile {
+  position: absolute;
+  top: 4%;
+  right: 4%;
+  font-size: max(0.8rem, calc(var(--cell) * 0.2));
+  line-height: 1;
+}
+
+/* 出目の形の範囲（指しているマスを中心に） */
+.plot.preview {
+  outline: 4px solid #fff;
+  outline-offset: -4px;
+  filter: brightness(1.25);
+}
+
+.plot.preview::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(120, 220, 255, 0.28);
+  pointer-events: none;
+}
+
+.hint.place {
+  background: #e7f6d8;
+  color: #2f5a14;
+  font-weight: 800;
 }

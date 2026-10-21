@@ -1,8 +1,8 @@
 // ゲームのルール本体。画面に依存しない純粋なロジック。
 
 import {
-  ADJACENCY, CHARMS, CHARM_ORDER, CONFIG, CROPS, SEEDS, SYMBOLS, SYMBOL_ORDER, UPGRADE_SYMBOL,
-  type AddUpgradeId, type CharmId, type CropKind, type SymbolId, type UpgradeId,
+  CHARMS, CHARM_ORDER, CHARM_PLACE, CONFIG, CROPS, PLACES, SEEDS, SYMBOLS, SYMBOL_ORDER, UPGRADE_SYMBOL,
+  type AddUpgradeId, type CharmId, type CropKind, type PlaceId, type ShapeId, type SymbolId, type UpgradeId,
 } from './config.ts';
 
 export type Rng = () => number;
@@ -49,7 +49,18 @@ export interface GameState {
   gold: number;
   reels: number;
   bag: Record<SymbolId, number>;
+  /** 畑の今の広さ。マスの番号は最大の広さ（CONFIG.fieldCols）で数え、範囲外のマスは使えない */
+  cols: number;
+  rows: number;
   field: (Crop | null)[];
+  /** マスに置いた道具（そのマスには植えられず、列にも入らない） */
+  tools: (PlaceId | null)[];
+  /** 特別なマス（作物と重ねられる） */
+  tiles: (PlaceId | null)[];
+  /** 手に入れて、まだ畑に置いていない道具・特別なマス */
+  stock: PlaceId[];
+  /** 買った回数（畑を広げる・道具ごと。価格が上がる） */
+  bought: Partial<Record<PlaceId | 'expand', number>>;
   /** 雑草が生えているマス（植えられない。毎日となりへ広がる） */
   weeds: boolean[];
   /** 霜で凍っている残り日数（0 は凍っていない）。凍ったマスは植える・育つ・売るができない */
@@ -120,7 +131,13 @@ export function newGame(setup: GameSetup = { shop: ALL_ADDS, charmPool: CHARM_OR
     gold: CONFIG.initialGold,
     reels: CONFIG.initialReels,
     bag: { ...CONFIG.initialBag },
+    cols: CONFIG.startCols,
+    rows: CONFIG.startRows,
     field: Array.from({ length: CONFIG.fieldCols * CONFIG.fieldRows }, () => null),
+    tools: Array.from({ length: CONFIG.fieldCols * CONFIG.fieldRows }, () => null),
+    tiles: Array.from({ length: CONFIG.fieldCols * CONFIG.fieldRows }, () => null),
+    stock: [],
+    bought: {},
     weeds: Array.from({ length: CONFIG.fieldCols * CONFIG.fieldRows }, () => false),
     frost: Array.from({ length: CONFIG.fieldCols * CONFIG.fieldRows }, () => 0),
     results: [],
@@ -144,16 +161,51 @@ export function newGame(setup: GameSetup = { shop: ALL_ADDS, charmPool: CHARM_OR
 
 // ---- 畑の位置 ----
 
-export function neighbors(cell: number): number[] {
-  const cols = CONFIG.fieldCols;
-  const x = cell % cols;
-  const y = Math.floor(cell / cols);
-  const out: number[] = [];
-  if (y > 0) out.push(cell - cols);
-  if (y < CONFIG.fieldRows - 1) out.push(cell + cols);
-  if (x > 0) out.push(cell - 1);
-  if (x < cols - 1) out.push(cell + 1);
-  return out;
+export const cellX = (cell: number): number => cell % CONFIG.fieldCols;
+export const cellY = (cell: number): number => Math.floor(cell / CONFIG.fieldCols);
+
+/** 今の畑の広さの中のマスか */
+export function inField(state: GameState, cell: number): boolean {
+  return cell >= 0 && cellX(cell) < state.cols && cellY(cell) < state.rows;
+}
+
+/** (x, y) のマス。畑の外なら null */
+export function cellAt(state: GameState, x: number, y: number): number | null {
+  return x >= 0 && y >= 0 && x < state.cols && y < state.rows ? y * CONFIG.fieldCols + x : null;
+}
+
+/** 今の畑のマス全部 */
+export function fieldCells(state: GameState): number[] {
+  return state.field.flatMap((_, i) => (inField(state, i) ? [i] : []));
+}
+
+/** cell からのずれ（dx, dy）の並びにあるマス（畑の外は除く） */
+function offsets(state: GameState, cell: number, list: [number, number][]): number[] {
+  return list.flatMap(([dx, dy]) => {
+    const c = cellAt(state, cellX(cell) + dx, cellY(cell) + dy);
+    return c === null ? [] : [c];
+  });
+}
+
+/** 上下左右 */
+export function neighbors(state: GameState, cell: number): number[] {
+  return offsets(state, cell, [[0, -1], [0, 1], [-1, 0], [1, 0]]);
+}
+
+/** r マス以内（周り8マスは r=1） */
+export function around(state: GameState, cell: number, r: number): number[] {
+  const list: [number, number][] = [];
+  for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (dx || dy) list.push([dx, dy]);
+  return offsets(state, cell, list);
+}
+
+/** 出目の形で効くマス（中心を含む） */
+export function shapeCells(state: GameState, shape: ShapeId, cell: number): number[] {
+  if (!inField(state, cell)) return [];
+  if (shape === 'cross') return [cell, ...neighbors(state, cell)];
+  if (shape === 'x') return [cell, ...offsets(state, cell, [[-1, -1], [1, -1], [-1, 1], [1, 1]])];
+  // 縦一列：その列の全マス
+  return fieldCells(state).filter((c) => cellX(c) === cellX(cell));
 }
 
 // ---- 絵柄袋 ----
@@ -231,12 +283,14 @@ export function endDay(state: GameState, rng: Rng): EndDayResult {
       if (c && isRipe(c)) c.bonus += 3 * state.charms.aging;
     });
   }
+  // 井戸・水路は夜のうちに作物を育てる
+  if (state.day > 0) overnightGrowth(state);
   // 霜は日ごとに溶けていく。雑草はとなりの空きマスへ広がる
   state.frost = state.frost.map((d) => Math.max(0, d - 1));
   if (state.day > 0) {
     state.weeds.forEach((w, i) => {
       if (!w || rng() >= CONFIG.weedSpreadChance) return;
-      const open = neighbors(i).filter((n) => isOpen(state, n));
+      const open = neighbors(state, i).filter((n) => isOpen(state, n));
       if (open.length) state.weeds[open[Math.floor(rng() * open.length)]] = true;
     });
   }
@@ -286,9 +340,36 @@ export function drawDay(state: GameState, rng: Rng): void {
   }
 }
 
-/** 空きマス（作物・雑草・霜がない） */
+/** 空きマス（畑の中で、作物・道具・雑草・霜がない） */
 export function isOpen(state: GameState, cell: number): boolean {
-  return !state.field[cell] && !state.weeds[cell] && !state.frost[cell];
+  return inField(state, cell) && !state.field[cell] && !state.tools[cell] && !state.weeds[cell] && !state.frost[cell];
+}
+
+/** 井戸・黄金の井戸・水路のマスで、夜のうちに育つマス */
+export function overnightTargets(state: GameState): number[] {
+  const out: number[] = [];
+  fieldCells(state).forEach((i) => {
+    if (state.tiles[i] === 'water') out.push(i);
+    if (state.tools[i] === 'well') out.push(...neighbors(state, i));
+    if (state.tools[i] === 'goldenWell') out.push(...around(state, i, 1));
+  });
+  return out;
+}
+
+function overnightGrowth(state: GameState): number[] {
+  const affected: number[] = [];
+  overnightTargets(state).forEach((c) => grow(state, c, 1, affected));
+  return affected;
+}
+
+/** かかし（周り8マス）・大かかし（2マス以内）に守られているマス */
+export function isGuarded(state: GameState, cell: number): boolean {
+  return fieldCells(state).some((i) => {
+    const t = state.tools[i];
+    if (t !== 'scarecrow' && t !== 'bigScarecrow') return false;
+    const r = t === 'scarecrow' ? 1 : 2;
+    return Math.abs(cellX(i) - cellX(cell)) <= r && Math.abs(cellY(i) - cellY(cell)) <= r;
+  });
 }
 
 /** 週替わり：いつも並ぶ品以外の解放済みから2つ */
@@ -361,7 +442,7 @@ export function resolveFever(state: GameState, rng: Rng): FeverEvent[] {
       events.push({ ...base, jackpot, role: 'breed', crop: seed.crop });
     } else if (symbol === 'rain') {
       const cells: number[] = [];
-      state.field.forEach((_, i) => grow(state, i, 1, cells));
+      fieldCells(state).forEach((i) => grow(state, i, 1, cells));
       events.push({ ...base, jackpot, role: 'grow', cells });
     } else if (symbol === 'sun') {
       state.priceMult *= 2;
@@ -412,22 +493,17 @@ export function startDay(state: GameState, rng: Rng): EndDayResult {
 }
 
 export type AutoEvent =
-  | { type: 'crow'; cell: number | null; crop: Crop | null; eaten: boolean; toll: number }
+  | { type: 'crow'; cell: number | null; crop: Crop | null; eaten: boolean; toll: number; guarded: boolean }
   | { type: 'bug'; cell: number | null; warded: boolean; damage: number }
   | { type: 'coin'; amount: number }
   | { type: 'merchant'; mult: number }
   | { type: 'weed'; cells: number[]; warded: boolean }
-  | { type: 'tanuki'; taken: { cell: number; crop: Crop; price: number }[]; escaped: boolean; stolen: number }
+  | { type: 'tanuki'; taken: { cell: number; crop: Crop; price: number }[]; escaped: boolean; stolen: number; guarded: number[] }
   | { type: 'frost'; cells: number[] }
   | { type: 'clover'; boost: number };
 
 export function crowEatChance(_state: GameState, power: number): number {
   return Math.min(1, power > 1 ? CONFIG.crowEatChance * CONFIG.crowFeverMultiplier : CONFIG.crowEatChance);
-}
-
-/** かかし：カラスとタヌキが逃げていく確率 */
-export function scareChance(state: GameState): number {
-  return Math.min(0.9, 0.3 * state.charms.scarecrow);
 }
 
 function earn(state: GameState, amount: number): void {
@@ -475,12 +551,13 @@ export function resolveAuto(state: GameState, reel: number, rng: Rng): AutoEvent
       return { type: 'weed', cells, warded: false };
     }
     case 'tanuki': {
-      if (rng() < scareChance(state)) return { type: 'tanuki', taken: [], escaped: true, stolen: 0 };
       const taken: { cell: number; crop: Crop; price: number }[] = [];
+      // かかしに守られた実には近寄れない
+      const guarded = state.field.flatMap((c, i) => (c && isRipe(c) && !state.frost[i] && isGuarded(state, i) ? [i] : []));
       for (let k = 0; k < r.power; k++) {
-        // 実ったまま置いてある一番高い作物（凍ったマスは触れない）
+        // 実ったまま置いてある一番高い作物（凍ったマス・守られたマスは触れない）
         const ripe = state.field
-          .flatMap((c, i) => (c && isRipe(c) && !state.frost[i] ? [{ cell: i, crop: c, price: cropPrice(state, c, i) }] : []))
+          .flatMap((c, i) => (c && isRipe(c) && !state.frost[i] && !isGuarded(state, i) ? [{ cell: i, crop: c, price: cropPrice(state, c, i) }] : []))
           .sort((a, b) => b.price - a.price);
         if (!ripe.length) break;
         state.field[ripe[0].cell] = null;
@@ -488,18 +565,20 @@ export function resolveAuto(state: GameState, reel: number, rng: Rng): AutoEvent
         taken.push(ripe[0]);
       }
       // 実りがなければお金を盗む（実を早く売っても安全ではない）
+      // 守られた実しかなければ逃げていく
+      if (!taken.length && guarded.length) return { type: 'tanuki', taken, escaped: true, stolen: 0, guarded };
       let stolen = 0;
       if (!taken.length && state.gold > 0) {
         stolen = Math.min(state.gold, Math.max(CONFIG.tanukiMinSteal, Math.round(state.gold * CONFIG.tanukiStealRate)) * r.power);
         state.gold -= stolen;
       }
-      return { type: 'tanuki', taken, escaped: false, stolen };
+      return { type: 'tanuki', taken, escaped: false, stolen, guarded };
     }
     case 'frost': {
       const cells: number[] = [];
       const days = state.charms.heater > 0 ? 1 : CONFIG.frostDays;
       for (let k = 0; k < r.power; k++) {
-        const free = state.frost.flatMap((d, i) => (d ? [] : [i]));
+        const free = fieldCells(state).filter((i) => !state.frost[i] && !state.tools[i]);
         if (!free.length) break;
         const c = free[Math.floor(rng() * free.length)];
         // 溶ける日を数えるため、今日の分を1日足しておく（endDay で1減る）
@@ -511,22 +590,23 @@ export function resolveAuto(state: GameState, reel: number, rng: Rng): AutoEvent
     case 'crow': {
       const toll = 2 * state.charms.crowToll;
       if (toll) earn(state, toll);
-      if (rng() < scareChance(state)) {
-        state.stats.crowsMissed++;
-        return { type: 'crow', cell: null, crop: null, eaten: false, toll };
-      }
       // かぼちゃは大きくて重いので狙われない
       const occupied = state.field.flatMap((c, i) => (c && !CROPS[c.kind].crowProof ? [i] : []));
-      if (occupied.length === 0) return { type: 'crow', cell: null, crop: null, eaten: false, toll };
+      if (occupied.length === 0) return { type: 'crow', cell: null, crop: null, eaten: false, toll, guarded: false };
       const cell = occupied[Math.floor(rng() * occupied.length)];
       const crop = state.field[cell];
+      // かかしの近くは追い払われる
+      if (isGuarded(state, cell)) {
+        state.stats.crowsMissed++;
+        return { type: 'crow', cell, crop, eaten: false, toll, guarded: true };
+      }
       if (rng() >= crowEatChance(state, r.power)) {
         state.stats.crowsMissed++;
-        return { type: 'crow', cell, crop, eaten: false, toll };
+        return { type: 'crow', cell, crop, eaten: false, toll, guarded: false };
       }
       state.field[cell] = null;
       state.stats.cropsEaten++;
-      return { type: 'crow', cell, crop, eaten: true, toll };
+      return { type: 'crow', cell, crop, eaten: true, toll, guarded: false };
     }
     default:
       return null;
@@ -554,27 +634,21 @@ export function canUse(state: GameState, reel: number, cell: number | null): boo
   if (!r || r.used || state.over) return false;
   const def = SYMBOLS[r.symbol];
   if (def.kind !== 'manual') return false;
-  if (def.noTarget) return state.field.some((_, i) => growableAt(state, i));
   if (cell === null) return validTargets(state, reel).length > 0;
+  if (!inField(state, cell)) return false;
   const crop = state.field[cell];
   if (SEEDS[r.symbol]) return isOpen(state, cell);
+  // 形で効く出目は、範囲に育てられる作物が1つでもあれば使える
+  if (def.shape) return shapeCells(state, def.shape, cell).some((i) => growableAt(state, i));
   if (state.frost[cell]) return false;
-  switch (r.symbol) {
-    case 'rain':
-      return growable(crop);
-    case 'fertilizer':
-      return crop !== null && !crop.fertilized;
-    case 'bee':
-      return [cell, ...neighbors(cell)].some((i) => growableAt(state, i));
-    default:
-      return false;
-  }
+  if (r.symbol === 'fertilizer') return crop !== null && !crop.fertilized;
+  return false;
 }
 
 export function validTargets(state: GameState, reel: number): number[] {
   const r = state.results[reel];
-  if (!r || SYMBOLS[r.symbol].noTarget) return [];
-  return state.field.flatMap((_, i) => (canUse(state, reel, i) ? [i] : []));
+  if (!r) return [];
+  return fieldCells(state).filter((i) => canUse(state, reel, i));
 }
 
 function grow(state: GameState, cell: number, amount: number, affected: number[]): void {
@@ -600,18 +674,18 @@ export function useSymbol(state: GameState, reel: number, cell: number | null): 
   }
   switch (r.symbol) {
     case 'rain':
-      grow(state, cell!, CONFIG.rainGrowth * r.power, affected);
-      neighbors(cell!).forEach((n) => grow(state, n, state.charms.gentleRain, affected));
+      // 恵みの雨は真ん中のマスにだけ上乗せ
+      shapeCells(state, 'cross', cell!).forEach((i) => grow(state, i, CONFIG.rainGrowth * r.power + (i === cell ? state.charms.gentleRain : 0), affected));
       return affected;
     case 'fertilizer':
       state.field[cell!]!.fertilized = true;
       return [cell!];
     case 'bee':
-      [cell!, ...neighbors(cell!)].forEach((i) => grow(state, i, CONFIG.beeGrowth * r.power, affected));
+      shapeCells(state, 'x', cell!).forEach((i) => grow(state, i, CONFIG.beeGrowth * r.power, affected));
       return affected;
     case 'sun': {
       const amount = CONFIG.sunGrowth * r.power + state.charms.sunBlessing;
-      state.field.forEach((_, i) => grow(state, i, amount, affected));
+      shapeCells(state, 'column', cell!).forEach((i) => grow(state, i, amount, affected));
       return affected;
     }
     default:
@@ -621,26 +695,19 @@ export function useSymbol(state: GameState, reel: number, cell: number | null): 
 
 // ---- 売却 ----
 
-/** 上下左右の作物との相性で上がる売値 */
-export function adjacencyBonus(state: GameState, cell: number): number {
-  const crop = state.field[cell];
-  if (!crop) return 0;
-  return neighbors(cell).reduce((n, i) => {
-    const other = state.field[i];
-    if (!other) return n;
-    if (other.kind === crop.kind) return n + ADJACENCY.same;
-    const pair = ADJACENCY.pairs.some(([a, b]) => (a === crop.kind && b === other.kind) || (b === crop.kind && a === other.kind));
-    return pair ? n + ADJACENCY.pair : n;
-  }, 0);
+/** 周りの巣箱で上がる売値 */
+export function hiveBonus(state: GameState, cell: number): number {
+  return around(state, cell, 1).reduce((n, i) => n + (state.tools[i] === 'hive' ? 2 : state.tools[i] === 'queenHive' ? 6 : 0), 0);
 }
 
-/** 売値。cell を渡すと畑の並びの相性も足す */
+/** 列の倍率をかける前の売値。cell を渡すと巣箱・堆肥のマスも効く */
 export function cropPrice(state: GameState, crop: Crop, cell?: number): number {
   const def = CROPS[crop.kind];
   const charm = def.gold ? 10 * state.charms.goldLuck : 2 * state.charms.bumper;
-  const adj = cell === undefined ? 0 : adjacencyBonus(state, cell);
+  const hive = cell === undefined ? 0 : hiveBonus(state, cell);
   const fert = crop.fertilized ? CONFIG.fertilizerMultiplier : 1;
-  return Math.round((def.price + charm + crop.bonus + adj) * fert * state.priceMult);
+  const tile = cell !== undefined && state.tiles[cell] === 'compost' ? 2 : 1;
+  return Math.round((def.price + charm + crop.bonus + hive) * fert * tile * state.priceMult);
 }
 
 export function isRipe(crop: Crop | null): boolean {
@@ -656,20 +723,37 @@ const RUN_DIRS: [number, number][] = [[1, 0], [0, 1], [1, 1], [1, -1]];
  * 一列にならない並び（L字の3個など）は含まれない
  */
 function runsThrough(state: GameState, cell: number): number[][] {
-  const cols = CONFIG.fieldCols;
-  const rows = CONFIG.fieldRows;
-  const ok = (x: number, y: number) =>
-    x >= 0 && x < cols && y >= 0 && y < rows && isRipe(state.field[y * cols + x]) && !state.frost[y * cols + x];
-  const cx = cell % cols;
-  const cy = Math.floor(cell / cols);
+  const ok = (x: number, y: number) => {
+    const c = cellAt(state, x, y);
+    return c !== null && isRipe(state.field[c]) && !state.frost[c];
+  };
+  const cx = cellX(cell);
+  const cy = cellY(cell);
   const runs: number[][] = [];
   for (const [dx, dy] of RUN_DIRS) {
     const run = [cell];
-    for (let x = cx + dx, y = cy + dy; ok(x, y); x += dx, y += dy) run.push(y * cols + x);
-    for (let x = cx - dx, y = cy - dy; ok(x, y); x -= dx, y -= dy) run.push(y * cols + x);
+    for (let x = cx + dx, y = cy + dy; ok(x, y); x += dx, y += dy) run.push(cellAt(state, x, y)!);
+    for (let x = cx - dx, y = cy - dy; ok(x, y); x -= dx, y -= dy) run.push(cellAt(state, x, y)!);
     if (run.length >= MIN_RUN) runs.push(run);
   }
   return runs;
+}
+
+/**
+ * 実ったマスを売るときの倍率。列に入らない単品は singleMult、
+ * 列に入っていれば lineMult ×（同じ作物だけの列があれば sameCropMult）×（交わる列の数のぶん上乗せ）
+ */
+export function cellMultiplier(state: GameState, cell: number): number {
+  if (!isRipe(state.field[cell]) || state.frost[cell]) return 0;
+  const runs = runsThrough(state, cell);
+  if (!runs.length) return CONFIG.singleMult;
+  const same = runs.some((run) => run.every((c) => state.field[c]!.kind === state.field[run[0]]!.kind));
+  return CONFIG.lineMult * (same ? CONFIG.sameCropMult : 1) * (1 + CONFIG.crossBonus * (runs.length - 1));
+}
+
+/** 同じ作物だけの列に入っているか（演出・表示用） */
+export function inSameCropLine(state: GameState, cell: number): boolean {
+  return runsThrough(state, cell).some((run) => run.every((c) => state.field[c]!.kind === state.field[run[0]]!.kind));
 }
 
 /**
@@ -695,15 +779,9 @@ export function ripeGroup(state: GameState, cell: number): number[] {
   return [...seen];
 }
 
-/** つながった数に応じた売値倍率 */
-export function groupMultiplier(size: number): number {
-  const t = CONFIG.groupBonusBySize;
-  return t[Math.min(size, t.length - 1)];
-}
-
-/** 演出の段階（0：単品・1：つながり・2：ごっそり・3：大収穫・4：全部） */
+/** 演出の段階（0：単品・1：一列・2：二列以上・3：大収穫・4：ほぼ全部） */
 export function groupTier(size: number): number {
-  return size >= 9 ? 4 : size >= 6 ? 3 : size >= 4 ? 2 : size >= 2 ? 1 : 0;
+  return size >= 9 ? 4 : size >= 6 ? 3 : size >= 4 ? 2 : size >= 3 ? 1 : 0;
 }
 
 /** cell を売ったときに一緒に売れるマス（つながった実をまとめて） */
@@ -724,19 +802,20 @@ export interface SellResult {
   orderReward: number;
 }
 
-/** single=true はつながりを無視して1マスだけ売る（大商い用） */
+/** single=true は列を崩さず1マスだけ、列の倍率なしで売る（大商い用） */
 export function sell(state: GameState, cell: number, single = false): SellResult | null {
   const crop = state.field[cell];
   if (state.over || !crop || !isRipe(crop) || state.frost[cell]) return null;
   const group = single ? [cell] : harvestGroup(state, cell);
   const size = group.length;
-  const lines = groupTier(size);
-  const line = size >= 2;
-  const mult = groupMultiplier(size);
-  // 相性は並んでいるうちに計算する（売って空いたマスは数えない）
-  const cells = group.map((i) => {
+  const line = size >= MIN_RUN;
+  const lines = line ? groupTier(size) : 0;
+  // 倍率は並んでいるうちに計算する（売って空いたマスは数えない）
+  const mults = group.map((i) => (single ? 1 : cellMultiplier(state, i)));
+  const mult = Math.max(...mults);
+  const cells = group.map((i, k) => {
     const c = state.field[i]!;
-    return { cell: i, price: Math.round(cropPrice(state, c, i) * mult), kind: c.kind };
+    return { cell: i, price: Math.round(cropPrice(state, c, i) * mults[k]), kind: c.kind };
   });
   cells.forEach(({ cell: i }) => (state.field[i] = null));
   const total = cells.reduce((n, c) => n + c.price, 0);
@@ -808,7 +887,69 @@ export function chooseCharm(state: GameState, id: CharmId): boolean {
   if (!state.charmOffer?.includes(id)) return false;
   state.charms[id]++;
   if (id === 'artisan') state.reels = Math.min(CONFIG.maxReels, state.reels + 1);
+  const place = CHARM_PLACE[id];
+  if (place) state.stock.push(place);
   state.charmOffer = null;
   state.stats.charms.push({ day: state.day, id });
   return true;
+}
+
+// ---- 畑を広げる・道具と特別なマス ----
+
+export function expandPrice(state: GameState): number | null {
+  const p = CONFIG.expandPrices[state.bought.expand ?? 0];
+  if (p === undefined) return null;
+  return Math.max(1, Math.round(p * (1 - Math.min(0.5, 0.1 * state.charms.bargain))));
+}
+
+export function canExpand(state: GameState): boolean {
+  const p = expandPrice(state);
+  return !state.over && p !== null && state.gold >= p;
+}
+
+/** 列→行の順に1つ広げる（3×3 → 4×3 → 4×4 → 5×4 → 5×5） */
+export function expand(state: GameState): boolean {
+  if (!canExpand(state)) return false;
+  state.gold -= expandPrice(state)!;
+  state.bought.expand = (state.bought.expand ?? 0) + 1;
+  if (state.cols <= state.rows) state.cols++;
+  else state.rows++;
+  return true;
+}
+
+export function placePrice(state: GameState, id: PlaceId): number | null {
+  const base = PLACES[id].price;
+  if (base === null) return null;
+  const p = base * Math.pow(CONFIG.placeGrowth, state.bought[id] ?? 0);
+  return Math.max(1, Math.round(p * (1 - Math.min(0.5, 0.1 * state.charms.bargain))));
+}
+
+export function canBuyPlace(state: GameState, id: PlaceId): boolean {
+  const p = placePrice(state, id);
+  return !state.over && p !== null && state.gold >= p;
+}
+
+/** 買って手元に置く。畑に置くのは place で */
+export function buyPlace(state: GameState, id: PlaceId): boolean {
+  if (!canBuyPlace(state, id)) return false;
+  state.gold -= placePrice(state, id)!;
+  state.bought[id] = (state.bought[id] ?? 0) + 1;
+  state.stock.push(id);
+  return true;
+}
+
+/** 手元の先頭の物を cell に置けるか。道具は空いたマス、特別なマスは道具・特別なマスのないマス */
+export function canPlace(state: GameState, cell: number): boolean {
+  const id = state.stock[0];
+  if (!id || !inField(state, cell) || state.tools[cell] || state.tiles[cell]) return false;
+  if (PLACES[id].kind === 'tool') return isOpen(state, cell);
+  return true;
+}
+
+export function place(state: GameState, cell: number): PlaceId | null {
+  if (!canPlace(state, cell)) return null;
+  const id = state.stock.shift()!;
+  if (PLACES[id].kind === 'tool') state.tools[cell] = id;
+  else state.tiles[cell] = id;
+  return id;
 }
