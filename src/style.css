@@ -31,7 +31,8 @@
   --pink: #ff5fa2;
   /* --cell は main.ts の fitLayout が画面の高さに合わせて上書きする */
   --cell: min(28vw, 116px);
-  --reel-h: clamp(52px, 8.5vh, 74px);
+  /* 出目は迫力が命。リールは畑より優先して大きく取る */
+  --reel-h: clamp(70px, 12vh, 108px);
   font-family: 'M PLUS Rounded 1c', 'Hiragino Maru Gothic ProN', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
   color: var(--ink);
   -webkit-tap-highlight-color: transparent;
@@ -507,20 +508,20 @@ button {
 .reels-frame {
   width: 100%;
   border-radius: 14px;
-  padding: 8px;
+  padding: 6px;
   background: #3b1a0e;
   box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.55), 0 0 0 2px var(--gold);
 }
 
 .reels {
   display: flex;
-  gap: 6px;
+  gap: 5px;
   justify-content: center;
 }
 
 .reel {
   flex: 1 1 0;
-  max-width: 84px;
+  max-width: 120px;
   min-width: 0;
   border: none;
   background: none;
@@ -579,7 +580,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: calc(var(--reel-h) * 0.66);
+  font-size: calc(var(--reel-h) * 0.78);
   line-height: 1;
 }
 
@@ -1723,12 +1724,12 @@ button {
     grid-column: 2;
     grid-row: 4;
     margin-top: 0;
-    --reel-h: clamp(72px, 13vh, 112px);
+    --reel-h: clamp(90px, 17vh, 140px);
     padding: 14px 18px 18px;
     gap: 14px;
   }
   .machine .reel {
-    max-width: 128px;
+    max-width: 150px;
   }
   .machine .tag {
     font-size: 0.8rem;
@@ -1759,7 +1760,7 @@ button {
   .machine {
     padding: 8px 10px 10px;
     gap: 6px;
-    --reel-h: 50px;
+    --reel-h: 64px;
   }
   .reels-frame {
     padding: 6px;
