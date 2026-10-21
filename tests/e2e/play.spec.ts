@@ -154,3 +154,33 @@ test('解放と遊び方の画面が開いて戻れる', async ({ page }) => {
   await expect(page.locator('#title-start')).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test('お守りの3択を連打しても1つしか取れず、6回目の年貢でクリア画面が残る', async ({ page }) => {
+  const errors = await boot(page);
+  await start(page);
+  await page.locator('#reels .reel').first().click({ force: true });
+  await settle(page);
+  await expect.poll(() => page.evaluate(() => !!localStorage.getItem('hatake-slot:run'))).toBe(true);
+  // 6回目の年貢の日に書き換える
+  await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('hatake-slot:run')!);
+    Object.assign(s, { day: 42, taxesPaid: 5, gold: 9999 });
+    for (const id of Object.keys(s.charms)) s.charms[id] = 0;
+    localStorage.setItem('hatake-slot:run', JSON.stringify(s));
+  });
+  await page.reload();
+  await page.click('#title-resume', { force: true });
+  await page.evaluate(() => document.getElementById('spin')!.click());
+  const skip = page.locator('#overlay.show #skip-yes');
+  if (await skip.count()) await skip.click({ force: true });
+  const card = page.locator('#overlay.show .charm-card:not([disabled])').first();
+  await expect(card).toBeVisible({ timeout: 20_000 });
+  // 3枚とも素早く押す
+  await page.evaluate(() => document.querySelectorAll<HTMLButtonElement>('#overlay .charm-card').forEach((c) => { c.click(); c.click(); }));
+  await expect(page.locator('#overlay.show #clear-continue')).toBeVisible({ timeout: 10_000 });
+  await page.waitForTimeout(1500);
+  await expect(page.locator('#overlay.show #clear-continue')).toBeVisible();
+  const owned = await page.evaluate(() => document.querySelectorAll('#charms [data-charm]').length);
+  expect(owned).toBe(1);
+  expect(errors).toEqual([]);
+});

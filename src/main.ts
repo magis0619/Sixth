@@ -375,7 +375,7 @@ function renderTax(): void {
   const warn = short && t.daysLeft <= CONFIG.taxWarnDays;
   el.tax.className = `hud-tax${warn ? ' warn' : ''}${short ? ' short' : ' ok'}${state.difficulty ? ' hard' : ''}`;
   el.tax.innerHTML =
-    `<span class="tax-label">${art('bale')}年貢</span><b>${t.amount}金</b>` +
+    `<span class="tax-label">${art('bale')}<span class="tax-word">年貢</span></span><b>${t.amount}金</b>` +
     `<span class="tax-when">${t.daysLeft === 0 ? '今日まで' : `あと${t.daysLeft}日`}</span>` +
     `<span class="tax-mark">${short ? '足りない' : '払える'}</span>`;
 }
@@ -1031,8 +1031,13 @@ function showCharmOffer(): Promise<void> {
   // 連打で意図しない選択をしないよう少し待ってから押せるようにする
   window.setTimeout(() => cards.forEach((c) => (c.disabled = false)), 700);
   return new Promise((resolve) => {
+    let picked = false;
     cards.forEach((card) =>
       card.addEventListener('click', () => {
+        // 連打で2つ取ったり、閉じる処理が次の画面（クリアなど）まで消したりしないよう1回だけ
+        if (picked) return;
+        picked = true;
+        cards.forEach((c) => (c.disabled = true));
         const id = card.dataset.charm as CharmId;
         chooseCharm(state, id);
         sfx.charmGet();

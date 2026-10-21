@@ -4497,3 +4497,47 @@ body::before {
   width: max-content;
   transform: none;
 }
+
+/* ==== 総点検：狭い画面で年貢の札が折れないように ==== */
+.hud-tax > * {
+  white-space: nowrap;
+  flex: none;
+}
+
+.hud-tax .tax-mark {
+  flex: none;
+}
+
+@media (max-width: 400px) {
+  .hud-gold {
+    min-width: 0;
+    font-size: 1.15rem;
+    padding-right: 8px;
+  }
+
+  .hud-tax {
+    gap: 5px;
+    padding: 0 8px;
+  }
+
+  .hud-tax .tax-word {
+    display: none;
+  }
+
+  .hud-tax > b {
+    font-size: 1.05rem;
+  }
+
+  .hud-tax .tax-mark {
+    padding: 2px 6px;
+  }
+}
+
+/* 総点検：広い畑で注文の看板が左上のマスにかからないよう、看板を畑の縁より上に出す */
+.farm {
+  margin-top: 18px;
+}
+
+.order-tag {
+  top: -28px;
+}

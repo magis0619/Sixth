@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "sim": "node --experimental-strip-types scripts/sim.ts",
     "test": "vitest run",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "audit": "node scripts/screen-audit.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.1",
