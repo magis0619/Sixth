@@ -54,6 +54,8 @@ export interface Purchase {
 export interface GameState {
   /** このプレイの識別子（記録の集計用） */
   runId: string;
+  /** 難しさ（0＝ふつう、1〜4＝難しい） */
+  difficulty: number;
   /** 0 = まだ1回も回していない */
   day: number;
   gold: number;
@@ -150,13 +152,16 @@ export interface GameSetup {
   charmPool: CharmId[];
   /** 週替わりの候補（解放済み）。省略時は shop と同じ */
   pool?: AddUpgradeId[];
+  /** 難しさ（0＝ふつう） */
+  difficulty?: number;
 }
 
-export const ALL_ADDS: AddUpgradeId[] = ['addSeed', 'addBerrySeed', 'addPumpkinSeed', 'addRain', 'addSun', 'addFertilizer', 'addBee', 'addMerchant', 'addGoldSeed', 'addClover'];
+export const ALL_ADDS: AddUpgradeId[] = ['addSeed', 'addBerrySeed', 'addPumpkinSeed', 'addMelonSeed', 'addRain', 'addSun', 'addThunder', 'addFertilizer', 'addBee', 'addMerchant', 'addGoldSeed', 'addClover'];
 
 export function newGame(setup: GameSetup = { shop: ALL_ADDS, charmPool: CHARM_ORDER }): GameState {
   return {
     runId: Math.random().toString(36).slice(2, 10),
+    difficulty: setup.difficulty ?? 0,
     shop: [...setup.shop],
     pool: [...(setup.pool ?? setup.shop)],
     weekly: [],
@@ -254,6 +259,8 @@ export function shapeCells(state: GameState, shape: ShapeId, cell: number): numb
       return dx === 0 || dy === 0 || (diag && dx === dy);
     });
   }
+  // 横一列：その行の全マス
+  if (shape === 'row') return fieldCells(state).filter((c) => cellY(c) === cellY(cell));
   // 縦一列：その列の全マス
   return fieldCells(state).filter((c) => cellX(c) === cellX(cell));
 }
@@ -312,7 +319,7 @@ export function nextTax(state: GameState): TaxInfo {
   const index = state.taxesPaid;
   const dueDay = (index + 1) * CONFIG.taxPeriod;
   const relief = Math.min(0.5, 0.1 * lv(state, 'taxRelief'));
-  const half = state.halfTax ? 0.5 : 1;
+  const half = (state.halfTax ? 0.5 : 1) * (state.difficulty >= 1 ? 1.3 : 1);
   return { dueDay, daysLeft: dueDay - state.day, amount: Math.round(taxAmount(index) * (1 - relief) * half), index };
 }
 
@@ -365,7 +372,7 @@ export function endDay(state: GameState, rng: Rng): EndDayResult {
     grant(state, 'lastStraw');
     state.halfTax = true;
   }
-  state.lastObstacles = rollObstacles(state.taxesPaid, rng);
+  state.lastObstacles = rollObstacles(state.taxesPaid, rng, state.difficulty);
   state.lastObstacles.forEach((o) => state.bag[o]++);
   checkReady(state);
   state.charmOffer = rollCharmOffer(state, rng);
@@ -375,12 +382,15 @@ export function endDay(state: GameState, rng: Rng): EndDayResult {
 }
 
 /** n 回目の年貢を納めたときに袋に増えるお邪魔 */
-export function obstacleRule(n: number): { count: number; pool: SymbolId[] } {
-  return [...CONFIG.obstacleSchedule].reverse().find((r) => n >= r.from) ?? CONFIG.obstacleSchedule[0];
+export function obstacleRule(n: number, difficulty = 0): { count: number; pool: SymbolId[] } {
+  // 難しい3以上：2回分早く進み、枚数も1枚多い
+  const hard = difficulty >= 3;
+  const r = [...CONFIG.obstacleSchedule].reverse().find((x) => n + (hard ? 2 : 0) >= x.from) ?? CONFIG.obstacleSchedule[0];
+  return { count: r.count + (hard ? 1 : 0), pool: r.pool };
 }
 
-export function rollObstacles(n: number, rng: Rng): SymbolId[] {
-  const { count, pool } = obstacleRule(n);
+export function rollObstacles(n: number, rng: Rng, difficulty = 0): SymbolId[] {
+  const { count, pool } = obstacleRule(n, difficulty);
   return Array.from({ length: count }, () => pool[Math.floor(rng() * pool.length)]);
 }
 
@@ -517,7 +527,7 @@ export function makeOrder(state: GameState, rng: Rng): Order | null {
   if (!kinds.length) return null;
   const crop = kinds[Math.floor(rng() * kinds.length)];
   const w = state.taxesPaid;
-  const need = { strawberry: 5 + 3 * w, tomato: 3 + 2 * w, pumpkin: 1 + Math.ceil(w / 2), corn: 1 + Math.floor(w / 2) }[crop];
+  const need = { strawberry: 5 + 3 * w, tomato: 3 + 2 * w, pumpkin: 1 + Math.ceil(w / 2), melon: 1 + Math.floor(w / 2), corn: 1 + Math.floor(w / 2) }[crop];
   const reward = Math.round(need * CROPS[crop].price * CONFIG.orderRewardMult) + CONFIG.orderRewardBase * (w + 1);
   return { crop, need, have: 0, reward, dueDay: nextTax(state).dueDay, done: false };
 }
@@ -582,7 +592,7 @@ export function resolveFever(state: GameState, rng: Rng): FeverEvent[] {
       state.priceMult = prev;
       if (!sold.length) jackpot *= 2;
       events.push({ ...base, jackpot, role: 'bigsale', sold });
-    } else if (symbol === 'moon') {
+    } else if (symbol === 'moon' || symbol === 'thunder') {
       const cells: number[] = [];
       fieldCells(state).forEach((i) => grow(state, i, 1, cells));
       events.push({ ...base, jackpot, role: 'grow', cells });
@@ -827,6 +837,9 @@ export function useSymbol(state: GameState, reel: number, cell: number | null): 
     case 'bee':
       shapeCells(state, 'x', cell!).forEach((i) => grow(state, i, CONFIG.beeGrowth * r.power, affected));
       return affected;
+    case 'thunder':
+      shapeCells(state, 'row', cell!).forEach((i) => grow(state, i, 2 * r.power, affected));
+      return affected;
     case 'moon':
       fieldCells(state).forEach((i) => grow(state, i, r.power + state.charms.moonFeast, affected));
       return affected;
@@ -900,7 +913,7 @@ export function cellMultiplier(state: GameState, cell: number): number {
 /** 倍率の内訳（演出で1つずつ乗せて見せる） */
 export function multSteps(state: GameState, cell: number): { label: string; x: number }[] {
   const runs = runsThrough(state, cell);
-  if (!runs.length) return [{ label: '単品', x: CONFIG.singleMult }];
+  if (!runs.length) return [{ label: '単品', x: singleMult(state) }];
   const steps = [{ label: '列', x: CONFIG.lineMult }];
   if (inSameCropLine(state, cell)) {
     steps.push({ label: '同じ作物', x: CONFIG.sameCropMult });
@@ -909,6 +922,16 @@ export function multSteps(state: GameState, cell: number): { label: string; x: n
   }
   if (runs.length > 1) steps.push({ label: `${runs.length}本が交差`, x: 1 + CONFIG.crossBonus * (runs.length - 1) });
   return steps;
+}
+
+/** 単品の倍率（難しい4では安い） */
+export function singleMult(state: GameState): number {
+  return state.difficulty >= 4 ? 0.3 : CONFIG.singleMult;
+}
+
+/** ショップの値段の倍率（難しい2以上で高い） */
+export function shopMult(state: GameState): number {
+  return state.difficulty >= 2 ? 1.3 : 1;
 }
 
 /** 同じ作物だけの列に入っているか（演出・表示用） */
@@ -1028,7 +1051,7 @@ export function upgradePrice(state: GameState, id: UpgradeId): number {
   if (change.delta < 0) base *= Math.pow(CONFIG.removeGrowth, state.removed[change.symbol] ?? 0);
   if (id === 'addMoon') base *= Math.pow(CONFIG.moonGrowth, state.bag.moon);
   const discount = Math.min(0.5, 0.1 * lv(state, 'bargain'));
-  return Math.max(1, Math.round(base * (1 - discount)));
+  return Math.max(1, Math.round(base * (1 - discount) * shopMult(state)));
 }
 
 export function upgradeAvailable(state: GameState, id: UpgradeId): boolean {
@@ -1093,7 +1116,7 @@ export function chooseCharm(state: GameState, id: CharmId): boolean {
 export function expandPrice(state: GameState): number | null {
   const p = CONFIG.expandPrices[state.bought.expand ?? 0];
   if (p === undefined) return null;
-  return Math.max(1, Math.round(p * (1 - Math.min(0.5, 0.1 * lv(state, 'bargain')))));
+  return Math.max(1, Math.round(p * (1 - Math.min(0.5, 0.1 * lv(state, 'bargain'))) * shopMult(state)));
 }
 
 export function canExpand(state: GameState): boolean {
@@ -1115,7 +1138,7 @@ export function placePrice(state: GameState, id: PlaceId): number | null {
   const base = PLACES[id].price;
   if (base === null) return null;
   const p = base * Math.pow(CONFIG.placeGrowth, state.bought[id] ?? 0);
-  return Math.max(1, Math.round(p * (1 - Math.min(0.5, 0.1 * lv(state, 'bargain')))));
+  return Math.max(1, Math.round(p * (1 - Math.min(0.5, 0.1 * lv(state, 'bargain'))) * shopMult(state)));
 }
 
 export function canBuyPlace(state: GameState, id: PlaceId): boolean {

@@ -1,6 +1,6 @@
 // 遊ぶたびに増える要素（豊穣ポイント・解放・ショップの組み合わせ）。ブラウザに保存する。
 
-import { CHARM_ORDER, META, type AddUpgradeId, type CharmId } from './config.ts';
+import { ACHIEVE_ADDS, CHARMS, CHARM_ORDER, DIFFICULTIES, META, THUNDER_LINES, type AddUpgradeId, type CharmId } from './config.ts';
 import { ALL_ADDS, type GameSetup, type GameState } from './game.ts';
 
 export interface MetaState {
@@ -14,6 +14,17 @@ export interface MetaState {
   /** 前回選んだ組み合わせ（次回の初期値） */
   loadout: AddUpgradeId[];
   plays: number;
+  /** クリアした一番上の難しさ（-1＝まだクリアしていない） */
+  maxCleared: number;
+  /** 累計で売った列の数 */
+  lines: number;
+  /** 一度でも手に入れた特別なお守り（図鑑） */
+  discovered: CharmId[];
+  /** 解放した見た目と、選んでいる見た目 */
+  skins: string[];
+  skin: string;
+  /** 次に遊ぶ難しさ */
+  difficulty: number;
 }
 
 const KEY = 'hatake-slot:meta';
@@ -27,6 +38,12 @@ function fresh(): MetaState {
     capacityLevel: 0,
     loadout: [...META.startUnlocked],
     plays: 0,
+    maxCleared: -1,
+    lines: 0,
+    discovered: [],
+    skins: [],
+    skin: '',
+    difficulty: 0,
   };
 }
 
@@ -113,8 +130,50 @@ export function toggleLoadout(meta: MetaState, id: AddUpgradeId): boolean {
   return true;
 }
 
+/** 選べる一番上の難しさ（クリアした段階の1つ上まで） */
+export function maxDifficulty(meta: MetaState): number {
+  return Math.min(DIFFICULTIES.length - 1, meta.maxCleared + 1);
+}
+
+/**
+ * 達成で解放されるものを記録する。final＝プレイが終わったとき（累計の列を足す）。
+ * 新しく解放されたものの名前を返す
+ */
+export function recordRun(meta: MetaState, state: GameState, final: boolean): string[] {
+  const newly: string[] = [];
+  CHARM_ORDER.forEach((id) => {
+    if (CHARMS[id].special && state.charms[id] > 0 && !meta.discovered.includes(id)) meta.discovered.push(id);
+  });
+  if (final) meta.lines += state.stats.lineHarvests;
+  const add = (id: AddUpgradeId, label: string) => {
+    if (meta.unlockedAdds.includes(id)) return;
+    meta.unlockedAdds.push(id);
+    newly.push(label);
+  };
+  if (state.cleared) {
+    if (state.difficulty > meta.maxCleared) {
+      meta.maxCleared = state.difficulty;
+      if (state.difficulty + 1 < DIFFICULTIES.length) newly.push(DIFFICULTIES[state.difficulty + 1].name);
+    }
+    add('addMelonSeed', 'メロンの種');
+    if (!meta.skins.includes('gold')) {
+      meta.skins.push('gold');
+      newly.push('金色のスロット');
+    }
+  }
+  if (meta.lines >= THUNDER_LINES) add('addThunder', '雷');
+  saveMeta(meta);
+  return newly;
+}
+
+/** 達成で解放される強化か（ポイントでは買えない） */
+export function isAchieveAdd(id: AddUpgradeId): boolean {
+  return id in ACHIEVE_ADDS;
+}
+
 export function setupFrom(meta: MetaState): GameSetup {
   return {
+    difficulty: Math.min(meta.difficulty, maxDifficulty(meta)),
     shop: ALL_ADDS.filter((id) => meta.loadout.includes(id) && meta.unlockedAdds.includes(id)),
     charmPool: CHARM_ORDER.filter((id) => !(id in META.charmUnlock) || meta.unlockedCharms.includes(id)),
     // 週替わりは解放済みの「足す」強化から

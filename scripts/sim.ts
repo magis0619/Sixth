@@ -135,6 +135,8 @@ const setup = mode === 'full'
   : {
       shop: mode === 'starter' ? META.startUnlocked : (mode.split(',') as typeof META.startUnlocked),
       charmPool: CHARM_ORDER.filter((id) => !(id in META.charmUnlock)),
+      // DIFF=1〜4 で難しいモード
+      difficulty: Number(process.env.DIFF ?? 0),
     };
 console.log(`mode=${mode} bot=${bot}`);
 const days: number[] = [];

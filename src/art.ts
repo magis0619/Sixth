@@ -310,6 +310,15 @@ const ART = {
     <circle cx="24" cy="26" r="4" fill="#f2df8a"/><circle cx="38" cy="38" r="5" fill="#f2df8a"/><circle cx="40" cy="22" r="2.5" fill="#f2df8a"/>
     <path d="M24 36 Q27 39 30 36 M36 30 Q39 33 42 30" fill="none" stroke="${INK}" stroke-width="2" stroke-linecap="round"/>
     ${sparkle(10, 12, 5, C.white)}${sparkle(56, 52, 4, C.white)}`,
+  melon: `
+    <path d="M32 12 Q30 6 34 3" fill="none" stroke="${C.greenDark}" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="32" cy="36" r="22" fill="#a8d86a" ${S}/>
+    <path d="M14 30 Q32 40 50 26 M12 42 Q32 50 52 38 M22 16 Q26 36 22 56 M32 14 Q36 36 32 58 M42 16 Q46 36 42 56" fill="none" stroke="#e8f5c8" stroke-width="2"/>
+    <ellipse cx="24" cy="28" rx="4" ry="6" fill="#d6f0a8"/>`,
+  melonSeed: '',
+  thunder: `
+    <path d="M36 4 L14 36 H28 L22 60 L50 24 H36 L44 4Z" fill="${C.gold}" ${S}/>
+    <path d="M30 14 L22 28" fill="none" stroke="${C.goldLight}" stroke-width="3" stroke-linecap="round"/>`,
   // ---- 条件で出る特別なお守り ----
   thunderstorm: `
     <path d="M14 34 Q6 34 8 26 Q10 18 18 20 Q20 10 32 12 Q42 6 48 16 Q58 16 56 26 Q60 34 50 34Z" fill="#8a8fa8" ${S}/>
@@ -412,6 +421,7 @@ const ART = {
 ART.seed = packet('#e5533d', ART.tomato);
 ART.berrySeed = packet('#ff8fb1', strawberry);
 ART.pumpkinSeed = packet('#f08a24', pumpkin);
+ART.melonSeed = packet('#6fb03e', ART.melon);
 // トマト祭り：トマトに祭りの旗、豊年満作：俵に光
 ART.tomatoFest = `${ART.tomato}<path d="M44 4 V24 M44 4 L58 9 L44 14" fill="${C.red}" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/>`;
 ART.bumperHarvest = `${ART.bale}${sparkle(52, 12, 7, C.gold)}${sparkle(10, 52, 5, C.gold)}`;

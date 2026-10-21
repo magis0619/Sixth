@@ -1,16 +1,16 @@
 import './style.css';
 import {
-  CHARMS, CHARM_ORDER, CHARM_PLACE, TOOL_EVOLVE, CHARM_TIER_NAMES, CONFIG, CROPS, FEEDBACK_URL, META, PLACES, PLACE_ORDER, SEEDS, SHAPE_NAMES, SHARE_URL, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL,
+  ACHIEVE_ADDS, CHARMS, CHARM_ORDER, CHARM_PLACE, DIFFICULTIES, THUNDER_LINES, TOOL_EVOLVE, CHARM_TIER_NAMES, CONFIG, CROPS, FEEDBACK_URL, META, PLACES, PLACE_ORDER, SEEDS, SHAPE_NAMES, SHARE_URL, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL,
   type CharmId, type CropKind, type PlaceId, type SymbolId, type UpgradeId,
 } from './config.ts';
 import {
-  isGolden, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, chooseCharm, cropPrice, drawDay, drawSymbol, endDay,
+  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, chooseCharm, cropPrice, drawDay, drawSymbol, endDay,
   expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells,
   ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState,
 } from './game.ts';
 import { isMuted, sfx, toggleMute, unlockAudio } from './audio.ts';
 import {
-  awardPoints, buyCapacity, capacity, loadMeta, loadoutCost, nextCapacityPrice, setupFrom, toggleLoadout, unlockAdd,
+  awardPoints, isAchieveAdd, maxDifficulty, recordRun, saveMeta, buyCapacity, capacity, loadMeta, loadoutCost, nextCapacityPrice, setupFrom, toggleLoadout, unlockAdd,
   unlockCharm, type MetaState,
 } from './meta.ts';
 import { art, type ArtId } from './art.ts';
@@ -91,7 +91,7 @@ function roleClass(id: SymbolId): string {
 }
 
 const CROP_STAGES: ArtId[] = ['sprout', 'leaf', 'bud'];
-const FRUIT: Record<CropKind, ArtId> = { tomato: 'tomato', strawberry: 'strawberry', pumpkin: 'pumpkin', corn: 'corn' };
+const FRUIT: Record<CropKind, ArtId> = { tomato: 'tomato', strawberry: 'strawberry', pumpkin: 'pumpkin', melon: 'melon', corn: 'corn' };
 const STAGE_NAMES = ['芽', '若葉', 'つぼみ', '実'];
 
 /** 実るまでの成長は作物ごとに違うので、見た目の段階（芽・若葉・つぼみ・実）に割り当てる */
@@ -191,6 +191,7 @@ function loadRun(): GameState | null {
     // 特別なお守り・道具の進化を入れる前の保存データ
     s.ready ??= [];
     s.specials ??= [];
+    s.difficulty ??= 0;
     s.toolXp ??= s.field.map(() => 0);
     s.today ??= { rain: [], sun: [], boosted: [] };
     s.halfTax ??= false;
@@ -371,7 +372,7 @@ function renderTax(): void {
   const warn = short && t.daysLeft <= CONFIG.taxWarnDays;
   const when = t.daysLeft === 0 ? '今日の終わり' : `あと${t.daysLeft}日`;
   el.tax.className = `tax${warn ? ' warn' : ''}`;
-  el.tax.innerHTML = `${warn ? '⚠️' : art('bale')} 年貢 <b>${t.amount}金</b>（${when}）<span class="tax-state">${short ? `不足 ${t.amount - state.gold}金` : '払える ✓'}</span>`;
+  el.tax.innerHTML = `${state.difficulty ? `<span class="diff-tag">${DIFFICULTIES[state.difficulty].name}</span>` : ''}${warn ? '⚠️' : art('bale')} 年貢 <b>${t.amount}金</b>（${when}）<span class="tax-state">${short ? `不足 ${t.amount - state.gold}金` : '払える ✓'}</span>`;
 }
 
 /** 列（縦・横・斜めに3つ以上）にそろった実があるか */
@@ -592,7 +593,7 @@ function renderField(): void {
         if (inLine) cls.push('line', inSameCropLine(state, i) ? 'lines-3' : 'lines-1');
         else cls.push('single');
         html += `<span class="price">${price}金</span>`;
-        html += inLine ? `<span class="badge-line">列 ×${fmtMult(mult)}</span>` : `<span class="badge-single">単品 ×${fmtMult(CONFIG.singleMult)}</span>`;
+        html += inLine ? `<span class="badge-line">列 ×${fmtMult(mult)}</span>` : `<span class="badge-single">単品 ×${fmtMult(singleMult(state))}</span>`;
         label = `${def.name} 実、タップで${price}金で売る${inLine ? '（列ごと）' : '（単品は半値）'}`;
       } else {
         html += `<span class="pips">${Array.from({ length: def.ripe }, (_, k) => `<i class="pip${k < crop.growth ? ' on' : ''}"></i>`).join('')}</span>`;
@@ -1892,7 +1893,8 @@ function showGameOver(endedAfterClear = false): void {
   if (isNew) saveBest({ day: state.day, taxes: state.taxesPaid });
   const t = nextTax(state);
   const earned = awardPoints(meta, state);
-  track('result', state, { end: endedAfterClear ? 'clear' : 'tax', tax: t.amount, points: earned });
+  track('result', state, { end: endedAfterClear ? 'clear' : 'tax', tax: t.amount, points: earned, difficulty: state.difficulty });
+  const newly = recordRun(meta, state, true);
   el.overlay.innerHTML = `
     <div class="modal over-modal" role="dialog" aria-label="ゲームオーバー">
       <div class="big">${state.cleared ? '🏆' : '🏚️'}</div>
@@ -1903,6 +1905,7 @@ function showGameOver(endedAfterClear = false): void {
         <span>${art('coin')}<b>${state.stats.totalEarned}</b>金</span>
       </div>
       <div class="points-earned">${art('sprout')} <b>+${earned}pt</b><small>計 ${meta.points}pt</small></div>
+      ${newly.length ? `<div class="newly">${art('sparkle')} 解放：${newly.map((x) => `<b>${x}</b>`).join('')}</div>` : ''}
       <div class="share-row">
         <button class="secondary" id="share">${typeof navigator.share === 'function' ? '📤 シェア' : '📋 コピー'}</button>
         ${FEEDBACK_URL ? `<a class="secondary" href="${FEEDBACK_URL}" target="_blank" rel="noopener">✉️ 感想</a>` : ''}
@@ -1978,6 +1981,9 @@ function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
   }).join('');
   const charms = CHARM_ORDER.map((id) => {
     const c = CHARMS[id];
+    if (c.special && !meta.discovered.includes(id) && !state.charms[id]) {
+      return `<div class="dex-row locked"><span class="e silhouette">${art(id)}</span><div><b>？？？</b><small>${c.special.hint}</small></div></div>`;
+    }
     const locked = id in META.charmUnlock && !meta.unlockedCharms.includes(id);
     return `<div class="dex-row tier-${c.tier}${locked ? ' locked' : ''}"><span class="e">${art(id)}</span>
       <div><b>${c.name}</b> <span class="tag-k">${CHARM_TIER_NAMES[c.tier]}</span>
@@ -2010,6 +2016,7 @@ function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
 
 /** クリア画面。エンドレスで続けるなら true */
 function showClear(): Promise<boolean> {
+  recordRun(meta, state, false);
   sfx.bigBuy();
   confetti(80);
   // 大花火
@@ -2113,13 +2120,41 @@ function leaveTitle(): void {
   el.overlay.classList.remove('title');
 }
 
+/** 図鑑：達成で解放されるもの。未達成は影絵と短いヒント */
+function collection(): string {
+  const item = (done: boolean, ico: string, name: string, hint: string) =>
+    `<div class="prep-item${done ? ' on' : ' todo'}"><span class="e${done ? '' : ' silhouette'}">${ico}</span><b>${done ? name : '？？？'}</b><small>${done ? '✓' : hint}</small></div>`;
+  const specials = CHARM_ORDER.filter((id) => CHARMS[id].special).map((id) =>
+    item(meta.discovered.includes(id), art(id), CHARMS[id].name, CHARMS[id].special!.hint),
+  );
+  const adds = (Object.keys(ACHIEVE_ADDS) as (keyof typeof ACHIEVE_ADDS)[]).map((id) => {
+    const done = meta.unlockedAdds.includes(id);
+    const hint = id === 'addThunder' ? `列 ${Math.min(meta.lines, THUNDER_LINES)}/${THUNDER_LINES}` : ACHIEVE_ADDS[id]!.hint;
+    return item(done, ADD_EMOJI[id], shortName(id), hint);
+  });
+  const levels = DIFFICULTIES.slice(1).map((d, k) => item(maxDifficulty(meta) >= k + 1, art('skull'), d.name, `${DIFFICULTIES[k].name}をクリア`));
+  const skin = item(meta.skins.includes('gold'), art('coin'), '金色のスロット', '初めてクリアすると…？');
+  return [...specials, ...adds, ...levels, skin].join('');
+}
+
+function skinItems(): string {
+  return meta.skins
+    .map((id) => `<button class="prep-item${meta.skin === id ? ' on' : ''}" data-skin="${id}"><span class="e">${art('coin')}</span><b>金色のスロット</b><small>${meta.skin === id ? '✓ 使う' : 'タップで使う'}</small></button>`)
+    .join('');
+}
+
+/** 選んでいる見た目をスロットに反映 */
+function applySkin(): void {
+  el.machine.classList.toggle('skin-gold', meta.skin === 'gold');
+}
+
 /** 強化の解放（豊穣ポイントを使う）。スタート画面から開く */
 function showUnlock(): void {
   leaveTitle();
   const paint = () => {
     const capPrice = nextCapacityPrice(meta);
     const adds = (Object.keys(META.adds) as (keyof typeof META.adds)[])
-      .filter((id) => id !== 'addMoon')
+      .filter((id) => id !== 'addMoon' && !isAchieveAdd(id))
       .map((id) => {
         const def = META.adds[id];
         if (meta.unlockedAdds.includes(id)) {
@@ -2150,6 +2185,9 @@ function showUnlock(): void {
         <div class="prep-grid">${adds}</div>
         <h3>${art('sunBlessing')} レアのお守り</h3>
         <div class="prep-grid">${charms}</div>
+        <h3>${art('star')} 達成で解放</h3>
+        <div class="prep-grid">${collection()}</div>
+        ${meta.skins.length ? `<h3>${art('artisan')} 見た目</h3><div class="prep-grid">${skinItems()}</div>` : ''}
         <h3>${art('bargain')} 並べられる数</h3>
         ${capPrice !== null ? `<button class="secondary prep-cap" id="prep-cap" ${meta.points < capPrice ? 'disabled' : ''}>コスト上限 ${capacity(meta)} → ${capacity(meta) + META.capacityStep}<small>${capPrice}pt</small></button>` : `<p class="sub">コスト上限 ${capacity(meta)}（最大）</p>`}
         <div class="prep-actions"><button class="secondary" id="unlock-back">← もどる</button></div>
@@ -2169,6 +2207,15 @@ function showUnlock(): void {
     el.overlay.querySelectorAll<HTMLButtonElement>('[data-charm]').forEach((b) =>
       b.addEventListener('click', () => {
         if (unlockCharm(meta, b.dataset.charm as never)) unlocked(b);
+      }),
+    );
+    el.overlay.querySelectorAll<HTMLButtonElement>('[data-skin]').forEach((b) =>
+      b.addEventListener('click', () => {
+        meta.skin = meta.skin === b.dataset.skin ? '' : b.dataset.skin!;
+        saveMeta(meta);
+        applySkin();
+        sfx.select();
+        paint();
       }),
     );
     document.getElementById('prep-cap')?.addEventListener('click', () => {
@@ -2205,6 +2252,7 @@ function showPrep(): void {
     el.overlay.innerHTML = `
       <div class="modal prep-modal" role="dialog" aria-label="準備">
         <h2>${art('bargain')} ショップに並べる</h2>
+        ${maxDifficulty(meta) > 0 ? `<div class="diff-row">${DIFFICULTIES.slice(0, maxDifficulty(meta) + 1).map((d, k) => `<button class="diff-chip${meta.difficulty === k ? ' on' : ''}" data-diff="${k}">${d.name}${d.desc ? `<small>${d.desc}</small>` : ''}</button>`).join('')}</div>` : ''}
         <div class="cap-meter${used > cap ? ' over' : ''}">${Array.from({ length: cap }, (_, k) => `<i class="${k < used ? 'on' : ''}"></i>`).join('')}<span>${used} / ${cap}</span></div>
         <div class="prep-grid">${adds}</div>
         <div class="prep-actions">
@@ -2221,6 +2269,14 @@ function showPrep(): void {
           shake(b, 4);
           return;
         }
+        paint();
+      }),
+    );
+    el.overlay.querySelectorAll<HTMLButtonElement>('[data-diff]').forEach((b) =>
+      b.addEventListener('click', () => {
+        meta.difficulty = Number(b.dataset.diff);
+        saveMeta(meta);
+        sfx.select();
         paint();
       }),
     );
@@ -2276,5 +2332,6 @@ el.mute.addEventListener('click', () => {
   unlockAudio();
   el.mute.textContent = toggleMute() ? '🔇' : '🔊';
 });
+applySkin();
 render();
 showTitle();
