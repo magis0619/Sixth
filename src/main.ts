@@ -340,7 +340,7 @@ function renderStatus(): void {
 function renderCharms(): void {
   const owned = CHARM_ORDER.filter((id) => state.charms[id] > 0);
   el.charmPanel.hidden = owned.length > 0;
-  el.charmCount.textContent = owned.length ? `${owned.reduce((n, id) => n + state.charms[id], 0)}個` : '';
+  el.charmCount.textContent = state.stock.length ? `置く待ち${state.stock.length}` : owned.length ? `${owned.reduce((n, id) => n + state.charms[id], 0)}個` : '';
   el.charms.innerHTML = owned
     .map((id) => {
       const c = CHARMS[id];
@@ -372,7 +372,11 @@ function renderTax(): void {
   const warn = short && t.daysLeft <= CONFIG.taxWarnDays;
   const when = t.daysLeft === 0 ? '今日の終わり' : `あと${t.daysLeft}日`;
   el.tax.className = `tax${warn ? ' warn' : ''}`;
-  el.tax.innerHTML = `${state.difficulty ? `<span class="diff-tag">${DIFFICULTIES[state.difficulty].name}</span>` : ''}${warn ? '⚠️' : art('bale')} 年貢 <b>${t.amount}金</b>（${when}）<span class="tax-state">${short ? `不足 ${t.amount - state.gold}金` : '払える ✓'}</span>`;
+  // クリアまでの年貢の回数（〇＝納めた、●＝これから）
+  const goal = state.cleared
+    ? '<span class="clear-prog endless">∞</span>'
+    : `<span class="clear-prog" title="クリアまでの年貢">${art('star')}${state.taxesPaid}/${CONFIG.winTaxes}</span>`;
+  el.tax.innerHTML = `${goal}${state.difficulty ? `<span class="diff-tag">${DIFFICULTIES[state.difficulty].name}</span>` : ''}${warn ? '⚠️' : art('bale')} 年貢 <b>${t.amount}金</b>（${when}）<span class="tax-state">${short ? `不足 ${t.amount - state.gold}金` : '払える ✓'}</span>`;
 }
 
 /** 列（縦・横・斜めに3つ以上）にそろった実があるか */
@@ -400,7 +404,8 @@ function usableReels(): number[] {
 function renderHint(): void {
   const t = nextTax(state);
   el.hint.className = 'hint';
-  if (state.stock.length && selected === null) {
+  // 手元に置く物があっても、置ける空きマスがないときは案内しない（空いたら出す）
+  if (state.stock.length && selected === null && state.field.some((_, i) => canPlace(state, i))) {
     const d = PLACES[state.stock[0]];
     el.hint.className = 'hint place';
     el.hint.textContent = `👆 ${d.name}を置く`;
@@ -533,7 +538,8 @@ function previewCells(): number[] {
 }
 
 function renderField(): void {
-  const targets = selected !== null ? validTargets(state, selected) : state.stock.length ? state.field.flatMap((_, i) => (canPlace(state, i) ? [i] : [])) : null;
+  const placeable = state.stock.length ? state.field.flatMap((_, i) => (canPlace(state, i) ? [i] : [])) : [];
+  const targets = selected !== null ? validTargets(state, selected) : placeable.length ? placeable : null;
   const preview = previewCells();
   el.field.style.setProperty('--cols', String(state.cols));
   if (el.field.children.length !== state.field.length) {
@@ -569,7 +575,7 @@ function renderField(): void {
       cls.push(`tile-${tile}`);
       // 空きマスでは中央に大きな名札を出すので、角の札は作物が乗っているときだけ
       // 水路は土の色（青）で分かるので、作物が乗っているときは印を出さない
-      if ((crop || tool) && tile !== 'water') html += `<span class="badge-tile">${art(PLACE_ART[tile])}</span>`;
+      // 特別なマスは土の色で分かるので、作物・道具が乗っているときは印を出さない
     }
     if (tool) {
       cls.push('tool');
@@ -1932,7 +1938,7 @@ function resultText(endedAfterClear: boolean): string {
     `🌾畑スロット ${head}`,
     `年貢 ${state.taxesPaid}回納付 / 総収入 ${state.stats.totalEarned}金 / リール${state.reels}本`,
     charms ? `お守り ${charms}` : '',
-    `フィーバー${state.stats.fevers}回・つながり${state.stats.lineHarvests}回`,
+    `フィーバー${state.stats.fevers}回・列${state.stats.lineHarvests}回`,
     SHARE_URL,
   ]
     .filter(Boolean)
@@ -1988,7 +1994,7 @@ function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
     return `<div class="dex-row tier-${c.tier}${locked ? ' locked' : ''}"><span class="e">${art(id)}</span>
       <div><b>${c.name}</b> <span class="tag-k">${CHARM_TIER_NAMES[c.tier]}</span>
       <small>${c.desc(1)}${Number.isFinite(c.max) ? `（最大${c.max}個）` : ''}</small>
-      ${locked ? `<small class="fv">🔒 準備画面で${META.charmUnlock[id]}ptで解放</small>` : ''}</div>
+      ${locked ? `<small class="fv">🔒 解放 ${META.charmUnlock[id]}pt</small>` : ''}</div>
       <span class="own">${state.charms[id] ? `所持${state.charms[id]}` : ''}</span></div>`;
   }).join('');
   el.overlay.innerHTML = `

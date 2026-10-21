@@ -3348,3 +3348,25 @@ body::before {
   color: #fff;
   box-shadow: 0 6px 0 #9a3216, inset 0 2px 0 rgba(255, 255, 255, 0.5), 0 8px 14px rgba(0, 0, 0, 0.3);
 }
+
+/* クリアまでの年貢の回数 */
+.clear-prog {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: #fff6c8;
+  color: #8a5a00;
+  border-radius: 999px;
+  padding: 0 8px 0 4px;
+  font-size: 0.75rem;
+  font-weight: 900;
+  margin-right: 6px;
+}
+
+.clear-prog .art {
+  font-size: 1em;
+}
+
+.clear-prog.endless {
+  padding: 0 8px;
+}

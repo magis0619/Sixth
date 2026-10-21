@@ -307,7 +307,7 @@ export const CONFIG = {
   taxSchedule: [5, 22, 60, 120, 175, 235, 295, 360],
   taxGrowth: 1.5,
   /** この回数の年貢を納めるとクリア（その後はエンドレス） */
-  winTaxes: 8,
+  winTaxes: 6,
   /** 年貢が近いことを警告し始める残り日数 */
   taxWarnDays: 2,
 
@@ -440,7 +440,7 @@ export const BAG_CONDITIONS: Partial<Record<CharmId, Partial<Record<SymbolId, nu
   thunderstorm: { rain: 5 },
   tomatoFest: { seed: 6 },
   sunshower: { rain: 3, sun: 3 },
-  moonFeast: { moon: 2, sun: 3 },
+  moonFeast: { moon: 3, sun: 4 },
 };
 
 /** 出来事で開く特別なお守りの条件の数 */
