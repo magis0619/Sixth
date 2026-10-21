@@ -41,6 +41,13 @@ async function settle(page: Page): Promise<'play' | 'over' | 'clear'> {
   throw new Error('操作できる状態に戻らない');
 }
 
+/** 最初の回転を回して、1日目に入るまで待つ */
+async function firstDay(page: Page): Promise<void> {
+  await page.locator('#reels .reel').first().click({ force: true });
+  await expect.poll(() => page.evaluate(() => !!localStorage.getItem('hatake-slot:run')), { timeout: 15_000 }).toBe(true);
+  await settle(page);
+}
+
 async function useReels(page: Page): Promise<number> {
   let used = 0;
   for (let k = 0; k < 12; k++) {
@@ -103,8 +110,7 @@ test('タイトルから始めて、植えて育てて売り、年貢まで進�
 test('出目を残して回すと確認が出て、もどるで残る', async ({ page }) => {
   const errors = await boot(page);
   await start(page);
-  await page.locator('#reels .reel').first().click({ force: true });
-  await settle(page);
+  await firstDay(page);
   // 使える出目があるうちに、使えないリールを押す（なければ確認は出ない）
   const unusable = page.locator('#reels .reel:not(.usable)').first();
   if ((await page.locator('.reel.usable').count()) && (await unusable.count())) {
@@ -117,25 +123,34 @@ test('出目を残して回すと確認が出て、もどるで残る', async ({
   expect(errors).toEqual([]);
 });
 
-test('リールを長押しすると説明が出る', async ({ page }) => {
-  const errors = await boot(page);
-  await start(page);
-  await page.locator('#reels .reel').first().click({ force: true });
-  await settle(page);
-  const box = (await page.locator('#reels .reel').first().boundingBox())!;
+/** 指で長押し（0.7秒）して離す */
+async function hold(page: Page, selector: string): Promise<void> {
+  const box = (await page.locator(selector).first().boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
   await page.waitForTimeout(700);
   await page.mouse.up();
+}
+
+test('畑のマスとリールを長押しすると説明が出る', async ({ page }) => {
+  const errors = await boot(page);
+  await start(page);
+  await firstDay(page);
+  await hold(page, '#field .plot');
   await expect(page.locator('.info-pop')).toBeVisible();
+  await page.mouse.click(5, 5);
+  // 使える出目がない日は「次の日へ」の札がリールを覆うので、リールの長押しは札がないときだけ
+  if (!(await page.locator('#machine.ready-spin').count())) {
+    await hold(page, '#reels .reel');
+    await expect(page.locator('.info-pop')).toBeVisible();
+  }
   expect(errors).toEqual([]);
 });
 
 test('続きから：途中でページを開き直すと同じ日から再開できる', async ({ page }) => {
   await boot(page);
   await start(page);
-  await page.locator('#reels .reel').first().click({ force: true });
-  await settle(page);
+  await firstDay(page);
   await page.reload();
   await expect(page.locator('#title-resume')).toContainText('1日目');
   await page.click('#title-resume', { force: true });
@@ -158,9 +173,7 @@ test('解放と遊び方の画面が開いて戻れる', async ({ page }) => {
 test('お守りの3択を連打しても1つしか取れず、6回目の年貢でクリア画面が残る', async ({ page }) => {
   const errors = await boot(page);
   await start(page);
-  await page.locator('#reels .reel').first().click({ force: true });
-  await settle(page);
-  await expect.poll(() => page.evaluate(() => !!localStorage.getItem('hatake-slot:run'))).toBe(true);
+  await firstDay(page);
   // 6回目の年貢の日に書き換える
   await page.evaluate(() => {
     const s = JSON.parse(localStorage.getItem('hatake-slot:run')!);

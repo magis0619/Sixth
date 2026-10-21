@@ -36,10 +36,20 @@ npm run dev      # 開発サーバー
 npm run build    # 型チェック＋ビルド（dist/）
 npm run sim -- 800 starter smart   # ボットでバランス確認（smart＝考えて置く / random＝適当に置く）
 DIFF=2 npm run sim -- 400 starter smart   # 難しいモード
+npm test         # ルールの単体テスト（vitest）
+npm run e2e      # 画面の通し確認（Playwright。ビルドしてから）
+npm run audit    # 画面の総点検：4サイズ×全画面を撮って、はみ出し・重なりを数える（vite preview を出してから）
 ```
 
+- push するとどのブランチでも GitHub Actions で型チェック・単体テスト・ビルド・通し確認が走る
+
 - 調整用パラメータはすべて `src/config.ts`
-- ルール本体は `src/game.ts`（画面に依存しない）、画面と演出は `src/main.ts` / `src/fx.ts` / `src/audio.ts`、遊ぶたびに増える要素は `src/meta.ts`
+- ルール本体は `src/game.ts`（画面に依存しない）、遊ぶたびに増える要素は `src/meta.ts`
+- 画面：`src/main.ts`（描画と操作の流れ：回す・使う・売る・買う）と `src/ui/`
+  - `store.ts` 画面の要素と共有の状態（`state` は `setState` で差し替え、`hooks` で main の処理を呼ぶ）
+  - `view.ts` 表示の部品 / `screens.ts` タイトル・準備・解放・遊び方・結果・クリア / `shows.ts` 年貢・お守り3択・カットインの演出
+  - `info.ts` 長押しの説明 / `scene.ts` 空・季節・背景の生き物 / `save.ts` 途中保存と最高記録
+- 演出の部品は `src/fx.ts`、効果音は `src/audio.ts`
 - イラストは `src/art.ts` の自作SVG
 - 画面左上にコミットIDとビルド日時を出している（更新されたかの確認用）
 - `main` に push すると GitHub Actions で GitHub Pages にデプロイされる
