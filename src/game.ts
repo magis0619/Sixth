@@ -53,6 +53,8 @@ export interface GameState {
   results: ReelResult[];
   /** 今日フィーバーした絵柄 */
   fever: SymbolId[];
+  /** 品種改良（種のフィーバー）：今日この種で植える作物は1段階育った状態から */
+  bred: SymbolId[];
   /** 今日の売値倍率（商人） */
   priceMult: number;
   /** 次の日の金の種の重み倍率（四つ葉）。1 なら効果なし */
@@ -107,6 +109,7 @@ export function newGame(setup: GameSetup = { shop: ALL_ADDS, charmPool: CHARM_OR
     field: Array.from({ length: CONFIG.fieldCols * CONFIG.fieldRows }, () => null),
     results: [],
     fever: [],
+    bred: [],
     priceMult: 1,
     cloverBoost: 1,
     charms: emptyCharms(),
@@ -135,21 +138,6 @@ export function neighbors(cell: number): number[] {
   if (x < cols - 1) out.push(cell + 1);
   return out;
 }
-
-/** 縦・横・斜めの列（3×3なら8本） */
-export const LINES: number[][] = (() => {
-  const n = CONFIG.fieldCols;
-  const lines: number[][] = [];
-  for (let i = 0; i < n; i++) {
-    lines.push(Array.from({ length: n }, (_, k) => i * n + k));
-    lines.push(Array.from({ length: n }, (_, k) => k * n + i));
-  }
-  if (CONFIG.fieldCols === CONFIG.fieldRows) {
-    lines.push(Array.from({ length: n }, (_, k) => k * n + k));
-    lines.push(Array.from({ length: n }, (_, k) => k * n + (n - 1 - k)));
-  }
-  return lines;
-})();
 
 // ---- 絵柄袋 ----
 
@@ -229,6 +217,7 @@ export function endDay(state: GameState, rng: Rng): EndDayResult {
   state.results = [];
   // 「今日だけ」の効果はここで終わる
   state.fever = [];
+  state.bred = [];
   state.priceMult = 1;
   if (!(state.day > 0 && state.day % CONFIG.taxPeriod === 0)) return { ok: true, tax: null, expired, cleared: false };
   const t = nextTax(state);
@@ -286,7 +275,7 @@ export type FeverEvent = {
   count: number;
   jackpot: number;
 } & (
-  | { role: 'sprout'; cells: number[] }
+  | { role: 'breed'; crop: CropKind }
   | { role: 'grow'; cells: number[] }
   | { role: 'festival'; mult: number }
   | { role: 'compost'; cells: number[] }
@@ -310,9 +299,9 @@ export function resolveFever(state: GameState, rng: Rng): FeverEvent[] {
     const base = { symbol, count };
     const seed = SEEDS[symbol];
     if (seed && symbol !== 'goldSeed') {
-      const cells = state.field.flatMap((c, i) => (c ? [] : [i]));
-      cells.forEach((i) => (state.field[i] = newCrop(seed.crop)));
-      events.push({ ...base, jackpot, role: 'sprout', cells });
+      // 勝手に植えると植える場所の判断を奪うので、植えたときに育った状態にするだけ
+      state.bred.push(symbol);
+      events.push({ ...base, jackpot, role: 'breed', crop: seed.crop });
     } else if (symbol === 'rain') {
       const cells: number[] = [];
       state.field.forEach((_, i) => grow(state, i, 1, cells));
@@ -487,7 +476,9 @@ export function useSymbol(state: GameState, reel: number, cell: number | null): 
   const affected: number[] = [];
   const seed = SEEDS[r.symbol];
   if (seed) {
-    state.field[cell!] = newCrop(seed.crop);
+    const crop = newCrop(seed.crop);
+    if (state.bred?.includes(r.symbol)) crop.growth = Math.min(CROPS[seed.crop].ripe - 1, 1);
+    state.field[cell!] = crop;
     return [cell!];
   }
   switch (r.symbol) {
@@ -539,48 +530,61 @@ export function isRipe(crop: Crop | null): boolean {
   return crop !== null && crop.growth >= CROPS[crop.kind].ripe;
 }
 
-/** 実が並んでいる列 */
-export function ripeLines(state: GameState): number[][] {
-  return LINES.filter((line) => line.every((i) => isRipe(state.field[i])));
+/** cell から上下左右でつながった実のマス（cell 自身を含む）。形は問わない */
+export function ripeGroup(state: GameState, cell: number): number[] {
+  if (!isRipe(state.field[cell])) return [];
+  const seen = new Set<number>([cell]);
+  const queue = [cell];
+  while (queue.length) {
+    const c = queue.shift()!;
+    for (const n of neighbors(c)) {
+      if (!seen.has(n) && isRipe(state.field[n])) {
+        seen.add(n);
+        queue.push(n);
+      }
+    }
+  }
+  return [...seen];
 }
 
-/** cell を通るそろった列 */
-export function linesThrough(state: GameState, cell: number): number[][] {
-  return ripeLines(state).filter((line) => line.includes(cell));
+/** つながった数に応じた売値倍率 */
+export function groupMultiplier(size: number): number {
+  const t = CONFIG.groupBonusBySize;
+  return t[Math.min(size, t.length - 1)];
 }
 
-/** そろった列の数に応じた売値倍率 */
-export function lineMultiplier(lines: number): number {
-  const t = CONFIG.lineBonusByLines;
-  return t[Math.min(lines, t.length - 1)];
+/** 演出の段階（0：単品・1：つながり・2：ごっそり・3：大収穫・4：全部） */
+export function groupTier(size: number): number {
+  return size >= 9 ? 4 : size >= 6 ? 3 : size >= 4 ? 2 : size >= 2 ? 1 : 0;
 }
 
-/** cell を売ったときに一緒に売れるマス（そろった列があれば列ごと） */
+/** cell を売ったときに一緒に売れるマス（つながった実をまとめて） */
 export function harvestGroup(state: GameState, cell: number): number[] {
-  const cells = new Set<number>([cell]);
-  linesThrough(state, cell).forEach((line) => line.forEach((i) => cells.add(i)));
-  return [...cells];
+  return ripeGroup(state, cell);
 }
 
 export interface SellResult {
   cells: { cell: number; price: number; kind: Crop['kind'] }[];
   total: number;
   line: boolean;
-  /** 一度にそろった列の数（0 はそろいなし） */
+  /** 演出の段階（groupTier）。0 は単品 */
   lines: number;
+  /** まとめて売った数 */
+  size: number;
   mult: number;
   /** この売却で注文を達成したときの報酬 */
   orderReward: number;
 }
 
-/** single=true はそろいを無視して1マスだけ売る（大商い用） */
+/** single=true はつながりを無視して1マスだけ売る（大商い用） */
 export function sell(state: GameState, cell: number, single = false): SellResult | null {
   const crop = state.field[cell];
   if (state.over || !crop || !isRipe(crop)) return null;
   const group = single ? [cell] : harvestGroup(state, cell);
-  const lines = single ? 0 : linesThrough(state, cell).length;
-  const line = lines > 0;
-  const mult = lineMultiplier(lines);
+  const size = group.length;
+  const lines = groupTier(size);
+  const line = size >= 2;
+  const mult = groupMultiplier(size);
   // 相性は並んでいるうちに計算する（売って空いたマスは数えない）
   const cells = group.map((i) => {
     const c = state.field[i]!;
@@ -602,7 +606,7 @@ export function sell(state: GameState, cell: number, single = false): SellResult
       state.stats.ordersDone++;
     }
   }
-  return { cells, total, line, lines, mult, orderReward };
+  return { cells, total, line, lines, size, mult, orderReward };
 }
 
 // ---- 強化 ----

@@ -5,7 +5,7 @@ import {
 } from './config.ts';
 import {
   adjacencyBonus, bagTotal, buy, canBuy, canUse, chooseCharm, cropPrice, drawDay, drawSymbol, endDay, isRipe, neighbors,
-  lineMultiplier, linesThrough, newGame, nextTax, resolveFever, type FeverEvent, resolveAuto, ripeLines, sell, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState,
+  groupMultiplier, ripeGroup, newGame, nextTax, resolveFever, type FeverEvent, resolveAuto, sell, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState,
 } from './game.ts';
 import { isMuted, sfx, toggleMute, unlockAudio } from './audio.ts';
 import {
@@ -277,6 +277,11 @@ function renderTax(): void {
   el.tax.innerHTML = `${warn ? '⚠️' : art('bale')} 年貢 <b>${t.amount}金</b>（${when}）<span class="tax-state">${short ? `不足 ${t.amount - state.gold}金` : '払える ✓'}</span>`;
 }
 
+/** まとめて売れる実のつながり（2個以上）があるか */
+function hasRipeGroup(): boolean {
+  return state.field.some((_, i) => ripeGroup(state, i).length >= 2);
+}
+
 function renderGoal(): void {
   const available = UPGRADES.filter((u) => upgradeAvailable(state, u.id));
   const tab = document.querySelector('.tab[data-sheet="shop"]')!;
@@ -305,7 +310,7 @@ function renderHint(): void {
     if (ripe) return;
   }
   if (state.day > CONFIG.hintUntilDay) {
-    el.hint.textContent = !done.line && ripeLines(state).length > 0 ? '✨ そろった！ 並んだ実をタップで列ごとまとめて売れる（列が重なるほど高い）' : '';
+    el.hint.textContent = !done.line && hasRipeGroup() ? '✨ つながった！ つながった実はタップでまとめて売れる（多いほど高い）' : '';
     return;
   }
   const anyRipe = state.field.some(isRipe);
@@ -315,7 +320,7 @@ function renderHint(): void {
     const r = state.results[selected];
     text = r.total > 1 ? `👆 光っている空きマスをタップ（あと${r.left}個 植えられる）` : '👆 光っているマスをタップ（出目をもう一度タップで取り消し）';
   }
-  else if (!done.line && ripeLines(state).length > 0) text = '✨ そろった！ 縦・横・斜めに並んだ実をタップで列ごと売れる。列が重なるマスほど倍率が高い';
+  else if (!done.line && hasRipeGroup()) text = '✨ つながった！ 上下左右でつながった実はタップでまとめて売れる。数が多いほど倍率が高い';
   else if (!done.use && usableReels().length > 0) text = '✨ 光っている出目をタップ → 畑のマスをタップで使える';
   else if (!done.sell && anyRipe) text = '🍅 実った作物をタップすると売れる！';
   else if (!done.buy && UPGRADES.some((u) => canBuy(state, u.id))) text = '💰 お金がたまった！ ショップでスロットを強化しよう';
@@ -403,7 +408,8 @@ function renderSpinButton(): void {
 
 function renderField(): void {
   const targets = selected !== null ? validTargets(state, selected) : null;
-  const lineCells = new Set(ripeLines(state).flat());
+  // マスごとに、タップしたときにまとめて売れる数（つながり）を数えておく
+  const groupSize = state.field.map((_, i) => ripeGroup(state, i).length);
   if (el.field.children.length !== state.field.length) {
     el.field.innerHTML = '';
     state.field.forEach((_, i) => {
@@ -430,13 +436,14 @@ function renderField(): void {
       if (crop.fertilized) html += '<span class="badge-fert">肥×2</span>';
       if (ripe) {
         // このマスをタップしたときに通る列の数で倍率が決まる
-        const lines = lineCells.has(i) ? linesThrough(state, i).length : 0;
-        const mult = lineMultiplier(lines);
-        if (lines) cls.push('line', `lines-${lines}`);
+        const size = groupSize[i];
+        const mult = groupMultiplier(size);
+        const lines = size >= 2 ? Math.min(4, Math.ceil(size / 2)) : 0;
+        if (size >= 2) cls.push('line', `lines-${lines}`);
         const price = Math.round(cropPrice(state, crop, i) * mult);
         const adj = adjacencyBonus(state, i);
         html += `<span class="price${adj ? ' adj' : ''}">${price}金${adj ? `<small>相性+${adj}</small>` : ''}</span>`;
-        if (lines) html += `<span class="badge-line">${lines > 1 ? `${lines}列 ` : ''}×${mult}</span>`;
+        if (size >= 2) html += `<span class="badge-line">${size}つながり ×${mult}</span>`;
       }
       else html += `<span class="pips">${Array.from({ length: def.ripe }, (_, k) => `<i class="pip${k < crop.growth ? ' on' : ''}"></i>`).join('')}</span>`;
       label = `${def.name} ${STAGE_NAMES[stageOf(crop)]}${ripe ? `、タップで${cropPrice(state, crop, i)}金で売る` : ''}`;
@@ -722,14 +729,9 @@ async function playFeverRoles(events: FeverEvent[]): Promise<void> {
     const name = SYMBOLS[ev.symbol].feverDesc.split('：')[0];
     const mid = center(el.field);
     switch (ev.role) {
-      case 'sprout':
-        render();
+      case 'breed':
         sfx.plant();
-        ev.cells.forEach((c, k) => {
-          const q = center(el.field.children[c]);
-          window.setTimeout(() => burst(q.x, q.y, ['🌱', '✨'], 5, 40), k * 60);
-        });
-        floatText(mid.x, mid.y, ev.cells.length ? `${name}！ ${ev.cells.length}マスに芽` : `${name}！（空きなし）`, { cls: 'good', size: 1.1 });
+        floatText(mid.x, mid.y, `${name}！ 今日植える${CROPS[ev.crop].name}は育った状態から`, { cls: 'good', size: 1 });
         break;
       case 'grow':
         render();
@@ -1143,8 +1145,8 @@ function sellCrop(cell: number): void {
       }, k * 140);
     });
     window.setTimeout(() => {
-      const name = ['', 'そろい収穫！', 'ダブルそろい！！', 'トリプルそろい！！！', '全そろい！！！！'][Math.min(res.lines, 4)];
-      floatText(p.x, p.y - 70, `${name} ×${res.mult} +${price}`, { cls: 'combo', size: 1.2 + res.lines * 0.2, rise: 120, dur: 1700 });
+      const name = ['', 'つながり収穫！', 'ごっそり収穫！！', '大収穫！！！', '全部まとめて！！！！'][Math.min(res.lines, 4)];
+      floatText(p.x, p.y - 70, `${name} ${res.size}個 ×${res.mult} +${price}`, { cls: 'combo', size: 1.2 + res.lines * 0.2, rise: 120, dur: 1700 });
       if (res.lines >= 2) {
         confetti(30 + res.lines * 20);
         flash('#ff9ad5', 500);
@@ -1264,7 +1266,7 @@ function showGameOver(endedAfterClear = false): void {
         <tr><td>総収入</td><td>${state.stats.totalEarned}金</td></tr>
         <tr><td>売った作物 / 食べられた作物</td><td>${state.stats.cropsSold} / ${state.stats.cropsEaten}</td></tr>
         <tr><td>追い払ったカラス</td><td>${state.stats.crowsMissed}回</td></tr>
-        <tr><td>フィーバー / そろい収穫</td><td>${state.stats.fevers}回 / ${state.stats.lineHarvests}回</td></tr>
+        <tr><td>フィーバー / つながり収穫</td><td>${state.stats.fevers}回 / ${state.stats.lineHarvests}回</td></tr>
         <tr><td>最初の強化</td><td>${first ? `${first.day}日目（${name(first.id)}）` : 'なし'}</td></tr>
         <tr><td>リール本数</td><td>${state.reels}本</td></tr>
       </table>
@@ -1298,7 +1300,7 @@ function resultText(endedAfterClear: boolean): string {
     `🌾畑スロット ${head}`,
     `年貢 ${state.taxesPaid}回納付 / 総収入 ${state.stats.totalEarned}金 / リール${state.reels}本`,
     charms ? `お守り ${charms}` : '',
-    `フィーバー${state.stats.fevers}回・そろい${state.stats.lineHarvests}回`,
+    `フィーバー${state.stats.fevers}回・つながり${state.stats.lineHarvests}回`,
     SHARE_URL,
   ]
     .filter(Boolean)
@@ -1338,7 +1340,7 @@ function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
       <li><b>年貢</b>：${CONFIG.taxPeriod}日ごとに自動で徴収。払えないと終わり。${CONFIG.winTaxes}回納めるとクリア</li>
       <li>年貢を納めるたびに<b>お守り</b>を3つから1つ選べる。代わりに<b>虫</b>が1枚増える</li>
       <li><b>フィーバー</b>：同じ絵柄が${CONFIG.feverCount}つ以上そろうと、絵柄ごとの役（芽吹き・虹・夏祭り・はちみつ・大商い・幸運など）と金貨の大当たり。カラス・虫がそろうと「群れ」で危険</li>
-      <li><b>そろい収穫</b>：縦・横・斜めに実が並ぶと、1つタップで列ごとまとめて売れる。タップしたマスを通る列が多いほど高い（1列×${lineMultiplier(1)}・2列×${lineMultiplier(2)}・3列×${lineMultiplier(3)}・4列×${lineMultiplier(4)}）</li>
+      <li><b>つながり収穫</b>：上下左右でつながった実は、1つタップでまとめて売れる。形は自由（コの字・L字もOK）。数が多いほど高い（2個×${groupMultiplier(2)}・3個×${groupMultiplier(3)}・5個×${groupMultiplier(5)}・7個×${groupMultiplier(7)}・9個×${groupMultiplier(9)}）</li>
       <li><b>ショップ</b>：準備画面で選んだ「足す」強化と、カラス・虫を消す（消すたび価格×${CONFIG.removeGrowth}）</li>
       <li><b>豊穣ポイント</b>：遊び終わるたびに「日数＋年貢×${META.pointsPerTax}」（クリアで+${META.clearBonus}）。準備画面で解放に使う</li>
     </ol>`;

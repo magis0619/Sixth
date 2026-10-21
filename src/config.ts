@@ -61,9 +61,9 @@ export interface SymbolDef {
 
 // feverDesc：同じ絵柄が3つ以上そろったときの「役」。良い絵柄の役には必ず金貨の大当たりが付く
 export const SYMBOLS: Record<SymbolId, SymbolDef> = {
-  seed: { id: 'seed', name: 'トマトの種', emoji: '🍅', kind: 'manual', desc: '空きマスにトマトを1〜3個植える', feverDesc: '芽吹き：空きマス全部にトマト', rarity: 'normal' },
-  berrySeed: { id: 'berrySeed', name: '苺の種', emoji: '🍓', kind: 'manual', desc: '空きマスに苺を2〜4個植える', feverDesc: '芽吹き：空きマス全部に苺', rarity: 'normal' },
-  pumpkinSeed: { id: 'pumpkinSeed', name: 'かぼちゃの種', emoji: '🎃', kind: 'manual', desc: '空きマスにかぼちゃを1個植える', feverDesc: '芽吹き：空きマス全部にかぼちゃ', rarity: 'normal' },
+  seed: { id: 'seed', name: 'トマトの種', emoji: '🍅', kind: 'manual', desc: '空きマスにトマトを1〜3個植える', feverDesc: '品種改良：今日植えるトマトは1段階育った状態から', rarity: 'normal' },
+  berrySeed: { id: 'berrySeed', name: '苺の種', emoji: '🍓', kind: 'manual', desc: '空きマスに苺を2〜4個植える', feverDesc: '品種改良：今日植える苺は1段階育った状態から', rarity: 'normal' },
+  pumpkinSeed: { id: 'pumpkinSeed', name: 'かぼちゃの種', emoji: '🎃', kind: 'manual', desc: '空きマスにかぼちゃを1個植える', feverDesc: '品種改良：今日植えるかぼちゃは1段階育った状態から', rarity: 'normal' },
   goldSeed: { id: 'goldSeed', name: '金の種', emoji: '🌟', kind: 'manual', desc: '空きマスに金のとうもろこしを植える', feverDesc: '黄金の実り：大当たり×3', rarity: 'rare' },
   rain: { id: 'rain', name: '雨', emoji: '🌧️', kind: 'manual', desc: '作物1つの成長＋2', feverDesc: '虹：全作物の成長＋1', rarity: 'normal' },
   sun: { id: 'sun', name: '太陽', emoji: '☀️', kind: 'manual', noTarget: true, desc: '畑の全作物の成長＋1', feverDesc: '夏祭り：今日の売値×2', rarity: 'normal' },
@@ -185,8 +185,11 @@ export const CONFIG = {
   orderRewardMult: 1.5,
   orderRewardBase: 5,
 
-  /** そろい収穫：タップしたマスを通るそろった列の数ごとの売値倍率（0列・1列・2列・3列・4列） */
-  lineBonusByLines: [1, 1.5, 2, 3, 4],
+  /**
+   * つながり収穫：上下左右でつながった実を一度にまとめて売る。添字＝つながった数（0〜9）ごとの売値倍率。
+   * 一列でなくても、コの字・L字などの形でまとめて回収できる
+   */
+  groupBonusBySize: [1, 1, 1.2, 1.5, 1.75, 2, 2.5, 3, 3.5, 4],
 
   /** 強化の価格 */
   upgradePrices: {
@@ -209,7 +212,7 @@ export const CONFIG = {
   /** 年貢：taxPeriod 日ごとに、その日の終わり（次の回転前）に自動で徴収 */
   taxPeriod: 7,
   /** 1回目から順の年貢額。表を超えたら（エンドレス）直前の額 × taxGrowth */
-  taxSchedule: [5, 20, 45, 90, 150, 220, 310, 420],
+  taxSchedule: [5, 22, 55, 115, 200, 310, 450, 620],
   taxGrowth: 1.5,
   /** この回数の年貢を納めるとクリア（その後はエンドレス） */
   winTaxes: 8,
