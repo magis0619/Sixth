@@ -17,7 +17,7 @@ import { art, type ArtId } from './art.ts';
 import type { Crop } from './game.ts';
 import {
   burst, center, coinRain, confetti, flash, floatText, flyTo, hitStop, isCalm, pop, rollNumber, scanlines, shake, shakeFor, sleep, slamText, slowFactor,
-  speedLines, stackMultipliers, toggleCalm, vibrate, rainShower, sunBeam, beeFlight, firework,
+  speedLines, stackMultipliers, toggleCalm, vibrate, rainShower, fmtMult, sunBeam, beeFlight, firework,
 } from './fx.ts';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -271,8 +271,8 @@ function renderStatus(): void {
   const bad = state.fever.filter((s) => SYMBOLS[s].rarity === 'bad');
   if (good.length) chips.push(`<span class="st fever">🔥 フィーバー：${good.map((s) => SYMBOLS[s].name).join('・')}</span>`);
   if (bad.length) chips.push(`<span class="st danger">⚠️ ${bad.map((s) => `${SYMBOLS[s].name}の群れ`).join('・')}</span>`);
-  if (state.priceMult > 1) chips.push(`<span class="st merchant">🧑‍🌾 今日の売値 ×${state.priceMult}</span>`);
-  if (state.cloverBoost > 1) chips.push(`<span class="st clover">🍀 明日は金の種が出やすい（×${state.cloverBoost}）</span>`);
+  if (state.priceMult > 1) chips.push(`<span class="st merchant">🧑‍🌾 今日の売値 ×${fmtMult(state.priceMult)}</span>`);
+  if (state.cloverBoost > 1) chips.push(`<span class="st clover">🍀 明日は金の種が出やすい（×${fmtMult(state.cloverBoost)}）</span>`);
   el.status.innerHTML = chips.join('');
 }
 
@@ -510,7 +510,8 @@ function renderField(): void {
     if (tile) {
       cls.push(`tile-${tile}`);
       // 空きマスでは中央に大きな名札を出すので、角の札は作物が乗っているときだけ
-      if (crop || tool) html += `<span class="badge-tile">${art(PLACE_ART[tile])}</span>`;
+      // 水路は土の色（青）で分かるので、作物が乗っているときは印を出さない
+      if ((crop || tool) && tile !== 'water') html += `<span class="badge-tile">${art(PLACE_ART[tile])}</span>`;
     }
     if (tool) {
       cls.push('tool');
@@ -534,7 +535,7 @@ function renderField(): void {
         if (inLine) cls.push('line', inSameCropLine(state, i) ? 'lines-3' : 'lines-1');
         else cls.push('single');
         html += `<span class="price">${price}金</span>`;
-        html += inLine ? `<span class="badge-line">列 ×${mult}</span>` : `<span class="badge-single">単品 ×${CONFIG.singleMult}</span>`;
+        html += inLine ? `<span class="badge-line">列 ×${fmtMult(mult)}</span>` : `<span class="badge-single">単品 ×${fmtMult(CONFIG.singleMult)}</span>`;
         label = `${def.name} 実、タップで${price}金で売る${inLine ? '（列ごと）' : '（単品は半値）'}`;
       } else {
         html += `<span class="pips">${Array.from({ length: def.ripe }, (_, k) => `<i class="pip${k < crop.growth ? ' on' : ''}"></i>`).join('')}</span>`;
@@ -1038,7 +1039,7 @@ async function playFeverRoles(events: FeverEvent[]): Promise<void> {
       case 'festival':
         sfx.merchant();
         render();
-        floatText(mid.x, mid.y, `${name}！ 今日の売値×${ev.mult}`, { cls: 'gold', size: 1.1 });
+        floatText(mid.x, mid.y, `${name}！ 今日の売値×${fmtMult(ev.mult)}`, { cls: 'gold', size: 1.1 });
         el.field.querySelectorAll('.plot.ripe').forEach((p) => pop(p, 1.15));
         break;
       case 'compost':
@@ -1308,10 +1309,10 @@ async function resolveAutos(): Promise<void> {
       floatText(center(el.goldBox).x, center(el.goldBox).y + 28, `+${ev.amount}`, { cls: 'gold', size: 0.9 });
       setGold(state.gold);
     } else if (ev.type === 'merchant') {
-      autoOutcome[i] = `売値×${ev.mult}`;
+      autoOutcome[i] = `売値×${fmtMult(ev.mult)}`;
       sfx.merchant();
       burst(from.x, from.y, ['💰', '✨', '🪙'], 10, 70);
-      floatText(from.x, from.y - 40, `今日の売値 ×${ev.mult}！`, { cls: 'gold', size: 0.9 });
+      floatText(from.x, from.y - 40, `今日の売値 ×${fmtMult(ev.mult)}！`, { cls: 'gold', size: 0.9 });
       render();
       el.field.querySelectorAll('.plot.ripe').forEach((p) => pop(p, 1.12));
     } else if (ev.type === 'clover') {

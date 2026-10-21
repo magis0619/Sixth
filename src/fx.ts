@@ -162,6 +162,11 @@ export function vibrate(pattern: number | number[]): void {
   }
 }
 
+/** 倍率の表示：小数は1桁に丸める（1.690000… → 1.7、2.0 → 2） */
+export function fmtMult(x: number): string {
+  return String(Math.round(x * 10) / 10);
+}
+
 export const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 /**
@@ -210,7 +215,7 @@ export async function stackMultipliers(x: number, y: number, steps: { label: str
     total *= s.x;
     const chip = document.createElement('span');
     chip.className = 'mult-chip';
-    chip.innerHTML = `<small>${s.label}</small>×${s.x}`;
+    chip.innerHTML = `<small>${s.label}</small>×${fmtMult(s.x)}`;
     el.appendChild(chip);
     chip.animate([{ transform: 'scale(2.2)', opacity: 0 }, { transform: 'scale(0.9)', opacity: 1, offset: 0.6 }, { transform: 'scale(1)' }], {
       duration: 260,
@@ -221,7 +226,7 @@ export async function stackMultipliers(x: number, y: number, steps: { label: str
   if (steps.length > 1) {
     const sum = document.createElement('span');
     sum.className = 'mult-chip total';
-    sum.textContent = `＝×${Math.round(total * 100) / 100}`;
+    sum.textContent = `＝×${fmtMult(total)}`;
     el.appendChild(sum);
     sum.animate([{ transform: 'scale(2.6)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { duration: 300, easing: 'cubic-bezier(.3,1.5,.5,1)' });
     await sleep(calm ? 150 : 350);
