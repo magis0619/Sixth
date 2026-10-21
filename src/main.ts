@@ -4,7 +4,7 @@ import {
   type CharmId, type CropKind, type PlaceId, type SymbolId, type UpgradeId,
 } from './config.ts';
 import {
-  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, chooseCharm, cropPrice, drawDay, drawSymbol, endDay,
+  isGolden, singleMult, multSteps, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, chooseCharm, cropPrice, drawDay, drawSymbol, endDay,
   expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells,
   ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState,
 } from './game.ts';
@@ -351,32 +351,28 @@ function renderCharms(): void {
     .join('');
 }
 
-/** 今週の注文。何を何個・報酬・期日を1行で */
+/** 今週の注文：作物の絵と進み具合だけ。タップで詳しく */
 function renderOrder(): void {
   const o = state.order;
   el.order.hidden = !o;
   if (!o) return;
-  const def = CROPS[o.crop];
-  const left = o.dueDay - state.day;
-  el.order.className = `order${o.done ? ' done' : ''}`;
+  el.order.className = `hud-order${o.done ? ' done' : ''}`;
   el.order.innerHTML = o.done
-    ? `<span class="order-ico">${art(FRUIT[o.crop])}</span><b>注文達成！</b><span class="order-reward">+${o.reward}金 ✓</span>`
-    : `<span class="order-ico">${art(FRUIT[o.crop])}</span><span class="order-text">注文：<b>${def.name}</b> ${o.have}/${o.need}</span>` +
-      `<span class="order-bar"><i style="width:${(o.have / o.need) * 100}%"></i></span>` +
-      `<span class="order-reward">${o.reward}金・${left > 0 ? `あと${left}日` : '今日まで'}</span>`;
+    ? `<span class="order-ico">${art(FRUIT[o.crop])}</span><b>✓</b>`
+    : `<span class="order-ico">${art(FRUIT[o.crop])}</span><b>${o.have}/${o.need}</b><span class="order-bar"><i style="width:${(o.have / o.need) * 100}%"></i></span>`;
 }
 
+/** 年貢：1週間のリング（中は年貢までの日数）＋金額＋払えるか。クリアまでの回数も小さく */
 function renderTax(): void {
   const t = nextTax(state);
   const short = state.gold < t.amount;
   const warn = short && t.daysLeft <= CONFIG.taxWarnDays;
-  const when = t.daysLeft === 0 ? '今日の終わり' : `あと${t.daysLeft}日`;
-  el.tax.className = `tax${warn ? ' warn' : ''}`;
-  // クリアまでの年貢の回数（〇＝納めた、●＝これから）
-  const goal = state.cleared
-    ? '<span class="clear-prog endless">∞</span>'
-    : `<span class="clear-prog" title="クリアまでの年貢">${art('star')}${state.taxesPaid}/${CONFIG.winTaxes}</span>`;
-  el.tax.innerHTML = `${goal}${state.difficulty ? `<span class="diff-tag">${DIFFICULTIES[state.difficulty].name}</span>` : ''}${warn ? '⚠️' : art('bale')} 年貢 <b>${t.amount}金</b>（${when}）<span class="tax-state">${short ? `不足 ${t.amount - state.gold}金` : '払える ✓'}</span>`;
+  const passed = CONFIG.taxPeriod - t.daysLeft;
+  el.tax.className = `hud-tax${warn ? ' warn' : ''}${short ? ' short' : ''}`;
+  el.tax.innerHTML =
+    `<span class="ring" style="--p:${passed / CONFIG.taxPeriod}"><b>${t.daysLeft}</b></span>` +
+    `<span class="tax-main">${art('bale')}<b>${t.amount}</b><span class="tax-ok">${short ? `−${t.amount - state.gold}` : '✓'}</span></span>` +
+    `<span class="tax-sub${state.difficulty ? ' hard' : ''}">${state.cleared ? '∞' : `★${state.taxesPaid}/${CONFIG.winTaxes}`}</span>`;
 }
 
 /** 列（縦・横・斜めに3つ以上）にそろった実があるか */
@@ -447,13 +443,10 @@ function reelTag(i: number): { text: string; cls: string } {
     const text = autoOutcome[i] ?? '自動';
     return { text, cls: def.rarity === 'bad' ? 'auto-bad used' : 'used' };
   }
-  if (r.used) return { text: '使った ✓', cls: 'used' };
-  if (selected === i) return { text: '選択中', cls: 'selected' };
-  if (canUse(state, i, null)) {
-    const shape = SYMBOLS[r.symbol].shape;
-    return { text: shape ? `▶ ${SHAPE_NAMES[shape]}` : '▶ 使う', cls: 'usable' };
-  }
-  return { text: '使えない', cls: 'dead' };
+  if (r.used) return { text: '', cls: 'used' };
+  if (selected === i) return { text: '', cls: 'selected' };
+  if (canUse(state, i, null)) return { text: '', cls: 'usable' };
+  return { text: '', cls: 'dead' };
 }
 
 function buildReels(): void {
@@ -481,10 +474,28 @@ function renderReelStates(): void {
     const fever = r && r.power > 1;
     const badFever = fever && SYMBOLS[r.symbol].rarity === 'bad';
     b.className = `reel ${r ? roleClass(r.symbol) : ''} ${tag.cls}${r?.symbol === 'goldSeed' ? ' rare' : ''}${fever ? (badFever ? ' fever-bad' : ' fever') : ''}${r && el.machine.classList.contains('rainbow') && state.fever.includes(r.symbol) ? ' rainbow-sym' : ''}`;
-    b.querySelector('.tag')!.textContent = fever ? `${badFever ? '⚠️' : '🔥'}${tag.text}` : tag.text;
+    // 札：自動の出目は結果を短く、手動の出目は効く形の絵（3×3のマス目）
+    const shape = r ? SYMBOLS[r.symbol].shape : undefined;
+    const tagEl = b.querySelector('.tag') as HTMLElement;
+    const html = tag.text ? `${fever ? (badFever ? '⚠️' : '🔥') : ''}${tag.text}` : shape && !r!.used ? shapeIcon(shape) : '';
+    if (tagEl.innerHTML !== html) tagEl.innerHTML = html;
+    tagEl.classList.toggle('empty', !html);
+    tagEl.classList.toggle('shape', !tag.text && !!shape);
     renderCount(b, i);
     b.setAttribute('aria-label', r ? `${SYMBOLS[r.symbol].name}: ${tag.text}` : 'リール');
   });
+}
+
+/** 出目の効く形を3×3のマス目で描く（光っているマスに効く） */
+function shapeIcon(shape: string): string {
+  const on = (x: number, y: number): boolean =>
+    shape === 'all' ||
+    (shape === 'cross' && (x === 1 || y === 1)) ||
+    (shape === 'column' && x === 1) ||
+    (shape === 'row' && y === 1) ||
+    (shape === 'x' && (x === y || x + y === 2));
+  const cells = Array.from({ length: 9 }, (_, k) => `<i class="${on(k % 3, Math.floor(k / 3)) ? 'on' : ''}"></i>`).join('');
+  return `<span class="shape-icon" aria-label="${SHAPE_NAMES[shape as keyof typeof SHAPE_NAMES]}">${cells}</span>`;
 }
 
 /** 種の残り個数バッジ（×2・×3） */
@@ -508,15 +519,19 @@ function renderSpinButton(): void {
   const t = nextTax(state);
   el.spin.disabled = busy || state.over;
   el.spin.classList.toggle('armed', armedNextDay);
-  if (state.day === 0) {
-    el.spin.innerHTML = 'まわす！';
-  } else if (armedNextDay) {
-    el.spin.innerHTML = `本当に次の日へ？<small>使える出目が${usableReels().length}つ残っています（消えます）</small>`;
-  } else if (t.daysLeft === 0) {
-    el.spin.innerHTML = `年貢を納めて 次の日へ<small>${art('bale')} ${t.amount}金を徴収されます</small>`;
-  } else {
-    el.spin.innerHTML = `次の日へ ▶ まわす<small>${state.day + 1}日目</small>`;
-  }
+  el.spin.classList.toggle('taxday', !armedNextDay && state.day > 0 && t.daysLeft === 0);
+  const cap = el.spin.querySelector('.spin-cap')!;
+  cap.textContent = armedNextDay ? '本当に？' : 'まわす';
+  // 操作盤の電光表示：次に起きることを短く
+  const lcd = $('lcd');
+  lcd.className = `lcd${armedNextDay ? ' warn' : t.daysLeft === 0 && state.day > 0 ? ' tax' : ''}`;
+  lcd.innerHTML = state.day === 0
+    ? '<b>1日目</b>'
+    : armedNextDay
+      ? `<b>出目${usableReels().length}つ</b><small>消える</small>`
+      : t.daysLeft === 0
+        ? `<b>年貢${t.amount}</b><small>${state.day + 1}日目へ</small>`
+        : `<b>${state.day + 1}日目</b><small>へ</small>`;
 }
 
 /** 道具・特別なマスの絵 */
@@ -850,7 +865,8 @@ async function onSpin(): Promise<void> {
   }
   if (state.day > 0) done.next = true;
   armedNextDay = false;
-  el.spin.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(6px) scale(0.97)' }, { transform: 'translateY(0)' }], { duration: 220 });
+  el.spin.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(7px) scale(0.96)' }, { transform: 'translateY(0)' }], { duration: 240 });
+  $('lever').animate([{ transform: 'rotate(0deg)' }, { transform: 'rotate(55deg)', offset: 0.35 }, { transform: 'rotate(0deg)' }], { duration: 650, easing: 'cubic-bezier(.3,1.4,.5,1)' });
   // 前の日のフリーズの名残（虹の枠・ひび）を片付ける
   el.machine.classList.remove('rainbow', 'burning');
   el.machine.querySelector('.crack')?.remove();
@@ -2304,13 +2320,164 @@ function showPrep(): void {
   paint();
 }
 
+// ---- 長押しで詳しく ----
+
+let lpTimer = 0;
+let lpFired = false;
+let infoEl: HTMLElement | null = null;
+
+function closeInfo(): void {
+  infoEl?.remove();
+  infoEl = null;
+}
+
+/** anchor の近く（上に余裕があれば上、なければ下）に詳しい説明の吹き出しを出す */
+function showInfo(anchor: Element, html: string): void {
+  closeInfo();
+  const pop = document.createElement('div');
+  pop.className = 'info-pop';
+  pop.innerHTML = html;
+  document.body.appendChild(pop);
+  const r = anchor.getBoundingClientRect();
+  const w = pop.offsetWidth;
+  const h = pop.offsetHeight;
+  const left = Math.min(window.innerWidth - w - 8, Math.max(8, r.left + r.width / 2 - w / 2));
+  const top = r.top - h - 10 > 8 ? r.top - h - 10 : Math.min(window.innerHeight - h - 8, r.bottom + 10);
+  pop.style.left = `${left}px`;
+  pop.style.top = `${top}px`;
+  infoEl = pop;
+  // 次にどこかを触ったら閉じる
+  window.setTimeout(() => document.addEventListener('pointerdown', closeInfo, { once: true }), 0);
+}
+
+/** root の中の selector に合う要素を長押し（0.45秒）すると info の内容を出す。長押しのあとのタップは無視する */
+function longPress(root: HTMLElement, selector: string, info: (target: HTMLElement) => string | null): void {
+  root.addEventListener('pointerdown', (e) => {
+    const target = (e.target as Element).closest(selector) as HTMLElement | null;
+    if (!target || !root.contains(target)) return;
+    lpFired = false;
+    clearTimeout(lpTimer);
+    const sx = e.clientX;
+    const sy = e.clientY;
+    lpTimer = window.setTimeout(() => {
+      const html = info(target);
+      if (!html) return;
+      lpFired = true;
+      vibrate(15);
+      showInfo(target, html);
+    }, 450);
+    const cancel = () => clearTimeout(lpTimer);
+    const move = (ev: PointerEvent) => {
+      if (Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) > 12) cancel();
+    };
+    root.addEventListener('pointermove', move);
+    const end = () => {
+      cancel();
+      root.removeEventListener('pointermove', move);
+    };
+    root.addEventListener('pointerup', end, { once: true });
+    root.addEventListener('pointercancel', end, { once: true });
+    root.addEventListener('pointerleave', end, { once: true });
+  });
+  root.addEventListener(
+    'click',
+    (e) => {
+      if (!lpFired) return;
+      lpFired = false;
+      e.stopPropagation();
+      e.preventDefault();
+    },
+    true,
+  );
+  root.addEventListener('contextmenu', (e) => e.preventDefault());
+}
+
+const infoHead = (ico: string, name: string, tag = '') => `<div class="info-head"><span class="info-ico">${ico}</span><b>${name}</b>${tag ? `<em>${tag}</em>` : ''}</div>`;
+
+function symbolInfo(id: SymbolId, extra = ''): string {
+  const d = SYMBOLS[id];
+  const shape = d.shape ? `<p>${shapeIcon(d.shape)} ${SHAPE_NAMES[d.shape]}</p>` : '';
+  return `${infoHead(symHtml(id), d.name, d.kind === 'manual' ? '手動' : '自動')}<p>${d.desc}</p>${shape}<p class="sub">🔥 ${d.feverDesc}</p>${extra}`;
+}
+
+function plotInfo(cell: number): string | null {
+  if (!inField(state, cell)) return null;
+  const parts: string[] = [];
+  const crop = state.field[cell];
+  const tool = state.tools[cell];
+  const tile = state.tiles[cell];
+  if (tool) {
+    const ev = TOOL_EVOLVE[tool];
+    parts.push(`${infoHead(art(PLACE_ART[tool]), PLACES[tool].name, '道具')}<p>${PLACES[tool].desc}</p>${ev ? `<p class="sub">進化：${ev.what} ${state.toolXp[cell]}/${ev.need} → ${PLACES[ev.to].name}</p>` : ''}`);
+  } else if (crop) {
+    const def = CROPS[crop.kind];
+    const ripe = isRipe(crop);
+    const base = cropPrice(state, crop, cell);
+    let sellLine = '';
+    if (ripe) {
+      const steps = multSteps(state, cell);
+      const mult = steps.reduce((m, x) => m * x.x, 1);
+      sellLine = `<p>今売ると <b>${Math.round(base * mult)}金</b></p><p class="sub">${base}金 ${steps.map((x) => `×${fmtMult(x.x)}（${x.label}）`).join(' ')}</p>`;
+    }
+    parts.push(`${infoHead(art(FRUIT[crop.kind]), def.name, ripe ? '実り' : `${crop.growth}/${def.ripe}`)}<p>売値 ${def.price}金${crop.fertilized ? '・肥料×2' : ''}</p>${sellLine}`);
+  } else if (state.weeds[cell]) {
+    parts.push(`${infoHead(art('weed'), '雑草', 'お邪魔')}<p>タップで抜く（${weedCost(state)}金）</p>`);
+  } else {
+    parts.push(infoHead(art('sprout'), '空きマス'));
+  }
+  if (tile) parts.push(`<p class="sub">${art(PLACE_ART[tile])} ${PLACES[tile].name}：${PLACES[tile].desc}</p>`);
+  if (state.frost[cell]) parts.push(`<p class="sub">❄️ あと${state.frost[cell]}日凍っている</p>`);
+  return parts.join('');
+}
+
+function charmInfo(id: CharmId): string {
+  const c = CHARMS[id];
+  const n = state.charms[id];
+  const gold = isGolden(state, id);
+  const tag = c.special ? '特別' : CHARM_TIER_NAMES[c.tier];
+  const stack = c.max >= CONFIG.goldenAt ? `<p class="sub">${gold ? '✦ 金色（効果2倍）' : `${CONFIG.goldenAt}個で金色（効果2倍）`}</p>` : '';
+  return `${infoHead(art(id), `${c.name}${n > 1 ? ` ×${n}` : ''}`, tag)}<p>${c.desc(gold ? n * 2 : Math.max(1, n))}</p>${stack}`;
+}
+
+/** 長押しの詳しい説明を、畑・リール・お守り・袋・ショップにつける */
+function setupLongPress(): void {
+  longPress(el.field, '.plot', (t) => plotInfo([...el.field.children].indexOf(t)));
+  longPress(el.reels, '.reel', (t) => {
+    const r = state.results[Number(t.dataset.i)];
+    return r ? symbolInfo(r.symbol, r.total > 1 ? `<p class="sub">残り ${r.left}/${r.total}</p>` : '') : null;
+  });
+  longPress(el.charms, '[data-charm]', (t) => charmInfo(t.dataset.charm as CharmId));
+  longPress(el.bag, '[data-sym]', (t) => symbolInfo(t.dataset.sym as SymbolId, `<p class="sub">袋に${state.bag[t.dataset.sym as SymbolId]}枚</p>`));
+  longPress(el.shop, '[data-id]', (t) => {
+    const u = UPGRADES.find((x) => x.id === t.dataset.id);
+    if (!u) return null;
+    return symbolInfo(UPGRADE_SYMBOL[u.id]!.symbol, `<p class="sub">${u.name}：${upgradeEffect(u.id)}</p>`);
+  });
+  longPress(el.farmShop, '[data-id]', (t) => {
+    const id = t.dataset.id!;
+    if (id === 'expand') return `${infoHead(art('expand'), '畑を広げる')}<p>列→行の順に1つ広がる（最大5×5）</p>`;
+    const d = PLACES[id as PlaceId];
+    const ev = TOOL_EVOLVE[id as PlaceId];
+    return `${infoHead(art(PLACE_ART[id as PlaceId]), d.name, d.kind === 'tool' ? '道具' : 'マス')}<p>${d.desc}</p>${d.kind === 'tool' ? '<p class="sub">マスを1つ使う（植えられない・列に入らない）</p>' : '<p class="sub">作物と重ねられる</p>'}${ev ? `<p class="sub">${ev.what}と ${ev.need}回で${PLACES[ev.to].name}に進化</p>` : ''}`;
+  });
+}
+
 // ---- 起動 ----
 
 $('build-label').textContent = __BUILD__;
 el.spin.addEventListener('click', () => void onSpin());
+el.tax.addEventListener('click', () => {
+  const t = nextTax(state);
+  say(`${state.difficulty ? `【${DIFFICULTIES[state.difficulty].name}】` : ''}年貢 ${t.amount}金・${t.daysLeft === 0 ? '今日の終わり' : `あと${t.daysLeft}日`}（${state.day}日目）${state.cleared ? '' : `・クリアまであと${CONFIG.winTaxes - state.taxesPaid}回`}`, 3000);
+});
+el.order.addEventListener('click', () => {
+  const o = state.order;
+  if (!o) return;
+  const left = o.dueDay - state.day;
+  say(o.done ? `注文達成 +${o.reward}金` : `注文：${CROPS[o.crop].name}を${o.need}個 → +${o.reward}金（${left > 0 ? `あと${left}日` : '今日まで'}）`, 3000);
+});
 el.mute.textContent = isMuted() ? '🔇' : '🔊';
 el.goldBox.querySelector('.stat-icon')!.innerHTML = art('coin');
-document.querySelector('.stat-day .stat-icon')!.innerHTML = art('calendar');
 document.querySelector('.machine-top')!.innerHTML = `${art('coin')} 畑スロット ${art('coin')}`;
 document.querySelectorAll<HTMLElement>('.tab-ico[data-art]').forEach((n) => (n.innerHTML = art(n.dataset.art as ArtId)));
 document.querySelectorAll<HTMLButtonElement>('.tab').forEach((t) =>
@@ -2339,5 +2506,6 @@ el.mute.addEventListener('click', () => {
   el.mute.textContent = toggleMute() ? '🔇' : '🔊';
 });
 applySkin();
+setupLongPress();
 render();
 showTitle();

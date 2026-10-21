@@ -13,14 +13,13 @@
   <body>
     <div id="app">
       <header class="hud">
-        <div class="hud-row">
-          <div class="stat stat-gold" id="gold-box"><span class="stat-icon"></span><span id="gold">0</span><small>金</small></div>
-          <div class="stat stat-day"><span class="stat-icon"></span><span id="day">0</span><small>日目</small></div>
+        <div class="hud-bar">
+          <div class="hud-gold" id="gold-box"><span class="stat-icon"></span><span id="gold">0</span><span id="day" hidden></span></div>
+          <button class="hud-tax" id="tax" aria-label="年貢"></button>
+          <button class="hud-order" id="order" aria-label="注文"></button>
           <button class="icon-btn" id="help" aria-label="遊び方と図鑑">？</button>
           <button class="icon-btn" id="mute" aria-label="音のオン・オフ">🔊</button>
         </div>
-        <div class="tax" id="tax"></div>
-        <div class="order" id="order" aria-live="polite"></div>
       </header>
 
       <div class="status" id="status" aria-live="polite"></div>
@@ -34,7 +33,11 @@
         <div class="machine-top"></div>
         <div class="reels-frame"><div class="reels" id="reels"></div></div>
         <div class="msg" id="msg" aria-live="polite"></div>
-        <button class="spin" id="spin">まわす！</button>
+        <div class="control">
+          <div class="lcd" id="lcd"></div>
+          <button class="spin" id="spin" aria-label="まわす"><span class="spin-cap">まわす</span></button>
+          <div class="lever" id="lever" aria-hidden="true"><i></i></div>
+        </div>
       </section>
 
       <nav class="tabs" aria-label="メニュー">
