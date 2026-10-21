@@ -241,9 +241,9 @@ export const CONFIG = {
    * 1つの実が複数の列に入っていると、2本目以降1本ごとに×(1 + crossBonus) が上乗せされる
    */
   singleMult: 0.5,
-  lineMult: 1.5,
-  sameCropMult: 1.5,
-  crossBonus: 0.25,
+  lineMult: 1.3,
+  sameCropMult: 1.3,
+  crossBonus: 0.15,
 
   /** 強化の価格 */
   upgradePrices: {
@@ -272,7 +272,7 @@ export const CONFIG = {
   /** 年貢：taxPeriod 日ごとに、その日の終わり（次の回転前）に自動で徴収 */
   taxPeriod: 7,
   /** 1回目から順の年貢額。表を超えたら（エンドレス）直前の額 × taxGrowth */
-  taxSchedule: [5, 25, 75, 150, 220, 300, 390, 480],
+  taxSchedule: [5, 22, 60, 120, 175, 240, 310, 390],
   taxGrowth: 1.5,
   /** この回数の年貢を納めるとクリア（その後はエンドレス） */
   winTaxes: 8,
