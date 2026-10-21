@@ -357,7 +357,7 @@ function renderOrder(): void {
   el.order.hidden = !o;
   if (!o) return;
   el.order.className = `order-tag${o.done ? ' done' : ''}`;
-  el.order.innerHTML = `<small>注文</small><span class="order-ico">${art(FRUIT[o.crop])}</span><b>${o.done ? '✓' : `${o.have}/${o.need}`}</b>`;
+  el.order.innerHTML = `<span class="sign-nail l"></span><span class="sign-nail r"></span><small>ご注文</small><span class="order-ico">${art(FRUIT[o.crop])}</span><b>${o.done ? '達成！' : `${CROPS[o.crop].name} ${o.have}/${o.need}`}</b><span class="order-reward">${o.done ? '✓' : `${o.reward}金`}</span>`;
 }
 
 /** 年貢：「年貢 7金 あと2日」を言葉で。払えるときは緑、足りないときは赤 */
@@ -519,6 +519,13 @@ function renderSpinButton(): void {
   const ready = !busy && !state.over && (state.day === 0 || usableReels().length === 0);
   el.machine.classList.toggle('ready-spin', ready);
   el.machine.classList.toggle('taxday', state.day > 0 && t.daysLeft === 0);
+  // 次の日に進むしかないとき：リールの上に大きな「次の日へ」の札を重ねる
+  const go = $('spin-go');
+  go.hidden = !ready;
+  go.classList.toggle('tax', state.day > 0 && t.daysLeft === 0);
+  go.innerHTML = state.day === 0
+    ? '<span class="go-hand">👆</span><span class="go-text"><b>タップで回す</b></span>'
+    : `<span class="go-hand">👆</span><span class="go-text">${t.daysLeft === 0 ? `<small>年貢${t.amount}金を納めて</small>` : ''}<b>${state.day + 1}日目へ</b><small>リールをタップ</small></span>`;
   // 筐体の看板の文字を、回せるときだけ「タップで回す」に切り替える
   const cue = document.querySelector('.machine-top') as HTMLElement;
   cue.classList.toggle('cue', ready);
@@ -896,7 +903,6 @@ async function onSpin(): Promise<void> {
   drawDay(state, rng);
   // フリーズ中に結果が見えないよう、描き直すのは演出のあと
   const show = planShow();
-  if (show.freeze) await playFreeze();
   render();
   await spinReels(show);
   if (state.fever.length) {
@@ -1170,7 +1176,6 @@ async function playFeverRoles(events: FeverEvent[]): Promise<void> {
 
 /** 回す前に決める見せ方。結果はもう決まっているので、それに合わせて煽る */
 interface SpinShow {
-  freeze: boolean;
   /** カットインの色（0 青・1 緑・2 赤・3 虹）。null は出さない */
   cutIn: number | null;
 }
@@ -1181,14 +1186,12 @@ const CUTIN_MS = 1500;
 function planShow(): SpinShow {
   const goodFever = state.fever.some((s) => SYMBOLS[s].rarity !== 'bad');
   const hot = goodFever || state.results.some((r) => r.symbol === 'goldSeed');
-  // フリーズは良いフィーバーの一部（全体でおよそ100回に1回）
-  if (goodFever && rng() < 0.4) return { freeze: true, cutIn: null };
   // 当たりの日は多めに、外れの日もたまに出す（ガセ）。色が強いほど当たりやすい
-  if (rng() >= (hot ? 0.6 : 0.08)) return { freeze: false, cutIn: null };
+  if (rng() >= (hot ? 0.6 : 0.08)) return { cutIn: null };
   const weights = hot ? [1, 2, 3, goodFever ? 1.5 : 0] : [6, 3, 1, 0];
   let r = rng() * weights.reduce((a, b) => a + b, 0);
   const level = weights.findIndex((w) => (r -= w) < 0);
-  return { freeze: false, cutIn: level < 0 ? 0 : level };
+  return { cutIn: level < 0 ? 0 : level };
 }
 
 /** 予告のカットイン：キャラが斜めに飛び込んで期待度の色を見せる */
@@ -1216,69 +1219,7 @@ async function playCutIn(level: number): Promise<void> {
   await sleep(CUTIN_MS);
 }
 
-/** フリーズ：暗転 → 無音 → 白い閃光 → 鐘 → 筐体が割れる → ファンファーレ */
-async function playFreeze(): Promise<void> {
-  const calm = isCalm();
-  const black = document.createElement('div');
-  black.className = 'freeze-black';
-  black.innerHTML = '<div class="crt-line"></div>';
-  document.body.appendChild(black);
-  black.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 120, fill: 'forwards' });
-  vibrate(200);
-  await sleep(calm ? 500 : 1500);
-  sfx.crt();
-  (black.firstElementChild as HTMLElement).animate(
-    [
-      { transform: 'scale(0, 0.004)', opacity: 1 },
-      { transform: 'scale(1, 0.004)', opacity: 1, offset: 0.4 },
-      { transform: 'scale(1, 1)', opacity: calm ? 0.3 : 1, offset: 0.6 },
-      { transform: 'scale(1, 1)', opacity: 0 },
-    ],
-    { duration: 700, fill: 'forwards' },
-  );
-  await sleep(800);
-  sfx.bell();
-  await sleep(calm ? 700 : 1400);
-  black.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: 'forwards' }).onfinish = () => black.remove();
-  // 筐体のガラスが割れる
-  sfx.glass();
-  vibrate([100, 40, 200]);
-  el.machine.insertAdjacentHTML('beforeend', crackSvg());
-  shake(el.app, 16);
-  flash('#ffffff', 400);
-  const c = center(el.reels);
-  burst(c.x, c.y, ['💎', '✨', '⭐'], 24, 180);
-  el.machine.classList.add('rainbow');
-  await sleep(350);
-  sfx.fanfare();
-  confetti(40);
-  floatText(c.x, c.y - 30, 'フリーズ!!', { cls: 'gold', size: 1.8, dur: 1600 });
-  await sleep(1200);
-}
-
-/** 割れたガラスのひび。中央付近の1点から放射状に走らせる */
-function crackSvg(): string {
-  const cx = 40 + rng() * 20;
-  const cy = 40 + rng() * 20;
-  const lines: string[] = [];
-  for (let k = 0; k < 9; k++) {
-    const a = (Math.PI * 2 * k) / 9 + rng() * 0.5;
-    let x = cx;
-    let y = cy;
-    const pts = [`${x},${y}`];
-    for (let j = 0; j < 4; j++) {
-      const len = 8 + rng() * 14;
-      const aa = a + (rng() - 0.5) * 0.7;
-      x += Math.cos(aa) * len;
-      y += Math.sin(aa) * len;
-      pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
-    }
-    lines.push(`<polyline points="${pts.join(' ')}"/>`);
-  }
-  return `<svg class="crack" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${lines.join('')}<circle cx="${cx}" cy="${cy}" r="3"/></svg>`;
-}
-
-function spinReels(show: SpinShow = { freeze: false, cutIn: null }): Promise<void> {
+function spinReels(show: SpinShow = { cutIn: null }): Promise<void> {
   const reels = [...el.reels.children] as HTMLElement[];
   const h = reels[0].querySelector('.window')!.clientHeight;
   const last = state.results.length - 1;
@@ -1337,7 +1278,6 @@ function spinReels(show: SpinShow = { freeze: false, cutIn: null }): Promise<voi
       );
       if (i === reels.length - 1) clearInterval(tick);
       onReelLanded(i, reel);
-      if (show.freeze && state.fever.includes(state.results[i].symbol)) reel.classList.add('rainbow-sym');
     });
   });
   return Promise.all(promises).then(() => {
@@ -2484,6 +2424,7 @@ function setupLongPress(): void {
 
 $('build-label').textContent = __BUILD__;
 el.spin.addEventListener('click', () => void onSpin());
+$('spin-go').addEventListener('click', () => void onSpin());
 el.tax.addEventListener('click', () => {
   const t = nextTax(state);
   say(`${state.difficulty ? `【${DIFFICULTIES[state.difficulty].name}】` : ''}年貢 ${t.amount}金・${t.daysLeft === 0 ? '今日の終わり' : `あと${t.daysLeft}日`}（${state.day}日目）${state.cleared ? '' : `・クリアまであと${CONFIG.winTaxes - state.taxesPaid}回`}`, 3000);

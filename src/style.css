@@ -4079,3 +4079,149 @@ body::before {
 .machine .reels-frame {
   margin-top: 0;
 }
+
+/* ==== 次の日に進むしかないとき：リールの上に大きな札 ==== */
+.spin-go {
+  position: absolute;
+  inset: 6px;
+  z-index: 7;
+  border: none;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: rgba(40, 18, 6, 0.55);
+  color: #fff;
+  cursor: pointer;
+  animation: go-in 0.25s ease-out;
+}
+
+.spin-go[hidden] {
+  display: none;
+}
+
+.spin-go b {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #ffd84a;
+  -webkit-text-stroke: 2px #5a2a08;
+  paint-order: stroke fill;
+  text-shadow: 0 3px 0 #5a2a08;
+  letter-spacing: 0.04em;
+  animation: pulse 1.1s ease-in-out infinite;
+}
+
+.spin-go small {
+  font-size: 0.75rem;
+  font-weight: 800;
+  opacity: 0.9;
+}
+
+.spin-go .go-hand {
+  font-size: 1.8rem;
+  animation: tap-hand 1.1s ease-in-out infinite;
+}
+
+.spin-go.tax b {
+  color: #ffb04a;
+}
+
+@keyframes tap-hand {
+  0%, 100% { transform: translateY(0) scale(1); }
+  40% { transform: translateY(8px) scale(0.92); }
+  55% { transform: translateY(8px) scale(0.92); }
+}
+
+@keyframes go-in {
+  from { opacity: 0; transform: scale(1.06); }
+}
+
+.calm .spin-go b,
+.calm .spin-go .go-hand {
+  animation: none;
+}
+
+/* ==== 注文：木の看板に字が書いてある ==== */
+.order-tag {
+  gap: 5px;
+  padding: 5px 12px 5px 10px;
+  border-radius: 6px;
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.06) 0 2px, transparent 2px 7px),
+    linear-gradient(#d9a066, #b47a44);
+  color: #4a2a10;
+  box-shadow: 0 3px 0 #6a3f1c, inset 0 0 0 2px #8a5a2c, inset 0 2px 0 rgba(255, 240, 210, 0.5);
+  font-family: inherit;
+  text-shadow: 0 1px 0 rgba(255, 235, 200, 0.6);
+}
+
+.order-tag small {
+  font-size: 0.65rem;
+  font-weight: 900;
+  opacity: 1;
+  border-right: 2px solid rgba(74, 42, 16, 0.3);
+  padding-right: 5px;
+}
+
+.order-tag .order-ico {
+  background: none;
+  padding: 0;
+  font-size: 1.15rem;
+}
+
+.order-tag b {
+  font-size: 0.82rem;
+}
+
+.order-tag .order-reward {
+  font-size: 0.72rem;
+  font-weight: 900;
+  color: #7a4a00;
+  background: rgba(255, 240, 200, 0.55);
+  border-radius: 4px;
+  padding: 0 4px;
+}
+
+.order-tag .sign-nail {
+  position: absolute;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  margin-top: -2.5px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ddd, #555);
+}
+
+.order-tag .sign-nail.l { left: 3px; }
+.order-tag .sign-nail.r { right: 3px; }
+
+.order-tag.done {
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.06) 0 2px, transparent 2px 7px),
+    linear-gradient(#a8d878, #7ab84e);
+  color: #24500c;
+  box-shadow: 0 3px 0 #3f6a1c, inset 0 0 0 2px #4f8a2c;
+}
+
+.spin-go {
+  flex-direction: row;
+  gap: 12px;
+  background: rgba(30, 12, 2, 0.78);
+}
+
+.spin-go .go-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.15;
+}
+
+.spin-go .go-hand {
+  font-size: 2.2rem;
+}
+
+.spin-go b {
+  font-size: 1.7rem;
+}
