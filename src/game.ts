@@ -639,6 +639,8 @@ export function canUse(state: GameState, reel: number, cell: number | null): boo
   if (!r || r.used || state.over) return false;
   const def = SYMBOLS[r.symbol];
   if (def.kind !== 'manual') return false;
+  // 畑全体に効く出目（満月）は、マスを選ばずに使う
+  if (def.shape === 'all') return fieldCells(state).some((i) => growableAt(state, i));
   if (cell === null) return validTargets(state, reel).length > 0;
   if (!inField(state, cell)) return false;
   const crop = state.field[cell];
@@ -652,7 +654,7 @@ export function canUse(state: GameState, reel: number, cell: number | null): boo
 
 export function validTargets(state: GameState, reel: number): number[] {
   const r = state.results[reel];
-  if (!r) return [];
+  if (!r || SYMBOLS[r.symbol].shape === 'all') return [];
   return fieldCells(state).filter((i) => canUse(state, reel, i));
 }
 

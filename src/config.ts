@@ -85,7 +85,7 @@ export const SYMBOLS: Record<SymbolId, SymbolDef> = {
   coin: { id: 'coin', name: '金貨', emoji: '🪙', kind: 'auto', desc: 'その場で金がもらえる', feverDesc: '大当たり×3', rarity: 'normal' },
   merchant: { id: 'merchant', name: '商人', emoji: '🧑‍🌾', kind: 'auto', desc: 'その日だけ売値×1.5', feverDesc: '大商い：実った作物を今すぐ×2で全部買い取る', rarity: 'normal' },
   clover: { id: 'clover', name: '四つ葉', emoji: '🍀', kind: 'auto', desc: '次の日、金の種が出やすくなる', feverDesc: '幸運：お守りを1つ選べる', rarity: 'rare' },
-  moon: { id: 'moon', name: '満月', emoji: '🌕', kind: 'manual', shape: 'all', desc: '畑の全作物の成長＋1（好きなときにタップで使う）', feverDesc: '月の宴：全作物の成長さらに＋1', rarity: 'rare' },
+  moon: { id: 'moon', name: '満月', emoji: '🌕', kind: 'manual', shape: 'all', desc: '畑の全作物の成長＋1（タップするだけで畑全体に効く）', feverDesc: '月の宴：全作物の成長さらに＋1', rarity: 'rare' },
   // ---- お邪魔系（年貢を納めるたびにどれかが袋に増える） ----
   weed: { id: 'weed', name: '雑草', emoji: '🌾', kind: 'auto', desc: '空きマスに生えて塞ぐ。毎日となりへ広がる。タップ3金で抜ける', feverDesc: '群れ：2か所に生える', rarity: 'bad' },
   tanuki: { id: 'tanuki', name: 'タヌキ', emoji: '🦝', kind: 'auto', desc: '実ったまま置いてある一番高い作物を持っていく。実りがなければお金を盗む', feverDesc: '群れ：2つ持っていく', rarity: 'bad' },

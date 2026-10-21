@@ -1476,11 +1476,29 @@ function onReelTap(i: number): void {
     say(SEEDS[r.symbol] ? '空きマスがない！ 実った作物を売ろう' : r.symbol === 'fertilizer' ? '肥料をまける作物がない' : '育てる作物がない');
     return;
   }
+  if (def.shape === 'all') {
+    applyMoon(i);
+    return;
+  }
   selected = i;
   armedNextDay = false;
   sfx.select();
   say(`${def.name}：${def.desc}`, 3200);
   render();
+}
+
+/** 満月：出目をタップするだけで畑の全作物が育つ */
+function applyMoon(i: number): void {
+  const affected = useSymbol(state, i, null) ?? [];
+  done.use = true;
+  armedNextDay = false;
+  sfx.rare();
+  flash('#fff4b8', 500);
+  const f = center(el.field);
+  burst(f.x, f.y, ['🌟', '✨', '⭐'], 16, 160);
+  floatText(f.x, f.y - 60, '満月！ 全作物＋1', { cls: 'gold', size: 1.1 });
+  render();
+  afterGrowth(affected, '+1');
 }
 
 function onPlotTap(cell: number): void {
@@ -1549,13 +1567,6 @@ function onPlotTap(cell: number): void {
       });
       flash('#fff3a0', 300);
       afterGrowth(affected, `+${CONFIG.sunGrowth * power + state.charms.sunBlessing}`);
-    } else if (sym === 'moon') {
-      sfx.rare();
-      flash('#fff4b8', 500);
-      const f = center(el.field);
-      burst(f.x, f.y, ['🌟', '✨', '⭐'], 16, 160);
-      floatText(f.x, f.y - 60, '満月！ 全作物＋1', { cls: 'gold', size: 1.1 });
-      afterGrowth(affected, '+1');
     } else if (sym === 'bee') {
       sfx.bee();
       beeFlight(shapeCells(state, 'x', cell).map((c) => el.field.children[c]), symHtml('bee'));
