@@ -1,11 +1,11 @@
 import './style.css';
 import {
-  CHARMS, CHARM_ORDER, CHARM_TIER_NAMES, CONFIG, FEEDBACK_URL, META, SHARE_URL, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL,
-  type CharmId, type SymbolId, type UpgradeId,
+  ADJACENCY, CHARMS, CHARM_ORDER, CHARM_TIER_NAMES, CONFIG, CROPS, FEEDBACK_URL, META, SEEDS, SHARE_URL, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL,
+  type CharmId, type CropKind, type SymbolId, type UpgradeId,
 } from './config.ts';
 import {
-  bagTotal, buy, canBuy, canUse, chooseCharm, cropPrice, drawDay, drawSymbol, endDay, isRipe, neighbors,
-  lineMultiplier, linesThrough, newGame, nextTax, resolveAuto, ripeLines, sell, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState,
+  adjacencyBonus, bagTotal, buy, canBuy, canUse, chooseCharm, cropPrice, drawDay, drawSymbol, endDay, isRipe, neighbors,
+  lineMultiplier, linesThrough, newGame, nextTax, resolveFever, type FeverEvent, resolveAuto, ripeLines, sell, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState,
 } from './game.ts';
 import { isMuted, sfx, toggleMute, unlockAudio } from './audio.ts';
 import {
@@ -13,6 +13,7 @@ import {
   unlockCharm, type MetaState,
 } from './meta.ts';
 import { art, type ArtId } from './art.ts';
+import type { Crop } from './game.ts';
 import { burst, center, confetti, flash, floatText, flyTo, pop, shake, sleep, vibrate } from './fx.ts';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -41,6 +42,7 @@ const el = {
   bagTotal: $('bag-total'),
   overlay: $('overlay'),
   charmCount: $('charm-count'),
+  order: $('order'),
   sheet: $('sheet'),
   sheetBackdrop: $('sheet-backdrop'),
   sheetTitle: $('sheet-title'),
@@ -83,8 +85,14 @@ function roleClass(id: SymbolId): string {
 }
 
 const CROP_STAGES: ArtId[] = ['sprout', 'leaf', 'bud'];
-const FRUIT: Record<'normal' | 'gold', ArtId> = { normal: 'tomato', gold: 'corn' };
+const FRUIT: Record<CropKind, ArtId> = { tomato: 'tomato', strawberry: 'strawberry', pumpkin: 'pumpkin', corn: 'corn' };
 const STAGE_NAMES = ['芽', '若葉', 'つぼみ', '実'];
+
+/** 実るまでの成長は作物ごとに違うので、見た目の段階（芽・若葉・つぼみ・実）に割り当てる */
+function stageOf(crop: Crop): number {
+  const ripe = CROPS[crop.kind].ripe;
+  return crop.growth >= ripe ? 3 : Math.min(2, Math.floor((crop.growth * 3) / ripe));
+}
 
 const meta: MetaState = loadMeta();
 let state: GameState = newGame(setupFrom(meta));
@@ -112,8 +120,9 @@ function upgradeArt(id: UpgradeId): string {
   return symHtml(UPGRADE_SYMBOL[id]!.symbol);
 }
 
-function cropEmoji(kind: 'normal' | 'gold', growth: number): string {
-  return art(growth >= CONFIG.ripeGrowth ? FRUIT[kind] : CROP_STAGES[growth]);
+function cropEmoji(crop: Crop): string {
+  const stage = stageOf(crop);
+  return art(stage === 3 ? FRUIT[crop.kind] : CROP_STAGES[stage]);
 }
 
 function say(text: string, ms = 2200): void {
@@ -155,7 +164,15 @@ function saveRun(): void {
 function loadRun(): GameState | null {
   try {
     const raw = localStorage.getItem(RUN_KEY);
-    return raw ? (JSON.parse(raw) as GameState) : null;
+    if (!raw) return null;
+    const s = JSON.parse(raw) as GameState;
+    // 作物の種類・注文を入れる前の保存データを読み替える
+    const old: Record<string, CropKind> = { normal: 'tomato', gold: 'corn' };
+    s.field = s.field.map((c) => (c ? { ...c, kind: old[c.kind] ?? c.kind } : null));
+    SYMBOL_ORDER.forEach((id) => (s.bag[id] ??= 0));
+    s.order ??= null;
+    s.stats.ordersDone ??= 0;
+    return s;
   } catch {
     return null;
   }
@@ -173,6 +190,7 @@ function render(): void {
   el.day.textContent = String(state.day);
   if (shownGold !== state.gold) setGold(state.gold);
   renderTax();
+  renderOrder();
   renderGoal();
   renderStatus();
   renderHint();
@@ -233,6 +251,21 @@ function renderCharms(): void {
       return `<span class="charm tier-${c.tier}" data-charm="${id}"><span class="e">${art(id)}</span><span><b>${c.name}${n > 1 ? ` ×${n}` : ''}</b><small>${c.desc(n)}</small></span></span>`;
     })
     .join('');
+}
+
+/** 今週の注文。何を何個・報酬・期日を1行で */
+function renderOrder(): void {
+  const o = state.order;
+  el.order.hidden = !o;
+  if (!o) return;
+  const def = CROPS[o.crop];
+  const left = o.dueDay - state.day;
+  el.order.className = `order${o.done ? ' done' : ''}`;
+  el.order.innerHTML = o.done
+    ? `<span class="order-ico">${art(FRUIT[o.crop])}</span><b>注文達成！</b><span class="order-reward">+${o.reward}金 ✓</span>`
+    : `<span class="order-ico">${art(FRUIT[o.crop])}</span><span class="order-text">注文：<b>${def.name}</b> ${o.have}/${o.need}</span>` +
+      `<span class="order-bar"><i style="width:${(o.have / o.need) * 100}%"></i></span>` +
+      `<span class="order-reward">${o.reward}金・${left > 0 ? `あと${left}日` : '今日まで'}</span>`;
 }
 
 function renderTax(): void {
@@ -387,23 +420,26 @@ function renderField(): void {
     let label = '空きマス';
     if (crop) {
       const ripe = isRipe(crop);
-      cls.push(`g${crop.growth}`);
+      const def = CROPS[crop.kind];
+      cls.push(`g${stageOf(crop)}`, `crop-${crop.kind}`);
       if (ripe) cls.push('ripe');
-      if (crop.kind === 'gold') cls.push('goldcrop');
-      html += `<span class="crop">${cropEmoji(crop.kind, crop.growth)}</span>`;
-      if (crop.kind === 'gold' && !ripe) html += '<span class="badge-gold">金</span>';
+      if (def.gold) cls.push('goldcrop');
+      html += `<span class="crop">${cropEmoji(crop)}</span>`;
+      // 育っている間も何の作物か分かるように小さな札を出す
+      if (!ripe) html += `<span class="badge-kind">${art(FRUIT[crop.kind])}</span>`;
       if (crop.fertilized) html += '<span class="badge-fert">肥×2</span>';
       if (ripe) {
         // このマスをタップしたときに通る列の数で倍率が決まる
         const lines = lineCells.has(i) ? linesThrough(state, i).length : 0;
         const mult = lineMultiplier(lines);
         if (lines) cls.push('line', `lines-${lines}`);
-        const price = Math.round(cropPrice(state, crop) * mult);
-        html += `<span class="price">${price}金</span>`;
+        const price = Math.round(cropPrice(state, crop, i) * mult);
+        const adj = adjacencyBonus(state, i);
+        html += `<span class="price${adj ? ' adj' : ''}">${price}金${adj ? `<small>相性+${adj}</small>` : ''}</span>`;
         if (lines) html += `<span class="badge-line">${lines > 1 ? `${lines}列 ` : ''}×${mult}</span>`;
       }
-      else html += `<span class="pips">${Array.from({ length: CONFIG.ripeGrowth }, (_, k) => `<i class="pip${k < crop.growth ? ' on' : ''}"></i>`).join('')}</span>`;
-      label = `${crop.kind === 'gold' ? '金の作物' : '作物'} ${STAGE_NAMES[crop.growth]}${ripe ? `、タップで${cropPrice(state, crop)}金で売る` : ''}`;
+      else html += `<span class="pips">${Array.from({ length: def.ripe }, (_, k) => `<i class="pip${k < crop.growth ? ' on' : ''}"></i>`).join('')}</span>`;
+      label = `${def.name} ${STAGE_NAMES[stageOf(crop)]}${ripe ? `、タップで${cropPrice(state, crop, i)}金で売る` : ''}`;
     } else {
       html = '<span class="empty">空き</span>';
     }
@@ -512,7 +548,14 @@ async function onSpin(): Promise<void> {
   drawDay(state, rng);
   render();
   await spinReels();
-  if (state.fever.length) await showFever();
+  if (state.fever.length) {
+    await showFever();
+    await playFeverRoles(resolveFever(state, rng));
+    if (state.charmOffer) {
+      render();
+      await showCharmOffer();
+    }
+  }
   await resolveAutos();
   busy = false;
   render();
@@ -638,7 +681,9 @@ async function showFever(): Promise<void> {
 }
 
 async function feverBanner(symbols: SymbolId[], bad: boolean): Promise<void> {
-  const lines = symbols.map((s) => `${symHtml(s)}${SYMBOLS[s].name}：${SYMBOLS[s].feverDesc}`).join('<br>');
+  const lines = symbols
+    .map((s) => `${symHtml(s)}${SYMBOLS[s].name}：${SYMBOLS[s].feverDesc}${SYMBOLS[s].rarity === 'bad' ? '' : '＋大当たり'}`)
+    .join('<br>');
   const banner = document.createElement('div');
   if (bad) {
     sfx.danger();
@@ -669,6 +714,75 @@ async function feverBanner(symbols: SymbolId[], bad: boolean): Promise<void> {
   );
   await sleep(1500);
   banner.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: 'forwards' }).onfinish = () => banner.remove();
+}
+
+/** フィーバーの役と大当たりの演出 */
+async function playFeverRoles(events: FeverEvent[]): Promise<void> {
+  for (const ev of events) {
+    const name = SYMBOLS[ev.symbol].feverDesc.split('：')[0];
+    const mid = center(el.field);
+    switch (ev.role) {
+      case 'sprout':
+        render();
+        sfx.plant();
+        ev.cells.forEach((c, k) => {
+          const q = center(el.field.children[c]);
+          window.setTimeout(() => burst(q.x, q.y, ['🌱', '✨'], 5, 40), k * 60);
+        });
+        floatText(mid.x, mid.y, ev.cells.length ? `${name}！ ${ev.cells.length}マスに芽` : `${name}！（空きなし）`, { cls: 'good', size: 1.1 });
+        break;
+      case 'grow':
+        render();
+        sfx.sun();
+        flash('#bff3ff', 400);
+        afterGrowth(ev.cells, '+1');
+        floatText(mid.x, mid.y, `${name}！ 全作物＋1`, { cls: 'good', size: 1.1 });
+        break;
+      case 'festival':
+        sfx.merchant();
+        render();
+        floatText(mid.x, mid.y, `${name}！ 今日の売値×${ev.mult}`, { cls: 'gold', size: 1.1 });
+        el.field.querySelectorAll('.plot.ripe').forEach((p) => pop(p, 1.15));
+        break;
+      case 'compost':
+        sfx.fertilizer();
+        render();
+        ev.cells.forEach((c) => {
+          const q = center(el.field.children[c]);
+          burst(q.x, q.y, ['✨', '💜'], 5, 40);
+        });
+        floatText(mid.x, mid.y, `${name}！ ${ev.cells.length}つに肥料`, { cls: 'combo', size: 1.1 });
+        break;
+      case 'honey':
+        sfx.coin();
+        floatText(mid.x, mid.y, `${name}！ +${ev.amount}金`, { cls: 'gold', size: 1.1 });
+        flyTo(mid, el.goldBox, '🪙', 5);
+        break;
+      case 'bigsale': {
+        sfx.lineHarvest();
+        const total = ev.sold.reduce((n, r) => n + r.total, 0);
+        render();
+        floatText(mid.x, mid.y, ev.sold.length ? `${name}！ ${ev.sold.length}個を×2で +${total}金` : `${name}！（実りなし→大当たり2倍）`, { cls: 'gold', size: 1.1 });
+        if (ev.sold.length) flyTo(mid, el.goldBox, '🪙', 8);
+        break;
+      }
+      case 'luck':
+        sfx.charmGet();
+        floatText(mid.x, mid.y, `${name}！ お守りを1つ選べる`, { cls: 'good', size: 1.1 });
+        break;
+      case 'jackpot':
+        break;
+    }
+    await sleep(700);
+    // どの役にも大当たりの金貨が付く
+    sfx.rare();
+    const g = center(el.goldBox);
+    floatText(g.x, g.y + 40, `大当たり +${ev.jackpot}金`, { cls: 'gold', size: ev.role === 'jackpot' ? 1.5 : 1.1, dur: 1400 });
+    flyTo(center(el.machine), el.goldBox, '🪙', Math.min(12, 3 + Math.ceil(ev.jackpot / 8)), () => setGold(state.gold));
+    if (ev.role === 'jackpot') confetti(50);
+    await sleep(600);
+  }
+  render();
 }
 
 function spinReels(): Promise<void> {
@@ -806,7 +920,7 @@ async function resolveAutos(): Promise<void> {
       sfx.poof();
       const p = center(plot);
       burst(p.x, p.y, ['🪶', '💨', '🍂'], 8, 50);
-      const lost = ev.crop ? (isRipe(ev.crop) ? `${cropPrice(state, ev.crop)}金が…` : STAGE_NAMES[ev.crop.growth]) : '';
+      const lost = ev.crop ? (isRipe(ev.crop) ? `${cropPrice(state, ev.crop)}金が…` : CROPS[ev.crop.kind].name) : '';
       floatText(p.x, p.y - 20, `パクッ！ ${lost}`, { cls: 'bad', size: ev.crop && isRipe(ev.crop) ? 1 : 0.8 });
       shake(plot, 8);
       if (ev.crop && isRipe(ev.crop)) {
@@ -853,7 +967,7 @@ function onReelTap(i: number): void {
   if (!canUse(state, i, null)) {
     sfx.error();
     shake(reel, 4);
-    say(r.symbol === 'seed' || r.symbol === 'goldSeed' ? '空きマスがない！ 実った作物を売ろう' : r.symbol === 'fertilizer' ? '肥料をまける作物がない' : '育てる作物がない');
+    say(SEEDS[r.symbol] ? '空きマスがない！ 実った作物を売ろう' : r.symbol === 'fertilizer' ? '肥料をまける作物がない' : '育てる作物がない');
     return;
   }
   if (def.noTarget) {
@@ -891,7 +1005,7 @@ function onPlotTap(cell: number): void {
       shake(plot, 5);
       const crop = state.field[cell];
       say(
-        sym === 'seed' || sym === 'goldSeed'
+        SEEDS[sym]
           ? 'そこにはもう作物がある'
           : sym === 'bee'
             ? 'そのまわりに育てる作物がない'
@@ -910,12 +1024,16 @@ function onPlotTap(cell: number): void {
     done.use = true;
     armedNextDay = false;
     render();
-    if (sym === 'seed' || sym === 'goldSeed') {
+    if (SEEDS[sym]) {
       sfx.plant();
       burst(p.x, p.y, sym === 'goldSeed' ? ['✨', '🌟'] : ['🌱', '·'], 8, 40);
       pop(plot, 1.15);
       const more = left > 0 ? `（あと${left}）` : '';
-      floatText(p.x, p.y - 20, sym === 'goldSeed' ? '金の種を植えた！' : `植えた！${more}`, { size: 0.7, cls: sym === 'goldSeed' ? 'gold' : 'good' });
+      const name = CROPS[SEEDS[sym]!.crop].name;
+      floatText(p.x, p.y - 20, `${name}を植えた！${more}`, { size: 0.7, cls: sym === 'goldSeed' ? 'gold' : 'good' });
+      // 並びの相性ができたら教える（植える場所を考える理由になる）
+      const adj = adjacencyBonus(state, cell);
+      if (adj > 0) window.setTimeout(() => floatText(p.x, p.y + 10, `相性 +${adj}金`, { cls: 'combo', size: 0.75 }), 250);
       if (left > 0 && selected === null) say('空きマスがないので残りの種は使えない');
     } else if (sym === 'fertilizer' && left > 0) {
       sfx.fertilizer();
@@ -949,9 +1067,10 @@ function onPlotTap(cell: number): void {
   }
   if (crop) {
     shake(plot, 3);
-    say(`${STAGE_NAMES[crop.growth]}：あと${CONFIG.ripeGrowth - crop.growth}育つと実る（雨🌧️・太陽☀️で育つ）`);
+    const def = CROPS[crop.kind];
+    say(`${def.name}：あと${def.ripe - crop.growth}育つと実る（${def.price}金）`);
   } else {
-    say('空きマス：種🌰が出たら植えられる');
+    say('空きマス：種が出たら植えられる');
   }
 }
 
@@ -972,10 +1091,11 @@ function afterGrowth(cells: number[], label: string): void {
       pop(plot.querySelector('.crop') ?? plot, 1.35);
       if (crop && isRipe(crop)) {
         sfx.grow();
-        burst(p.x, p.y, ['✨', crop.kind === 'gold' ? '🌟' : '⭐'], 8, 50);
-        floatText(p.x, p.y - 20, crop.kind === 'gold' ? `実った！ ${cropPrice(state, crop)}金` : '実った！', {
-          cls: crop.kind === 'gold' ? 'gold' : 'good',
-          size: crop.kind === 'gold' ? 1 : 0.8,
+        const big = CROPS[crop.kind].price >= 20;
+        burst(p.x, p.y, ['✨', big ? '🌟' : '⭐'], 8, 50);
+        floatText(p.x, p.y - 20, big ? `実った！ ${cropPrice(state, crop, cell)}金` : '実った！', {
+          cls: big ? 'gold' : 'good',
+          size: big ? 1 : 0.8,
         });
       } else {
         floatText(p.x, p.y - 20, label, { cls: 'good', size: 0.7 });
@@ -995,8 +1115,20 @@ function sellCrop(cell: number): void {
   combo = now - lastSellAt < CONFIG.timing.comboWindow ? combo + 1 : 1;
   lastSellAt = now;
   const price = res.total;
-  const big = price >= CONFIG.goldPrice || res.line;
+  const big = price >= CROPS.corn.price || res.line;
   render();
+  if (res.orderReward) {
+    // 注文達成：お客さんからまとめて代金
+    window.setTimeout(() => {
+      sfx.bigBuy();
+      const o = center(el.order);
+      floatText(o.x, o.y + 30, `注文達成！ +${res.orderReward}金`, { cls: 'gold', size: 1.3, dur: 1600 });
+      burst(o.x, o.y, ['🪙', '✨', '⭐'], 16, 90);
+      flyTo(o, el.goldBox, '🪙', 8, () => setGold(state.gold));
+      pop(el.order, 1.1);
+      vibrate([40, 30, 80]);
+    }, 500);
+  }
   if (res.line) {
     done.line = true;
     sfx.lineHarvest();
@@ -1200,10 +1332,12 @@ function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
       <li><b>まわす</b>：1回転＝1日。リールの数だけ出来事が起きる</li>
       <li><b>手動の出目</b>はタップ → 畑のマスをタップで使う。使わずに次の日へ進むと消える</li>
       <li><b>自動の出目</b>（カラス・虫・金貨・商人・四つ葉）は止まった瞬間に効く</li>
-      <li>作物は<b>雨・太陽・蜂</b>でしか育たない。3段階育つと実る。実をタップで売る</li>
+      <li>作物は<b>雨・太陽・蜂</b>でしか育たない。実をタップで売る。<b>苺</b>は2段階で4金、<b>トマト</b>は3段階で6金、<b>かぼちゃ</b>は5段階で24金（カラスに食べられない）、<b>金のとうもろこし</b>は3段階で30金</li>
+      <li><b>畑の並びの相性</b>：上下左右に同じ作物があると1つにつき+${ADJACENCY.same}金、トマトと苺・かぼちゃととうもろこしが隣り合うと+${ADJACENCY.pair}金</li>
+      <li><b>注文</b>：週ごとにお客さんから「◯◯を△個」の注文が来る。期日までに売ると報酬の金がもらえる</li>
       <li><b>年貢</b>：${CONFIG.taxPeriod}日ごとに自動で徴収。払えないと終わり。${CONFIG.winTaxes}回納めるとクリア</li>
       <li>年貢を納めるたびに<b>お守り</b>を3つから1つ選べる。代わりに<b>虫</b>が1枚増える</li>
-      <li><b>フィーバー</b>：同じ絵柄が${CONFIG.feverCount}つ以上で効果2倍。カラス・虫がそろうと「群れ」で危険</li>
+      <li><b>フィーバー</b>：同じ絵柄が${CONFIG.feverCount}つ以上そろうと、絵柄ごとの役（芽吹き・虹・夏祭り・はちみつ・大商い・幸運など）と金貨の大当たり。カラス・虫がそろうと「群れ」で危険</li>
       <li><b>そろい収穫</b>：縦・横・斜めに実が並ぶと、1つタップで列ごとまとめて売れる。タップしたマスを通る列が多いほど高い（1列×${lineMultiplier(1)}・2列×${lineMultiplier(2)}・3列×${lineMultiplier(3)}・4列×${lineMultiplier(4)}）</li>
       <li><b>ショップ</b>：準備画面で選んだ「足す」強化と、カラス・虫を消す（消すたび価格×${CONFIG.removeGrowth}）</li>
       <li><b>豊穣ポイント</b>：遊び終わるたびに「日数＋年貢×${META.pointsPerTax}」（クリアで+${META.clearBonus}）。準備画面で解放に使う</li>

@@ -49,9 +49,45 @@ const star5 = (cx: number, cy: number, r: number, fill: string) => {
   return `<polygon points="${pts.join(' ')}" fill="${fill}" ${S}/>`;
 };
 
+const strawberry = `
+  <path d="M32 58 Q12 44 14 28 Q20 18 32 20 Q44 18 50 28 Q52 44 32 58Z" fill="${C.red}" ${S}/>
+  ${[
+    [24, 30],
+    [32, 28],
+    [40, 30],
+    [22, 40],
+    [32, 38],
+    [42, 40],
+    [28, 48],
+    [36, 48],
+  ]
+    .map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="1.6" ry="2.4" fill="#ffe08a"/>`)
+    .join('')}
+  <path d="M20 22 L28 14 L32 20 L36 14 L44 22 L36 24 L32 22 L28 24Z" fill="${C.green}" ${S}/>
+  <path d="M32 18 V8" fill="none" stroke="${C.greenDark}" stroke-width="4" stroke-linecap="round"/>`;
+
+const pumpkin = `
+  <path d="M30 18 Q30 10 36 6" fill="none" stroke="${C.greenDark}" stroke-width="5" stroke-linecap="round"/>
+  <ellipse cx="18" cy="38" rx="11" ry="17" fill="#f08a24" ${S}/>
+  <ellipse cx="46" cy="38" rx="11" ry="17" fill="#f08a24" ${S}/>
+  <ellipse cx="32" cy="38" rx="12" ry="19" fill="#ff9f3a" ${S}/>
+  <path d="M38 14 Q48 10 52 18 Q44 20 38 14Z" fill="${C.green}" ${S}/>
+  <ellipse cx="27" cy="32" rx="3" ry="7" fill="#ffc77a"/>`;
+
+/** 種の袋：袋の色と、表に描いた作物で何が育つか分かるようにする */
+const packet = (bag: string, inner: string) => `
+  <path d="M12 12 H52 V58 H12Z" fill="${bag}" ${S}/>
+  <path d="M12 12 L16 6 H48 L52 12" fill="#fff6dc" ${S}/>
+  <rect x="17" y="18" width="30" height="30" rx="6" fill="#fffaf0" stroke="${INK}" stroke-width="2"/>
+  <g transform="translate(18 19) scale(0.44)">${inner}</g>
+  <circle cx="22" cy="53" r="1.8" fill="${C.brown}"/><circle cx="32" cy="53" r="1.8" fill="${C.brown}"/><circle cx="42" cy="53" r="1.8" fill="${C.brown}"/>`;
+
 const ART = {
   // ---- 絵柄 ----
-  seed: acorn(C.tan, C.brown, C.tanLight),
+  // seed は「トマトの種」。袋の絵で作物が分かる
+  seed: '',
+  berrySeed: '',
+  pumpkinSeed: '',
   goldSeed: `${acorn(C.gold, C.goldDark, C.goldLight)}${sparkle(52, 12, 7, C.white)}${sparkle(12, 48, 5, C.white)}`,
   rain: `
     <path d="M16 36 Q7 36 8 28 Q9 20 18 21 Q21 10 32 11 Q43 11 46 21 Q56 20 57 29 Q57 36 48 36 Z" fill="${C.cloud}" ${S}/>
@@ -147,6 +183,8 @@ const ART = {
     <path d="M32 20 L27 13 L32 17 L37 13 Z M20 22 L32 22 L44 22 L36 27 L32 24 L28 27 Z" fill="${C.green}" ${S}/>
     <path d="M32 12 V18" fill="none" stroke="${C.greenDark}" stroke-width="4" stroke-linecap="round"/>
     <ellipse cx="23" cy="34" rx="4" ry="6" fill="${C.redLight}"/>`,
+  strawberry,
+  pumpkin,
   corn: `
     <path d="M18 58 Q12 40 22 26 Q24 44 30 58Z" fill="${C.green}" ${S}/>
     <path d="M46 58 Q52 40 42 26 Q40 44 34 58Z" fill="${C.greenLight}" ${S}/>
@@ -260,6 +298,11 @@ const ART = {
   puff: `<path d="M14 40 Q6 40 8 32 Q10 24 18 26 Q20 16 30 18 Q38 10 46 18 Q56 18 54 28 Q60 34 54 40 Q50 46 42 42 Q36 50 28 44 Q20 48 14 40Z" fill="${C.cloud}" ${S}/>`,
   lock: `<rect x="14" y="28" width="36" height="28" rx="5" fill="${C.goldDark}" ${S}/><path d="M22 28 V20 Q22 10 32 10 Q42 10 42 20 V28" fill="none" ${S}/><circle cx="32" cy="41" r="4" fill="${INK}"/>`,
 };
+
+// 種の袋は作物の絵を使うので、作物を定義したあとに組み立てる
+ART.seed = packet('#e5533d', ART.tomato);
+ART.berrySeed = packet('#ff8fb1', strawberry);
+ART.pumpkinSeed = packet('#f08a24', pumpkin);
 
 export type ArtId = keyof typeof ART;
 

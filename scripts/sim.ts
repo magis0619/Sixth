@@ -1,9 +1,10 @@
 // 貪欲ボットで遊ばせてバランスを確認する。 npm run sim [-- 回数]
 
 import { CHARM_ORDER, CONFIG, META, type UpgradeId } from '../src/config.ts';
+import { SEEDS } from '../src/config.ts';
 import {
-  buy, canBuy, canUse, isRipe, newGame, nextTax, resolveAllAuto, sell, startDay, upgradePrice, useSymbol, validTargets,
-  type GameState,
+  adjacencyBonus, buy, canBuy, canUse, chooseCharm, isRipe, newCrop, newGame, nextTax, resolveAllAuto, resolveFever, sell,
+  startDay, upgradePrice, useSymbol, validTargets, type GameState,
 } from '../src/game.ts';
 
 // 絵柄袋を薄めすぎないよう、良い絵柄は枚数に上限を設けて買う
@@ -16,18 +17,28 @@ function wants(s: GameState, id: UpgradeId): boolean {
   if (id === 'addClover') return s.bag.clover < 1;
   if (id === 'addSeed') return s.bag.seed < 5;
   if (id === 'addRain') return s.bag.rain < 4;
+  if (id === 'addBerrySeed') return s.bag.berrySeed < 3;
+  if (id === 'addPumpkinSeed') return s.bag.pumpkinSeed < 2;
   return true;
 }
-const PRIORITY: UpgradeId[] = ['removeBug', 'removeCrow', 'addSeed', 'addRain', 'addGoldSeed', 'addSun', 'addBee', 'addFertilizer', 'addMerchant', 'addClover'];
+const PRIORITY: UpgradeId[] = ['removeBug', 'removeCrow', 'addSeed', 'addBerrySeed', 'addPumpkinSeed', 'addRain', 'addGoldSeed', 'addSun', 'addBee', 'addFertilizer', 'addMerchant', 'addClover'];
 
 function playDay(s: GameState): void {
   // 種 → 雨・肥料 → 太陽 の順で使う
-  const order = ['goldSeed', 'seed', 'rain', 'bee', 'fertilizer', 'sun'];
+  const order = ['goldSeed', 'pumpkinSeed', 'seed', 'berrySeed', 'rain', 'bee', 'fertilizer', 'sun'];
   const idx = s.results.map((r, i) => i).sort((a, b) => order.indexOf(s.results[a].symbol) - order.indexOf(s.results[b].symbol));
   for (const i of idx) while (canUse(s, i, null)) {
     const sym = s.results[i].symbol;
     if (sym === 'sun') { useSymbol(s, i, null); continue; }
     const targets = validTargets(s, i);
+    const seed = SEEDS[sym];
+    if (seed) {
+      // 相性が一番高くなる空きマスに植える
+      const score = (c: number) => { s.field[c] = newCrop(seed.crop); const v = adjacencyBonus(s, c); s.field[c] = null; return v; };
+      targets.sort((a, b) => score(b) - score(a));
+      useSymbol(s, i, targets[0]);
+      continue;
+    }
     // 育ち切りに近い作物（金を優先）に回す
     targets.sort((a, b) => {
       const ca = s.field[a], cb = s.field[b];
@@ -68,6 +79,8 @@ for (let n = 0; n < runs; n++) {
     if (s.day > 0 && s.day % CONFIG.taxPeriod === 0) (goldAtTax[s.day / CONFIG.taxPeriod - 1] ??= []).push(s.gold);
     const r = startDay(s, Math.random);
     if (!r.ok) break;
+    resolveFever(s, Math.random);
+    if (s.charmOffer) chooseCharm(s, s.charmOffer[0]);
     resolveAllAuto(s, Math.random);
     playDay(s);
   }

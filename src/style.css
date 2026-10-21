@@ -403,7 +403,7 @@ button {
 
 .badge-fert {
   position: absolute;
-  top: 5%;
+  bottom: 5%;
   left: 5%;
   font-size: 0.62rem;
   font-weight: 800;
@@ -1783,4 +1783,85 @@ button {
   .farm {
     padding: 10px;
   }
+}
+
+/* ---- 注文の札 ---- */
+.order {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--cloth);
+  border-radius: 10px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  box-shadow: 0 2px 0 rgba(110, 66, 36, 0.3), inset 0 0 0 2px #fff;
+}
+
+.order[hidden] {
+  display: none;
+}
+
+.order-ico {
+  font-size: 1.25rem;
+  display: flex;
+}
+
+.order-text {
+  white-space: nowrap;
+}
+
+.order-bar {
+  flex: 1;
+  min-width: 40px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--cloth-deep);
+  overflow: hidden;
+}
+
+.order-bar i {
+  display: block;
+  height: 100%;
+  background: var(--role-manual);
+  border-radius: 999px;
+  transition: width 0.3s;
+}
+
+.order-reward {
+  font-weight: 800;
+  font-size: 0.72rem;
+  white-space: nowrap;
+  color: #6b4a00;
+  background: var(--gold-soft);
+  border-radius: 999px;
+  padding: 0 8px;
+}
+
+.order.done {
+  background: #f0f9e6;
+  box-shadow: 0 2px 0 #2f7a22, inset 0 0 0 2px var(--role-manual);
+}
+
+/* ---- 作物の種類と相性 ---- */
+.badge-kind {
+  position: absolute;
+  top: 5%;
+  left: 5%;
+  font-size: max(0.8rem, calc(var(--cell) * 0.17));
+  display: flex;
+  background: rgba(255, 250, 240, 0.85);
+  border-radius: 50%;
+  padding: 2px;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+}
+
+.price small {
+  display: block;
+  font-size: 0.75em;
+  line-height: 1;
+  color: #a1145a;
+}
+
+.price.adj {
+  box-shadow: 0 2px 0 var(--gold-dark), 0 0 0 2px var(--pink);
 }
