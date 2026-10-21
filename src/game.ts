@@ -949,12 +949,13 @@ export function buyPlace(state: GameState, id: PlaceId): boolean {
   return true;
 }
 
-/** 手元の先頭の物を cell に置けるか。道具は空いたマス、特別なマスは道具・特別なマスのないマス */
+/** 手元の先頭の物を cell に置けるか。道具は空いたマス（特別なマスの上でもよい）、特別なマスは道具・特別なマスのないマス */
 export function canPlace(state: GameState, cell: number): boolean {
   const id = state.stock[0];
-  if (!id || !inField(state, cell) || state.tools[cell] || state.tiles[cell]) return false;
+  if (!id || !inField(state, cell) || state.tools[cell]) return false;
+  // 道具は、特別なマスの上にも置ける（空きマスなら）。特別なマスは、すでに特別なマスがあるマスには置けない
   if (PLACES[id].kind === 'tool') return isOpen(state, cell);
-  return true;
+  return !state.tiles[cell];
 }
 
 export function place(state: GameState, cell: number): PlaceId | null {
