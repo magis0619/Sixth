@@ -117,5 +117,7 @@ export function setupFrom(meta: MetaState): GameSetup {
   return {
     shop: ALL_ADDS.filter((id) => meta.loadout.includes(id) && meta.unlockedAdds.includes(id)),
     charmPool: CHARM_ORDER.filter((id) => !(id in META.charmUnlock) || meta.unlockedCharms.includes(id)),
+    // 週替わりは解放済みの「足す」強化から
+    pool: ALL_ADDS.filter((id) => meta.unlockedAdds.includes(id)),
   };
 }

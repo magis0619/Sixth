@@ -5,7 +5,7 @@ import {
 } from './config.ts';
 import {
   adjacencyBonus, bagTotal, buy, canBuy, canUse, chooseCharm, cropPrice, drawDay, drawSymbol, endDay, isRipe, neighbors,
-  groupMultiplier, ripeGroup, newGame, nextTax, resolveFever, type FeverEvent, resolveAuto, sell, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState,
+  groupMultiplier, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState,
 } from './game.ts';
 import { isMuted, sfx, toggleMute, unlockAudio } from './audio.ts';
 import {
@@ -172,6 +172,14 @@ function loadRun(): GameState | null {
     SYMBOL_ORDER.forEach((id) => (s.bag[id] ??= 0));
     s.order ??= null;
     s.stats.ordersDone ??= 0;
+    // お邪魔系・週替わりを入れる前の保存データ
+    s.weeds ??= s.field.map(() => false);
+    s.frost ??= s.field.map(() => 0);
+    s.pool ??= [...s.shop];
+    s.weekly ??= [];
+    s.bred ??= [];
+    s.lastObstacle ??= null;
+    s.removed ??= {};
     return s;
   } catch {
     return null;
@@ -447,8 +455,17 @@ function renderField(): void {
       }
       else html += `<span class="pips">${Array.from({ length: def.ripe }, (_, k) => `<i class="pip${k < crop.growth ? ' on' : ''}"></i>`).join('')}</span>`;
       label = `${def.name} ${STAGE_NAMES[stageOf(crop)]}${ripe ? `、タップで${cropPrice(state, crop, i)}金で売る` : ''}`;
+    } else if (state.weeds[i]) {
+      cls.push('weedy');
+      html = `<span class="crop">${art('weed')}</span><span class="pull">${weedCost(state) ? `抜く ${weedCost(state)}金` : '抜く'}</span>`;
+      label = `雑草、タップで抜く（${weedCost(state)}金）`;
     } else {
       html = '<span class="empty">空き</span>';
+    }
+    if (state.frost[i]) {
+      cls.push('frozen');
+      html += `<span class="ice"></span><span class="badge-frost">${art('frost')}あと${state.frost[i]}日</span>`;
+      label += `、凍っている（あと${state.frost[i]}日）`;
     }
     if (targets) cls.push(targets.includes(i) ? 'target' : 'dim');
     b.className = cls.join(' ');
@@ -471,13 +488,20 @@ function upgradeEffect(id: UpgradeId): string {
 }
 
 /** このゲームのショップに並ぶもの（選んだ「足す」強化＋消す＋リール） */
+/** いつも並ぶ品・週替わり・袋に入っているお邪魔を消す品 */
 function shopItems(): typeof UPGRADES {
-  return UPGRADES.filter((u) => !u.id.startsWith('add') || state.shop.includes(u.id as never));
+  return UPGRADES.filter((u) => {
+    if (u.id.startsWith('add')) return state.shop.includes(u.id as never) || state.weekly.includes(u.id as never);
+    return state.bag[UPGRADE_SYMBOL[u.id]!.symbol] > 0;
+  });
 }
 
 function renderShop(): void {
   const items = shopItems();
-  if (el.shop.children.length !== items.length) {
+  const key = items.map((u) => u.id).join(',');
+  // 新しいゲームで中身を空にした場合も作り直す
+  if (el.shop.dataset.key !== key || el.shop.children.length !== items.length) {
+    el.shop.dataset.key = key;
     el.shop.innerHTML = '';
     items.forEach((u) => {
       const b = document.createElement('button');
@@ -492,17 +516,18 @@ function renderShop(): void {
     const available = upgradeAvailable(state, u.id);
     const price = upgradePrice(state, u.id);
     const affordable = canBuy(state, u.id);
-    b.className = `item${affordable ? ' affordable' : ''}${available ? '' : ' soldout'}`;
+    const weekly = state.weekly.includes(u.id as never);
+    b.className = `item${affordable ? ' affordable' : ''}${available ? '' : ' soldout'}${weekly ? ' weekly' : ''}`;
     const cost = !available ? '完了' : affordable ? `${price}金で買う` : `${price}金（あと${price - state.gold}）`;
     const ico = upgradeArt(u.id);
-    const html = `<span class="ico">${ico}</span><span class="name">${u.name}</span><span class="effect">${upgradeEffect(u.id)}</span><span class="cost">${cost}</span>`;
+    const html = `${weekly ? '<span class="weekly-tag">週替わり</span>' : ''}<span class="ico">${ico}</span><span class="name">${u.name}</span><span class="effect">${upgradeEffect(u.id)}</span><span class="cost">${cost}</span>`;
     if (b.innerHTML !== html) b.innerHTML = html;
   });
 }
 
 function renderBag(): void {
   el.bagTotal.textContent = `${bagTotal(state.bag)}枚`;
-  el.bag.innerHTML = SYMBOL_ORDER.filter((id) => state.bag[id] > 0 || id === 'crow' || id === 'goldSeed' || id === 'bug')
+  el.bag.innerHTML = SYMBOL_ORDER.filter((id) => state.bag[id] > 0 || id === 'crow')
     .map((id) => {
       const def = SYMBOLS[id];
       const cls = `chip${def.rarity === 'bad' ? ' bad' : ''}${state.bag[id] === 0 ? ' zero' : ''}`;
@@ -600,11 +625,11 @@ async function showTaxStamp(amount: number, ok: boolean): Promise<void> {
     burst(window.innerWidth / 2, window.innerHeight * 0.4, ['🎊', '✨', '🌾'], 14, 140);
     floatText(window.innerWidth / 2, window.innerHeight * 0.4, `年貢${state.taxesPaid}回 クリア！`, { cls: 'good', size: 1.2 });
     await sleep(500);
-    const chip = el.bag.querySelector('[data-sym="bug"]');
-    if (chip) {
+    const added = state.lastObstacle;
+    if (added) {
       render();
-      const c = center(visibleOr(el.bag.querySelector('[data-sym="bug"]'), 'bag'));
-      floatText(c.x, c.y - 20, '虫が増えた…', { cls: 'bad', size: 0.8 });
+      const c = center(visibleOr(el.bag.querySelector(`[data-sym="${added}"]`), 'bag'));
+      floatText(c.x, c.y - 20, `${SYMBOLS[added].name}が袋に増えた…`, { cls: 'bad', size: 0.8 });
     }
   }
 }
@@ -901,10 +926,72 @@ async function resolveAutos(): Promise<void> {
           renderField();
         }
       }
+    } else if (ev.type === 'weed') {
+      if (ev.warded) {
+        autoOutcome[i] = 'よけた';
+        sfx.shoo();
+        floatText(from.x, from.y - 30, '草よけ成功！', { cls: 'good', size: 0.7 });
+      } else if (!ev.cells.length) {
+        autoOutcome[i] = '空振り';
+        floatText(from.x, from.y - 30, '生える場所がない', { size: 0.6 });
+      } else {
+        autoOutcome[i] = `${ev.cells.length}か所`;
+        sfx.bug();
+        for (const c of ev.cells) {
+          const plot = el.field.children[c] as HTMLElement;
+          await new Promise<void>((r) => flyTo(from, plot, symHtml('weed'), 1, r));
+          renderField();
+          pop(plot, 1.15);
+          const q = center(plot);
+          floatText(q.x, q.y - 20, '雑草が生えた…', { cls: 'bad', size: 0.7 });
+        }
+      }
+    } else if (ev.type === 'tanuki') {
+      if (ev.escaped) {
+        autoOutcome[i] = '逃げた';
+        sfx.shoo();
+        floatText(from.x, from.y - 30, 'かかしでタヌキが逃げた！', { cls: 'good', size: 0.7 });
+      } else if (!ev.taken.length) {
+        autoOutcome[i] = ev.stolen ? `−${ev.stolen}金` : '空振り';
+        if (ev.stolen) {
+          sfx.crow();
+          const g = center(el.goldBox);
+          floatText(g.x, g.y + 30, `タヌキにお金を盗まれた −${ev.stolen}`, { cls: 'bad', size: 0.9 });
+          setGold(state.gold);
+          shake(el.goldBox, 6);
+        } else floatText(from.x, from.y - 30, '何も取れずに帰っていった', { size: 0.6 });
+      } else {
+        autoOutcome[i] = `−${ev.taken.reduce((n, t) => n + t.price, 0)}金分`;
+        for (const t of ev.taken) {
+          const plot = el.field.children[t.cell] as HTMLElement;
+          await new Promise<void>((r) => flyTo(from, plot, symHtml('tanuki'), 1, r));
+          sfx.crow();
+          sfx.poof();
+          const q = center(plot);
+          burst(q.x, q.y, ['💨', '🍂'], 8, 50);
+          floatText(q.x, q.y - 20, `持っていかれた！ ${t.price}金が…`, { cls: 'bad', size: 0.9 });
+          shake(plot, 8);
+          renderField();
+        }
+        shake(el.app, 5);
+        vibrate(120);
+      }
+    } else if (ev.type === 'frost') {
+      autoOutcome[i] = ev.cells.length ? `${ev.cells.length}マス` : '空振り';
+      if (ev.cells.length) {
+        sfx.tax();
+        flash('#dff1ff', 400);
+        renderField();
+        ev.cells.forEach((c) => {
+          const q = center(el.field.children[c]);
+          burst(q.x, q.y, ['❄️', '✨'], 8, 40);
+          floatText(q.x, q.y - 20, '凍った！', { cls: 'bad', size: 0.8 });
+        });
+      }
     } else if (ev.cell === null) {
       autoOutcome[i] = '空振り';
       sfx.crow();
-      floatText(from.x, from.y - 30, 'カラスは空振り', { size: 0.6 });
+      floatText(from.x, from.y - 30, state.charms.scarecrow ? 'かかしでカラスが逃げた' : 'カラスは空振り', { size: 0.6 });
     } else if (!ev.eaten) {
       autoOutcome[i] = 'セーフ';
       const plot = el.field.children[ev.cell] as HTMLElement;
@@ -1060,6 +1147,24 @@ function onPlotTap(cell: number): void {
       pop(plot, 1.15);
       floatText(p.x, p.y - 20, '売値×2！', { cls: 'combo', size: 0.9 });
     }
+    return;
+  }
+  if (state.frost[cell]) {
+    shake(plot, 3);
+    say(`凍っている（あと${state.frost[cell]}日で溶ける）`);
+    return;
+  }
+  if (state.weeds[cell]) {
+    if (!pullWeed(state, cell)) {
+      sfx.error();
+      shake(plot, 4);
+      say(`雑草を抜くには${weedCost(state)}金いる`);
+      return;
+    }
+    sfx.poof();
+    burst(p.x, p.y, ['🍃', '💨'], 8, 50);
+    floatText(p.x, p.y - 20, weedCost(state) ? `草むしり −${weedCost(state)}金` : '草むしり！', { size: 0.8 });
+    render();
     return;
   }
   const crop = state.field[cell];
@@ -1336,6 +1441,7 @@ function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
       <li><b>自動の出目</b>（カラス・虫・金貨・商人・四つ葉）は止まった瞬間に効く</li>
       <li>作物は<b>雨・太陽・蜂</b>でしか育たない。実をタップで売る。<b>苺</b>は2段階で4金、<b>トマト</b>は3段階で6金、<b>かぼちゃ</b>は5段階で24金（カラスに食べられない）、<b>金のとうもろこし</b>は3段階で30金</li>
       <li><b>畑の並びの相性</b>：上下左右に同じ作物があると1つにつき+${ADJACENCY.same}金、トマトと苺・かぼちゃととうもろこしが隣り合うと+${ADJACENCY.pair}金</li>
+      <li><b>お邪魔</b>：年貢を納めるたびに虫・雑草・タヌキ・霜のどれかが袋に増える。<b>雑草</b>は空きマスを塞いで広がる（タップ${CONFIG.weedPullCost}金で抜く）、<b>タヌキ</b>は実ったまま置いた一番高い作物を持っていく（実りがなければお金を盗む）、<b>霜</b>はマスを${CONFIG.frostDays}日凍らせる（植える・育つ・売るができない）。ショップで消せる（消すたび高くなる）</li>
       <li><b>注文</b>：週ごとにお客さんから「◯◯を△個」の注文が来る。期日までに売ると報酬の金がもらえる</li>
       <li><b>年貢</b>：${CONFIG.taxPeriod}日ごとに自動で徴収。払えないと終わり。${CONFIG.winTaxes}回納めるとクリア</li>
       <li>年貢を納めるたびに<b>お守り</b>を3つから1つ選べる。代わりに<b>虫</b>が1枚増える</li>

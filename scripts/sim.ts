@@ -3,7 +3,7 @@
 import { CHARM_ORDER, CONFIG, META, type UpgradeId } from '../src/config.ts';
 import { SEEDS } from '../src/config.ts';
 import {
-  adjacencyBonus, buy, canBuy, canUse, chooseCharm, isRipe, newCrop, newGame, nextTax, resolveAllAuto, resolveFever, sell,
+  adjacencyBonus, pullWeed, buy, canBuy, canUse, chooseCharm, isRipe, newCrop, newGame, nextTax, resolveAllAuto, resolveFever, sell,
   startDay, upgradePrice, useSymbol, validTargets, type GameState,
 } from '../src/game.ts';
 
@@ -21,9 +21,11 @@ function wants(s: GameState, id: UpgradeId): boolean {
   if (id === 'addPumpkinSeed') return s.bag.pumpkinSeed < 2;
   return true;
 }
-const PRIORITY: UpgradeId[] = ['removeBug', 'removeCrow', 'addSeed', 'addBerrySeed', 'addPumpkinSeed', 'addRain', 'addGoldSeed', 'addSun', 'addBee', 'addFertilizer', 'addMerchant', 'addClover'];
+const PRIORITY: UpgradeId[] = ['removeTanuki', 'removeFrost', 'removeWeed', 'removeBug', 'removeCrow', 'addSeed', 'addBerrySeed', 'addPumpkinSeed', 'addRain', 'addGoldSeed', 'addSun', 'addBee', 'addFertilizer', 'addMerchant', 'addClover'];
 
 function playDay(s: GameState): void {
+  // 雑草は抜けるだけ抜く
+  s.weeds.forEach((w, i) => { if (w) pullWeed(s, i); });
   // 種 → 雨・肥料 → 太陽 の順で使う
   const order = ['goldSeed', 'pumpkinSeed', 'seed', 'berrySeed', 'rain', 'bee', 'fertilizer', 'sun'];
   const idx = s.results.map((r, i) => i).sort((a, b) => order.indexOf(s.results[a].symbol) - order.indexOf(s.results[b].symbol));
@@ -42,8 +44,8 @@ function playDay(s: GameState): void {
     // 育ち切りに近い作物（金を優先）に回す
     targets.sort((a, b) => {
       const ca = s.field[a], cb = s.field[b];
-      const va = ca ? (ca.kind === 'gold' ? 10 : 0) + ca.growth : 0;
-      const vb = cb ? (cb.kind === 'gold' ? 10 : 0) + cb.growth : 0;
+      const va = ca ? (ca.kind === 'corn' ? 10 : 0) + ca.growth : 0;
+      const vb = cb ? (cb.kind === 'corn' ? 10 : 0) + cb.growth : 0;
       return vb - va;
     });
     useSymbol(s, i, targets[0]);

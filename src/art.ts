@@ -161,6 +161,35 @@ const ART = {
     <circle cx="32" cy="32" r="4" fill="${C.greenLight}" ${S}/>
     <path d="M17 18 Q19 14 23 14" fill="none" stroke="${C.greenLight}" stroke-width="3" stroke-linecap="round"/>`,
 
+  weed: `
+    <path d="M32 58 Q26 40 14 30 Q24 34 30 44 Q28 26 20 12 Q34 24 34 44 Q38 28 50 18 Q42 34 36 50 Q44 42 54 40 Q42 48 36 58Z" fill="#7a9a2e" ${S}/>
+    <path d="M24 30 Q28 34 30 40 M44 26 Q40 32 38 40" fill="none" stroke="#a9c94a" stroke-width="2" stroke-linecap="round"/>
+    <path d="M12 58 H52" fill="none" ${S}/>`,
+  tanuki: `
+    <path d="M14 22 L18 8 L28 16Z M50 22 L46 8 L36 16Z" fill="#8a6440" ${S}/>
+    <ellipse cx="32" cy="34" rx="22" ry="20" fill="#a87a50" ${S}/>
+    <path d="M14 34 Q20 26 28 32 Q26 42 18 42 Q12 40 14 34Z M50 34 Q44 26 36 32 Q38 42 46 42 Q52 40 50 34Z" fill="#4a3324"/>
+    <circle cx="23" cy="34" r="3" fill="#fff"/><circle cx="41" cy="34" r="3" fill="#fff"/>
+    <circle cx="23" cy="34" r="1.5" fill="${INK}"/><circle cx="41" cy="34" r="1.5" fill="${INK}"/>
+    <ellipse cx="32" cy="46" rx="10" ry="7" fill="#f1dcc0" ${S}/>
+    <ellipse cx="32" cy="42" rx="3.5" ry="2.5" fill="${INK}"/>`,
+  frost: `
+    ${[0, 60, 120]
+      .map(
+        (deg) => `<g transform="rotate(${deg} 32 32)">
+          <path d="M32 6 V58" fill="none" stroke="#5aa6e0" stroke-width="5" stroke-linecap="round"/>
+          <path d="M32 6 V58" fill="none" stroke="#dff1ff" stroke-width="2" stroke-linecap="round"/>
+          <path d="M24 12 L32 20 L40 12 M24 52 L32 44 L40 52" fill="none" stroke="#5aa6e0" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>`,
+      )
+      .join('')}
+    <circle cx="32" cy="32" r="6" fill="#dff1ff" ${S}/>`,
+  heater: `
+    <rect x="10" y="20" width="44" height="32" rx="14" fill="${C.red}" ${S}/>
+    <rect x="26" y="12" width="12" height="10" rx="3" fill="${C.gold}" ${S}/>
+    <path d="M18 30 H46 M18 38 H46 M18 46 H46" fill="none" stroke="#ff9a8a" stroke-width="3" stroke-linecap="round"/>
+    <path d="M24 10 Q20 6 24 2 M40 10 Q36 6 40 2" fill="none" stroke="${C.redLight}" stroke-width="2.5" stroke-linecap="round"/>`,
+
   // ---- 作物 ----
   sprout: `
     <path d="M32 58 V40" fill="none" stroke="${C.greenDark}" stroke-width="4" stroke-linecap="round"/>
@@ -338,6 +367,8 @@ const EMOJI_ART: Record<string, ArtId> = {
   '💨': 'puff',
   '🔓': 'sparkle',
   '🌾': 'bale',
+  '❄️': 'frost',
+  '🦝': 'tanuki',
   '🎊': 'star',
   '🎉': 'star',
 };

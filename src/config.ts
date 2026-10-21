@@ -13,7 +13,10 @@ export type SymbolId =
   | 'bug'
   | 'coin'
   | 'merchant'
-  | 'clover';
+  | 'clover'
+  | 'weed'
+  | 'tanuki'
+  | 'frost';
 
 export type UpgradeId =
   | 'addSeed'
@@ -27,7 +30,10 @@ export type UpgradeId =
   | 'addMerchant'
   | 'addClover'
   | 'removeCrow'
-  | 'removeBug';
+  | 'removeBug'
+  | 'removeWeed'
+  | 'removeTanuki'
+  | 'removeFrost';
 
 export type CharmId =
   | 'coinPurse'
@@ -42,7 +48,8 @@ export type CharmId =
   | 'goldLuck'
   | 'bugWard'
   | 'taxRelief'
-  | 'artisan';
+  | 'artisan'
+  | 'heater';
 
 export interface SymbolDef {
   id: SymbolId;
@@ -74,11 +81,15 @@ export const SYMBOLS: Record<SymbolId, SymbolDef> = {
   coin: { id: 'coin', name: '金貨', emoji: '🪙', kind: 'auto', desc: 'その場で金がもらえる', feverDesc: '大当たり×3', rarity: 'normal' },
   merchant: { id: 'merchant', name: '商人', emoji: '🧑‍🌾', kind: 'auto', desc: 'その日だけ売値×1.5', feverDesc: '大商い：実った作物を今すぐ×2で全部買い取る', rarity: 'normal' },
   clover: { id: 'clover', name: '四つ葉', emoji: '🍀', kind: 'auto', desc: '次の日、金の種が出やすくなる', feverDesc: '幸運：お守りを1つ選べる', rarity: 'rare' },
+  // ---- お邪魔系（年貢を納めるたびにどれかが袋に増える） ----
+  weed: { id: 'weed', name: '雑草', emoji: '🌾', kind: 'auto', desc: '空きマスに生えて塞ぐ。毎日となりへ広がる。タップ3金で抜ける', feverDesc: '群れ：2か所に生える', rarity: 'bad' },
+  tanuki: { id: 'tanuki', name: 'タヌキ', emoji: '🦝', kind: 'auto', desc: '実ったまま置いてある一番高い作物を持っていく。実りがなければお金を盗む', feverDesc: '群れ：2つ持っていく', rarity: 'bad' },
+  frost: { id: 'frost', name: '霜', emoji: '❄️', kind: 'auto', desc: '1マスを凍らせる。溶けるまでそのマスは植える・育つ・売るができない', feverDesc: '群れ：2マスが凍る', rarity: 'bad' },
 };
 
 /** 絵柄袋・ショップでの表示順 */
 export const SYMBOL_ORDER: SymbolId[] = [
-  'seed', 'berrySeed', 'pumpkinSeed', 'goldSeed', 'rain', 'sun', 'fertilizer', 'bee', 'coin', 'merchant', 'clover', 'crow', 'bug',
+  'seed', 'berrySeed', 'pumpkinSeed', 'goldSeed', 'rain', 'sun', 'fertilizer', 'bee', 'coin', 'merchant', 'clover', 'crow', 'bug', 'weed', 'tanuki', 'frost',
 ];
 
 // ---- 作物 ----
@@ -142,7 +153,7 @@ export const CONFIG = {
   /** 初期の絵柄袋 */
   initialBag: {
     seed: 3, berrySeed: 0, pumpkinSeed: 0, goldSeed: 0, rain: 2, sun: 1, fertilizer: 0, bee: 0,
-    crow: 2, bug: 0, coin: 1, merchant: 0, clover: 0,
+    crow: 2, bug: 0, coin: 1, merchant: 0, clover: 0, weed: 0, tanuki: 0, frost: 0,
   } as Record<SymbolId, number>,
   initialGold: 0,
   /** 成長（実るまでの成長は作物ごとに CROPS で決める） */
@@ -159,8 +170,16 @@ export const CONFIG = {
   crowFeverMultiplier: 1.5,
   /** 虫が下げる成長 */
   bugDamage: 1,
-  /** 年貢を納めるたびに絵柄袋に増える虫の枚数 */
-  bugPerTax: 1,
+  /** 年貢を納めるたびに、このうち1つが絵柄袋に増える（お邪魔系） */
+  obstaclesPerTax: ['bug', 'weed', 'tanuki', 'frost'] as SymbolId[],
+  /** 雑草：抜く費用と、毎日となりの空きマスへ広がる確率 */
+  weedPullCost: 3,
+  weedSpreadChance: 0.5,
+  /** 霜：凍っている日数 */
+  frostDays: 3,
+  /** タヌキ：実った作物がなければ所持金のこの割合を持っていく（最低 tanukiMinSteal） */
+  tanukiStealRate: 0.1,
+  tanukiMinSteal: 3,
   /** 商人1枚で上がる今日の売値倍率 */
   merchantBonus: 0.5,
   /** 四つ葉の翌日の金の種の出やすさ（重みの倍率） */
@@ -205,6 +224,9 @@ export const CONFIG = {
     addClover: 20,
     removeCrow: 15,
     removeBug: 12,
+    removeWeed: 12,
+    removeTanuki: 15,
+    removeFrost: 12,
   } as Record<UpgradeId, number>,
   /** カラス・虫を消す価格は、消すたびに removeGrowth 倍になる */
   removeGrowth: 2,
@@ -212,7 +234,7 @@ export const CONFIG = {
   /** 年貢：taxPeriod 日ごとに、その日の終わり（次の回転前）に自動で徴収 */
   taxPeriod: 7,
   /** 1回目から順の年貢額。表を超えたら（エンドレス）直前の額 × taxGrowth */
-  taxSchedule: [5, 22, 55, 115, 200, 310, 450, 620],
+  taxSchedule: [5, 22, 60, 140, 260, 420, 620, 880],
   taxGrowth: 1.5,
   /** この回数の年貢を納めるとクリア（その後はエンドレス） */
   winTaxes: 8,
@@ -249,6 +271,9 @@ export const UPGRADES: { id: UpgradeId; name: string; emoji: string; desc: strin
   { id: 'addClover', name: '四つ葉を足す', emoji: '🍀', desc: '絵柄袋に四つ葉を1枚追加' },
   { id: 'removeCrow', name: 'カラスを消す', emoji: '🐦', desc: '絵柄袋からカラスを1枚削除' },
   { id: 'removeBug', name: '虫を消す', emoji: '🐛', desc: '絵柄袋から虫を1枚削除' },
+  { id: 'removeWeed', name: '雑草を消す', emoji: '🌾', desc: '絵柄袋から雑草を1枚削除' },
+  { id: 'removeTanuki', name: 'タヌキを消す', emoji: '🦝', desc: '絵柄袋からタヌキを1枚削除' },
+  { id: 'removeFrost', name: '霜を消す', emoji: '❄️', desc: '絵柄袋から霜を1枚削除' },
 ];
 
 /** 強化と、それが増減させる絵柄 */
@@ -265,6 +290,9 @@ export const UPGRADE_SYMBOL: Partial<Record<UpgradeId, { symbol: SymbolId; delta
   addClover: { symbol: 'clover', delta: 1 },
   removeCrow: { symbol: 'crow', delta: -1 },
   removeBug: { symbol: 'bug', delta: -1 },
+  removeWeed: { symbol: 'weed', delta: -1 },
+  removeTanuki: { symbol: 'tanuki', delta: -1 },
+  removeFrost: { symbol: 'frost', delta: -1 },
 };
 
 /** お守りのレア度。強さ（シミュレーターでの生存日数の伸び）で決めている */
@@ -288,14 +316,15 @@ export const CHARMS: Record<CharmId, CharmDef> = {
   coinPurse: { id: 'coinPurse', tier: 'uncommon', name: '金貨袋', emoji: '👛', desc: (n) => `金貨の額＋${2 * n}`, max: Infinity },
   gentleRain: { id: 'gentleRain', tier: 'uncommon', name: '恵みの雨', emoji: '☔', desc: (n) => `雨を使うと上下左右の作物も成長＋${n}`, max: Infinity },
   crowToll: { id: 'crowToll', tier: 'common', name: 'カラスの通行料', emoji: '🪶', desc: (n) => `カラスが来るたびに＋${2 * n}金`, max: Infinity },
-  aging: { id: 'aging', tier: 'common', name: '熟成', emoji: '🍷', desc: (n) => `実ったまま日をまたぐと売値＋${n}`, max: Infinity },
+  aging: { id: 'aging', tier: 'common', name: '熟成', emoji: '🍷', desc: (n) => `実ったまま日をまたぐと売値＋${3 * n}（タヌキに注意）`, max: Infinity },
   seedSack: { id: 'seedSack', tier: 'rare', name: '大きな種袋', emoji: '🎒', desc: (n) => `種で植えられる数＋${n}`, max: Infinity },
   sunBlessing: { id: 'sunBlessing', tier: 'rare', name: '日だまり', emoji: '🌻', desc: (n) => `太陽の成長＋${n}`, max: 2 },
   bargain: { id: 'bargain', tier: 'uncommon', name: '値切り上手', emoji: '🏷️', desc: (n) => `強化の価格−${Math.min(50, 10 * n)}%`, max: 5 },
-  scarecrow: { id: 'scarecrow', tier: 'common', name: 'かかし', emoji: '🎃', desc: (n) => `カラスが食べる確率−${15 * n}%（下限10%）`, max: 3 },
+  scarecrow: { id: 'scarecrow', tier: 'common', name: 'かかし', emoji: '🎃', desc: (n) => `カラスとタヌキが${Math.min(90, 30 * n)}%で逃げていく`, max: 3 },
   bumper: { id: 'bumper', tier: 'rare', name: '豊作', emoji: '🧺', desc: (n) => `金以外の作物の売値＋${2 * n}`, max: Infinity },
   goldLuck: { id: 'goldLuck', tier: 'uncommon', name: '金運', emoji: '🐱', desc: (n) => `金のとうもろこしの売値＋${10 * n}`, max: Infinity },
-  bugWard: { id: 'bugWard', tier: 'common', name: '虫よけ', emoji: '🌿', desc: (n) => `虫が${Math.round((1 - Math.pow(0.5, n)) * 100)}%で外れる`, max: 4 },
+  bugWard: { id: 'bugWard', tier: 'common', name: '草よけ', emoji: '🌿', desc: (n) => `虫と雑草が${Math.round((1 - Math.pow(0.5, n)) * 100)}%で外れる。雑草を抜くのが無料`, max: 4 },
+  heater: { id: 'heater', tier: 'common', name: '湯たんぽ', emoji: '♨️', desc: () => '霜が1日で溶ける', max: 1 },
   artisan: { id: 'artisan', tier: 'rare', name: 'からくり職人', emoji: '🎰', desc: (n) => `リール＋${n}（1日の出来事が増える）`, max: 2 },
   taxRelief: { id: 'taxRelief', tier: 'common', name: '年貢の減免', emoji: '📜', desc: (n) => `年貢−${Math.min(50, 10 * n)}%`, max: 5 },
 };
@@ -303,7 +332,7 @@ export const CHARMS: Record<CharmId, CharmDef> = {
 export const CHARM_ORDER = Object.keys(CHARMS) as CharmId[];
 
 /** 「足す」強化（ゲーム開始時にショップへ並べるものを選ぶ対象） */
-export type AddUpgradeId = Exclude<UpgradeId, 'removeCrow' | 'removeBug'>;
+export type AddUpgradeId = Exclude<UpgradeId, `remove${string}`>;
 
 /**
  * 遊ぶたびに増える要素（メタ進行）。
