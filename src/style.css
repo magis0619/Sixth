@@ -2219,3 +2219,175 @@ button {
   color: #2f5a14;
   font-weight: 800;
 }
+
+/* ---- 収穫・フィーバーの演出（第2弾） ---- */
+.hitstop *,
+.hitstop *::before,
+.hitstop *::after {
+  animation-play-state: paused !important;
+}
+
+.fx-roll {
+  display: flex;
+  align-items: center;
+  font-weight: 900;
+  color: #ffd84a;
+  -webkit-text-stroke: 2px var(--ink);
+  paint-order: stroke fill;
+  text-shadow: 0 4px 0 var(--ink);
+  z-index: 3;
+}
+
+.roll-digit {
+  display: inline-block;
+  height: 1em;
+  line-height: 1em;
+  overflow: hidden;
+  width: 0.62em;
+  text-align: center;
+}
+
+.roll-strip {
+  display: flex;
+  flex-direction: column;
+}
+
+.roll-strip i {
+  font-style: normal;
+  height: 1em;
+}
+
+.roll-prefix,
+.roll-unit {
+  font-size: 0.6em;
+  margin: 0 0.1em;
+}
+
+.fx-mults {
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+}
+
+.mult-chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  background: #ff5fa2;
+  color: #fff;
+  font-weight: 900;
+  font-size: 1.15rem;
+  border-radius: 10px;
+  padding: 2px 8px;
+  box-shadow: 0 3px 0 #b8336f, 0 0 0 2px #fff;
+}
+
+.mult-chip small {
+  font-size: 0.55rem;
+  font-weight: 800;
+}
+
+.mult-chip.total {
+  background: #ffd84a;
+  color: #5a3d00;
+  font-size: 1.5rem;
+  box-shadow: 0 3px 0 #a87a00, 0 0 0 2px #fff, 0 0 18px #ffe680;
+}
+
+.fx-speedlines {
+  inset: 0;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  transform: none;
+  background: repeating-conic-gradient(from 0deg at 50% 45%, var(--line) 0deg 2deg, transparent 2deg 9deg);
+  -webkit-mask-image: radial-gradient(circle at 50% 45%, transparent 0 22%, #000 55%);
+  mask-image: radial-gradient(circle at 50% 45%, transparent 0 22%, #000 55%);
+  animation: speed-spin 0.35s linear infinite;
+  z-index: 1;
+}
+
+@keyframes speed-spin {
+  to { transform: rotate(3deg) scale(1.02); }
+}
+
+.fx-scan {
+  inset: 0;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  transform: none;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.28) 0 2px, transparent 2px 4px);
+  mix-blend-mode: multiply;
+  z-index: 2;
+}
+
+.fx-slam {
+  font-weight: 900;
+  color: #ffd84a;
+  -webkit-text-stroke: 3px #7a1500;
+  paint-order: stroke fill;
+  text-shadow: 0 6px 0 #7a1500, 0 0 30px #ff7a00;
+  letter-spacing: 0.04em;
+  z-index: 4;
+}
+
+.fx-slam.bad {
+  color: #d8c8ff;
+  -webkit-text-stroke-color: #1a0030;
+  text-shadow: 0 6px 0 #1a0030, 0 0 30px #8000ff;
+}
+
+/* フィーバー中：筐体の枠が燃える */
+.machine.burning {
+  animation: burn 0.22s ease-in-out infinite alternate;
+}
+
+.machine.burning::after {
+  content: '';
+  position: absolute;
+  left: -6px;
+  right: -6px;
+  top: -26px;
+  height: 40px;
+  pointer-events: none;
+  background:
+    radial-gradient(14px 26px at 8% 100%, #ffd84a, #ff7a00 55%, transparent 70%),
+    radial-gradient(16px 32px at 22% 100%, #ffe680, #ff5a00 55%, transparent 70%),
+    radial-gradient(12px 22px at 38% 100%, #ffd84a, #ff7a00 55%, transparent 70%),
+    radial-gradient(18px 34px at 54% 100%, #fff1a8, #ff5a00 55%, transparent 70%),
+    radial-gradient(13px 24px at 70% 100%, #ffd84a, #ff7a00 55%, transparent 70%),
+    radial-gradient(16px 30px at 86% 100%, #ffe680, #ff5a00 55%, transparent 70%),
+    radial-gradient(12px 22px at 97% 100%, #ffd84a, #ff7a00 55%, transparent 70%);
+  animation: flames 0.18s steps(2) infinite;
+  filter: blur(0.5px);
+}
+
+@keyframes burn {
+  from { box-shadow: 0 5px 0 #7d2a14, inset 0 0 0 4px #ffb321, 0 0 22px 6px #ff7a00; }
+  to { box-shadow: 0 5px 0 #7d2a14, inset 0 0 0 4px #ffe680, 0 0 36px 12px #ff3b00; }
+}
+
+@keyframes flames {
+  0% { transform: scaleY(1) translateY(0); }
+  50% { transform: scaleY(1.25) translateY(-4px); }
+  100% { transform: scaleY(0.9) translateY(2px); }
+}
+
+.calm .machine.burning,
+.calm .machine.burning::after {
+  animation: none;
+}
+
+.fx-ghost {
+  line-height: 1;
+  filter: drop-shadow(0 0 8px #ffe680);
+  animation: ghost-shiver 0.2s linear infinite;
+}
+
+@keyframes ghost-shiver {
+  0%, 100% { margin-left: 0; }
+  50% { margin-left: 1px; }
+}

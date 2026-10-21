@@ -745,10 +745,17 @@ function runsThrough(state: GameState, cell: number): number[][] {
  */
 export function cellMultiplier(state: GameState, cell: number): number {
   if (!isRipe(state.field[cell]) || state.frost[cell]) return 0;
+  return multSteps(state, cell).reduce((m, s) => m * s.x, 1);
+}
+
+/** 倍率の内訳（演出で1つずつ乗せて見せる） */
+export function multSteps(state: GameState, cell: number): { label: string; x: number }[] {
   const runs = runsThrough(state, cell);
-  if (!runs.length) return CONFIG.singleMult;
-  const same = runs.some((run) => run.every((c) => state.field[c]!.kind === state.field[run[0]]!.kind));
-  return CONFIG.lineMult * (same ? CONFIG.sameCropMult : 1) * (1 + CONFIG.crossBonus * (runs.length - 1));
+  if (!runs.length) return [{ label: '単品', x: CONFIG.singleMult }];
+  const steps = [{ label: '列', x: CONFIG.lineMult }];
+  if (inSameCropLine(state, cell)) steps.push({ label: '同じ作物', x: CONFIG.sameCropMult });
+  if (runs.length > 1) steps.push({ label: `${runs.length}本が交差`, x: 1 + CONFIG.crossBonus * (runs.length - 1) });
+  return steps;
 }
 
 /** 同じ作物だけの列に入っているか（演出・表示用） */
@@ -798,6 +805,8 @@ export interface SellResult {
   /** まとめて売った数 */
   size: number;
   mult: number;
+  /** 一番倍率の高いマスの倍率の内訳 */
+  steps: { label: string; x: number }[];
   /** この売却で注文を達成したときの報酬 */
   orderReward: number;
 }
@@ -813,6 +822,8 @@ export function sell(state: GameState, cell: number, single = false): SellResult
   // 倍率は並んでいるうちに計算する（売って空いたマスは数えない）
   const mults = group.map((i) => (single ? 1 : cellMultiplier(state, i)));
   const mult = Math.max(...mults);
+  // 一番倍率の高いマスの内訳（演出用）
+  const steps = single ? [] : multSteps(state, group[mults.indexOf(mult)]);
   const cells = group.map((i, k) => {
     const c = state.field[i]!;
     return { cell: i, price: Math.round(cropPrice(state, c, i) * mults[k]), kind: c.kind };
@@ -833,7 +844,7 @@ export function sell(state: GameState, cell: number, single = false): SellResult
       state.stats.ordersDone++;
     }
   }
-  return { cells, total, line, lines, size, mult, orderReward };
+  return { cells, total, line, lines, size, mult, steps, orderReward };
 }
 
 // ---- 強化 ----

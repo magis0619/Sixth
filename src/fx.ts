@@ -163,3 +163,139 @@ export function vibrate(pattern: number | number[]): void {
 }
 
 export const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/**
+ * 金額を桁ごとに回して止める（スロットのリールのように右の桁から止まる）。
+ * 止まり切るまで待つ Promise を返す
+ */
+export function rollNumber(x: number, y: number, value: number, opts: { prefix?: string; size?: number; hold?: number; rise?: boolean } = {}): Promise<void> {
+  const digits = String(Math.max(0, Math.round(value))).split('');
+  const el = spawn('', 'fx-roll', x, y);
+  el.style.fontSize = `${2.2 * (opts.size ?? 1)}rem`;
+  el.innerHTML =
+    (opts.prefix ? `<span class="roll-prefix">${opts.prefix}</span>` : '') +
+    digits.map(() => `<span class="roll-digit"><span class="roll-strip">${'0123456789'.repeat(3).split('').map((d) => `<i>${d}</i>`).join('')}</span></span>`).join('') +
+    '<span class="roll-unit">金</span>';
+  // rise：下からせり上がって出る
+  const from = opts.rise ? 'translate(-50%, calc(-50% + 70px)) scale(0.8)' : 'translate(-50%, -50%) scale(0.4)';
+  el.animate([{ transform: from, opacity: 0 }, { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 }], {
+    duration: opts.rise ? 380 : 180,
+    easing: 'cubic-bezier(.3,1.6,.5,1)',
+    fill: 'forwards',
+  });
+  const strips = [...el.querySelectorAll<HTMLElement>('.roll-strip')];
+  const n = strips.length;
+  const done = strips.map((strip, k) => {
+    // 2周回してから目的の数字へ。右の桁ほど早く止まる
+    const target = 20 + Number(digits[k]);
+    const dur = calm ? 200 : 450 + (n - 1 - k) * 160;
+    return strip.animate([{ transform: 'translateY(0)' }, { transform: `translateY(${-target}em)` }], {
+      duration: dur,
+      easing: 'cubic-bezier(.2,.7,.3,1.08)',
+      fill: 'forwards',
+    }).finished;
+  });
+  return Promise.all(done).then(async () => {
+    el.animate([{ transform: 'translate(-50%, -50%) scale(1.25)' }, { transform: 'translate(-50%, -50%) scale(1)' }], { duration: 200, fill: 'forwards' });
+    await sleep(opts.hold ?? 700);
+    el.animate([{ opacity: 1 }, { opacity: 0, transform: 'translate(-50%, -90%) scale(0.9)' }], { duration: 300, fill: 'forwards' }).onfinish = () => el.remove();
+  });
+}
+
+/** 倍率を1つずつ乗せて見せる（×1.5 → ×1.5 → …） */
+export async function stackMultipliers(x: number, y: number, steps: { label: string; x: number }[]): Promise<void> {
+  const el = spawn('', 'fx-mults', x, y);
+  let total = 1;
+  for (const s of steps) {
+    total *= s.x;
+    const chip = document.createElement('span');
+    chip.className = 'mult-chip';
+    chip.innerHTML = `<small>${s.label}</small>×${s.x}`;
+    el.appendChild(chip);
+    chip.animate([{ transform: 'scale(2.2)', opacity: 0 }, { transform: 'scale(0.9)', opacity: 1, offset: 0.6 }, { transform: 'scale(1)' }], {
+      duration: 260,
+      easing: 'cubic-bezier(.3,1.5,.5,1)',
+    });
+    await sleep(calm ? 120 : 260);
+  }
+  if (steps.length > 1) {
+    const sum = document.createElement('span');
+    sum.className = 'mult-chip total';
+    sum.textContent = `＝×${Math.round(total * 100) / 100}`;
+    el.appendChild(sum);
+    sum.animate([{ transform: 'scale(2.6)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { duration: 300, easing: 'cubic-bezier(.3,1.5,.5,1)' });
+    await sleep(calm ? 150 : 350);
+  }
+  window.setTimeout(() => {
+    el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'forwards' }).onfinish = () => el.remove();
+  }, 900);
+}
+
+/** ヒットストップ：画面のアニメーションを一瞬止める */
+export async function hitStop(ms = 90): Promise<void> {
+  if (calm) return;
+  document.documentElement.classList.add('hitstop');
+  await sleep(ms);
+  document.documentElement.classList.remove('hitstop');
+}
+
+/** スロー：この間に出す演出の間隔を伸ばす倍率（控えめ設定では等速） */
+export function slowFactor(level: number): number {
+  return calm ? 1 : 1 + level * 0.35;
+}
+
+/** 集中線（中心から放射状の線が回る） */
+export function speedLines(ms = 1400, color = 'rgba(255,255,255,0.55)'): void {
+  if (calm) return;
+  const el = spawn('', 'fx-speedlines', 0, 0);
+  el.style.setProperty('--line', color);
+  el.animate([{ opacity: 0 }, { opacity: 1, offset: 0.15 }, { opacity: 1, offset: 0.7 }, { opacity: 0 }], { duration: ms }).onfinish = () => el.remove();
+}
+
+/** ブラウン管の走査線を一瞬強める。strength は 0〜1 */
+export function scanlines(strength: number, ms = 600): void {
+  if (calm) return;
+  const el = spawn('', 'fx-scan', 0, 0);
+  el.animate([{ opacity: Math.min(1, strength) }, { opacity: 0 }], { duration: ms, easing: 'ease-out' }).onfinish = () => el.remove();
+}
+
+/** 金額に応じた揺れの強さ（大きいほど強いが上限あり） */
+export function shakeFor(amount: number): number {
+  return Math.min(16, 2 + Math.log2(Math.max(1, amount)) * 1.6);
+}
+
+/** 金貨の雨 */
+export function coinRain(count = 40): void {
+  const n = calm ? 8 : count;
+  for (let i = 0; i < n; i++) {
+    const x = Math.random() * window.innerWidth;
+    const el = spawn(glyph('🪙'), 'fx-particle', x, -30);
+    el.style.fontSize = `${1.2 + Math.random() * 0.9}rem`;
+    el.animate(
+      [
+        { transform: 'translate(-50%, 0) rotateY(0deg)' },
+        { transform: `translate(-50%, ${window.innerHeight + 60}px) rotateY(${720 + Math.random() * 720}deg)` },
+      ],
+      { duration: 1100 + Math.random() * 900, delay: Math.random() * 600, easing: 'cubic-bezier(.4,0,.8,.6)', fill: 'backwards' },
+    ).onfinish = () => el.remove();
+  }
+}
+
+/** 叩きつける大きな文字 */
+export function slamText(text: string, opts: { cls?: string; size?: number; dur?: number } = {}): Promise<void> {
+  const el = spawn(text, `fx-slam ${opts.cls ?? ''}`, window.innerWidth / 2, window.innerHeight * 0.42);
+  el.style.fontSize = `${3.2 * (opts.size ?? 1)}rem`;
+  const dur = opts.dur ?? 1300;
+  return el
+    .animate(
+      [
+        { transform: 'translate(-50%, -50%) scale(4) rotate(-10deg)', opacity: 0 },
+        { transform: 'translate(-50%, -50%) scale(0.9) rotate(-4deg)', opacity: 1, offset: 0.14 },
+        { transform: 'translate(-50%, -50%) scale(1.05) rotate(-4deg)', opacity: 1, offset: 0.22 },
+        { transform: 'translate(-50%, -50%) scale(1) rotate(-4deg)', opacity: 1, offset: 0.8 },
+        { transform: 'translate(-50%, -50%) scale(1.3) rotate(-4deg)', opacity: 0 },
+      ],
+      { duration: dur, easing: 'ease-out' },
+    )
+    .finished.then(() => el.remove());
+}

@@ -6,7 +6,7 @@ import {
 import {
   bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, chooseCharm, cropPrice, drawDay, drawSymbol, endDay,
   expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells,
-  ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState,
+  ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState,
 } from './game.ts';
 import { isMuted, sfx, toggleMute, unlockAudio } from './audio.ts';
 import {
@@ -15,7 +15,10 @@ import {
 } from './meta.ts';
 import { art, type ArtId } from './art.ts';
 import type { Crop } from './game.ts';
-import { burst, center, confetti, flash, floatText, flyTo, isCalm, pop, shake, sleep, toggleCalm, vibrate } from './fx.ts';
+import {
+  burst, center, coinRain, confetti, flash, floatText, flyTo, hitStop, isCalm, pop, rollNumber, scanlines, shake, shakeFor, sleep, slamText, slowFactor,
+  speedLines, stackMultipliers, toggleCalm, vibrate,
+} from './fx.ts';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const rng = Math.random;
@@ -102,6 +105,8 @@ let busy = false;
 let selected: number | null = null;
 let armedNextDay = false;
 let shownGold = state.gold;
+/** 列の収穫の演出中は、作物が財布に届くまで所持金の表示を止めておく */
+let goldHeld = 0;
 let goldTween = 0;
 let combo = 0;
 let lastSellAt = 0;
@@ -216,7 +221,7 @@ function clearRun(): void {
 
 function render(): void {
   el.day.textContent = String(state.day);
-  if (shownGold !== state.gold) setGold(state.gold);
+  if (!goldHeld && shownGold !== state.gold) setGold(state.gold);
   renderTax();
   renderOrder();
   renderGoal();
@@ -703,7 +708,7 @@ async function onSpin(): Promise<void> {
   armedNextDay = false;
   el.spin.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(6px) scale(0.97)' }, { transform: 'translateY(0)' }], { duration: 220 });
   // 前の日のフリーズの名残（虹の枠・ひび）を片付ける
-  el.machine.classList.remove('rainbow');
+  el.machine.classList.remove('rainbow', 'burning');
   el.machine.querySelector('.crack')?.remove();
   selected = null;
   busy = true;
@@ -881,14 +886,20 @@ async function feverBanner(symbols: SymbolId[], bad: boolean): Promise<void> {
     shake(el.app, 10);
     const c = center(el.machine);
     burst(c.x, c.y, ['🪶', '💀', '🖤'], 16, 140);
+    speedLines(1400, 'rgba(60,0,90,0.55)');
+    await slamText('群れ!!', { cls: 'bad', dur: 1100 });
     banner.className = 'fever-banner bad';
     banner.innerHTML = `⚠️ ${symbols.map((s) => `${SYMBOLS[s].name}の群れ`).join('・')}！<small>${lines}</small>`;
   } else {
     sfx.fever();
     flash('#ff9ad5', 600);
     vibrate([50, 40, 50, 40, 120]);
-    confetti(30);
-    shake(el.machine, 8);
+    // 枠が燃え、集中線の中に「FEVER!!」を叩きつけ、金貨が降る
+    el.machine.classList.add('burning');
+    speedLines(2200, 'rgba(255,200,60,0.6)');
+    shake(el.app, 10);
+    coinRain(45);
+    await slamText('FEVER!!', { dur: 1200 });
     banner.className = 'fever-banner';
     banner.innerHTML = `🔥 FEVER！ 🔥<small>${lines}</small>`;
   }
@@ -958,13 +969,18 @@ async function playFeverRoles(events: FeverEvent[]): Promise<void> {
         break;
     }
     await sleep(700);
-    // どの役にも大当たりの金貨が付く
+    // どの役にも大当たりの金貨が付く。金額は下からせり上がって桁ごとに止まる
     sfx.rare();
-    const g = center(el.goldBox);
-    floatText(g.x, g.y + 40, `大当たり +${ev.jackpot}金`, { cls: 'gold', size: ev.role === 'jackpot' ? 1.5 : 1.1, dur: 1400 });
-    flyTo(center(el.machine), el.goldBox, '🪙', Math.min(12, 3 + Math.ceil(ev.jackpot / 8)), () => setGold(state.gold));
-    if (ev.role === 'jackpot') confetti(50);
-    await sleep(600);
+    const m = center(el.reels);
+    shake(el.app, shakeFor(ev.jackpot));
+    scanlines(Math.min(1, ev.jackpot / 120));
+    const roll = rollNumber(m.x, m.y - 10, ev.jackpot, { prefix: '大当たり +', size: ev.role === 'jackpot' ? 1.2 : 0.95, hold: 400, rise: true });
+    flyTo(m, el.goldBox, '🪙', Math.min(12, 3 + Math.ceil(ev.jackpot / 8)), () => setGold(state.gold));
+    if (ev.role === 'jackpot') {
+      confetti(50);
+      coinRain(40);
+    }
+    await roll;
   }
   render();
 }
@@ -1526,6 +1542,7 @@ function sellCrop(cell: number): void {
   lastSellAt = now;
   const price = res.total;
   const big = price >= CROPS.corn.price || res.line;
+  if (res.line) goldHeld++;
   render();
   if (res.orderReward) {
     // 注文達成：お客さんからまとめて代金
@@ -1541,26 +1558,10 @@ function sellCrop(cell: number): void {
   }
   if (res.line) {
     done.line = true;
-    sfx.lineHarvest();
-    if (res.lines >= 2) window.setTimeout(() => sfx.fever(), 200);
-    res.cells.forEach(({ cell: c, price: each }, k) => {
-      const q = centers[c];
-      window.setTimeout(() => {
-        sfx.sell(each, combo + k);
-        burst(q.x, q.y, ['🪙', '✨', '🌟'], 10, 70);
-        floatText(q.x, q.y - 10, `+${each}`, { cls: 'gold', size: Math.min(1.6, 0.8 + each / 25) });
-        pop(el.field.children[c], 1.15);
-      }, k * 140);
+    void playLineHarvest(res, centers, p).finally(() => {
+      goldHeld = Math.max(0, goldHeld - 1);
+      if (!goldHeld) setGold(state.gold);
     });
-    window.setTimeout(() => {
-      const name = ['', '一列そろい！', '二列そろい！！', '大収穫！！！', 'ほぼ全部！！！！'][Math.min(res.lines, 4)];
-      floatText(p.x, p.y - 70, `${name} ${res.size}個 最大×${res.mult} +${price}`, { cls: 'combo', size: 1.2 + res.lines * 0.2, rise: 120, dur: 1700 });
-      if (res.lines >= 2) {
-        confetti(30 + res.lines * 20);
-        flash('#ff9ad5', 500);
-        shake(el.app, 4 + res.lines * 2);
-      }
-    }, res.cells.length * 140);
   } else {
     sfx.sell(price, combo);
     const size = Math.min(2, 0.8 + price / 25);
@@ -1569,6 +1570,7 @@ function sellCrop(cell: number): void {
     burst(p.x, p.y, big ? ['🪙', '✨', '🌟', '💰'] : ['🪙', '✨'], big ? 22 : 8, big ? 140 : 60);
   }
   if (combo >= 2) floatText(p.x, p.y - 60, `COMBO ×${combo}`, { cls: 'combo', size: 0.7 + Math.min(combo, 6) * 0.08, dur: 900 });
+  if (res.line) return;
   flyTo(p, el.goldBox, '🪙', Math.min(10, Math.ceil(price / 6)), () => setGold(state.gold));
   if (big) {
     flash('#ffe680', 500);
@@ -1578,6 +1580,64 @@ function sellCrop(cell: number): void {
   } else {
     vibrate(20);
   }
+}
+
+/**
+ * 列の収穫：ヒットストップ → 倍率を1つずつ乗せる → 作物が跳ねて財布へ（大きいほどスロー）→ 合計が桁ごとに回る
+ */
+async function playLineHarvest(res: SellResult, centers: { x: number; y: number }[], p: { x: number; y: number }): Promise<void> {
+  const level = Math.min(res.lines, 4);
+  const slow = slowFactor(level - 1);
+  const f = center(el.field);
+  // 売った実は畑から消えるので、跳ねるまでその場に残して見せる
+  const ghosts = res.cells.map(({ cell: c, kind }) => {
+    const g = document.createElement('div');
+    g.className = 'fx fx-ghost';
+    g.innerHTML = art(FRUIT[kind]);
+    g.style.left = `${centers[c].x}px`;
+    g.style.top = `${centers[c].y}px`;
+    g.style.fontSize = `${(el.field.children[c] as HTMLElement).clientWidth * 0.62}px`;
+    $('fx').appendChild(g);
+    return g;
+  });
+  if (level >= 2) {
+    await hitStop(90);
+    flash('#ffffff', 250);
+    speedLines(1600 + level * 300, level >= 3 ? 'rgba(255,216,74,0.6)' : 'rgba(255,255,255,0.55)');
+  }
+  sfx.lineHarvest();
+  const name = ['', '一列そろい！', '二列そろい！！', '大収穫！！！', 'ほぼ全部！！！！'][level];
+  floatText(f.x, f.y - 90, name, { cls: 'combo', size: 1.1 + level * 0.2, rise: 60, dur: 1500 + level * 300 });
+  await stackMultipliers(f.x, Math.max(90, p.y - 60), res.steps);
+  // 作物が1つずつ跳ねて財布に吸い込まれる
+  const arrivals = res.cells.map(({ cell: c, price: each, kind }, k) =>
+    new Promise<void>((resolve) => {
+      window.setTimeout(() => {
+        const q = centers[c];
+        sfx.sell(each, combo + k);
+        ghosts[k].remove();
+        pop(el.field.children[c], 1.2);
+        floatText(q.x, q.y - 10, `+${each}`, { cls: 'gold', size: Math.min(1.6, 0.8 + each / 30) });
+        burst(q.x, q.y, ['✨', '🌟'], 6, 50);
+        flyTo(q, el.goldBox, art(FRUIT[kind]), 1, () => {
+          sfx.coin();
+          pop(el.goldBox, 1.3);
+          resolve();
+        });
+      }, k * 150 * slow);
+    }),
+  );
+  await Promise.all(arrivals);
+  ghosts.forEach((g) => g.remove());
+  setGold(state.gold);
+  // 合計が桁ごとに回って止まる
+  const amount = res.total;
+  shake(el.app, shakeFor(amount));
+  scanlines(Math.min(1, amount / 250));
+  vibrate(level >= 2 ? [40, 30, 120] : [30, 20, 60]);
+  if (level >= 2) confetti(20 + level * 20);
+  if (level >= 3) coinRain(30 + level * 10);
+  await rollNumber(f.x, f.y, amount, { prefix: '+', size: 0.9 + level * 0.15, hold: 500 + level * 150 });
 }
 
 // ---- 強化 ----
