@@ -2149,6 +2149,7 @@ function showPrep(): void {
 
 // ---- 起動 ----
 
+$('build-label').textContent = __BUILD__;
 el.spin.addEventListener('click', () => void onSpin());
 el.mute.textContent = isMuted() ? '🔇' : '🔊';
 el.goldBox.querySelector('.stat-icon')!.innerHTML = art('coin');
