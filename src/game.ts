@@ -79,7 +79,7 @@ export interface GameState {
   charmOffer: CharmId[] | null;
   order: Order | null;
   /** 直近の年貢で袋に増えたお邪魔 */
-  lastObstacle: SymbolId | null;
+  lastObstacles: SymbolId[];
   over: boolean;
   taxesPaid: number;
   /** 年貢を winTaxes 回納めたか（以降はエンドレス） */
@@ -148,7 +148,7 @@ export function newGame(setup: GameSetup = { shop: ALL_ADDS, charmPool: CHARM_OR
     charms: emptyCharms(),
     charmOffer: null,
     order: null,
-    lastObstacle: null,
+    lastObstacles: [],
     over: false,
     taxesPaid: 0,
     cleared: false,
@@ -308,13 +308,22 @@ export function endDay(state: GameState, rng: Rng): EndDayResult {
   }
   state.gold -= t.amount;
   state.taxesPaid++;
-  const obstacle = CONFIG.obstaclesPerTax[Math.floor(rng() * CONFIG.obstaclesPerTax.length)];
-  state.bag[obstacle]++;
-  state.lastObstacle = obstacle;
+  state.lastObstacles = rollObstacles(state.taxesPaid, rng);
+  state.lastObstacles.forEach((o) => state.bag[o]++);
   state.charmOffer = rollCharmOffer(state, rng);
   const cleared = !state.cleared && state.taxesPaid >= CONFIG.winTaxes;
   if (cleared) state.cleared = true;
   return { ok: true, tax: t.amount, expired, cleared };
+}
+
+/** n 回目の年貢を納めたときに袋に増えるお邪魔 */
+export function obstacleRule(n: number): { count: number; pool: SymbolId[] } {
+  return [...CONFIG.obstacleSchedule].reverse().find((r) => n >= r.from) ?? CONFIG.obstacleSchedule[0];
+}
+
+export function rollObstacles(n: number, rng: Rng): SymbolId[] {
+  const { count, pool } = obstacleRule(n);
+  return Array.from({ length: count }, () => pool[Math.floor(rng() * pool.length)]);
 }
 
 export function drawDay(state: GameState, rng: Rng): void {

@@ -185,7 +185,7 @@ function loadRun(): GameState | null {
     s.pool ??= [...s.shop];
     s.weekly ??= [];
     s.bred ??= [];
-    s.lastObstacle ??= null;
+    s.lastObstacles ??= [];
     s.removed ??= {};
     // 畑の広さを変えられるようにする前（3×3固定）の保存データは、マスの番号を5×5の数え方に直す
     if (s.cols === undefined) {
@@ -889,11 +889,12 @@ async function showTaxStamp(amount: number, ok: boolean): Promise<void> {
     burst(window.innerWidth / 2, window.innerHeight * 0.4, ['🎊', '✨', '🌾'], 14, 140);
     floatText(window.innerWidth / 2, window.innerHeight * 0.4, `年貢${state.taxesPaid}回 クリア！`, { cls: 'good', size: 1.2 });
     await sleep(500);
-    const added = state.lastObstacle;
-    if (added) {
+    const added = state.lastObstacles;
+    if (added.length) {
       render();
-      const c = center(visibleOr(el.bag.querySelector(`[data-sym="${added}"]`), 'bag'));
-      floatText(c.x, c.y - 20, `${SYMBOLS[added].name}が袋に増えた…`, { cls: 'bad', size: 0.8 });
+      const c = center(visibleOr(el.bag.querySelector(`[data-sym="${added[0]}"]`), 'bag'));
+      const names = [...new Set(added)].map((s) => `${SYMBOLS[s].name}${added.filter((x) => x === s).length > 1 ? `×${added.filter((x) => x === s).length}` : ''}`).join('・');
+      floatText(c.x, c.y - 20, `${names}が袋に増えた…`, { cls: 'bad', size: 0.8 });
     }
   }
 }
@@ -1926,10 +1927,10 @@ function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
       <li>作物は<b>雨・太陽・蜂</b>でしか育たない。実をタップで売る。<b>苺</b>は2段階で4金、<b>トマト</b>は3段階で6金、<b>かぼちゃ</b>は5段階で24金（カラスに食べられない）、<b>金のとうもろこし</b>は3段階で30金</li>
       <li><b>出目の形</b>：雨は<b>十字</b>、太陽は<b>縦一列</b>、蜂は<b>斜め</b>（選んだマスと斜め4マス）の作物を育てる。どこに落とすかで育つ数が変わる</li>
       <li><b>畑を広げる・道具</b>：ショップで畑を広げられる（最大5×5・かなり高い）。<b>満月</b>（全作物＋1）はいつもショップで足せる（足すたび高くなる）。ショップではかかし・井戸・巣箱などの道具や、堆肥・水路のマスを買って好きな所に置ける。道具はマスを1つ使う（植えられず列にも入らない）。堆肥・水路のマスの上にも道具を置ける</li>
-      <li><b>お邪魔</b>：年貢を納めるたびに虫・雑草・タヌキ・霜のどれかが袋に増える。<b>雑草</b>は空きマスを塞いで広がる（タップ${CONFIG.weedPullCost}金で抜く）、<b>タヌキ</b>は実ったまま置いた一番高い作物を持っていく（実りがなければお金を盗む）、<b>霜</b>はマスを${CONFIG.frostDays}日凍らせる（植える・育つ・売るができない）。ショップで消せる（消すたび高くなる）</li>
+      <li><b>お邪魔</b>：年貢を納めるたびに袋に増える。最初は虫・雑草の1枚だけだが、3回目から霜・タヌキ、5回目から2枚（カラスも）、7回目から3枚と、だんだん増える。<b>雑草</b>は空きマスを塞いで広がる（タップ${CONFIG.weedPullCost}金で抜く）、<b>タヌキ</b>は実ったまま置いた一番高い作物を持っていく（実りがなければお金を盗む）、<b>霜</b>はマスを${CONFIG.frostDays}日凍らせる（植える・育つ・売るができない）。ショップで消せる（消すたび高くなる）</li>
       <li><b>注文</b>：週ごとにお客さんから「◯◯を△個」の注文が来る。期日までに売ると報酬の金がもらえる</li>
       <li><b>年貢</b>：${CONFIG.taxPeriod}日ごとに自動で徴収。払えないと終わり。${CONFIG.winTaxes}回納めるとクリア</li>
-      <li>年貢を納めるたびに<b>お守り</b>を3つから1つ選べる。代わりに<b>虫</b>が1枚増える</li>
+      <li>年貢を納めるたびに<b>お守り</b>を3つから1つ選べる。代わりにお邪魔が袋に増える</li>
       <li><b>フィーバー</b>：同じ絵柄が${CONFIG.feverCount}つ以上そろうと、絵柄ごとの役（芽吹き・虹・夏祭り・はちみつ・大商い・幸運など）と金貨の大当たり。カラス・虫がそろうと「群れ」で危険</li>
       <li><b>列の収穫</b>：縦・横・斜めに3つ以上そろった実は、1つタップで列ごと売れて<b>×${CONFIG.lineMult}</b>。同じ作物だけの列ならさらに<b>×${CONFIG.sameCropMult}</b>、列が交わるマスはさらに上乗せ。<b>列に入らない単品は半値</b></li>
       <li><b>ショップ</b>：準備画面で選んだ「足す」強化と、カラス・虫を消す（消すたび価格×${CONFIG.removeGrowth}）</li>

@@ -201,8 +201,16 @@ export const CONFIG = {
   crowFeverMultiplier: 1.5,
   /** 虫が下げる成長 */
   bugDamage: 1,
-  /** 年貢を納めるたびに、このうち1つが絵柄袋に増える（お邪魔系） */
-  obstaclesPerTax: ['bug', 'weed', 'tanuki', 'frost'] as SymbolId[],
+  /**
+   * 年貢を納めるたびに絵柄袋に増えるお邪魔。こちらが強くなるのに合わせて、回を追うごとに数も種類も増える。
+   * from 回目の年貢から、pool の中から count 枚（表の最後の行より先はエンドレスでも同じ）
+   */
+  obstacleSchedule: [
+    { from: 1, count: 1, pool: ['bug', 'weed'] },
+    { from: 3, count: 1, pool: ['bug', 'weed', 'frost', 'tanuki'] },
+    { from: 5, count: 2, pool: ['bug', 'weed', 'frost', 'tanuki', 'crow'] },
+    { from: 7, count: 3, pool: ['bug', 'weed', 'frost', 'tanuki', 'crow'] },
+  ] as { from: number; count: number; pool: SymbolId[] }[],
   /** 雑草：抜く費用と、毎日となりの空きマスへ広がる確率 */
   weedPullCost: 3,
   weedSpreadChance: 0.5,
@@ -272,7 +280,7 @@ export const CONFIG = {
   /** 年貢：taxPeriod 日ごとに、その日の終わり（次の回転前）に自動で徴収 */
   taxPeriod: 7,
   /** 1回目から順の年貢額。表を超えたら（エンドレス）直前の額 × taxGrowth */
-  taxSchedule: [5, 22, 60, 120, 175, 240, 310, 390],
+  taxSchedule: [5, 22, 60, 120, 175, 235, 295, 360],
   taxGrowth: 1.5,
   /** この回数の年貢を納めるとクリア（その後はエンドレス） */
   winTaxes: 8,
