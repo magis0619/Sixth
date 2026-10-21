@@ -351,28 +351,25 @@ function renderCharms(): void {
     .join('');
 }
 
-/** 今週の注文：作物の絵と進み具合だけ。タップで詳しく */
+/** 今週の注文：畑の囲いに下げた木の札。作物の絵と「2/5」だけ、タップで詳しく */
 function renderOrder(): void {
   const o = state.order;
   el.order.hidden = !o;
   if (!o) return;
-  el.order.className = `hud-order${o.done ? ' done' : ''}`;
-  el.order.innerHTML = o.done
-    ? `<span class="order-ico">${art(FRUIT[o.crop])}</span><b>✓</b>`
-    : `<span class="order-ico">${art(FRUIT[o.crop])}</span><b>${o.have}/${o.need}</b><span class="order-bar"><i style="width:${(o.have / o.need) * 100}%"></i></span>`;
+  el.order.className = `order-tag${o.done ? ' done' : ''}`;
+  el.order.innerHTML = `<small>注文</small><span class="order-ico">${art(FRUIT[o.crop])}</span><b>${o.done ? '✓' : `${o.have}/${o.need}`}</b>`;
 }
 
-/** 年貢：1週間のリング（中は年貢までの日数）＋金額＋払えるか。クリアまでの回数も小さく */
+/** 年貢：「年貢 7金 あと2日」を言葉で。払えるときは緑、足りないときは赤 */
 function renderTax(): void {
   const t = nextTax(state);
   const short = state.gold < t.amount;
   const warn = short && t.daysLeft <= CONFIG.taxWarnDays;
-  const passed = CONFIG.taxPeriod - t.daysLeft;
-  el.tax.className = `hud-tax${warn ? ' warn' : ''}${short ? ' short' : ''}`;
+  el.tax.className = `hud-tax${warn ? ' warn' : ''}${short ? ' short' : ' ok'}${state.difficulty ? ' hard' : ''}`;
   el.tax.innerHTML =
-    `<span class="ring" style="--p:${passed / CONFIG.taxPeriod}"><b>${t.daysLeft}</b></span>` +
-    `<span class="tax-main">${art('bale')}<b>${t.amount}</b><span class="tax-ok">${short ? `−${t.amount - state.gold}` : '✓'}</span></span>` +
-    `<span class="tax-sub${state.difficulty ? ' hard' : ''}">${state.cleared ? '∞' : `★${state.taxesPaid}/${CONFIG.winTaxes}`}</span>`;
+    `<span class="tax-label">${art('bale')}年貢</span><b>${t.amount}金</b>` +
+    `<span class="tax-when">${t.daysLeft === 0 ? '今日まで' : `あと${t.daysLeft}日`}</span>` +
+    `<span class="tax-mark">${short ? '足りない' : '払える'}</span>`;
 }
 
 /** 列（縦・横・斜めに3つ以上）にそろった実があるか */
@@ -968,7 +965,7 @@ async function showTaxStamp(amount: number, ok: boolean): Promise<void> {
   stamp.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: 'forwards' }).onfinish = () => stamp.remove();
   if (ok) {
     burst(window.innerWidth / 2, window.innerHeight * 0.4, ['🎊', '✨', '🌾'], 14, 140);
-    floatText(window.innerWidth / 2, window.innerHeight * 0.4, `年貢${state.taxesPaid}回 クリア！`, { cls: 'good', size: 1.2 });
+    floatText(window.innerWidth / 2, window.innerHeight * 0.4, state.cleared ? `年貢${state.taxesPaid}回 納付！` : `★${state.taxesPaid}/${CONFIG.winTaxes} あと${CONFIG.winTaxes - state.taxesPaid}回でクリア`, { cls: 'good', size: 1.1 });
     await sleep(500);
     const added = state.lastObstacles;
     if (added.length) {
@@ -2476,7 +2473,6 @@ el.order.addEventListener('click', () => {
   const left = o.dueDay - state.day;
   say(o.done ? `注文達成 +${o.reward}金` : `注文：${CROPS[o.crop].name}を${o.need}個 → +${o.reward}金（${left > 0 ? `あと${left}日` : '今日まで'}）`, 3000);
 });
-el.mute.textContent = isMuted() ? '🔇' : '🔊';
 el.goldBox.querySelector('.stat-icon')!.innerHTML = art('coin');
 document.querySelector('.machine-top')!.innerHTML = `${art('coin')} 畑スロット ${art('coin')}`;
 document.querySelectorAll<HTMLElement>('.tab-ico[data-art]').forEach((n) => (n.innerHTML = art(n.dataset.art as ArtId)));
@@ -2494,16 +2490,38 @@ document.querySelectorAll<HTMLButtonElement>('.tab').forEach((t) =>
 );
 el.sheetBackdrop.addEventListener('click', closeSheet);
 $('sheet-close').addEventListener('click', closeSheet);
+// メニュー（遊び方・音・演出控えめ）
+const menu = $('hud-menu');
+const menuLabels = () => {
+  el.mute.textContent = isMuted() ? '🔇 音オフ' : '🔊 音オン';
+  $('calm-btn').textContent = isCalm() ? '✨ 演出 控えめ' : '✨ 演出 ふつう';
+};
+$('menu-btn').addEventListener('click', (e) => {
+  unlockAudio();
+  e.stopPropagation();
+  menuLabels();
+  menu.hidden = !menu.hidden;
+  if (!menu.hidden) window.setTimeout(() => document.addEventListener('click', () => (menu.hidden = true), { once: true }), 0);
+});
+$('calm-btn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  toggleCalm();
+  menuLabels();
+  sfx.select();
+});
 el.help.addEventListener('click', () => {
+  menu.hidden = true;
   // 年貢・お守り・結果などの画面の上には開かない
   if (busy || el.overlay.classList.contains('show')) return;
   unlockAudio();
   sfx.select();
   showHelp('rules');
 });
-el.mute.addEventListener('click', () => {
+el.mute.addEventListener('click', (e) => {
+  e.stopPropagation();
   unlockAudio();
-  el.mute.textContent = toggleMute() ? '🔇' : '🔊';
+  toggleMute();
+  menuLabels();
 });
 applySkin();
 setupLongPress();

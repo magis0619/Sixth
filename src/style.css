@@ -3829,3 +3829,135 @@ body::before {
   -webkit-touch-callout: none;
   user-select: none;
 }
+
+/* ==== ヘッダー（簡素版）：所持金と年貢だけ。年貢は言葉で ==== */
+.hud-tax {
+  gap: 8px;
+  padding: 0 12px 0 10px;
+  justify-content: flex-start;
+}
+
+.hud-tax .tax-label {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--ink-soft);
+}
+
+.hud-tax .tax-label .art {
+  font-size: 1.1rem;
+}
+
+.hud-tax > b {
+  font-size: 1.15rem;
+  font-weight: 900;
+}
+
+.hud-tax .tax-when {
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.hud-tax .tax-mark {
+  margin-left: auto;
+  font-size: 0.7rem;
+  font-weight: 900;
+  color: #fff;
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: var(--role-manual);
+}
+
+.hud-tax.short .tax-mark {
+  background: var(--danger);
+}
+
+.hud-tax.hard {
+  box-shadow: inset 0 0 0 2px #8a5bff;
+}
+
+.hud-tax.warn {
+  background: #ffe0dc;
+  box-shadow: inset 0 0 0 2px var(--danger);
+}
+
+.hud {
+  position: relative;
+}
+
+.hud-menu {
+  position: absolute;
+  right: 4px;
+  top: 52px;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 14px;
+  background: #fffdf7;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3), inset 0 0 0 2px #e8cf9e;
+}
+
+.hud-menu[hidden] {
+  display: none;
+}
+
+.hud-menu button {
+  border: none;
+  background: #f3ead8;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 800;
+  font-size: 0.9rem;
+  text-align: left;
+  white-space: nowrap;
+}
+
+/* 注文：畑の囲いの左上に下げた木の札 */
+.farm {
+  position: relative;
+}
+
+.order-tag {
+  position: absolute;
+  left: -6px;
+  top: -14px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  border: none;
+  padding: 3px 9px 3px 6px;
+  border-radius: 10px;
+  background: linear-gradient(#c98a4b, #9a6236);
+  color: #fff8e7;
+  font-weight: 900;
+  font-size: 0.85rem;
+  box-shadow: 0 3px 0 #5a3517, inset 0 0 0 2px rgba(255, 230, 190, 0.4);
+  transform: rotate(-4deg);
+}
+
+.order-tag[hidden] {
+  display: none;
+}
+
+.order-tag small {
+  font-size: 0.62rem;
+  opacity: 0.9;
+}
+
+.order-tag .order-ico {
+  font-size: 1.2rem;
+  display: flex;
+  background: #fff8e7;
+  border-radius: 50%;
+  padding: 1px;
+}
+
+.order-tag.done {
+  background: linear-gradient(#7fc456, #4f9a2c);
+  box-shadow: 0 3px 0 #2f6a14;
+}

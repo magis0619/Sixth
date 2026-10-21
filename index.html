@@ -16,9 +16,12 @@
         <div class="hud-bar">
           <div class="hud-gold" id="gold-box"><span class="stat-icon"></span><span id="gold">0</span><span id="day" hidden></span></div>
           <button class="hud-tax" id="tax" aria-label="年貢"></button>
-          <button class="hud-order" id="order" aria-label="注文"></button>
-          <button class="icon-btn" id="help" aria-label="遊び方と図鑑">？</button>
-          <button class="icon-btn" id="mute" aria-label="音のオン・オフ">🔊</button>
+          <button class="icon-btn" id="menu-btn" aria-label="メニュー">≡</button>
+        </div>
+        <div class="hud-menu" id="hud-menu" hidden>
+          <button id="help">？ 遊び方</button>
+          <button id="mute">🔊 音</button>
+          <button id="calm-btn">✨ 演出</button>
         </div>
       </header>
 
@@ -26,6 +29,7 @@
       <div class="hint" id="hint" aria-live="polite"></div>
 
       <section class="farm" aria-label="畑">
+        <button class="order-tag" id="order" aria-label="注文"></button>
         <div class="field" id="field"></div>
       </section>
 
