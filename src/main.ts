@@ -456,7 +456,7 @@ function renderField(): void {
     if (tile) label += `、${PLACES[tile].name}（${PLACES[tile].desc}）`;
     if (state.frost[i]) {
       cls.push('frozen');
-      html += `<span class="ice"></span><span class="badge-frost">${art('frost')}あと${state.frost[i]}日</span>`;
+      html += `<span class="ice"></span><span class="badge-frost">${art('frost')}${state.frost[i]}日</span>`;
       label += `、凍っている（あと${state.frost[i]}日）`;
     }
     if (targets) cls.push(targets.includes(i) ? 'target' : 'dim');

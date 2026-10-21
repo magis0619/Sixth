@@ -1,5 +1,5 @@
 // 画面の総点検：4サイズ×全画面を撮って、はみ出し・切れ・折り返し・重なり・小さすぎるボタンを数える
-// npm run build && npx vite preview --port 4173 を出した状態で  npm run audit -- [出力先] [s360|p430|land|pc]
+// npm run build && npx vite preview --port 4173 を出した状態で  npm run audit -- [出力先] [s360|p430|land|pc]（BASE=URL で別の場所も見られる）
 import { chromium } from '@playwright/test';
 const pw = { chromium };
 const OUT = process.argv[2] ?? 'screen-audit';
@@ -78,7 +78,7 @@ async function page(size, run) {
     localStorage.setItem('hatake-slot:calm', '1');
     if (r) localStorage.setItem('hatake-slot:run', r);
   }, run ?? null);
-  await p.goto('http://localhost:4173/');
+  await p.goto(process.env.BASE ?? 'http://localhost:4173/');
   await p.waitForTimeout(300);
   return { p, ctx, errs };
 }

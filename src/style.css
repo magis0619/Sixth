@@ -1917,6 +1917,7 @@ button {
   right: 5%;
   z-index: 2;
   display: flex;
+  white-space: nowrap;
   align-items: center;
   gap: 2px;
   font-size: max(0.6rem, calc(var(--cell) * 0.11));
