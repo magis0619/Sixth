@@ -4453,3 +4453,47 @@ body::before {
 .farm {
   margin-top: 14px;
 }
+
+/* ==== 景色は畑の上に。畑はスロットのすぐ上に寄せる ==== */
+.scene {
+  margin: -6px -12px -10px;
+}
+
+.farm {
+  margin-top: 6px;
+}
+
+/* ==== 次の日へ進む札：リール全体を覆い、下のリールは揺らさない ==== */
+.machine.ready-spin .reel .window,
+.machine.ready-spin .reel:nth-child(n) .window {
+  animation: none;
+}
+
+.spin-go {
+  inset: 0;
+  border-radius: 14px;
+}
+
+/* ==== 出目の札は、出目の絵の下の方に重ねる ==== */
+.reel {
+  position: relative;
+}
+
+.reel .tag {
+  position: absolute;
+  left: 50%;
+  bottom: 5px;
+  transform: translateX(-50%);
+  z-index: 3;
+  max-width: calc(100% - 8px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+
+/* 札の中央寄せは transform を使わない（揺れのアニメーションと重ならないように） */
+.reel .tag {
+  left: 0;
+  right: 0;
+  margin-inline: auto;
+  width: max-content;
+  transform: none;
+}
