@@ -537,9 +537,7 @@ function renderField(): void {
         html += inLine ? `<span class="badge-line">列 ×${mult}</span>` : `<span class="badge-single">単品 ×${CONFIG.singleMult}</span>`;
         label = `${def.name} 実、タップで${price}金で売る${inLine ? '（列ごと）' : '（単品は半値）'}`;
       } else {
-        html += `<span class="stage-name">${STAGE_NAMES[stageOf(crop)]}</span>`;
         html += `<span class="pips">${Array.from({ length: def.ripe }, (_, k) => `<i class="pip${k < crop.growth ? ' on' : ''}"></i>`).join('')}</span>`;
-        html += `<span class="grow-left">あと${def.ripe - crop.growth}</span>`;
         label = `${def.name} ${STAGE_NAMES[stageOf(crop)]}（あと${def.ripe - crop.growth}で実る）`;
       }
     } else if (state.weeds[i]) {
@@ -567,6 +565,14 @@ function renderField(): void {
     }
     b.setAttribute('aria-label', label);
   });
+}
+
+/** ショップの値段の札。買えるときは緑の値段、足りないときは灰色の値段と不足額 */
+function costHtml(price: number | null, affordable: boolean): string {
+  if (price === null) return '<span class="cost done">完了</span>';
+  return affordable
+    ? `<span class="cost"><b>${price}金</b></span>`
+    : `<span class="cost"><b>${price}金</b><small>あと${price - state.gold}</small></span>`;
 }
 
 function bagPct(bag: Record<SymbolId, number>, id: SymbolId): number {
@@ -614,9 +620,8 @@ function renderShop(): void {
     const affordable = canBuy(state, u.id);
     const weekly = state.weekly.includes(u.id as never);
     b.className = `item${affordable ? ' affordable' : ''}${available ? '' : ' soldout'}${weekly ? ' weekly' : ''}`;
-    const cost = !available ? '完了' : affordable ? `${price}金で買う` : `${price}金（あと${price - state.gold}）`;
     const ico = upgradeArt(u.id);
-    const html = `${weekly ? '<span class="weekly-tag">週替わり</span>' : ''}<span class="ico">${ico}</span><span class="name">${u.name}</span><span class="effect">${upgradeEffect(u.id)}</span><span class="cost">${cost}</span>`;
+    const html = `<span class="ico">${ico}</span><span class="text"><span class="name">${u.name}${weekly ? '<span class="weekly-tag">週替わり</span>' : ''}</span><span class="effect">${upgradeEffect(u.id)}</span></span>${costHtml(available ? price : null, affordable)}`;
     if (b.innerHTML !== html) b.innerHTML = html;
   });
 }
@@ -714,8 +719,7 @@ function renderFarmShop(): void {
   items.forEach((it, i) => {
     const b = el.farmShop.children[i] as HTMLButtonElement;
     b.className = `item${it.ok ? ' affordable' : ''}${it.price === null ? ' soldout' : ''}`;
-    const cost = it.price === null ? '完了' : it.ok ? `${it.price}金で買う` : `${it.price}金（あと${it.price - state.gold}）`;
-    const html = `<span class="ico">${it.ico}</span><span class="name">${it.name}</span><span class="effect">${it.effect}</span><span class="cost">${cost}</span>`;
+    const html = `<span class="ico">${it.ico}</span><span class="text"><span class="name">${it.name}</span><span class="effect">${it.effect}</span></span>${costHtml(it.price, it.ok)}`;
     if (b.innerHTML !== html) b.innerHTML = html;
   });
 }
@@ -1310,15 +1314,6 @@ async function resolveAutos(): Promise<void> {
       floatText(from.x, from.y - 40, `今日の売値 ×${ev.mult}！`, { cls: 'gold', size: 0.9 });
       render();
       el.field.querySelectorAll('.plot.ripe').forEach((p) => pop(p, 1.12));
-    } else if (ev.type === 'moon') {
-      autoOutcome[i] = ev.cells.length ? `${ev.cells.length}つ育った` : '空振り';
-      sfx.rare();
-      flash('#fff4b8', 500);
-      burst(from.x, from.y, ['🌟', '✨', '⭐'], 14, 90);
-      floatText(from.x, from.y - 40, '満月！ 全作物＋1', { cls: 'gold', size: 1 });
-      render();
-      afterGrowth(ev.cells, '+1');
-      await sleep(400);
     } else if (ev.type === 'clover') {
       autoOutcome[i] = '明日 金の種↑';
       sfx.rare();
@@ -1554,6 +1549,13 @@ function onPlotTap(cell: number): void {
       });
       flash('#fff3a0', 300);
       afterGrowth(affected, `+${CONFIG.sunGrowth * power + state.charms.sunBlessing}`);
+    } else if (sym === 'moon') {
+      sfx.rare();
+      flash('#fff4b8', 500);
+      const f = center(el.field);
+      burst(f.x, f.y, ['🌟', '✨', '⭐'], 16, 160);
+      floatText(f.x, f.y - 60, '満月！ 全作物＋1', { cls: 'gold', size: 1.1 });
+      afterGrowth(affected, '+1');
     } else if (sym === 'bee') {
       sfx.bee();
       beeFlight(shapeCells(state, 'x', cell).map((c) => el.field.children[c]), symHtml('bee'));
@@ -2003,7 +2005,7 @@ function startGame(resume: GameState | null = null): void {
   else clearRun();
   selected = null;
   armedNextDay = false;
-  done.spin = false;
+  if (!resume) done.spin = false;
   el.overlay.classList.remove('show');
   el.overlay.innerHTML = '';
   el.reels.innerHTML = '';
@@ -2015,6 +2017,11 @@ function startGame(resume: GameState | null = null): void {
 
 const ADD_EMOJI = Object.fromEntries(UPGRADES.map((u) => [u.id, upgradeArt(u.id)]));
 const ADD_NAME = Object.fromEntries(UPGRADES.map((u) => [u.id, u.name]));
+
+/** 準備画面の短い名前（「〜を足す」は見出しで分かるので省く） */
+function shortName(id: keyof typeof META.adds): string {
+  return ADD_NAME[id].replace(/を足す$/, '');
+}
 
 function showPrep(): void {
   const saved = loadRun();
@@ -2032,13 +2039,14 @@ function showPrep(): void {
         const on = unlocked && meta.loadout.includes(id);
         const fits = on || used + def.cost <= cap;
         if (!unlocked) {
-          return `<button class="prep-item locked" data-unlock="${id}" ${meta.points < def.unlock ? 'disabled' : ''}>
-            <span class="e">${ADD_EMOJI[id]}</span><b>${ADD_NAME[id]}</b>
-            <small>🔒 ${def.unlock}pt で解放</small><span class="cost">コスト${def.cost}</span></button>`;
+          const can = meta.points >= def.unlock;
+          return `<button class="prep-item locked${can ? ' unlockable' : ''}" data-unlock="${id}" ${can ? '' : 'disabled'}>
+            <span class="e">${ADD_EMOJI[id]}</span><b>${shortName(id)}</b>
+            <small>${can ? `${def.unlock}ptで解放する` : `🔒 ${def.unlock}pt`}</small><span class="cost">コスト${def.cost}</span></button>`;
         }
         return `<button class="prep-item${on ? ' on' : ''}${fits ? '' : ' full'}" data-toggle="${id}">
-          <span class="e">${ADD_EMOJI[id]}</span><b>${ADD_NAME[id]}</b>
-          <small>${on ? '✅ ショップに並べる' : fits ? 'タップで並べる' : 'コストが足りない'}</small><span class="cost">コスト${def.cost}</span></button>`;
+          <span class="e">${ADD_EMOJI[id]}</span><b>${shortName(id)}</b>
+          <small>${on ? '✓ 並べる' : fits ? 'タップで並べる' : 'コスト不足'}</small><span class="cost">コスト${def.cost}</span></button>`;
       })
       .join('');
     const charms = (Object.keys(META.charmUnlock) as (keyof typeof META.charmUnlock)[])
@@ -2046,9 +2054,10 @@ function showPrep(): void {
         const c = CHARMS[id];
         const price = META.charmUnlock[id]!;
         const unlocked = meta.unlockedCharms.includes(id);
-        return `<button class="prep-item charm-unlock${unlocked ? ' on' : ' locked'}" data-charm="${id}" ${unlocked || meta.points < price ? 'disabled' : ''}>
+        const can = !unlocked && meta.points >= price;
+        return `<button class="prep-item charm-unlock${unlocked ? ' on' : ' locked'}${can ? ' unlockable' : ''}" data-charm="${id}" ${can ? '' : 'disabled'}>
           <span class="e">${art(id as ArtId)}</span><b>${c.name}</b>
-          <small>${unlocked ? '✅ 年貢のお守りに出る' : `🔒 ${price}pt で解放`}</small><span class="cost">${CHARM_TIER_NAMES[c.tier]}</span></button>`;
+          <small>${unlocked ? '✓ 出るようになった' : can ? `${price}ptで解放する` : `🔒 ${price}pt`}</small><span class="cost">${CHARM_TIER_NAMES[c.tier]}</span></button>`;
       })
       .join('');
     el.overlay.innerHTML = `
@@ -2057,13 +2066,15 @@ function showPrep(): void {
         <div class="points">豊穣ポイント <b>${meta.points}pt</b><small>遊び終わるたびに「日数×${META.pointsPerDay}＋年貢×${META.pointsPerTax}」がたまる</small></div>
         <h3>🛠 ショップに並べる強化 <span class="cap${used > cap ? ' over' : ''}">コスト ${used} / ${cap}</span></h3>
         <div class="prep-grid">${adds}</div>
-        ${capPrice !== null ? `<button class="secondary" id="prep-cap" ${meta.points < capPrice ? 'disabled' : ''}>コスト上限 +${META.capacityStep}（${capPrice}pt）</button>` : '<p class="sub">コスト上限は最大です</p>'}
+        ${capPrice !== null ? `<button class="secondary prep-cap" id="prep-cap" ${meta.points < capPrice ? 'disabled' : ''}>コスト上限を +${META.capacityStep}<small>${meta.points < capPrice ? `${capPrice}pt（あと${capPrice - meta.points}pt）` : `${capPrice}ptで解放する`}</small></button>` : '<p class="sub">コスト上限は最大です</p>'}
         <h3>🎁 レアのお守り</h3>
         <div class="prep-grid">${charms}</div>
-        <p class="sub">カラス・虫を消すは毎回ショップに並ぶ。リールはお守り「からくり職人」で増える</p>
+        <p class="sub">満月・お邪魔を消す・畑の道具はいつもショップに並ぶ。リールはお守り「からくり職人」で増える</p>
         <button class="secondary" id="prep-help">📖 遊び方・図鑑</button>
-        ${saved ? `<button class="primary" id="prep-resume">続きから（${saved.day}日目・${saved.gold}金）</button>` : ''}
-        <button class="${saved ? 'secondary' : 'primary'}" id="prep-start">${saved ? (confirmNew ? '本当に新しく始める？（続きは消えます）' : '新しく始める') : 'はじめる！'}</button>
+        <div class="prep-actions">
+          ${saved ? `<button class="primary" id="prep-resume">続きから（${saved.day}日目・${saved.gold}金）</button>` : ''}
+          <button class="${saved ? 'secondary' : 'primary'}" id="prep-start">${saved ? (confirmNew ? '本当に新しく始める？（続きは消えます）' : '新しく始める') : 'はじめる！'}</button>
+        </div>
       </div>`;
     el.overlay.classList.add('show');
     el.overlay.querySelectorAll<HTMLButtonElement>('[data-toggle]').forEach((b) =>

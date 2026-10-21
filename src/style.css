@@ -2753,3 +2753,225 @@ body::before {
   font-size: 1.9em;
   line-height: 1;
 }
+
+/* ---- ショップ：1行に「絵・名前と効果・値段」。まとまりは背景色だけで示す ---- */
+.shop {
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+@media (min-width: 560px) {
+  .shop { grid-template-columns: 1fr 1fr; }
+}
+
+.shop .item {
+  grid-template-columns: 40px 1fr 76px;
+  column-gap: 10px;
+  min-height: 0;
+  padding: 8px 8px 8px 10px;
+  border-radius: 12px;
+  background: #fffdf7;
+  box-shadow: none;
+}
+
+.shop .item.weekly {
+  box-shadow: none;
+  background: #f1fbf8;
+}
+
+.shop .item .ico {
+  grid-row: auto;
+  font-size: 1.8rem;
+  justify-content: center;
+}
+
+.shop .item .text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.shop .item .name {
+  font-size: 0.88rem;
+  line-height: 1.3;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.shop .item .effect {
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.shop .weekly-tag {
+  position: static;
+  font-size: 0.6rem;
+  padding: 1px 6px;
+}
+
+.shop .item .cost {
+  grid-column: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  border-radius: 10px;
+  padding: 2px 4px;
+  background: transparent;
+  box-shadow: inset 0 0 0 2px #d9ccb4;
+  color: var(--ink-soft);
+}
+
+.shop .item .cost b {
+  font-size: 0.92rem;
+}
+
+.shop .item .cost small {
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.shop .item.affordable {
+  box-shadow: none;
+}
+
+.shop .item.affordable .cost {
+  background: var(--role-manual);
+  box-shadow: 0 3px 0 #2f7a22;
+  color: #fff;
+}
+
+.shop .item .cost.done {
+  box-shadow: none;
+}
+
+.shop-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 12px 2px 6px;
+  font-size: 0.95rem;
+}
+
+.shop-title:first-of-type {
+  margin-top: 2px;
+}
+
+.shop-title small {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+/* 見出しは下の中身と線で区切る（スクロールで下に潜った文字が透けないように） */
+.sheet-head {
+  box-shadow: 0 2px 0 var(--cloth-deep);
+  margin-bottom: 8px;
+}
+
+/* スロットと畑の間の空きを、畑の上下に均等に分ける */
+.machine {
+  margin-top: 0;
+}
+
+/* ---- 準備画面：選択中は背景だけ、未解放は灰色、解放できる物だけ金の点線 ---- */
+.prep-modal {
+  padding-bottom: 0;
+}
+
+.prep-grid {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.prep-item {
+  box-shadow: none;
+  background: #fffdf7;
+  min-height: 96px;
+  justify-content: center;
+}
+
+.prep-item b {
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.prep-item.on {
+  background: #e6f5d6;
+  box-shadow: inset 0 0 0 2px var(--role-manual);
+}
+
+.prep-item.on small {
+  color: #2f7a22;
+  font-weight: 800;
+}
+
+.prep-item.locked {
+  background: #efe7d6;
+  box-shadow: none;
+}
+
+.prep-item.locked b,
+.prep-item.locked small {
+  color: #9a8b74;
+}
+
+.prep-item.locked.unlockable,
+.prep-item.locked:not(:disabled) {
+  background: #fff8dc;
+  box-shadow: inset 0 0 0 2px var(--gold);
+  animation: none;
+}
+
+.prep-item.locked.unlockable small {
+  color: #8a6400;
+  font-weight: 800;
+}
+
+.prep-cap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.prep-cap small {
+  font-size: 0.68rem;
+  font-weight: 700;
+  opacity: 0.8;
+}
+
+/* 「はじめる」「続きから」は常に画面の下に見えるように貼り付ける */
+.prep-actions {
+  position: sticky;
+  bottom: 0;
+  margin: 10px -18px 0;
+  padding: 12px 18px 16px;
+  background: var(--cloth);
+  box-shadow: 0 -2px 0 var(--cloth-deep);
+}
+
+.prep-actions .primary,
+.prep-actions .secondary {
+  margin-top: 6px;
+}
+
+/* 作物が乗った特別なマスは、上の真ん中に小さな印（右下は成長の点と重なる）。堆肥は枠を付けない（実りの金枠と紛らわしい） */
+.plot[class*='crop-'] .badge-tile {
+  top: 4%;
+  bottom: auto;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  font-size: max(0.8rem, calc(var(--cell) * 0.17));
+}
+
+.plot.ripe[class*='crop-'] .badge-tile {
+  display: none;
+}
+
+.plot.tile-compost {
+  box-shadow: none;
+}

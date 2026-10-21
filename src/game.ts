@@ -203,6 +203,7 @@ export function around(state: GameState, cell: number, r: number): number[] {
 export function shapeCells(state: GameState, shape: ShapeId, cell: number): number[] {
   if (!inField(state, cell)) return [];
   if (shape === 'x') return [cell, ...offsets(state, cell, [[-1, -1], [1, -1], [-1, 1], [1, 1]])];
+  if (shape === 'all') return fieldCells(state);
   if (shape === 'cross') return fieldCells(state).filter((c) => cellX(c) === cellX(cell) || cellY(c) === cellY(cell));
   // 縦一列：その列の全マス
   return fieldCells(state).filter((c) => cellX(c) === cellX(cell));
@@ -504,8 +505,7 @@ export type AutoEvent =
   | { type: 'weed'; cells: number[]; warded: boolean }
   | { type: 'tanuki'; taken: { cell: number; crop: Crop; price: number }[]; escaped: boolean; stolen: number; guarded: number[] }
   | { type: 'frost'; cells: number[] }
-  | { type: 'clover'; boost: number }
-  | { type: 'moon'; cells: number[] };
+  | { type: 'clover'; boost: number };
 
 export function crowEatChance(_state: GameState, power: number): number {
   return Math.min(1, power > 1 ? CONFIG.crowEatChance * CONFIG.crowFeverMultiplier : CONFIG.crowEatChance);
@@ -530,11 +530,6 @@ export function resolveAuto(state: GameState, reel: number, rng: Rng): AutoEvent
     case 'merchant':
       state.priceMult += CONFIG.merchantBonus * r.power;
       return { type: 'merchant', mult: state.priceMult };
-    case 'moon': {
-      const cells: number[] = [];
-      fieldCells(state).forEach((i) => grow(state, i, r.power, cells));
-      return { type: 'moon', cells };
-    }
     case 'clover':
       state.cloverBoost = Math.max(state.cloverBoost, 1) * CONFIG.cloverMultiplier * r.power;
       return { type: 'clover', boost: state.cloverBoost };
@@ -692,6 +687,9 @@ export function useSymbol(state: GameState, reel: number, cell: number | null): 
       return [cell!];
     case 'bee':
       shapeCells(state, 'x', cell!).forEach((i) => grow(state, i, CONFIG.beeGrowth * r.power, affected));
+      return affected;
+    case 'moon':
+      fieldCells(state).forEach((i) => grow(state, i, r.power, affected));
       return affected;
     case 'sun': {
       const amount = CONFIG.sunGrowth * r.power + state.charms.sunBlessing;
