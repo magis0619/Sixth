@@ -377,16 +377,16 @@ button {
 }
 
 .pip {
-  width: 8px;
-  height: 8px;
+  width: max(10px, calc(var(--cell) * 0.14));
+  height: max(10px, calc(var(--cell) * 0.14));
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.3);
-  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.55);
+  background: rgba(0, 0, 0, 0.45);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.7);
 }
 
 .pip.on {
-  background: var(--grass);
-  box-shadow: inset 0 0 0 1.5px #fff;
+  background: #7be040;
+  box-shadow: inset 0 0 0 2px #fff, 0 0 5px #b8ff8a;
 }
 
 .price {
@@ -2402,7 +2402,7 @@ button {
 :root { --sky2: #e3f4fc; --grass2: #84c653; }
 :root[data-time='morning'] { --sky: #ffd2b0; --sky2: #fff0dc; }
 :root[data-time='evening'] { --sky: #ff9a6a; --sky2: #ffd0a0; }
-:root[data-time='night'] { --sky: #27315e; --sky2: #4c5a8c; }
+:root[data-time='night'] { --sky: #5a6aa8; --sky2: #8d9ccc; }
 :root[data-season='summer'] { --grass: #6cc23a; --grass2: #58ad2a; }
 :root[data-season='autumn'] { --grass: #c9a64e; --grass2: #b08a3a; }
 :root[data-season='winter'] { --grass: #dbe7ee; --grass2: #c4d4de; }
@@ -2626,10 +2626,130 @@ body::before {
 }
 
 :root[data-time='morning'] body::before { background: rgba(255, 200, 170, 0.12); }
-:root[data-time='evening'] body::before { background: rgba(255, 130, 60, 0.2); }
-:root[data-time='night'] body::before { background: rgba(40, 50, 130, 0.32); }
+:root[data-time='evening'] body::before { background: rgba(255, 150, 80, 0.12); }
+:root[data-time='night'] body::before { background: rgba(70, 90, 170, 0.1); }
 
 /* マスの中身は押せない（押した要素が描き直しで入れ替わってもクリックがマスに届くように） */
 .plot > * {
   pointer-events: none;
+}
+
+/* 育ち具合：段階の名前と、実るまでの残りを文字で */
+.stage-name {
+  position: absolute;
+  top: 5%;
+  right: 5%;
+  background: rgba(255, 250, 240, 0.92);
+  color: #3d3326;
+  border-radius: 8px;
+  padding: 0 6px;
+  font-size: max(0.66rem, calc(var(--cell) * 0.13));
+  font-weight: 800;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+}
+
+.grow-left {
+  position: absolute;
+  bottom: 22%;
+  left: 5%;
+  background: rgba(61, 51, 38, 0.78);
+  color: #fff;
+  border-radius: 8px;
+  padding: 0 5px;
+  font-size: max(0.62rem, calc(var(--cell) * 0.12));
+  font-weight: 800;
+}
+
+.pips {
+  bottom: 5%;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px 5px;
+  border-radius: 999px;
+}
+
+/* 特別なマス：土の色だけでなく名前の札を出す */
+.badge-tile {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(255, 250, 240, 0.92);
+  color: #3d3326;
+  border-radius: 999px;
+  padding: 0 6px 0 2px;
+  font-size: max(0.64rem, calc(var(--cell) * 0.12));
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+  top: 5%;
+  left: 5%;
+  right: auto;
+}
+
+.badge-tile b {
+  font-weight: 800;
+}
+
+.plot .empty small {
+  display: block;
+  font-size: 0.72em;
+  opacity: 0.9;
+}
+
+.plot.tile-compost .empty,
+.plot.tile-water .empty {
+  font-size: max(0.78rem, calc(var(--cell) * 0.16));
+  font-weight: 800;
+  color: #fff;
+}
+
+.plot.tile-compost {
+  background-color: #6a3f1c;
+  background-image: radial-gradient(circle, rgba(255, 220, 120, 0.35) 0 2px, transparent 3px);
+  background-size: 14px 14px;
+}
+
+.plot.tile-water {
+  background-color: #4f86a8;
+  background-image: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.22) 0 2px, transparent 2px 9px);
+}
+
+/* 作物が植わっているマスでは、特別なマスの札を左の中段へ（左上は作物の種類札） */
+.plot[class*='crop-'] .badge-tile {
+  top: 34%;
+}
+
+/* 特別なマス（作物・道具があるときは右下に小さな印、空きマスは中央に名札） */
+.badge-tile {
+  top: auto;
+  left: auto;
+  bottom: 5%;
+  right: 5%;
+  padding: 2px;
+  border-radius: 50%;
+  font-size: max(0.9rem, calc(var(--cell) * 0.2));
+}
+
+.plot[class*='crop-'] .badge-tile {
+  top: auto;
+}
+
+.tile-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  font-size: max(0.8rem, calc(var(--cell) * 0.17));
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.55);
+  white-space: nowrap;
+}
+
+.tile-label small {
+  font-size: 0.66em;
+  font-weight: 800;
+}
+
+.tile-ico {
+  font-size: 1.9em;
+  line-height: 1;
 }

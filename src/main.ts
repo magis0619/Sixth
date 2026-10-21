@@ -509,7 +509,8 @@ function renderField(): void {
     const tile = state.tiles[i];
     if (tile) {
       cls.push(`tile-${tile}`);
-      html += `<span class="badge-tile">${art(PLACE_ART[tile])}</span>`;
+      // 空きマスでは中央に大きな名札を出すので、角の札は作物が乗っているときだけ
+      if (crop || tool) html += `<span class="badge-tile">${art(PLACE_ART[tile])}</span>`;
     }
     if (tool) {
       cls.push('tool');
@@ -536,15 +537,19 @@ function renderField(): void {
         html += inLine ? `<span class="badge-line">列 ×${mult}</span>` : `<span class="badge-single">単品 ×${CONFIG.singleMult}</span>`;
         label = `${def.name} 実、タップで${price}金で売る${inLine ? '（列ごと）' : '（単品は半値）'}`;
       } else {
+        html += `<span class="stage-name">${STAGE_NAMES[stageOf(crop)]}</span>`;
         html += `<span class="pips">${Array.from({ length: def.ripe }, (_, k) => `<i class="pip${k < crop.growth ? ' on' : ''}"></i>`).join('')}</span>`;
-        label = `${def.name} ${STAGE_NAMES[stageOf(crop)]}`;
+        html += `<span class="grow-left">あと${def.ripe - crop.growth}</span>`;
+        label = `${def.name} ${STAGE_NAMES[stageOf(crop)]}（あと${def.ripe - crop.growth}で実る）`;
       }
     } else if (state.weeds[i]) {
       cls.push('weedy');
       html += `<span class="crop">${art('weed')}</span><span class="pull">${weedCost(state) ? `抜く ${weedCost(state)}金` : '抜く'}</span>`;
       label = `雑草、タップで抜く（${weedCost(state)}金）`;
     } else {
-      html += '<span class="empty">空き</span>';
+      html += tile
+        ? `<span class="tile-label"><span class="tile-ico">${art(PLACE_ART[tile])}</span>${PLACES[tile].name.replace('のマス', '')}<small>${tile === 'water' ? '毎日 成長+1' : '売値 ×2'}</small></span>`
+        : '<span class="empty">空き</span>';
     }
     if (tile) label += `、${PLACES[tile].name}（${PLACES[tile].desc}）`;
     if (state.frost[i]) {
@@ -1914,7 +1919,7 @@ function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
       <li><b>フィーバー</b>：同じ絵柄が${CONFIG.feverCount}つ以上そろうと、絵柄ごとの役（芽吹き・虹・夏祭り・はちみつ・大商い・幸運など）と金貨の大当たり。カラス・虫がそろうと「群れ」で危険</li>
       <li><b>列の収穫</b>：縦・横・斜めに3つ以上そろった実は、1つタップで列ごと売れて<b>×${CONFIG.lineMult}</b>。同じ作物だけの列ならさらに<b>×${CONFIG.sameCropMult}</b>、列が交わるマスはさらに上乗せ。<b>列に入らない単品は半値</b></li>
       <li><b>ショップ</b>：準備画面で選んだ「足す」強化と、カラス・虫を消す（消すたび価格×${CONFIG.removeGrowth}）</li>
-      <li><b>豊穣ポイント</b>：遊び終わるたびに「日数＋年貢×${META.pointsPerTax}」（クリアで+${META.clearBonus}）。準備画面で解放に使う</li>
+      <li><b>豊穣ポイント</b>：遊び終わるたびに「日数×${META.pointsPerDay}＋年貢×${META.pointsPerTax}」（クリアで+${META.clearBonus}）。準備画面で解放に使う</li>
     </ol>`;
   const symbols = SYMBOL_ORDER.map((id) => {
     const d = SYMBOLS[id];
@@ -2049,7 +2054,7 @@ function showPrep(): void {
     el.overlay.innerHTML = `
       <div class="modal prep-modal" role="dialog" aria-label="準備">
         <h2>${art('sprout')} 畑スロット ${art('sprout')}</h2>
-        <div class="points">豊穣ポイント <b>${meta.points}pt</b><small>遊び終わるたびに「日数＋年貢×${META.pointsPerTax}」がたまる</small></div>
+        <div class="points">豊穣ポイント <b>${meta.points}pt</b><small>遊び終わるたびに「日数×${META.pointsPerDay}＋年貢×${META.pointsPerTax}」がたまる</small></div>
         <h3>🛠 ショップに並べる強化 <span class="cap${used > cap ? ' over' : ''}">コスト ${used} / ${cap}</span></h3>
         <div class="prep-grid">${adds}</div>
         ${capPrice !== null ? `<button class="secondary" id="prep-cap" ${meta.points < capPrice ? 'disabled' : ''}>コスト上限 +${META.capacityStep}（${capPrice}pt）</button>` : '<p class="sub">コスト上限は最大です</p>'}

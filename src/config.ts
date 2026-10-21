@@ -390,9 +390,9 @@ export type AddUpgradeId = Exclude<UpgradeId, `remove${string}`>;
  */
 export const META = {
   /** 豊穣ポイント = 到達日数 × perDay + 年貢の納付回数 × perTax（クリアしていれば clearBonus を加算） */
-  pointsPerDay: 1,
-  pointsPerTax: 5,
-  clearBonus: 30,
+  pointsPerDay: 0.5,
+  pointsPerTax: 3,
+  clearBonus: 20,
   /** 最初から解放されている「足す」強化 */
   startUnlocked: ['addSun', 'addRain'] as AddUpgradeId[],
   /** 「足す」強化の解放ポイントと、ショップに並べるコスト */
@@ -415,5 +415,5 @@ export const META = {
   /** ショップに並べられるコストの上限と、その拡張 */
   baseCapacity: 4,
   capacityStep: 2,
-  capacityPrices: [30, 50, 80],
+  capacityPrices: [70, 130, 220],
 };
