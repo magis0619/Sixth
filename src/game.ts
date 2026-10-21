@@ -647,17 +647,48 @@ export function isRipe(crop: Crop | null): boolean {
   return crop !== null && crop.growth >= CROPS[crop.kind].ripe;
 }
 
-/** cell から上下左右でつながった実のマス（cell 自身を含む）。形は問わない */
+/** 一列（縦・横・斜め）に並ぶとみなす最小の個数 */
+const MIN_RUN = 3;
+const RUN_DIRS: [number, number][] = [[1, 0], [0, 1], [1, 1], [1, -1]];
+
+/**
+ * cell を通る、縦・横・斜めに MIN_RUN 個以上そろった一列（実ったマスだけ）。
+ * 一列にならない並び（L字の3個など）は含まれない
+ */
+function runsThrough(state: GameState, cell: number): number[][] {
+  const cols = CONFIG.fieldCols;
+  const rows = CONFIG.fieldRows;
+  const ok = (x: number, y: number) =>
+    x >= 0 && x < cols && y >= 0 && y < rows && isRipe(state.field[y * cols + x]) && !state.frost[y * cols + x];
+  const cx = cell % cols;
+  const cy = Math.floor(cell / cols);
+  const runs: number[][] = [];
+  for (const [dx, dy] of RUN_DIRS) {
+    const run = [cell];
+    for (let x = cx + dx, y = cy + dy; ok(x, y); x += dx, y += dy) run.push(y * cols + x);
+    for (let x = cx - dx, y = cy - dy; ok(x, y); x -= dx, y -= dy) run.push(y * cols + x);
+    if (run.length >= MIN_RUN) runs.push(run);
+  }
+  return runs;
+}
+
+/**
+ * cell と一緒に収穫できるマス（cell 自身を含む）。
+ * 縦・横・斜めに3個以上そろった列が、マスを共有してつながったもの（コの字・十字・Zなどは可、L字の3個は不可）。
+ * 列に入らない実は単品
+ */
 export function ripeGroup(state: GameState, cell: number): number[] {
   if (!isRipe(state.field[cell]) || state.frost[cell]) return [];
   const seen = new Set<number>([cell]);
   const queue = [cell];
   while (queue.length) {
     const c = queue.shift()!;
-    for (const n of neighbors(c)) {
-      if (!seen.has(n) && isRipe(state.field[n]) && !state.frost[n]) {
-        seen.add(n);
-        queue.push(n);
+    for (const run of runsThrough(state, c)) {
+      for (const n of run) {
+        if (!seen.has(n)) {
+          seen.add(n);
+          queue.push(n);
+        }
       }
     }
   }

@@ -1446,7 +1446,7 @@ function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
       <li><b>年貢</b>：${CONFIG.taxPeriod}日ごとに自動で徴収。払えないと終わり。${CONFIG.winTaxes}回納めるとクリア</li>
       <li>年貢を納めるたびに<b>お守り</b>を3つから1つ選べる。代わりに<b>虫</b>が1枚増える</li>
       <li><b>フィーバー</b>：同じ絵柄が${CONFIG.feverCount}つ以上そろうと、絵柄ごとの役（芽吹き・虹・夏祭り・はちみつ・大商い・幸運など）と金貨の大当たり。カラス・虫がそろうと「群れ」で危険</li>
-      <li><b>つながり収穫</b>：上下左右でつながった実は、1つタップでまとめて売れる。形は自由（コの字・L字もOK）。数が多いほど高い（2個×${groupMultiplier(2)}・3個×${groupMultiplier(3)}・5個×${groupMultiplier(5)}・7個×${groupMultiplier(7)}・9個×${groupMultiplier(9)}）</li>
+      <li><b>つながり収穫</b>：縦・横・斜めに3個以上そろった実は、1つタップでまとめて売れる。そろった列がつながっていればコの字・十字もOK（3個のL字は不可）。数が多いほど高い（2個×${groupMultiplier(2)}・3個×${groupMultiplier(3)}・5個×${groupMultiplier(5)}・7個×${groupMultiplier(7)}・9個×${groupMultiplier(9)}）</li>
       <li><b>ショップ</b>：準備画面で選んだ「足す」強化と、カラス・虫を消す（消すたび価格×${CONFIG.removeGrowth}）</li>
       <li><b>豊穣ポイント</b>：遊び終わるたびに「日数＋年貢×${META.pointsPerTax}」（クリアで+${META.clearBonus}）。準備画面で解放に使う</li>
     </ol>`;
