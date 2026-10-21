@@ -182,6 +182,48 @@ export const sfx = {
   gameOver() {
     [12, 11, 10, 9, 7, 4, 0].forEach((n, i) => tone(NOTE(n), 0.3, { type: 'triangle', vol: 0.25, delay: i * 0.12 }));
   },
+  /** リーチ：最後のリールが回る間の緊張音（低い鼓動＋上がっていく音） */
+  reach() {
+    for (let i = 0; i < 6; i++) {
+      tone(70, 0.12, { type: 'sine', vol: 0.4, delay: i * 0.32 });
+      tone(62, 0.12, { type: 'sine', vol: 0.3, delay: i * 0.32 + 0.14 });
+    }
+    tone(NOTE(0), 1.9, { type: 'sawtooth', vol: 0.05, slideTo: NOTE(12) });
+  },
+  /** カットインの飛び込み。段階が上がるほど高く派手に */
+  cutIn(level: number) {
+    noise(0.25, { vol: 0.25, freq: 1800 + level * 900, q: 0.6 });
+    tone(NOTE(level * 3), 0.25, { type: 'sawtooth', vol: 0.12, slideTo: NOTE(12 + level * 4) });
+    if (level >= 2) [0, 7, 12].forEach((n, i) => tone(NOTE(12 + level * 2 + n), 0.15, { type: 'square', vol: 0.1, delay: 0.2 + i * 0.06 }));
+  },
+  /** フリーズ：ブラウン管が消えるような音 */
+  crt() {
+    tone(1600, 0.35, { type: 'sine', vol: 0.2, slideTo: 60 });
+    noise(0.2, { vol: 0.3, freq: 4000, q: 0.3 });
+  },
+  /** 静寂のあとの鐘 */
+  bell() {
+    [0, 12, 19, 24].forEach((n, i) => tone(NOTE(n - 12), 2.4, { type: 'sine', vol: [0.45, 0.25, 0.12, 0.08][i] }));
+    tone(NOTE(-12) * 1.01, 2.4, { type: 'sine', vol: 0.2 });
+  },
+  /** 筐体が割れる */
+  glass() {
+    noise(0.5, { vol: 0.45, freq: 6000, q: 0.4 });
+    for (let i = 0; i < 10; i++) tone(2500 + Math.random() * 3000, 0.08, { type: 'triangle', vol: 0.1, delay: 0.05 + Math.random() * 0.4 });
+    tone(90, 0.4, { type: 'square', vol: 0.25, slideTo: 40 });
+  },
+  /** フリーズ明けのファンファーレ */
+  fanfare() {
+    const seq = [0, 0, 0, 4, 7, 7, 12, 16, 19, 24];
+    const len = [0.12, 0.12, 0.12, 0.3, 0.12, 0.12, 0.3, 0.15, 0.15, 0.8];
+    let t = 0;
+    seq.forEach((n, i) => {
+      tone(NOTE(12 + n), len[i], { type: 'square', vol: 0.13, delay: t });
+      tone(NOTE(n), len[i], { type: 'triangle', vol: 0.18, delay: t });
+      t += len[i];
+    });
+    noise(1.2, { vol: 0.1, freq: 7000, q: 0.3, delay: t - 0.8 });
+  },
   newReel() {
     for (let i = 0; i < 6; i++) tone(NOTE(12 + i * 2), 0.1, { type: 'square', vol: 0.1, delay: i * 0.04 });
   },

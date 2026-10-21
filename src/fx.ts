@@ -6,6 +6,31 @@ const layer = (): HTMLElement => document.getElementById('fx')!;
 
 const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
+/** 「演出控えめ」：揺れ・点滅・フリーズを弱める。端末の「視差効果を減らす」設定でも有効 */
+let calm = reduceMotion;
+try {
+  const saved = localStorage.getItem('hatake-slot:calm');
+  if (saved !== null) calm = saved === '1';
+} catch {
+  // ストレージが使えない環境では既定値のまま
+}
+document.documentElement.classList.toggle('calm', calm);
+
+export function isCalm(): boolean {
+  return calm;
+}
+
+export function toggleCalm(): boolean {
+  calm = !calm;
+  document.documentElement.classList.toggle('calm', calm);
+  try {
+    localStorage.setItem('hatake-slot:calm', calm ? '1' : '0');
+  } catch {
+    // 保存できなくても動作は続ける
+  }
+  return calm;
+}
+
 export function center(el: Element): { x: number; y: number } {
   const r = el.getBoundingClientRect();
   return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
@@ -40,7 +65,7 @@ export function floatText(x: number, y: number, text: string, opts: { cls?: stri
 
 /** 中心から粒子を散らす */
 export function burst(x: number, y: number, chars: string[], count = 10, spread = 90): void {
-  const n = reduceMotion ? Math.min(count, 4) : count;
+  const n = calm ? Math.min(count, 4) : count;
   for (let i = 0; i < n; i++) {
     const el = spawn(glyph(chars[i % chars.length]), 'fx-particle', x, y);
     const angle = (Math.PI * 2 * i) / n + Math.random() * 0.6;
@@ -82,7 +107,7 @@ export function flyTo(from: { x: number; y: number }, toEl: Element, char: strin
 }
 
 export function shake(el: Element, strength = 6): void {
-  if (reduceMotion) return;
+  if (calm) return;
   const s = strength;
   el.animate(
     [
@@ -107,13 +132,13 @@ export function pop(el: Element, scale = 1.25): void {
 export function flash(color: string, dur = 350): void {
   const el = spawn('', 'fx-flash', 0, 0);
   el.style.background = color;
-  el.animate([{ opacity: 0.7 }, { opacity: 0 }], { duration: dur }).onfinish = () => el.remove();
+  el.animate([{ opacity: calm ? 0.2 : 0.7 }, { opacity: 0 }], { duration: dur }).onfinish = () => el.remove();
 }
 
 /** 画面上部から紙吹雪 */
 export function confetti(count = 40): void {
   const chars = ['🎉', '✨', '💰', '🪙', '⭐'];
-  const n = reduceMotion ? 8 : count;
+  const n = calm ? 8 : count;
   for (let i = 0; i < n; i++) {
     const x = Math.random() * window.innerWidth;
     const el = spawn(glyph(chars[i % chars.length]), 'fx-particle', x, -20);

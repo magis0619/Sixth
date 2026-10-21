@@ -1939,3 +1939,201 @@ button {
   border-radius: 999px;
   padding: 0 8px;
 }
+
+/* ---- スロットの演出（リーチ・カットイン・フリーズ） ---- */
+.modal .secondary small {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 600;
+  opacity: 0.7;
+}
+
+/* 回転中は筐体が細かく震える */
+.machine.rumble {
+  animation: rumble 0.09s linear infinite;
+}
+
+@keyframes rumble {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(0.7px, -0.5px); }
+  50% { transform: translate(-0.6px, 0.6px); }
+  75% { transform: translate(0.5px, 0.4px); }
+  100% { transform: translate(0, 0); }
+}
+
+/* リーチ：残りのリールに光を当て、ほかは暗くする */
+.reel {
+  position: relative;
+}
+
+.machine.spotlight .reel:not(.reach) .window {
+  filter: brightness(0.4) saturate(0.6);
+  transition: filter 0.2s;
+}
+
+.reel.reach .window {
+  animation: reach-pulse 0.32s ease-in-out infinite;
+}
+
+.reel.reach::before {
+  content: '';
+  position: absolute;
+  left: -30%;
+  right: -30%;
+  top: -60px;
+  bottom: 0;
+  background: linear-gradient(rgba(255, 250, 200, 0.7), rgba(255, 250, 200, 0));
+  clip-path: polygon(42% 0, 58% 0, 100% 100%, 0 100%);
+  pointer-events: none;
+  z-index: 4;
+  animation: spot-in 0.25s ease-out;
+}
+
+@keyframes reach-pulse {
+  0%, 100% { box-shadow: inset 0 0 0 4px #ff2a2a, 0 0 0 3px #ff2a2a, 0 0 14px #ff2a2a; }
+  50% { box-shadow: inset 0 0 0 4px #ffd0d0, 0 0 0 5px #ff2a2a, 0 0 34px 6px #ff2a2a; }
+}
+
+@keyframes spot-in {
+  from { opacity: 0; transform: scaleX(0.3); }
+}
+
+/* カットイン：斜めの帯にキャラと期待度 */
+.cutin {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  pointer-events: none;
+  background: rgba(20, 8, 0, 0.35);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.cutin-band {
+  width: 100%;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background:
+    repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.18) 0 14px, transparent 14px 34px),
+    var(--cutin);
+  box-shadow: 0 0 0 4px #fff, 0 0 0 8px var(--cutin), 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.cutin.lv-0 { --cutin: #2f6fe8; }
+.cutin.lv-1 { --cutin: #1fa553; }
+.cutin.lv-2 { --cutin: #e3262b; }
+.cutin.lv-3 { --cutin: linear-gradient(90deg, #ff3b3b, #ffb321, #f6ff3b, #3bff6f, #3bc9ff, #8a5bff, #ff3bd4); }
+.cutin.lv-3 .cutin-band { box-shadow: 0 0 0 4px #fff, 0 0 40px 10px #fff6a8; }
+
+.cutin-face {
+  font-size: 84px;
+  line-height: 1;
+  background: #fff;
+  border-radius: 50%;
+  padding: 6px;
+  box-shadow: 0 0 0 4px var(--wood-darker, #3b1a0e);
+  transform: rotate(-8deg);
+}
+
+.cutin-band b {
+  font-size: 2.6rem;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: 0.05em;
+  -webkit-text-stroke: 2px #2a1000;
+  text-shadow: 0 4px 0 #2a1000;
+  transform: skewX(-10deg);
+}
+
+.cutin.lv-2 .cutin-band b,
+.cutin.lv-3 .cutin-band b {
+  animation: pulse 0.3s ease-in-out infinite;
+}
+
+/* フリーズ：暗転と、ブラウン管が消えるような白い線 */
+.freeze-black {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #000;
+  pointer-events: none;
+}
+
+.crt-line {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  transform: scale(0, 0.004);
+  box-shadow: 0 0 40px 10px #fff;
+}
+
+/* 割れた筐体のガラス */
+.crack {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 6;
+  fill: none;
+  stroke: #fff;
+  stroke-width: 2.2;
+  stroke-linejoin: bevel;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.7));
+  opacity: 0.85;
+}
+
+.crack polyline {
+  vector-effect: non-scaling-stroke;
+}
+
+.crack circle {
+  fill: #fff;
+}
+
+/* フリーズ後：筐体と出目が虹色に光る */
+.machine.rainbow {
+  animation: rainbow-glow 1.2s linear infinite;
+}
+
+@keyframes rainbow-glow {
+  0% { box-shadow: 0 5px 0 #7d2a14, inset 0 0 0 4px #ff3b3b, 0 0 26px 6px #ff3b3b; }
+  20% { box-shadow: 0 5px 0 #7d2a14, inset 0 0 0 4px #ffb321, 0 0 26px 6px #ffb321; }
+  40% { box-shadow: 0 5px 0 #7d2a14, inset 0 0 0 4px #3bff6f, 0 0 26px 6px #3bff6f; }
+  60% { box-shadow: 0 5px 0 #7d2a14, inset 0 0 0 4px #3bc9ff, 0 0 26px 6px #3bc9ff; }
+  80% { box-shadow: 0 5px 0 #7d2a14, inset 0 0 0 4px #8a5bff, 0 0 26px 6px #8a5bff; }
+  100% { box-shadow: 0 5px 0 #7d2a14, inset 0 0 0 4px #ff3b3b, 0 0 26px 6px #ff3b3b; }
+}
+
+.reel.rainbow-sym .window {
+  background: linear-gradient(120deg, #ffd6d6, #fff1c4, #e2ffd0, #d0f3ff, #e6d8ff, #ffd6f3, #ffd6d6);
+  background-size: 300% 100%;
+  animation: rainbow-bg 1.5s linear infinite;
+}
+
+.reel.rainbow-sym .cell-sym {
+  animation: rainbow-hue 1.2s linear infinite;
+}
+
+@keyframes rainbow-bg {
+  to { background-position: 300% 0; }
+}
+
+@keyframes rainbow-hue {
+  0% { filter: hue-rotate(0deg) drop-shadow(0 0 6px #fff); }
+  100% { filter: hue-rotate(360deg) drop-shadow(0 0 6px #fff); }
+}
+
+/* 演出控えめ：揺れ・点滅を止める */
+.calm .machine.rumble,
+.calm .machine.rainbow,
+.calm .reel.reach .window,
+.calm .cutin-band b,
+.calm .reel.rainbow-sym .cell-sym,
+.calm .reel.rainbow-sym .window {
+  animation: none;
+}

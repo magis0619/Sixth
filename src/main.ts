@@ -14,7 +14,7 @@ import {
 } from './meta.ts';
 import { art, type ArtId } from './art.ts';
 import type { Crop } from './game.ts';
-import { burst, center, confetti, flash, floatText, flyTo, pop, shake, sleep, vibrate } from './fx.ts';
+import { burst, center, confetti, flash, floatText, flyTo, isCalm, pop, shake, sleep, toggleCalm, vibrate } from './fx.ts';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const rng = Math.random;
@@ -375,7 +375,7 @@ function renderReelStates(): void {
     const tag = reelTag(i);
     const fever = r && r.power > 1;
     const badFever = fever && SYMBOLS[r.symbol].rarity === 'bad';
-    b.className = `reel ${r ? roleClass(r.symbol) : ''} ${tag.cls}${r?.symbol === 'goldSeed' ? ' rare' : ''}${fever ? (badFever ? ' fever-bad' : ' fever') : ''}`;
+    b.className = `reel ${r ? roleClass(r.symbol) : ''} ${tag.cls}${r?.symbol === 'goldSeed' ? ' rare' : ''}${fever ? (badFever ? ' fever-bad' : ' fever') : ''}${r && el.machine.classList.contains('rainbow') && state.fever.includes(r.symbol) ? ' rainbow-sym' : ''}`;
     b.querySelector('.tag')!.textContent = fever ? `${badFever ? '⚠️' : '🔥'}${tag.text}` : tag.text;
     renderCount(b, i);
     b.setAttribute('aria-label', r ? `${SYMBOLS[r.symbol].name}: ${tag.text}` : 'リール');
@@ -552,6 +552,10 @@ async function onSpin(): Promise<void> {
   }
   if (state.day > 0) done.next = true;
   armedNextDay = false;
+  el.spin.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(6px) scale(0.97)' }, { transform: 'translateY(0)' }], { duration: 220 });
+  // 前の日のフリーズの名残（虹の枠・ひび）を片付ける
+  el.machine.classList.remove('rainbow');
+  el.machine.querySelector('.crack')?.remove();
   selected = null;
   busy = true;
   done.spin = true;
@@ -578,8 +582,11 @@ async function onSpin(): Promise<void> {
     return;
   }
   drawDay(state, rng);
+  // フリーズ中に結果が見えないよう、描き直すのは演出のあと
+  const show = planShow();
+  if (show.freeze) await playFreeze();
   render();
-  await spinReels();
+  await spinReels(show);
   if (state.fever.length) {
     await showFever();
     await playFeverRoles(resolveFever(state, rng));
@@ -812,23 +819,153 @@ async function playFeverRoles(events: FeverEvent[]): Promise<void> {
   render();
 }
 
-function spinReels(): Promise<void> {
+/** 回す前に決める見せ方。結果はもう決まっているので、それに合わせて煽る */
+interface SpinShow {
+  freeze: boolean;
+  /** カットインの色（0 青・1 緑・2 赤・3 虹）。null は出さない */
+  cutIn: number | null;
+}
+
+const CUTIN_TEXT = ['チャンス？', 'チャンス！', '激アツ!!', '確定!!!'];
+const CUTIN_MS = 1500;
+
+function planShow(): SpinShow {
+  const goodFever = state.fever.some((s) => SYMBOLS[s].rarity !== 'bad');
+  const hot = goodFever || state.results.some((r) => r.symbol === 'goldSeed');
+  // フリーズは良いフィーバーの一部（全体でおよそ100回に1回）
+  if (goodFever && rng() < 0.4) return { freeze: true, cutIn: null };
+  // 当たりの日は多めに、外れの日もたまに出す（ガセ）。色が強いほど当たりやすい
+  if (rng() >= (hot ? 0.6 : 0.08)) return { freeze: false, cutIn: null };
+  const weights = hot ? [1, 2, 3, goodFever ? 1.5 : 0] : [6, 3, 1, 0];
+  let r = rng() * weights.reduce((a, b) => a + b, 0);
+  const level = weights.findIndex((w) => (r -= w) < 0);
+  return { freeze: false, cutIn: level < 0 ? 0 : level };
+}
+
+/** 予告のカットイン：キャラが斜めに飛び込んで期待度の色を見せる */
+async function playCutIn(level: number): Promise<void> {
+  const who: ArtId = level === 3 ? 'bee' : (['crow', 'tanuki', 'bee'] as ArtId[])[Math.floor(rng() * 3)];
+  const node = document.createElement('div');
+  node.className = `cutin lv-${level}`;
+  node.innerHTML = `<div class="cutin-band"><span class="cutin-face">${art(who)}</span><b>${CUTIN_TEXT[level]}</b></div>`;
+  document.body.appendChild(node);
+  sfx.cutIn(level);
+  vibrate(level >= 2 ? [40, 30, 80] : 30);
+  if (level === 3) flash('#ffffff', 300);
+  const band = node.firstElementChild as HTMLElement;
+  band.animate(
+    [
+      { transform: 'translate(-120%, 40%) skewY(-8deg)' },
+      { transform: 'translate(0, 0) skewY(-8deg)', offset: 0.12 },
+      { transform: 'translate(3%, 0) skewY(-8deg)', offset: 0.85 },
+      { transform: 'translate(130%, -40%) skewY(-8deg)' },
+    ],
+    { duration: CUTIN_MS, easing: 'linear', fill: 'forwards' },
+  );
+  node.animate([{ opacity: 0 }, { opacity: 1, offset: 0.08 }, { opacity: 1, offset: 0.9 }, { opacity: 0 }], { duration: CUTIN_MS, fill: 'forwards' }).onfinish = () =>
+    node.remove();
+  await sleep(CUTIN_MS);
+}
+
+/** フリーズ：暗転 → 無音 → 白い閃光 → 鐘 → 筐体が割れる → ファンファーレ */
+async function playFreeze(): Promise<void> {
+  const calm = isCalm();
+  const black = document.createElement('div');
+  black.className = 'freeze-black';
+  black.innerHTML = '<div class="crt-line"></div>';
+  document.body.appendChild(black);
+  black.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 120, fill: 'forwards' });
+  vibrate(200);
+  await sleep(calm ? 500 : 1500);
+  sfx.crt();
+  (black.firstElementChild as HTMLElement).animate(
+    [
+      { transform: 'scale(0, 0.004)', opacity: 1 },
+      { transform: 'scale(1, 0.004)', opacity: 1, offset: 0.4 },
+      { transform: 'scale(1, 1)', opacity: calm ? 0.3 : 1, offset: 0.6 },
+      { transform: 'scale(1, 1)', opacity: 0 },
+    ],
+    { duration: 700, fill: 'forwards' },
+  );
+  await sleep(800);
+  sfx.bell();
+  await sleep(calm ? 700 : 1400);
+  black.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: 'forwards' }).onfinish = () => black.remove();
+  // 筐体のガラスが割れる
+  sfx.glass();
+  vibrate([100, 40, 200]);
+  el.machine.insertAdjacentHTML('beforeend', crackSvg());
+  shake(el.app, 16);
+  flash('#ffffff', 400);
+  const c = center(el.reels);
+  burst(c.x, c.y, ['💎', '✨', '⭐'], 24, 180);
+  el.machine.classList.add('rainbow');
+  await sleep(350);
+  sfx.fanfare();
+  confetti(40);
+  floatText(c.x, c.y - 30, 'フリーズ!!', { cls: 'gold', size: 1.8, dur: 1600 });
+  await sleep(1200);
+}
+
+/** 割れたガラスのひび。中央付近の1点から放射状に走らせる */
+function crackSvg(): string {
+  const cx = 40 + rng() * 20;
+  const cy = 40 + rng() * 20;
+  const lines: string[] = [];
+  for (let k = 0; k < 9; k++) {
+    const a = (Math.PI * 2 * k) / 9 + rng() * 0.5;
+    let x = cx;
+    let y = cy;
+    const pts = [`${x},${y}`];
+    for (let j = 0; j < 4; j++) {
+      const len = 8 + rng() * 14;
+      const aa = a + (rng() - 0.5) * 0.7;
+      x += Math.cos(aa) * len;
+      y += Math.sin(aa) * len;
+      pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+    }
+    lines.push(`<polyline points="${pts.join(' ')}"/>`);
+  }
+  return `<svg class="crack" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${lines.join('')}<circle cx="${cx}" cy="${cy}" r="3"/></svg>`;
+}
+
+function spinReels(show: SpinShow = { freeze: false, cutIn: null }): Promise<void> {
   const reels = [...el.reels.children] as HTMLElement[];
   const h = reels[0].querySelector('.window')!.clientHeight;
-  // 最後のリールが金の種なら溜めを入れる。外れでもたまに溜めて読めないようにする
   const last = state.results.length - 1;
-  const suspense = state.results[last].symbol === 'goldSeed' || state.fever.some((s) => SYMBOLS[s].rarity !== 'bad') || (state.bag.goldSeed > 0 && rng() < 0.15);
+  // リーチ：最後のリールより前で良い絵柄があと1つでそろう
+  const counts = new Map<SymbolId, number>();
+  state.results.slice(0, last).forEach((r) => counts.set(r.symbol, (counts.get(r.symbol) ?? 0) + 1));
+  const reach = [...counts].some(([s, n]) => n >= CONFIG.feverCount - 1 && SYMBOLS[s].rarity !== 'bad');
+  // 最後のリールが金の種なら溜めを入れる。外れでもたまに溜めて読めないようにする
+  const suspense = reach || state.results[last].symbol === 'goldSeed' || state.fever.some((s) => SYMBOLS[s].rarity !== 'bad') || (state.bag.goldSeed > 0 && rng() < 0.15);
+  // カットインが出る日は、出ている間リールを回し続ける
+  const extra = show.cutIn !== null ? CUTIN_MS : 0;
+  const hold = reach ? 1900 : 900;
+  if (show.cutIn !== null) window.setTimeout(() => void playCutIn(show.cutIn!), 150);
+  el.machine.classList.add('rumble');
   let tick = window.setInterval(() => sfx.tick(), 70);
   const promises = reels.map((reel, i) => {
     const strip = reel.querySelector('.strip') as HTMLElement;
     const prevSym = reel.querySelector('.cell-sym')!.innerHTML;
-    const dur = CONFIG.timing.spinBase + i * CONFIG.timing.spinStagger + (suspense && i === last ? 900 : 0);
+    const dur = CONFIG.timing.spinBase + i * CONFIG.timing.spinStagger + extra + (suspense && i === last ? hold : 0);
     const fillers = Math.max(8, Math.round(dur / 40));
     const items = [prevSym, ...Array.from({ length: fillers }, () => symHtml(drawSymbol(state.bag, rng))), symHtml(state.results[i].symbol)];
     strip.innerHTML = items.map((s) => `<div class="cell-sym">${s}</div>`).join('');
     reel.className = 'reel spinning';
     reel.querySelector('.tag')!.textContent = '…';
-    if (suspense && i === last) window.setTimeout(() => reel.classList.add('suspense'), dur - 1100);
+    if (suspense && i === last) {
+      // ひとつ前のリールが止まったところから溜める
+      window.setTimeout(() => {
+        reel.classList.add('suspense');
+        if (reach) {
+          reel.classList.add('reach');
+          el.machine.classList.add('spotlight');
+          sfx.reach();
+          vibrate([30, 290, 30, 290, 30]);
+        }
+      }, dur - hold);
+    }
     const anim = strip.animate([{ transform: 'translateY(0)' }, { transform: `translateY(${-(items.length - 1) * h}px)` }], {
       duration: dur,
       easing: 'cubic-bezier(.15,.55,.25,1.04)',
@@ -837,16 +974,27 @@ function spinReels(): Promise<void> {
     return anim.finished.then(() => {
       anim.cancel();
       strip.innerHTML = `<div class="cell-sym">${symHtml(state.results[i].symbol)}</div>`;
-      reel.classList.remove('spinning', 'suspense');
+      reel.classList.remove('spinning', 'suspense', 'reach');
       sfx.reelStop(i);
-      pop(reel.querySelector('.window')!, 1.12);
+      // 行き過ぎて戻る「ガコッ」
+      strip.firstElementChild!.animate(
+        [
+          { transform: 'translateY(-22%) scale(1, 1.08)' },
+          { transform: 'translateY(9%) scale(1.08, 0.92)', offset: 0.45 },
+          { transform: 'translateY(-3%) scale(1)', offset: 0.75 },
+          { transform: 'translateY(0)' },
+        ],
+        { duration: 260, easing: 'ease-out' },
+      );
       if (i === reels.length - 1) clearInterval(tick);
       onReelLanded(i, reel);
+      if (show.freeze && state.fever.includes(state.results[i].symbol)) reel.classList.add('rainbow-sym');
     });
   });
   return Promise.all(promises).then(() => {
     clearInterval(tick);
     tick = 0;
+    el.machine.classList.remove('rumble', 'spotlight');
   });
 }
 
@@ -1470,9 +1618,15 @@ function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
     <div class="modal help-modal" role="dialog" aria-label="遊び方と図鑑">
       <div class="help-tabs">${tabs.map(([k, label]) => `<button class="${k === tab ? 'on' : ''}" data-tab="${k}">${label}</button>`).join('')}</div>
       <div class="help-body">${tab === 'rules' ? rules : tab === 'symbols' ? symbols : charms}</div>
+      <button class="secondary" id="calm-toggle">演出控えめ：${isCalm() ? 'オン' : 'オフ'}<small>揺れ・点滅・フリーズを弱める</small></button>
       <button class="primary" id="help-close">閉じる</button>
     </div>`;
   el.overlay.classList.add('show');
+  $('calm-toggle').addEventListener('click', (e) => {
+    const on = toggleCalm();
+    (e.currentTarget as HTMLElement).firstChild!.textContent = `演出控えめ：${on ? 'オン' : 'オフ'}`;
+    sfx.select();
+  });
   el.overlay.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((b) =>
     b.addEventListener('click', () => showHelp(b.dataset.tab as HelpTab, onClose)),
   );
