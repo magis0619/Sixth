@@ -68,6 +68,15 @@ export function cropEmoji(crop: Crop): string {
   return art(stage === 3 ? FRUIT[crop.kind] : CROP_STAGES[stage]);
 }
 
+/** 最後に書いた中身。同じなら書き換えない（毎回書き換えると、そのたびに中身を作り直して配置し直しになる） */
+const lastHtml = new WeakMap<Element, string>();
+
+export function setHtml(node: Element, html: string): void {
+  if (lastHtml.get(node) === html) return;
+  lastHtml.set(node, html);
+  node.innerHTML = html;
+}
+
 let msgTimer = 0;
 
 export function say(text: string, ms = 2200): void {

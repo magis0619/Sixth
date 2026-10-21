@@ -13,7 +13,7 @@ import {
   burst, center, coinRain, confetti, flash, floatText, flyTo, hitStop, isCalm, pop, rollNumber, scanlines, shake, shakeFor, sleep, slamText, slowFactor, speedLines, stackMultipliers, toggleCalm, vibrate, rainShower, fmtMult, travel, sunBeam, beeFlight,
 } from './fx.ts';
 import {
-  FRUIT, PLACE_ART, STAGE_NAMES, type SheetName, bagPct, closeSheet, costHtml, cropEmoji, openSheet, openSheetName, roleClass, say, shapeIcon, stageOf, symHtml, upgradeArt, upgradeEffect, visibleOr,
+  FRUIT, PLACE_ART, setHtml, STAGE_NAMES, type SheetName, bagPct, closeSheet, costHtml, cropEmoji, openSheet, openSheetName, roleClass, say, shapeIcon, stageOf, symHtml, upgradeArt, upgradeEffect, visibleOr,
 } from './ui/view.ts';
 import { applySkin, showClear, showGameOver, showHelp, showTitle } from './ui/screens.ts';
 import { clearRun, saveRun } from './ui/save.ts';
@@ -166,21 +166,24 @@ function renderStatus(): void {
   if (bad.length) chips.push(`<span class="st danger">⚠️ ${bad.map((s) => `${SYMBOLS[s].name}の群れ`).join('・')}</span>`);
   if (state.priceMult > 1) chips.push(`<span class="st merchant">🧑‍🌾 今日の売値 ×${fmtMult(state.priceMult)}</span>`);
   if (state.cloverBoost > 1) chips.push(`<span class="st clover">🍀 明日は金の種が出やすい（×${fmtMult(state.cloverBoost)}）</span>`);
-  el.status.innerHTML = chips.join('');
+  setHtml(el.status, chips.join(''));
 }
 
 function renderCharms(): void {
   const owned = CHARM_ORDER.filter((id) => state.charms[id] > 0);
   el.charmPanel.hidden = owned.length > 0;
   el.charmCount.textContent = state.stock.length ? `置く待ち${state.stock.length}` : owned.length ? `${owned.reduce((n, id) => n + state.charms[id], 0)}個` : '';
-  el.charms.innerHTML = owned
-    .map((id) => {
-      const c = CHARMS[id];
-      const n = state.charms[id];
-      const gold = isGolden(state, id);
-      return `<span class="charm tier-${c.tier}${gold ? ' golden' : ''}${c.special ? ' special' : ''}" data-charm="${id}"><span class="e">${art(id)}</span><span><b>${c.name}${n > 1 ? ` ×${n}` : ''}${gold ? ' ✦' : ''}</b><small>${c.desc(gold ? n * 2 : n)}</small></span></span>`;
-    })
-    .join('');
+  setHtml(
+    el.charms,
+    owned
+      .map((id) => {
+        const c = CHARMS[id];
+        const n = state.charms[id];
+        const gold = isGolden(state, id);
+        return `<span class="charm tier-${c.tier}${gold ? ' golden' : ''}${c.special ? ' special' : ''}" data-charm="${id}"><span class="e">${art(id)}</span><span><b>${c.name}${n > 1 ? ` ×${n}` : ''}${gold ? ' ✦' : ''}</b><small>${c.desc(gold ? n * 2 : n)}</small></span></span>`;
+      })
+      .join(''),
+  );
 }
 
 /** 今週の注文：畑の囲いに下げた木の札。作物の絵と「2/5」だけ、タップで詳しく */
@@ -189,7 +192,7 @@ function renderOrder(): void {
   el.order.hidden = !o;
   if (!o) return;
   el.order.className = `order-tag${o.done ? ' done' : ''}`;
-  el.order.innerHTML = `<span class="sign-nail l"></span><span class="sign-nail r"></span><small>ご注文</small><span class="order-ico">${art(FRUIT[o.crop])}</span><b>${o.done ? '達成！' : `${CROPS[o.crop].name} ${o.have}/${o.need}`}</b><span class="order-reward">${o.done ? '✓' : `${o.reward}金`}</span>`;
+  setHtml(el.order, `<span class="sign-nail l"></span><span class="sign-nail r"></span><small>ご注文</small><span class="order-ico">${art(FRUIT[o.crop])}</span><b>${o.done ? '達成！' : `${CROPS[o.crop].name} ${o.have}/${o.need}`}</b><span class="order-reward">${o.done ? '✓' : `${o.reward}金`}</span>`);
 }
 
 /** 年貢：「年貢 7金 あと2日」を言葉で。払えるときは緑、足りないときは赤 */
@@ -344,19 +347,19 @@ function renderSpinButton(): void {
   const go = $('spin-go');
   go.hidden = !ready;
   go.classList.toggle('tax', state.day > 0 && t.daysLeft === 0);
-  go.innerHTML = state.day === 0
+  setHtml(go, state.day === 0
     ? '<span class="go-hand">👆</span><span class="go-text"><b>タップで回す</b></span>'
-    : `<span class="go-hand">👆</span><span class="go-text">${t.daysLeft === 0 ? `<small>年貢${t.amount}金を納めて</small>` : ''}<b>${state.day + 1}日目へ</b><small>リールをタップ</small></span>`;
+    : `<span class="go-hand">👆</span><span class="go-text">${t.daysLeft === 0 ? `<small>年貢${t.amount}金を納めて</small>` : ''}<b>${state.day + 1}日目へ</b><small>リールをタップ</small></span>`);
   // 筐体の看板の文字を、回せるときだけ「タップで回す」に切り替える
   const cue = document.querySelector('.machine-top') as HTMLElement;
   cue.classList.toggle('cue', ready);
-  cue.innerHTML = !ready
+  setHtml(cue, !ready
     ? `${art('coin')} 畑スロット ${art('coin')}`
     : state.day === 0
     ? '▼ タップで回す ▼'
     : t.daysLeft === 0
       ? `▼ タップで年貢 ${t.amount}金を納めて回す ▼`
-      : `▼ タップで${state.day + 1}日目へ ▼`;
+      : `▼ タップで${state.day + 1}日目へ ▼`);
 }
 
 /** 道具・特別なマスの絵 */
@@ -588,13 +591,16 @@ function fieldCells(): number[] {
 
 function renderBag(): void {
   el.bagTotal.textContent = `${bagTotal(state.bag)}枚`;
-  el.bag.innerHTML = SYMBOL_ORDER.filter((id) => state.bag[id] > 0 || id === 'crow')
-    .map((id) => {
-      const def = SYMBOLS[id];
-      const cls = `chip${def.rarity === 'bad' ? ' bad' : ''}${state.bag[id] === 0 ? ' zero' : ''}`;
-      return `<span class="${cls}" data-sym="${id}" title="${def.desc}（フィーバー：${def.feverDesc}）"><span class="e">${symHtml(id)}</span>${def.name}×${state.bag[id]} <span class="pct">${bagPct(state.bag, id)}%</span></span>`;
-    })
-    .join('');
+  setHtml(
+    el.bag,
+    SYMBOL_ORDER.filter((id) => state.bag[id] > 0 || id === 'crow')
+      .map((id) => {
+        const def = SYMBOLS[id];
+        const cls = `chip${def.rarity === 'bad' ? ' bad' : ''}${state.bag[id] === 0 ? ' zero' : ''}`;
+        return `<span class="${cls}" data-sym="${id}" title="${def.desc}（フィーバー：${def.feverDesc}）"><span class="e">${symHtml(id)}</span>${def.name}×${state.bag[id]} <span class="pct">${bagPct(state.bag, id)}%</span></span>`;
+      })
+      .join(''),
+  );
 }
 
 // ---- スロットを回す ----
@@ -1289,13 +1295,15 @@ async function playLineHarvest(res: SellResult, centers: { x: number; y: number 
   const slow = slowFactor(level - 1);
   const f = center(el.field);
   // 売った実は畑から消えるので、跳ねるまでその場に残して見せる
-  const ghosts = res.cells.map(({ cell: c, kind }) => {
+  // 大きさは先にまとめて読む（足すたびに読むと、そのたびに配置し直しになる）
+  const sizes = res.cells.map(({ cell: c }) => (el.field.children[c] as HTMLElement).clientWidth);
+  const ghosts = res.cells.map(({ cell: c, kind }, k) => {
     const g = document.createElement('div');
     g.className = 'fx fx-ghost';
     g.innerHTML = art(FRUIT[kind]);
     g.style.left = `${centers[c].x}px`;
     g.style.top = `${centers[c].y}px`;
-    g.style.fontSize = `${(el.field.children[c] as HTMLElement).clientWidth * 0.62}px`;
+    g.style.fontSize = `${sizes[k] * 0.62}px`;
     $('fx').appendChild(g);
     return g;
   });

@@ -31,6 +31,11 @@ export function toggleCalm(): boolean {
   return calm;
 }
 
+/** spawn した位置 from から p までの移動量。left/top を動かすと毎コマ配置し直しになるので translate で動かす */
+function offset(from: { x: number; y: number }, p: { x: number; y: number }): Keyframe {
+  return { translate: `${p.x - from.x}px ${p.y - from.y}px` };
+}
+
 export function center(el: Element): { x: number; y: number } {
   const r = el.getBoundingClientRect();
   return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
@@ -93,9 +98,9 @@ export function flyTo(from: { x: number; y: number }, toEl: Element, char: strin
     const my = Math.min(from.y, to.y) - 40 - Math.random() * 60;
     const anim = el.animate(
       [
-        { transform: 'translate(-50%, -50%) scale(1)', left: `${from.x}px`, top: `${from.y}px` },
-        { transform: 'translate(-50%, -50%) scale(1.3)', left: `${mx}px`, top: `${my}px`, offset: 0.45 },
-        { transform: 'translate(-50%, -50%) scale(0.6)', left: `${to.x}px`, top: `${to.y}px` },
+        { transform: 'translate(-50%, -50%) scale(1)', ...offset(from, from) },
+        { transform: 'translate(-50%, -50%) scale(1.3)', ...offset(from, { x: mx, y: my }), offset: 0.45 },
+        { transform: 'translate(-50%, -50%) scale(0.6)', ...offset(from, to) },
       ],
       { duration: 550 + i * 70, easing: 'cubic-bezier(.5,0,.5,1)', fill: 'forwards' },
     );
@@ -139,15 +144,18 @@ export function flash(color: string, dur = 350): void {
 export function confetti(count = 40): void {
   const chars = ['🎉', '✨', '💰', '🪙', '⭐'];
   const n = calm ? 8 : count;
+  // 画面の大きさは先に1回だけ読む（足すたびに読むと、そのたびに配置し直しになる）
+  const W = window.innerWidth;
+  const H = window.innerHeight;
   for (let i = 0; i < n; i++) {
-    const x = Math.random() * window.innerWidth;
+    const x = Math.random() * W;
     const el = spawn(glyph(chars[i % chars.length]), 'fx-particle', x, -20);
     el.style.fontSize = `${1 + Math.random()}rem`;
     const dx = (Math.random() - 0.5) * 160;
     el.animate(
       [
         { transform: 'translate(-50%, 0) rotate(0deg)', opacity: 1 },
-        { transform: `translate(calc(-50% + ${dx}px), ${window.innerHeight + 40}px) rotate(${720 * Math.random()}deg)`, opacity: 0.9 },
+        { transform: `translate(calc(-50% + ${dx}px), ${H + 40}px) rotate(${720 * Math.random()}deg)`, opacity: 0.9 },
       ],
       { duration: 1600 + Math.random() * 1200, delay: Math.random() * 400, easing: 'cubic-bezier(.3,.1,.6,1)', fill: 'backwards' },
     ).onfinish = () => el.remove();
@@ -284,9 +292,9 @@ export function travel(from: { x: number; y: number }, toEl: Element, html: stri
   return el
     .animate(
       [
-        { left: `${from.x}px`, top: `${from.y}px` },
-        { left: `${mid.x}px`, top: `${mid.y}px`, offset: 0.55 },
-        { left: `${to.x}px`, top: `${to.y}px` },
+        offset(from, from),
+        { ...offset(from, mid), offset: 0.55 },
+        offset(from, to),
       ],
       { duration: dur, easing: hop ? 'linear' : 'cubic-bezier(.3,0,.4,1)', fill: 'forwards' },
     )
@@ -298,14 +306,16 @@ export function travel(from: { x: number; y: number }, toEl: Element, html: stri
 /** 金貨の雨 */
 export function coinRain(count = 40): void {
   const n = calm ? 8 : count;
+  const W = window.innerWidth;
+  const H = window.innerHeight;
   for (let i = 0; i < n; i++) {
-    const x = Math.random() * window.innerWidth;
+    const x = Math.random() * W;
     const el = spawn(glyph('🪙'), 'fx-particle', x, -30);
     el.style.fontSize = `${1.2 + Math.random() * 0.9}rem`;
     el.animate(
       [
         { transform: 'translate(-50%, 0) rotateY(0deg)' },
-        { transform: `translate(-50%, ${window.innerHeight + 60}px) rotateY(${720 + Math.random() * 720}deg)` },
+        { transform: `translate(-50%, ${H + 60}px) rotateY(${720 + Math.random() * 720}deg)` },
       ],
       { duration: 1100 + Math.random() * 900, delay: Math.random() * 600, easing: 'cubic-bezier(.4,0,.8,.6)', fill: 'backwards' },
     ).onfinish = () => el.remove();
@@ -333,8 +343,9 @@ export function slamText(text: string, opts: { cls?: string; size?: number; dur?
 
 /** 雨：マスの上に斜めの雨筋を降らせ、最後にしぶき */
 export function rainShower(plots: Element[]): void {
-  plots.forEach((plot, k) => {
-    const r = plot.getBoundingClientRect();
+  // 先に全部の位置を読んでから足す（読み書きを交互にすると、そのたびに配置し直しになる）
+  const rects = plots.map((p) => p.getBoundingClientRect());
+  rects.forEach((r, k) => {
     const el = spawn('', 'fx-rainfall', r.left, r.top);
     el.style.width = `${r.width}px`;
     el.style.height = `${r.height}px`;
@@ -368,8 +379,8 @@ export function beeFlight(plots: Element[], beeHtml: string): void {
   const el = spawn(beeHtml, 'fx-bee', pts[0].x, pts[0].y);
   const frames = pts.flatMap((q, i) => {
     const next = pts[i + 1];
-    const out: Keyframe[] = [{ left: `${q.x}px`, top: `${q.y}px` }];
-    if (next) out.push({ left: `${(q.x + next.x) / 2 + (i % 2 ? 18 : -18)}px`, top: `${(q.y + next.y) / 2 - 24}px` });
+    const out: Keyframe[] = [offset(pts[0], q)];
+    if (next) out.push(offset(pts[0], { x: (q.x + next.x) / 2 + (i % 2 ? 18 : -18), y: (q.y + next.y) / 2 - 24 }));
     return out;
   });
   el.animate(frames, { duration: 220 * pts.length + 200, easing: 'ease-in-out' }).onfinish = () => el.remove();
@@ -379,7 +390,7 @@ export function beeFlight(plots: Element[], beeHtml: string): void {
 export function firework(x: number, y: number, color: string): void {
   const rocket = spawn('', 'fx-rocket', x, window.innerHeight + 10);
   rocket.style.background = color;
-  rocket.animate([{ top: `${window.innerHeight + 10}px` }, { top: `${y}px` }], { duration: 600, easing: 'cubic-bezier(.2,.7,.4,1)', fill: 'forwards' }).onfinish = () => {
+  rocket.animate([{ translate: '0 0' }, { translate: `0 ${y - window.innerHeight - 10}px` }], { duration: 600, easing: 'cubic-bezier(.2,.7,.4,1)', fill: 'forwards' }).onfinish = () => {
     rocket.remove();
     const n = calm ? 12 : 28;
     for (let i = 0; i < n; i++) {

@@ -865,6 +865,11 @@ button {
   transform: none;
 }
 
+/* 閉じていても配置の計算はされるので、中の書き換えがページ全体に広がらないよう閉じ込める */
+.sheet {
+  contain: content;
+}
+
 .sheet-head {
   display: flex;
   align-items: center;
@@ -1589,6 +1594,8 @@ button {
   pointer-events: none;
   z-index: 40;
   overflow: hidden;
+  /* 演出の粒をたくさん足しても、配置の計算をこの層の中だけで済ませる（画面いっぱいなので座標は変わらない） */
+  contain: strict;
 }
 
 .fx {
@@ -2394,18 +2401,19 @@ button {
 }
 
 /* ---- 演出（第3弾）：空・季節・実り・天気・年貢・クリア・枯れ畑 ---- */
-@property --sky { syntax: '<color>'; inherits: true; initial-value: #bfe3f7; }
-@property --sky2 { syntax: '<color>'; inherits: true; initial-value: #e3f4fc; }
-@property --grass { syntax: '<color>'; inherits: true; initial-value: #8fcf5c; }
-@property --grass2 { syntax: '<color>'; inherits: true; initial-value: #84c653; }
+/* 空と草の色は body（背景）と丘だけが使う。inherits: false にして、時間帯が変わる遷移で画面全体を毎コマ計算し直さない */
+@property --sky { syntax: '<color>'; inherits: false; initial-value: #bfe3f7; }
+@property --sky2 { syntax: '<color>'; inherits: false; initial-value: #e3f4fc; }
+@property --grass { syntax: '<color>'; inherits: false; initial-value: #8fcf5c; }
+@property --grass2 { syntax: '<color>'; inherits: false; initial-value: #84c653; }
 
-:root { --sky2: #e3f4fc; --grass2: #84c653; }
-:root[data-time='morning'] { --sky: #ffd2b0; --sky2: #fff0dc; }
-:root[data-time='evening'] { --sky: #ff9a6a; --sky2: #ffd0a0; }
-:root[data-time='night'] { --sky: #5a6aa8; --sky2: #8d9ccc; }
-:root[data-season='summer'] { --grass: #6cc23a; --grass2: #58ad2a; }
-:root[data-season='autumn'] { --grass: #c9a64e; --grass2: #b08a3a; }
-:root[data-season='winter'] { --grass: #dbe7ee; --grass2: #c4d4de; }
+body, .scene-hill { --sky: #bfe3f7; --sky2: #e3f4fc; --grass: #8fcf5c; --grass2: #84c653; }
+:root[data-time='morning'] :is(body, .scene-hill) { --sky: #ffd2b0; --sky2: #fff0dc; }
+:root[data-time='evening'] :is(body, .scene-hill) { --sky: #ff9a6a; --sky2: #ffd0a0; }
+:root[data-time='night'] :is(body, .scene-hill) { --sky: #5a6aa8; --sky2: #8d9ccc; }
+:root[data-season='summer'] :is(body, .scene-hill) { --grass: #6cc23a; --grass2: #58ad2a; }
+:root[data-season='autumn'] :is(body, .scene-hill) { --grass: #c9a64e; --grass2: #b08a3a; }
+:root[data-season='winter'] :is(body, .scene-hill) { --grass: #dbe7ee; --grass2: #c4d4de; }
 
 #ambient {
   position: fixed;
@@ -2528,11 +2536,15 @@ button {
 
 .fx-bee {
   font-size: 1.6rem;
+}
+
+/* 飛ぶ動き（translate）と重ならないよう、羽音の揺れは中の絵に */
+.fx-bee > * {
   animation: buzz 0.12s linear infinite;
 }
 
 @keyframes buzz {
-  50% { margin-top: -3px; }
+  50% { translate: 0 -3px; }
 }
 
 /* 年貢が払えそうにない：画面のふちが赤く脈打つ */
@@ -4243,6 +4255,8 @@ body::before {
 .scene-sky {
   position: absolute;
   inset: 0;
+  /* 雲の流れる距離を空の幅（cqw）で決める */
+  container-type: size;
 }
 
 .cloud {
@@ -4252,15 +4266,18 @@ body::before {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.85);
   box-shadow: 18px -8px 0 -2px rgba(255, 255, 255, 0.85), 38px 0 0 -4px rgba(255, 255, 255, 0.85);
+  left: 0;
   animation: cloud-drift 46s linear infinite;
+  /* left を動かすと毎コマ配置し直しになるので transform で流す */
+  will-change: transform;
 }
 
 .cloud.c1 { top: 10%; animation-delay: -12s; }
-.cloud.c2 { top: 30%; transform: scale(0.7); animation-duration: 62s; animation-delay: -40s; opacity: 0.8; }
+.cloud.c2 { top: 30%; scale: 0.7; animation-duration: 62s; animation-delay: -40s; opacity: 0.8; }
 
 @keyframes cloud-drift {
-  from { left: -120px; }
-  to { left: 110%; }
+  from { transform: translateX(-120px); }
+  to { transform: translateX(110cqw); }
 }
 
 .scene-hill {
@@ -4387,8 +4404,8 @@ body::before {
 }
 
 @keyframes flutter-y {
-  0%, 100% { margin-top: 0; }
-  50% { margin-top: -14px; }
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -14px; }
 }
 
 .calm .scene * {
@@ -4540,4 +4557,9 @@ body::before {
 
 .order-tag {
   top: -28px;
+}
+
+/* 丘の草も背景と一緒に色が移る */
+.scene-hill {
+  transition: --grass 1.2s, --grass2 1.2s;
 }

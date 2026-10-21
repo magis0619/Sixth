@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 // 画面の通し確認：タイトル → 準備 → 遊ぶ（植える・使う・売る・次の日）→ 年貢 → 終わり
-// 演出は控えめにして待ち時間を短くする
+// 演出は控えめにして待ち時間を短くする。脈打ち続けるボタン（スタートなど）は止まらないので force で押す
 
 async function boot(page: Page): Promise<string[]> {
   const errors: string[] = [];
@@ -160,12 +160,12 @@ test('続きから：途中でページを開き直すと同じ日から再開�
 
 test('解放と遊び方の画面が開いて戻れる', async ({ page }) => {
   const errors = await boot(page);
-  await page.click('#title-unlock', { force: true });
+  await page.click('#title-unlock');
   await expect(page.locator('#unlock-back')).toBeVisible();
-  await page.click('#unlock-back', { force: true });
-  await page.click('#title-help', { force: true });
+  await page.click('#unlock-back');
+  await page.click('#title-help');
   await expect(page.locator('#help-close')).toBeVisible();
-  await page.click('#help-close', { force: true });
+  await page.click('#help-close');
   await expect(page.locator('#title-start')).toBeVisible();
   expect(errors).toEqual([]);
 });
