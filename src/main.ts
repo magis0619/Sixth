@@ -18,7 +18,7 @@ import { track } from './telemetry.ts';
 import type { Crop } from './game.ts';
 import {
   burst, center, coinRain, confetti, flash, floatText, flyTo, hitStop, isCalm, pop, rollNumber, scanlines, shake, shakeFor, sleep, slamText, slowFactor,
-  speedLines, stackMultipliers, toggleCalm, vibrate, rainShower, fmtMult, sunBeam, beeFlight, firework,
+  speedLines, stackMultipliers, toggleCalm, vibrate, rainShower, fmtMult, travel, sunBeam, beeFlight, firework,
 } from './fx.ts';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -152,6 +152,14 @@ function setGold(value: number): void {
   };
   goldTween = requestAnimationFrame(step);
   if (value !== from) pop(el.goldBox, value > from ? 1.15 : 0.9);
+  // お金が増えたら財布がジャラッと揺れて光る
+  if (value > from) {
+    el.goldBox.classList.remove('jingle');
+    void el.goldBox.offsetWidth;
+    el.goldBox.classList.add('jingle');
+    const c = center(el.goldBox.querySelector('.stat-icon') ?? el.goldBox);
+    burst(c.x, c.y, ['✨'], value - from >= 20 ? 6 : 3, 26);
+  }
 }
 
 // ---- 描画 ----
@@ -606,7 +614,8 @@ function renderField(): void {
       cls.push(`g${stageOf(crop)}`, `crop-${crop.kind}`);
       if (ripe) cls.push('ripe');
       if (def.gold) cls.push('goldcrop');
-      html += `<span class="crop">${cropEmoji(crop)}</span>`;
+      // 実るまでは成長に合わせて少しずつ大きくなる
+      html += `<span class="crop"${ripe ? '' : ` style="--g:${(0.55 + 0.45 * (crop.growth / def.ripe)).toFixed(2)}"`}>${cropEmoji(crop)}</span>`;
       // 育っている間も何の作物か分かるように小さな札を出す
       if (!ripe) html += `<span class="badge-kind">${art(FRUIT[crop.kind])}</span>`;
       if (crop.fertilized) html += '<span class="badge-fert">肥×2</span>';
@@ -1315,6 +1324,13 @@ function onReelLanded(i: number, reel: HTMLElement): void {
   reel.querySelector('.tag')!.textContent = SYMBOLS[sym].kind === 'auto' ? '…' : tag.text;
 }
 
+/** お邪魔がやって来る出発点：画面の左右の端（空なら上の方、地面なら同じ高さ） */
+function edgeFrom(plot: Element, sky: boolean): { x: number; y: number } {
+  const q = center(plot);
+  const left = q.x > window.innerWidth / 2;
+  return { x: left ? -40 : window.innerWidth + 40, y: sky ? Math.max(40, q.y - 220) : q.y };
+}
+
 async function resolveAutos(): Promise<void> {
   const reels = [...el.reels.children] as HTMLElement[];
   for (let i = 0; i < state.results.length; i++) {
@@ -1402,7 +1418,8 @@ async function resolveAutos(): Promise<void> {
         autoOutcome[i] = `−${ev.taken.reduce((n, t) => n + t.price, 0)}金分`;
         for (const t of ev.taken) {
           const plot = el.field.children[t.cell] as HTMLElement;
-          await new Promise<void>((r) => flyTo(from, plot, symHtml('tanuki'), 1, r));
+          // タヌキは畑の横から跳ねながら走ってくる
+          await travel(edgeFrom(plot, false), plot, symHtml('tanuki'), true);
           sfx.crow();
           sfx.poof();
           const q = center(plot);
@@ -1433,7 +1450,8 @@ async function resolveAutos(): Promise<void> {
     } else if (!ev.eaten) {
       autoOutcome[i] = 'セーフ';
       const plot = el.field.children[ev.cell] as HTMLElement;
-      await new Promise<void>((r) => flyTo(from, plot, symHtml('crow'), 1, r));
+      // カラスは空から羽ばたいて飛んでくる
+      await travel(edgeFrom(plot, true), plot, symHtml('crow'), false);
       sfx.shoo();
       const p = center(plot);
       burst(p.x, p.y, ['💨', '🪶', '✨'], 8, 60);
@@ -1442,7 +1460,8 @@ async function resolveAutos(): Promise<void> {
     } else {
       autoOutcome[i] = 'パクッ…';
       const plot = el.field.children[ev.cell] as HTMLElement;
-      await new Promise<void>((r) => flyTo(from, plot, symHtml('crow'), 1, r));
+      // カラスは空から羽ばたいて飛んでくる
+      await travel(edgeFrom(plot, true), plot, symHtml('crow'), false);
       sfx.crow();
       sfx.poof();
       const p = center(plot);
@@ -2278,6 +2297,32 @@ function showPrep(): void {
   paint();
 }
 
+// ---- 背景の景色：小屋の煙・流れる雲・ときどき横切る生き物 ----
+
+function setupScene(): void {
+  $('scene-hut').insertAdjacentHTML('afterbegin', art('hut'));
+  const spawn = () => {
+    window.setTimeout(spawn, 7000 + Math.random() * 9000);
+    const scene = $('scene');
+    if (isCalm() || scene.clientHeight < 40 || document.hidden) return;
+    const kinds = [
+      { id: 'cat' as ArtId, cls: 'walk', y: 0.72, dur: 9000 },
+      { id: 'bird' as ArtId, cls: 'flyby', y: 0.25, dur: 5000 },
+      { id: 'butterfly' as ArtId, cls: 'flutter', y: 0.45, dur: 8000 },
+    ];
+    const k = kinds[Math.floor(Math.random() * kinds.length)];
+    const ltr = Math.random() < 0.5;
+    const c = document.createElement('div');
+    c.className = `critter ${k.cls}${ltr ? '' : ' flip'}`;
+    c.innerHTML = art(k.id);
+    c.style.top = `${Math.round(scene.clientHeight * k.y)}px`;
+    $('critters').appendChild(c);
+    const w = scene.clientWidth + 80;
+    c.animate([{ transform: `translateX(${ltr ? -40 : w}px)` }, { transform: `translateX(${ltr ? w : -40}px)` }], { duration: k.dur, easing: 'linear' }).onfinish = () => c.remove();
+  };
+  window.setTimeout(spawn, 3000);
+}
+
 // ---- 長押しで詳しく ----
 
 let lpTimer = 0;
@@ -2487,5 +2532,6 @@ el.mute.addEventListener('click', (e) => {
 });
 applySkin();
 setupLongPress();
+setupScene();
 render();
 showTitle();

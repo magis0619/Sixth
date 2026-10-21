@@ -4225,3 +4225,231 @@ body::before {
 .spin-go b {
   font-size: 1.7rem;
 }
+
+/* ==== 背景の景色（畑とスロットの間の空き）==== */
+.farm {
+  margin-block: 0;
+}
+
+.scene {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  margin: -4px -12px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.scene-sky {
+  position: absolute;
+  inset: 0;
+}
+
+.cloud {
+  position: absolute;
+  width: 70px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 18px -8px 0 -2px rgba(255, 255, 255, 0.85), 38px 0 0 -4px rgba(255, 255, 255, 0.85);
+  animation: cloud-drift 46s linear infinite;
+}
+
+.cloud.c1 { top: 10%; animation-delay: -12s; }
+.cloud.c2 { top: 30%; transform: scale(0.7); animation-duration: 62s; animation-delay: -40s; opacity: 0.8; }
+
+@keyframes cloud-drift {
+  from { left: -120px; }
+  to { left: 110%; }
+}
+
+.scene-hill {
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  bottom: -30%;
+  height: 80%;
+  border-radius: 50% 50% 0 0;
+  background: linear-gradient(var(--grass, #8fcf5c), var(--grass2, #84c653));
+  box-shadow: inset 0 6px 0 rgba(255, 255, 255, 0.25);
+}
+
+.scene-hut {
+  position: absolute;
+  right: 8%;
+  bottom: 22%;
+  width: 64px;
+  height: 64px;
+  font-size: 64px;
+  line-height: 1;
+}
+
+.scene-hut .art {
+  display: block;
+}
+
+:root[data-season='winter'] .scene-hut::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  top: 14px;
+  height: 8px;
+  border-radius: 6px;
+  background: #fff;
+}
+
+/* 煙突の煙：ふわっと昇って消える */
+.smoke {
+  position: absolute;
+  left: 42px;
+  top: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  animation: smoke 3.6s ease-out infinite;
+}
+
+.smoke.s2 { animation-delay: 1.2s; }
+.smoke.s3 { animation-delay: 2.4s; }
+
+@keyframes smoke {
+  0% { transform: translate(0, 0) scale(0.5); opacity: 0.9; }
+  100% { transform: translate(14px, -46px) scale(2.2); opacity: 0; }
+}
+
+.scene-fence {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 12%;
+  height: 22px;
+  background:
+    linear-gradient(transparent 6px, #f6ead2 6px 10px, transparent 10px 15px, #f6ead2 15px 19px, transparent 19px),
+    repeating-linear-gradient(90deg, transparent 0 22px, #f6ead2 22px 28px);
+  opacity: 0.9;
+}
+
+/* 横切る生き物 */
+.critter {
+  position: absolute;
+  left: 0;
+  font-size: 30px;
+  line-height: 1;
+}
+
+.critter .art {
+  display: block;
+}
+
+.critter.flip .art {
+  transform: scaleX(-1);
+}
+
+.critter.walk .art {
+  animation: walk-bob 0.4s ease-in-out infinite;
+}
+
+.critter.flyby {
+  font-size: 24px;
+}
+
+.critter.flyby .wing,
+.fx-travel.fly .art {
+  animation: flap 0.22s ease-in-out infinite;
+}
+
+.critter.flyby .wing {
+  transform-origin: 32px 30px;
+}
+
+.critter.flutter {
+  font-size: 22px;
+  animation: flutter-y 1.2s ease-in-out infinite;
+}
+
+.critter.flutter .wing {
+  transform-origin: 32px 32px;
+  animation: flap-x 0.18s ease-in-out infinite;
+}
+
+@keyframes walk-bob {
+  50% { translate: 0 -3px; }
+}
+
+@keyframes flap {
+  50% { scale: 1 0.6; }
+}
+
+@keyframes flap-x {
+  50% { scale: 0.35 1; }
+}
+
+@keyframes flutter-y {
+  0%, 100% { margin-top: 0; }
+  50% { margin-top: -14px; }
+}
+
+.calm .scene * {
+  animation: none !important;
+}
+
+/* ==== お邪魔がやって来る ==== */
+.fx-travel {
+  line-height: 1;
+}
+
+.fx-travel.flip .art {
+  transform: scaleX(-1);
+}
+
+.fx-travel.hop .art {
+  animation: hop 0.25s ease-in-out infinite;
+}
+
+@keyframes hop {
+  50% { translate: 0 -10px; }
+}
+
+/* ==== 作物：成長に合わせて大きくなり、風にそよぐ ==== */
+.plot:not(.ripe) .crop {
+  scale: var(--g, 1);
+  transform-origin: 50% 85%;
+  animation: sway 3.2s ease-in-out infinite;
+}
+
+.plot:nth-child(2n):not(.ripe) .crop { animation-delay: -0.8s; }
+.plot:nth-child(3n):not(.ripe) .crop { animation-delay: -1.6s; }
+
+@keyframes sway {
+  0%, 100% { rotate: -3deg; }
+  50% { rotate: 3deg; }
+}
+
+:root[data-season='autumn'] .plot:not(.ripe) .crop { animation-duration: 2.2s; }
+:root[data-season='winter'] .plot:not(.ripe) .crop { animation-duration: 4.5s; }
+
+.calm .plot:not(.ripe) .crop { animation: none; }
+
+/* ==== 財布：お金が増えるとジャラッ ==== */
+.hud-gold.jingle .stat-icon {
+  animation: jingle 0.5s ease-in-out;
+}
+
+.hud-gold.jingle {
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5), 0 0 12px rgba(255, 216, 74, 0.8);
+}
+
+@keyframes jingle {
+  0%, 100% { rotate: 0deg; scale: 1; }
+  20% { rotate: -18deg; scale: 1.25; }
+  40% { rotate: 14deg; }
+  60% { rotate: -10deg; }
+  80% { rotate: 6deg; }
+}
+
+/* 注文の看板が畑のマスにかぶらないよう、畑の上に余白 */
+.farm {
+  margin-top: 14px;
+}

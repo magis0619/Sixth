@@ -386,6 +386,32 @@ const ART = {
     <circle cx="48" cy="48" r="12" fill="${C.green}" ${S}/>
     <path d="M48 41 V55 M41 48 H55" fill="none" stroke="${C.white}" stroke-width="4" stroke-linecap="round"/>`,
 
+  // ---- 背景の景色 ----
+  hut: `
+    <rect x="12" y="30" width="40" height="28" fill="#c98a4b" ${S}/>
+    <path d="M6 32 L32 10 L58 32Z" fill="#b5432a" ${S}/>
+    <rect x="40" y="10" width="8" height="14" fill="#7a4a24" ${S}/>
+    <rect x="18" y="38" width="10" height="10" fill="#fff4b8" ${S}/>
+    <path d="M23 38 V48 M18 43 H28" fill="none" stroke="${INK}" stroke-width="1.5"/>
+    <rect x="34" y="40" width="12" height="18" fill="#7a4a24" ${S}/>`,
+  cat: `
+    <path d="M14 46 Q14 30 30 30 H44 Q54 30 54 42 V50 H14Z" fill="#f2a65a" ${S}/>
+    <path d="M44 30 L46 20 L52 28 M54 30 L58 22 L58 32" fill="#f2a65a" ${S}/>
+    <circle cx="52" cy="36" r="9" fill="#f2a65a" ${S}/>
+    <circle cx="55" cy="35" r="1.6" fill="${INK}"/>
+    <path d="M14 40 Q4 36 8 26" fill="none" stroke="#f2a65a" stroke-width="5" stroke-linecap="round"/>
+    <path d="M20 50 V56 M28 50 V56 M40 50 V56 M48 50 V56" fill="none" ${S}/>`,
+  bird: `
+    <ellipse cx="30" cy="36" rx="16" ry="11" fill="#5aa6e0" ${S}/>
+    <circle cx="44" cy="28" r="8" fill="#5aa6e0" ${S}/>
+    <path d="M51 28 L58 30 L51 32Z" fill="${C.gold}" ${S}/>
+    <circle cx="46" cy="26" r="1.6" fill="${INK}"/>
+    <path class="wing" d="M24 32 Q30 14 40 30Z" fill="#8cc4f0" ${S}/>`,
+  butterfly: `
+    <path class="wing" d="M32 32 Q14 8 10 26 Q12 38 32 34Z" fill="${C.pink}" ${S}/>
+    <path class="wing" d="M32 32 Q50 8 54 26 Q52 38 32 34Z" fill="${C.pink}" ${S}/>
+    <path d="M32 34 Q20 52 24 56 Q30 54 32 36 Q34 54 40 56 Q44 52 32 34Z" fill="#ffc4dc" ${S}/>
+    <path d="M32 20 V46" fill="none" ${S}/>`,
   // ---- 画面・演出 ----
   official: `
     <path d="M14 62 Q14 40 32 38 Q50 40 50 62Z" fill="#3a5a9a" ${S}/>

@@ -269,6 +269,32 @@ export function shakeFor(amount: number): number {
   return Math.min(16, 2 + Math.log2(Math.max(1, amount)) * 1.6);
 }
 
+/**
+ * from から to へ「やって来る」動き。hop＝跳ねながら走る（タヌキ）、そうでなければ羽ばたいて飛ぶ（カラス）。
+ * 着いたら resolve
+ */
+export function travel(from: { x: number; y: number }, toEl: Element, html: string, hop: boolean): Promise<void> {
+  const to = center(toEl);
+  const el = spawn(html, `fx-travel${hop ? ' hop' : ' fly'}`, from.x, from.y);
+  el.style.fontSize = '2.2rem';
+  // 左から右へ進むときは向きを反転（絵は右向き）
+  if (to.x < from.x) el.classList.add('flip');
+  const dur = calm ? 350 : hop ? 900 : 800;
+  const mid = { x: (from.x + to.x) / 2, y: hop ? Math.max(from.y, to.y) : Math.min(from.y, to.y) - 40 };
+  return el
+    .animate(
+      [
+        { left: `${from.x}px`, top: `${from.y}px` },
+        { left: `${mid.x}px`, top: `${mid.y}px`, offset: 0.55 },
+        { left: `${to.x}px`, top: `${to.y}px` },
+      ],
+      { duration: dur, easing: hop ? 'linear' : 'cubic-bezier(.3,0,.4,1)', fill: 'forwards' },
+    )
+    .finished.then(() => {
+      el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: 'forwards' }).onfinish = () => el.remove();
+    });
+}
+
 /** 金貨の雨 */
 export function coinRain(count = 40): void {
   const n = calm ? 8 : count;
