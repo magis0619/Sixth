@@ -35,13 +35,12 @@
 
       <section class="machine" id="machine" aria-label="スロット">
         <div class="machine-top"></div>
-        <div class="reels-frame"><div class="reels" id="reels"></div></div>
-        <div class="msg" id="msg" aria-live="polite"></div>
-        <div class="control">
-          <div class="lcd" id="lcd"></div>
-          <button class="spin" id="spin" aria-label="まわす"><span class="spin-cap">まわす</span></button>
-          <div class="lever" id="lever" aria-hidden="true"><i></i></div>
+        <div class="reels-frame">
+          <div class="reels" id="reels"></div>
         </div>
+        <div class="msg" id="msg" aria-live="polite"></div>
+        <!-- 回すのはリールをタップ。このボタンは見えない（キーボード・読み上げ用） -->
+        <button class="spin sr-only" id="spin">まわす</button>
       </section>
 
       <nav class="tabs" aria-label="メニュー">

@@ -417,7 +417,7 @@ function renderHint(): void {
   }
   const anyRipe = state.field.some(isRipe);
   let text = '';
-  if (!done.spin) text = '👇 まわす';
+  if (!done.spin) text = '👇 リールをタップで回す';
   else if (selected !== null) {
     const r = state.results[selected];
     const shape = SYMBOLS[r.symbol].shape;
@@ -427,7 +427,7 @@ function renderHint(): void {
   else if (!done.use && usableReels().length > 0) text = '👆 光る出目 → マス';
   else if (!done.sell && anyRipe) text = '🍅 3つ並べると高く売れる';
   else if (!done.buy && UPGRADES.some((u) => canBuy(state, u.id))) text = '💰 ショップへ';
-  else if (!done.next && done.spin && usableReels().length === 0) text = '▶ 次の日へ';
+  else if (!done.next && done.spin && usableReels().length === 0) text = '👇 リールをタップで次の日へ';
   el.hint.textContent = text;
 }
 
@@ -512,23 +512,23 @@ function renderCount(reel: HTMLElement, i: number): void {
   badge.textContent = `×${r.left}`;
 }
 
+/** 回せるとき（出目を使い切った・1日目）はリール窓が光り「タップで回す」の帯が出る */
 function renderSpinButton(): void {
   const t = nextTax(state);
   el.spin.disabled = busy || state.over;
-  el.spin.classList.toggle('armed', armedNextDay);
-  el.spin.classList.toggle('taxday', !armedNextDay && state.day > 0 && t.daysLeft === 0);
-  const cap = el.spin.querySelector('.spin-cap')!;
-  cap.textContent = armedNextDay ? '本当に？' : 'まわす';
-  // 操作盤の電光表示：次に起きることを短く
-  const lcd = $('lcd');
-  lcd.className = `lcd${armedNextDay ? ' warn' : t.daysLeft === 0 && state.day > 0 ? ' tax' : ''}`;
-  lcd.innerHTML = state.day === 0
-    ? '<b>1日目</b>'
-    : armedNextDay
-      ? `<b>出目${usableReels().length}つ</b><small>消える</small>`
-      : t.daysLeft === 0
-        ? `<b>年貢${t.amount}</b><small>${state.day + 1}日目へ</small>`
-        : `<b>${state.day + 1}日目</b><small>へ</small>`;
+  const ready = !busy && !state.over && (state.day === 0 || usableReels().length === 0);
+  el.machine.classList.toggle('ready-spin', ready);
+  el.machine.classList.toggle('taxday', state.day > 0 && t.daysLeft === 0);
+  // 筐体の看板の文字を、回せるときだけ「タップで回す」に切り替える
+  const cue = document.querySelector('.machine-top') as HTMLElement;
+  cue.classList.toggle('cue', ready);
+  cue.innerHTML = !ready
+    ? `${art('coin')} 畑スロット ${art('coin')}`
+    : state.day === 0
+    ? '▼ タップで回す ▼'
+    : t.daysLeft === 0
+      ? `▼ タップで年貢 ${t.amount}金を納めて回す ▼`
+      : `▼ タップで${state.day + 1}日目へ ▼`;
 }
 
 /** 道具・特別なマスの絵 */
@@ -852,18 +852,17 @@ async function onSpin(): Promise<void> {
   unlockAudio();
   if (busy || state.over) return;
   if (openSheetName) closeSheet();
+  // 出目が残っているときは確認を出す（はい→armedNextDay を立てて回す）
   const leftover = state.day > 0 ? usableReels().length : 0;
   if (leftover > 0 && !armedNextDay) {
-    armedNextDay = true;
     sfx.error();
-    shake(el.spin, 4);
-    renderSpinButton();
+    confirmSkip(leftover);
     return;
   }
   if (state.day > 0) done.next = true;
   armedNextDay = false;
-  el.spin.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(7px) scale(0.96)' }, { transform: 'translateY(0)' }], { duration: 240 });
-  $('lever').animate([{ transform: 'rotate(0deg)' }, { transform: 'rotate(55deg)', offset: 0.35 }, { transform: 'rotate(0deg)' }], { duration: 650, easing: 'cubic-bezier(.3,1.4,.5,1)' });
+  // リール窓がガコンと押し込まれる
+  el.reels.parentElement!.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(4px) scale(0.98)' }, { transform: 'translateY(0)' }], { duration: 220 });
   // 前の日のフリーズの名残（虹の枠・ひび）を片付ける
   el.machine.classList.remove('rainbow', 'burning');
   el.machine.querySelector('.crack')?.remove();
@@ -1529,33 +1528,55 @@ async function resolveAutos(): Promise<void> {
 
 // ---- 出目を使う ----
 
+/** 出目を残したまま次の日へ進むかの確認 */
+function confirmSkip(left: number): void {
+  el.overlay.innerHTML = `
+    <div class="modal confirm-modal" role="dialog" aria-label="確認">
+      <h2>出目が${left}つ残っています</h2>
+      <p class="sub">使わずに次の日へ進むと消えます</p>
+      <button class="primary" id="skip-yes">次の日へ</button>
+      <button class="secondary" id="skip-no">もどる</button>
+    </div>`;
+  el.overlay.classList.add('show');
+  const close = () => {
+    el.overlay.classList.remove('show');
+    el.overlay.innerHTML = '';
+  };
+  $('skip-yes').addEventListener('click', () => {
+    close();
+    armedNextDay = true;
+    void onSpin();
+  });
+  $('skip-no').addEventListener('click', () => {
+    close();
+    sfx.cancel();
+    // 使える出目を光らせて知らせる
+    usableReels().forEach((k) => pop(el.reels.children[k], 1.12));
+  });
+}
+
 function onReelTap(i: number): void {
   unlockAudio();
   if (busy || state.over) return;
   const r = state.results[i];
-  if (!r) return;
-  const def = SYMBOLS[r.symbol];
-  const reel = el.reels.children[i] as HTMLElement;
-  if (def.kind === 'auto') {
-    say(`${def.name}：自動`);
-    shake(reel, 3);
+  // 1日目の前と、使える出目がない（使い切った・使えない・自動）リールのタップは「回す」
+  if (!r || state.day === 0) {
+    void onSpin();
     return;
   }
-  if (r.used) {
-    say('使用済み');
-    shake(reel, 3);
+  const def = SYMBOLS[r.symbol];
+  if (def.kind === 'auto' || r.used || !canUse(state, i, null)) {
+    if (selected !== null) {
+      selected = null;
+      render();
+    }
+    void onSpin();
     return;
   }
   if (selected === i) {
     selected = null;
     sfx.cancel();
     render();
-    return;
-  }
-  if (!canUse(state, i, null)) {
-    sfx.error();
-    shake(reel, 4);
-    say(SEEDS[r.symbol] ? '空きマスなし' : '使える作物なし');
     return;
   }
   if (def.shape === 'all') {

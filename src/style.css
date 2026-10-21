@@ -3961,3 +3961,121 @@ body::before {
   background: linear-gradient(#7fc456, #4f9a2c);
   box-shadow: 0 3px 0 #2f6a14;
 }
+
+/* ==== 回し方：リールをタップ（A案） ==== */
+.sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  border: 0;
+}
+
+.reels-frame {
+  position: relative;
+  transition: box-shadow 0.2s;
+}
+
+/* 回せるとき：窓の縁が金色に光り、帯が「タップで回す」と誘う */
+.machine.ready-spin .reels-frame {
+  box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.55), 0 0 0 3px #ffd84a, 0 0 22px 4px rgba(255, 216, 74, 0.7);
+  animation: frame-glow 1.2s ease-in-out infinite;
+  cursor: pointer;
+}
+
+.machine.ready-spin.taxday .reels-frame {
+  box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.55), 0 0 0 3px #ff9a3a, 0 0 22px 4px rgba(255, 140, 50, 0.75);
+}
+
+@keyframes frame-glow {
+  50% { filter: brightness(1.12); }
+}
+
+.machine.ready-spin .reel .window {
+  animation: bob 1.2s ease-in-out infinite;
+}
+
+.machine.ready-spin .reel:nth-child(2) .window { animation-delay: 0.15s; }
+.machine.ready-spin .reel:nth-child(3) .window { animation-delay: 0.3s; }
+.machine.ready-spin .reel:nth-child(4) .window { animation-delay: 0.45s; }
+.machine.ready-spin .reel:nth-child(5) .window { animation-delay: 0.6s; }
+
+.spin-cue {
+  position: absolute;
+  left: 50%;
+  top: -15px;
+  transform: translateX(-50%);
+  z-index: 6;
+  background: #ffd84a;
+  color: #5a3d00;
+  font-weight: 900;
+  font-size: 0.82rem;
+  padding: 3px 14px;
+  border-radius: 999px;
+  box-shadow: 0 3px 0 #a87a00;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.spin-cue[hidden] {
+  display: none;
+}
+
+.machine.taxday .spin-cue {
+  background: #ff9a3a;
+  color: #fff;
+  box-shadow: 0 3px 0 #9a4a00;
+}
+
+/* 帯が窓に重なるぶん、筐体の上に余白を取る */
+.machine .reels-frame {
+  margin-top: 8px;
+}
+
+.confirm-modal {
+  text-align: center;
+}
+
+.calm .machine.ready-spin .reels-frame,
+.calm .machine.ready-spin .reel .window,
+.calm .spin-cue {
+  animation: none;
+}
+
+/* 回せるときは、使い終わった出目も明るく戻して「押せる」見た目にする */
+.machine.ready-spin .reel.used .window,
+.machine.ready-spin .reel.dead .window {
+  opacity: 1;
+  filter: none;
+}
+
+.machine.ready-spin .reel.used .window::after {
+  display: none;
+}
+
+/* 看板が「タップで回す」に変わる */
+.machine-top.cue {
+  background: #ffd84a;
+  color: #5a3d00;
+  text-shadow: none;
+  letter-spacing: 0.04em;
+  box-shadow: 0 0 0 2px #fff6c8, 0 0 14px rgba(255, 216, 74, 0.8);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.machine.taxday .machine-top.cue {
+  background: #ff9a3a;
+  color: #fff;
+}
+
+.calm .machine-top.cue {
+  animation: none;
+}
+
+.machine .reels-frame {
+  margin-top: 0;
+}
