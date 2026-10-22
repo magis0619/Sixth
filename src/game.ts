@@ -57,6 +57,8 @@ export interface NightIncome {
   /** 大物が釣れた池 */
   bigFish: number[];
   animals: number;
+  /** 夜のうちに育ったマス（巣箱の苺・水車の隣・水路・井戸） */
+  grown: number[];
 }
 
 /** 週ごとの相場：高値と安値の作物 */
@@ -145,6 +147,8 @@ export interface GameState {
   removed: Partial<Record<SymbolId, number>>;
   /** 今週お邪魔を消した回数（週が替わると0に戻る） */
   removedThisWeek: number;
+  /** 今日、彩りの畑がそろった（その日のうちは売っても続く） */
+  colorfulToday: boolean;
   stats: {
     spins: number;
     totalEarned: number;
@@ -197,6 +201,7 @@ export function newGame(setup: GameSetup = { shop: ALL_ADDS, charmPool: CHARM_OR
     charmPool: [...setup.charmPool],
     removed: {},
     removedThisWeek: 0,
+    colorfulToday: false,
     day: 0,
     gold: CONFIG.initialGold,
     reels: CONFIG.initialReels,
@@ -348,18 +353,22 @@ export function waterWheels(state: GameState): number[][] {
   return out;
 }
 
-/** 釣り堀：上下左右（畑の中のもの）がすべて水路で、3方以上が水路の空きマス */
+/** 釣り堀：上下左右の4方を水路だけで囲んだ空きマス（畑の端は囲みにならない） */
 export function isPond(state: GameState, cell: number): boolean {
   if (!inField(state, cell) || state.tiles[cell] === 'water' || state.field[cell] || state.tools[cell]) return false;
   const n = neighbors(state, cell);
-  return n.length >= 3 && n.every((i) => state.tiles[i] === 'water');
+  return n.length === 4 && n.every((i) => state.tiles[i] === 'water');
+}
+
+/** 水車1つの毎晩のお金（水車職人なら2倍） */
+export function wheelGold(state: GameState, run: number[]): number {
+  return run.length * CONFIG.wheelGold * (state.charms.wheelwright ? 2 : 1);
 }
 
 /** 夜のうちに入るお金（水車・釣り堀・鶏小屋・牛小屋） */
-function collectNightIncome(state: GameState, rng: Rng): NightIncome {
+function collectNightIncome(state: GameState, rng: Rng, grown: number[]): NightIncome {
   const wheels = waterWheels(state);
-  // 水車職人：水車のお金×2
-  const wheel = wheels.reduce((n, w) => n + w.length * CONFIG.wheelGold, 0) * (state.charms.wheelwright ? 2 : 1);
+  const wheel = wheels.reduce((n, w) => n + wheelGold(state, w), 0);
   let fish = 0;
   const bigFish: number[] = [];
   fieldCells(state).forEach((i) => {
@@ -372,7 +381,7 @@ function collectNightIncome(state: GameState, rng: Rng): NightIncome {
   });
   const animals = fieldCells(state).reduce((n, i) => n + animalGold(state, i), 0);
   earn(state, wheel + fish + animals);
-  return { wheel, wheels, fish, bigFish, animals };
+  return { wheel, wheels, fish, bigFish, animals, grown };
 }
 
 // ---- セット効果 ----
@@ -391,8 +400,9 @@ export function ripeKinds(state: GameState): CropKind[] {
   }))];
 }
 
+/** 彩りの畑。一度そろった日は、売って種類が減ってもその日のうちは続く */
 export function isColorful(state: GameState): boolean {
-  return ripeKinds(state).length >= CONFIG.colorfulKinds;
+  return state.colorfulToday || ripeKinds(state).length >= CONFIG.colorfulKinds;
 }
 
 /** 鶏小屋・牛小屋1つの毎晩の収入（牧場主・水飲み場・牧場のセット効果込み） */
@@ -509,8 +519,8 @@ export function endDay(state: GameState, rng: Rng): EndDayResult {
     });
   }
   // 井戸・水路は夜のうちに作物を育てる。水車・釣り堀・鶏小屋・牛小屋のお金が入る
-  if (state.day > 0) overnightGrowth(state);
-  state.nightIncome = state.day > 0 ? collectNightIncome(state, rng) : null;
+  const grown = state.day > 0 ? overnightGrowth(state) : [];
+  state.nightIncome = state.day > 0 ? collectNightIncome(state, rng, grown) : null;
   // 霜は日ごとに溶けていく。雑草はとなりの空きマスへ広がる
   state.frost = state.frost.map((d) => Math.max(0, d - 1));
   if (state.day > 0) {
@@ -565,6 +575,7 @@ export function rollObstacles(n: number, rng: Rng, difficulty = 0): SymbolId[] {
 export function drawDay(state: GameState, rng: Rng): void {
   state.day++;
   state.stats.spins++;
+  state.colorfulToday = false;
   state.priceMult = 1;
   const bag = drawBag(state);
   state.cloverBoost = 1;
@@ -586,7 +597,7 @@ export function drawDay(state: GameState, rng: Rng): void {
     state.weekly = rollWeekly(state, rng);
     state.removedThisWeek = 0;
     // 相場は難しいモードから（marketFrom 以上）
-    state.market = state.difficulty >= CONFIG.marketFrom ? rollMarket(state, rng) : null;
+    state.market = CONFIG.marketOn && state.difficulty >= CONFIG.marketFrom ? rollMarket(state, rng) : null;
   }
 }
 
@@ -812,13 +823,13 @@ export function startDay(state: GameState, rng: Rng): EndDayResult {
 
 export type AutoEvent =
   | { type: 'crow'; cell: number | null; crop: Crop | null; eaten: boolean; toll: number; guarded: boolean }
-  | { type: 'bug'; cell: number | null; warded: boolean; damage: number }
+  | { type: 'bug'; cell: number | null; warded: boolean; damage: number; hen: boolean }
   | { type: 'coin'; amount: number }
   | { type: 'merchant'; mult: number }
   | { type: 'weed'; cells: number[]; warded: boolean }
   | { type: 'tanuki'; taken: { cell: number; crop: Crop; price: number }[]; escaped: boolean; stolen: number; guarded: number[] }
   | { type: 'frost'; cells: number[] }
-  | { type: 'mole'; moves: { from: number; to: number; crop: Crop }[] }
+  | { type: 'mole'; moves: { from: number; to: number; crop: Crop }[]; chased: number[] }
   | { type: 'clover'; boost: number };
 
 export function crowEatChance(_state: GameState, power: number): number {
@@ -849,14 +860,15 @@ export function resolveAuto(state: GameState, reel: number, rng: Rng): AutoEvent
       return { type: 'clover', boost: state.cloverBoost };
     case 'bug': {
       const targets = state.field.flatMap((c, i) => (c && c.growth > 0 ? [i] : []));
-      if (targets.length === 0) return { type: 'bug', cell: null, warded: false, damage: 0 };
+      if (targets.length === 0) return { type: 'bug', cell: null, warded: false, damage: 0, hen: false };
       const cell = targets[Math.floor(rng() * targets.length)];
       // 鶏小屋の周りの虫は食べられてしまう
-      if (nearHenhouse(state, cell) || rng() < 1 - Math.pow(0.5, lv(state, 'bugWard'))) return { type: 'bug', cell, warded: true, damage: 0 };
+      if (nearHenhouse(state, cell)) return { type: 'bug', cell, warded: true, damage: 0, hen: true };
+      if (rng() < 1 - Math.pow(0.5, lv(state, 'bugWard'))) return { type: 'bug', cell, warded: true, damage: 0, hen: false };
       const crop = state.field[cell]!;
       const damage = Math.min(crop.growth, CONFIG.bugDamage * r.power);
       crop.growth -= damage;
-      return { type: 'bug', cell, warded: false, damage };
+      return { type: 'bug', cell, warded: false, damage, hen: false };
     }
     case 'weed': {
       if (rng() < 1 - Math.pow(0.5, lv(state, 'bugWard'))) return { type: 'weed', cells: [], warded: true };
@@ -914,6 +926,7 @@ export function resolveAuto(state: GameState, reel: number, rng: Rng): AutoEvent
     case 'mole': {
       // 地面の下から来るので、かかしでは防げない。大物は重くて動かせない
       const moves: { from: number; to: number; crop: Crop }[] = [];
+      const chased: number[] = [];
       for (let k = 0; k < r.power; k++) {
         const movable = fieldCells(state).filter((i) => {
           const c = state.field[i];
@@ -921,6 +934,11 @@ export function resolveAuto(state: GameState, reel: number, rng: Rng): AutoEvent
         });
         if (!movable.length) break;
         const from = movable[Math.floor(rng() * movable.length)];
+        // 鶏小屋の周り8マスに顔を出すと、鶏につつかれて逃げていく
+        if (nearHenhouse(state, from)) {
+          chased.push(from);
+          continue;
+        }
         const open = neighbors(state, from).filter((n) => isOpen(state, n));
         const to = open[Math.floor(rng() * open.length)];
         const crop = state.field[from]!;
@@ -928,7 +946,7 @@ export function resolveAuto(state: GameState, reel: number, rng: Rng): AutoEvent
         state.field[from] = null;
         moves.push({ from, to, crop });
       }
-      return { type: 'mole', moves };
+      return { type: 'mole', moves, chased };
     }
     case 'crow': {
       const toll = 2 * lv(state, 'crowToll') + 3 * state.charms.crowReturn;
@@ -1262,6 +1280,7 @@ export function sell(state: GameState, cell: number, single = false): SellResult
   const crop = state.field[cell];
   if (state.over || !crop || !isRipe(crop) || frozenCrop(state, cell)) return null;
   const group = single ? [cell] : harvestGroup(state, cell);
+  if (isColorful(state)) state.colorfulToday = true;
   const size = group.length;
   const line = size >= MIN_RUN;
   const lines = line ? groupTier(size) : 0;
@@ -1288,7 +1307,7 @@ export function sell(state: GameState, cell: number, single = false): SellResult
   earn(state, total);
   // 品評会：このプレイで作物を全種類売った
   cells.forEach(({ kind }) => state.stats.soldKinds.includes(kind) || state.stats.soldKinds.push(kind));
-  if (state.charms.exhibition === 0 && (Object.keys(CROPS) as CropKind[]).every((k) => state.stats.soldKinds.includes(k))) grant(state, 'exhibition');
+  if (CONFIG.exhibitionOn && state.charms.exhibition === 0 && (Object.keys(CROPS) as CropKind[]).every((k) => state.stats.soldKinds.includes(k))) grant(state, 'exhibition');
   let bumper = 0;
   if (whole) {
     if (state.charms.bumperHarvest === 0) grant(state, 'bumperHarvest');

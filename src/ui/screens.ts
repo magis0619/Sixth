@@ -1,7 +1,7 @@
 // 画面：結果・遊び方・クリア・タイトル・解放・準備
 
 import {
-  ACHIEVE_ADDS, CHARM_ORDER, CHARM_TIER_NAMES, CHARMS, CONFIG, DIFFICULTIES, FEEDBACK_URL, META, SHARE_URL, SYMBOL_ORDER, SYMBOLS, THUNDER_LINES, UPGRADES,
+  ACHIEVE_ADDS, CHARM_ORDER, PAUSED_CHARMS, CHARM_TIER_NAMES, CHARMS, CONFIG, DIFFICULTIES, FEEDBACK_URL, META, SHARE_URL, SYMBOL_ORDER, SYMBOLS, THUNDER_LINES, UPGRADES,
 } from '../config.ts';
 import { nextTax } from '../game.ts';
 import {
@@ -104,7 +104,7 @@ export function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
       <li>${art('bale')}<span>${CONFIG.taxPeriod}日ごとに年貢。払えないと終わり／${CONFIG.winTaxes}回でクリア</span></li>
       <li>${art('coinPurse')}<span>年貢のあと：お守り1つ＋お邪魔が増える</span></li>
       <li>${art('bargain')}<span>ショップ：絵柄・道具・畑を広げる</span></li>
-      <li>${art('waterwheel')}<span>水路：3つ並べると水車・囲むと釣り堀（毎晩お金）</span></li>
+      <li>${art('waterwheel')}<span>水路：3つ並べると水車・4方を囲むと釣り堀（毎晩お金）</span></li>
       <li>${art('sprout')}<span>遊ぶほどポイント → 解放</span></li>
     </ul>`;
   const symbols = SYMBOL_ORDER.map((id) => {
@@ -114,7 +114,7 @@ export function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
       <small>${d.desc}</small><small class="fv">フィーバー：${d.feverDesc}</small></div>
       <span class="own">袋に${state.bag[id]}枚</span></div>`;
   }).join('');
-  const charms = CHARM_ORDER.map((id) => {
+  const charms = CHARM_ORDER.filter((id) => !PAUSED_CHARMS.includes(id)).map((id) => {
     const c = CHARMS[id];
     if (c.special && !meta.discovered.includes(id) && !state.charms[id]) {
       return `<div class="dex-row locked"><span class="e silhouette">${art(id)}</span><div><b>？？？</b><small>${c.special.hint}</small></div></div>`;
@@ -244,7 +244,7 @@ export function leaveTitle(): void {
 export function collection(): string {
   const item = (done: boolean, ico: string, name: string, hint: string) =>
     `<div class="prep-item${done ? ' on' : ' todo'}"><span class="e${done ? '' : ' silhouette'}">${ico}</span><b>${done ? name : '？？？'}</b><small>${done ? '✓' : hint}</small></div>`;
-  const specials = CHARM_ORDER.filter((id) => CHARMS[id].special).map((id) =>
+  const specials = CHARM_ORDER.filter((id) => CHARMS[id].special && !PAUSED_CHARMS.includes(id)).map((id) =>
     item(meta.discovered.includes(id), art(id), CHARMS[id].name, CHARMS[id].special!.hint),
   );
   const adds = (Object.keys(ACHIEVE_ADDS) as (keyof typeof ACHIEVE_ADDS)[]).map((id) => {

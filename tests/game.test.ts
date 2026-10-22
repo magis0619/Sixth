@@ -347,7 +347,7 @@ describe('鍬とモグラ', () => {
     t.results = [reel('watermelonSeed')];
     useSymbol(t, 0, at(0, 0));
     t.results = [{ symbol: 'mole', used: false, total: 1, left: 1, power: 1 }];
-    expect(resolveAuto(t, 0, () => 0)).toEqual({ type: 'mole', moves: [] });
+    expect(resolveAuto(t, 0, () => 0)).toEqual({ type: 'mole', moves: [], chased: [] });
   });
 });
 
@@ -386,7 +386,8 @@ describe('水路のつながり・小屋・相場・品評会', () => {
     expect(cropPrice(s, newCrop('strawberry'))).toBe(Math.round(CROPS.strawberry.price * CONFIG.marketLow));
   });
 
-  it('作物を全種類売ると品評会がもらえる', () => {
+  // 品評会は一時停止中
+  it.skipIf(!CONFIG.exhibitionOn)('作物を全種類売ると品評会がもらえる', () => {
     const s = game();
     s.stats.soldKinds = ['tomato', 'strawberry', 'pumpkin', 'melon', 'corn'];
     expect(s.charms.exhibition).toBe(0);
@@ -411,7 +412,8 @@ describe('大きな種袋', () => {
 });
 
 describe('相場は難しい2から', () => {
-  it('ふつう・難しい1では相場が立たず、難しい2では立つ', () => {
+  // 相場は一時停止中
+  it.skipIf(!CONFIG.marketOn)('ふつう・難しい1では相場が立たず、難しい2では立つ', () => {
     for (const [difficulty, has] of [[0, false], [1, false], [CONFIG.marketFrom, true]] as const) {
       const s = newGame({ shop: ['addSun'], charmPool: [], difficulty });
       drawDay(s, Math.random);
@@ -515,5 +517,60 @@ describe('お邪魔を消すのは週1回まで', () => {
     s.order = null;
     drawDay(s, Math.random);
     expect(buy(s, 'removeBug')).toBe(true);
+  });
+});
+
+describe('シナジーの手直し', () => {
+  const C = CONFIG.fieldCols;
+  const at = (x: number, y: number) => y * C + x;
+  const ripe = (k: CropKind) => ({ ...newCrop(k), growth: CROPS[k].ripe });
+
+  it('釣り堀は4方を水路で囲んだマスだけ（畑の端は囲みにならない）', () => {
+    const s = newGame();
+    [at(2, 0), at(1, 1), at(2, 2)].forEach((c) => (s.tiles[c] = 'water'));
+    expect(isPond(s, at(2, 1))).toBe(false);
+    s.cols = 4;
+    s.tiles[at(3, 1)] = 'water';
+    expect(isPond(s, at(2, 1))).toBe(true);
+  });
+
+  it('彩りの畑は、売って種類が減ってもその日のうちは続き、次の日に判定し直す', () => {
+    const s = newGame();
+    s.day = 1;
+    s.field[at(0, 0)] = ripe('tomato');
+    s.field[at(2, 0)] = ripe('strawberry');
+    s.field[at(0, 2)] = ripe('pumpkin');
+    s.field[at(2, 2)] = ripe('corn');
+    sell(s, at(0, 0));
+    expect(isColorful(s)).toBe(true);
+    drawDay(s, Math.random);
+    expect(isColorful(s)).toBe(false);
+  });
+
+  it('鶏小屋の周りの作物はモグラに押し出されない', () => {
+    const s = newGame();
+    s.tools[at(1, 1)] = 'henhouse';
+    s.field[at(0, 0)] = newCrop('tomato');
+    s.results = [{ symbol: 'mole', used: false, total: 1, left: 1, power: 1 }];
+    const e = resolveAuto(s, 0, () => 0);
+    expect(e).toEqual({ type: 'mole', moves: [], chased: [at(0, 0)] });
+    expect(s.field[at(0, 0)]?.kind).toBe('tomato');
+  });
+
+  it('鶏小屋が食べた虫は鶏小屋のおかげと分かる', () => {
+    const s = newGame();
+    s.tools[at(1, 1)] = 'henhouse';
+    s.field[at(0, 0)] = { ...newCrop('tomato'), growth: 2 };
+    s.results = [{ symbol: 'bug', used: false, total: 1, left: 1, power: 1 }];
+    expect(resolveAuto(s, 0, () => 0)).toMatchObject({ type: 'bug', warded: true, hen: true });
+  });
+
+  it('夜に育ったマスが記録される', () => {
+    const s = newGame();
+    s.day = 2;
+    s.tools[at(1, 1)] = 'hive';
+    s.field[at(0, 0)] = newCrop('strawberry');
+    endDay(s, () => 0.99);
+    expect(s.nightIncome?.grown).toContain(at(0, 0));
   });
 });

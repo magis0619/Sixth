@@ -189,10 +189,10 @@ export const PLACES: Record<PlaceId, PlaceDef> = {
   goldenWell: { id: 'goldenWell', kind: 'tool', name: '黄金の井戸', desc: '周り8マス 毎日+1', price: null },
   hive: { id: 'hive', kind: 'tool', name: '巣箱', desc: '周り8マス 売値+2・苺が毎晩育つ', price: 30 },
   queenHive: { id: 'queenHive', kind: 'tool', name: '女王蜂の巣箱', desc: '周り8マス 売値+6・苺が毎晩育つ', price: null },
-  henhouse: { id: 'henhouse', kind: 'tool', name: '鶏小屋', desc: '毎日+2金・周り8マスの虫を食べる', price: 60 },
+  henhouse: { id: 'henhouse', kind: 'tool', name: '鶏小屋', desc: '毎日+2金・周り8マスの虫を食べ、モグラを追い払う', price: 60 },
   cowshed: { id: 'cowshed', kind: 'tool', name: '牛小屋', desc: '毎日+4金・隣に水路で+2', price: 120 },
   compost: { id: 'compost', kind: 'tile', name: '堆肥のマス', desc: '売値×2', price: 35 },
-  water: { id: 'water', kind: 'tile', name: '水路のマス', desc: '毎日+1・3つ並べると水車（隣も育つ）・囲むと釣り堀', price: 45 },
+  water: { id: 'water', kind: 'tile', name: '水路のマス', desc: '毎日+1・3つ並べると水車（隣も育つ）・4方を囲むと釣り堀', price: 30 },
 };
 
 export const PLACE_ORDER = Object.keys(PLACES) as PlaceId[];
@@ -278,10 +278,14 @@ export const CONFIG = {
   cowshedGold: 4,
   /** 市場の相場：週ごとに1品が高値・1品が安値。難しい marketFrom から */
   marketFrom: 2,
+  /** 相場は一時停止中（false の間は出ない） */
+  marketOn: false,
   marketHigh: 1.5,
   marketLow: 0.7,
   /** 品評会：売値の上乗せ */
   exhibitionBonus: 0.2,
+  /** 品評会（お守り）は一時停止中（false の間はもらえない・図鑑にも出ない） */
+  exhibitionOn: false,
   /** 商人1枚で上がる今日の売値倍率 */
   merchantBonus: 0.5,
   /** 四つ葉の翌日の金の種の出やすさ（重みの倍率） */
@@ -488,6 +492,8 @@ export const CHARMS: Record<CharmId, CharmDef> = {
 };
 
 export const CHARM_ORDER = Object.keys(CHARMS) as CharmId[];
+/** 一時停止中のお守り（図鑑・解放の一覧に出さない） */
+export const PAUSED_CHARMS: CharmId[] = CONFIG.exhibitionOn ? [] : ['exhibition'];
 
 /** ふだんの抽選に出るお守り（特別なお守りは条件でしか出ない） */
 export const NORMAL_CHARMS = CHARM_ORDER.filter((id) => !CHARMS[id].special);
@@ -520,7 +526,7 @@ export const TOOL_EVOLVE: Partial<Record<PlaceId, { to: PlaceId; need: number; w
 export const DIFFICULTIES = [
   { name: 'ふつう', desc: '' },
   { name: '難しい1', desc: '年貢×1.3' },
-  { name: '難しい2', desc: '＋ショップ×1.3・相場' },
+  { name: '難しい2', desc: '＋ショップ×1.3' },
   { name: '難しい3', desc: '＋お邪魔が早く多い' },
   { name: '難しい4', desc: '＋単品×0.3' },
 ];

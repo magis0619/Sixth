@@ -3,7 +3,7 @@ import {
   CHARMS, CHARM_ORDER, DIFFICULTIES, TOOL_EVOLVE, CONFIG, CROPS, PLACES, PLACE_ORDER, SEEDS, SHAPE_NAMES, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL, type PlaceId, type SymbolId, type UpgradeId,
 } from './config.ts';
 import {
-  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawDay, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful,
+  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawDay, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold,
 } from './game.ts';
 import { isMuted, sfx, toggleMute, unlockAudio } from './audio.ts';
 import { setupFrom } from './meta.ts';
@@ -712,14 +712,27 @@ async function onSpin(): Promise<void> {
   render();
 }
 
-/** ゆうべ入ったお金：水車・釣り堀・鶏小屋・牛小屋から財布へ */
+/** ゆうべ育ったマス（巣箱の苺・水車の隣・水路・井戸）と、入ったお金（水車・釣り堀・鶏小屋・牛小屋） */
 async function showNightIncome(): Promise<void> {
   const n = state.nightIncome;
-  if (!n || n.wheel + n.fish + n.animals === 0) return;
+  if (!n) return;
   const at = (c: number) => center(el.field.children[c]);
+  if (n.grown.length) {
+    renderField();
+    n.grown.forEach((c) => {
+      const plot = el.field.children[c] as HTMLElement;
+      const q = at(c);
+      pop(plot, 1.1);
+      burst(q.x, q.y, ['💧', '✨'], 4, 30);
+      floatText(q.x, q.y + 10, '育った', { cls: 'good', size: 0.8, rise: 20, dur: 1000 });
+    });
+    sfx.grow();
+    await sleep(isCalm() ? 150 : 500);
+  }
+  if (n.wheel + n.fish + n.animals === 0) return;
   n.wheels.forEach((w) => {
     const q = at(w[w.length - 1]);
-    floatText(q.x, q.y - 16, `水車 +${w.length * CONFIG.wheelGold}`, { cls: 'gold', size: 0.7 });
+    floatText(q.x, q.y - 16, `水車 +${wheelGold(state, w)}`, { cls: 'gold', size: 0.7 });
     flyTo(q, el.goldBox, '🪙', 1);
   });
   fieldCells().forEach((c) => {
@@ -732,7 +745,7 @@ async function showNightIncome(): Promise<void> {
     }
     const t = state.tools[c];
     if (t === 'henhouse' || t === 'cowshed') {
-      floatText(q.x, q.y - 16, `+${t === 'henhouse' ? CONFIG.henhouseGold : CONFIG.cowshedGold}`, { cls: 'gold', size: 0.7 });
+      floatText(q.x, q.y - 16, `+${animalGold(state, c)}`, { cls: 'gold', size: 0.7 });
       flyTo(q, el.goldBox, '🪙', 1);
     }
   });
@@ -975,10 +988,10 @@ async function resolveAutos(): Promise<void> {
         await new Promise<void>((r) => flyTo(from, plot, '🐛', 1, r));
         const p = center(plot);
         if (ev.warded) {
-          autoOutcome[i] = 'よけた';
+          autoOutcome[i] = ev.hen ? '鶏が食べた' : 'よけた';
           sfx.shoo();
-          burst(p.x, p.y, ['🌿', '✨'], 8, 50);
-          floatText(p.x, p.y - 20, '虫よけ成功！', { cls: 'good', size: 0.8 });
+          burst(p.x, p.y, ev.hen ? [art('henhouse'), '✨'] : ['🌿', '✨'], 8, 50);
+          floatText(p.x, p.y - 20, ev.hen ? '鶏が虫を食べた！' : '虫よけ成功！', { cls: 'good', size: 0.8 });
         } else {
           autoOutcome[i] = `成長−${ev.damage}`;
           sfx.bug();
@@ -1041,8 +1054,14 @@ async function resolveAutos(): Promise<void> {
         vibrate(120);
       }
     } else if (ev.type === 'mole') {
-      autoOutcome[i] = ev.moves.length ? `${ev.moves.length}つ移動` : '空振り';
-      if (!ev.moves.length) {
+      autoOutcome[i] = ev.moves.length ? `${ev.moves.length}つ移動` : ev.chased.length ? '鶏が追い払った' : '空振り';
+      ev.chased.forEach((c) => {
+        const q = center(el.field.children[c]);
+        sfx.shoo();
+        burst(q.x, q.y, [art('henhouse'), '💨'], 8, 50);
+        floatText(q.x, q.y - 20, '鶏がモグラを追い払った！', { cls: 'good', size: 0.75 });
+      });
+      if (!ev.moves.length && !ev.chased.length) {
         floatText(from.x, from.y - 30, 'モグラは空振り', { size: 0.6 });
       } else {
         sfx.poof();
