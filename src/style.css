@@ -4894,3 +4894,70 @@ body::before {
 .sheet[data-pane='shop'] {
   height: 72dvh;
 }
+
+/* 次の日へ：狙いの絵柄（出たら何個実るか） */
+.spin-go .aim {
+  margin-top: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 236, 160, 0.95);
+  color: #5a3a00;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.spin-go .aim .art {
+  font-size: 1.4rem;
+}
+
+.spin-go .aim b {
+  font-size: 1.15rem;
+  color: #c93c2b;
+}
+
+/* リーチの呼び込み：何がそろいそうかを筐体の上に札で出す */
+.machine > .reach-call {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  z-index: 6;
+  translate: -50% -60%;
+  white-space: nowrap;
+  padding: 5px 16px;
+  border-radius: 999px;
+  background: #c8102e;
+  color: #fff6c8;
+  font-weight: 900;
+  font-size: 1.05rem;
+  box-shadow: 0 3px 0 #7a0a1c, 0 0 18px rgba(255, 60, 60, 0.7);
+  animation: reach-call-in 0.3s cubic-bezier(0.2, 1.6, 0.4, 1) both, reach-call-beat 0.32s 0.3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.machine > .reach-call .art {
+  font-size: 1.4em;
+  vertical-align: -0.28em;
+}
+
+@keyframes reach-call-in {
+  from { scale: 0.3; opacity: 0; }
+}
+
+@keyframes reach-call-beat {
+  50% { scale: 1.06; }
+}
+
+.machine > .reach-call {
+  text-align: center;
+  line-height: 1.25;
+}
+
+.machine > .reach-call small {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #ffe08a;
+}

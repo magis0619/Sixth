@@ -3,7 +3,7 @@ import {
   CHARMS, CHARM_ORDER, DIFFICULTIES, TOOL_EVOLVE, CONFIG, CROPS, PLACES, PLACE_ORDER, SEEDS, SHAPE_NAMES, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL, type PlaceId, type SymbolId, type UpgradeId,
 } from './config.ts';
 import {
-  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawDay, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold,
+  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawDay, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, bestAim, type Aim,
 } from './game.ts';
 import { isMuted, sfx, toggleMute, unlockAudio } from './audio.ts';
 import { setupFrom } from './meta.ts';
@@ -362,9 +362,10 @@ function renderSpinButton(): void {
   const go = $('spin-go');
   go.hidden = !ready;
   go.classList.toggle('tax', state.day > 0 && t.daysLeft === 0);
+  const aim = ready && state.day > 0 ? aimOf() : null;
   setHtml(go, state.day === 0
     ? '<span class="go-hand">👆</span><span class="go-text"><b>タップで回す</b></span>'
-    : `<span class="go-hand">👆</span><span class="go-text">${t.daysLeft === 0 ? `<small>年貢${t.amount}金を納めて</small>` : ''}<b>${state.day + 1}日目へ</b><small>リールをタップ</small></span>`);
+    : `<span class="go-hand">👆</span><span class="go-text">${t.daysLeft === 0 ? `<small>年貢${t.amount}金を納めて</small>` : ''}<b>${state.day + 1}日目へ</b><small>リールをタップ</small>${aim ? `<span class="aim">狙い ${symHtml(aim.symbol)} で <b>${aim.ripen}</b>つ実る</span>` : ''}</span>`);
   // 筐体の看板の文字を、回せるときだけ「タップで回す」に切り替える
   const cue = document.querySelector('.machine-top') as HTMLElement;
   cue.classList.toggle('cue', ready);
@@ -375,6 +376,14 @@ function renderSpinButton(): void {
     : t.daysLeft === 0
       ? `▼ タップで年貢 ${t.amount}金を納めて回す ▼`
       : `▼ タップで${state.day + 1}日目へ ▼`);
+}
+
+/** 狙い（同じ畑なら計算し直さない） */
+let aimCache: { key: string; aim: Aim | null } | null = null;
+function aimOf(): Aim | null {
+  const key = `${state.day}|${JSON.stringify(state.field)}|${state.frost.join()}|${JSON.stringify(state.bag)}`;
+  if (aimCache?.key !== key) aimCache = { key, aim: bestAim(state) };
+  return aimCache.aim;
 }
 
 /** 道具・特別なマスの絵 */
@@ -875,7 +884,8 @@ function spinReels(show: SpinShow = { cutIn: null }): Promise<void> {
   // リーチ：最後のリールより前で良い絵柄があと1つでそろう
   const counts = new Map<SymbolId, number>();
   state.results.slice(0, last).forEach((r) => counts.set(r.symbol, (counts.get(r.symbol) ?? 0) + 1));
-  const reach = [...counts].some(([s, n]) => n >= CONFIG.feverCount - 1 && SYMBOLS[s].rarity !== 'bad');
+  const reachSym = [...counts].find(([s, n]) => n >= CONFIG.feverCount - 1 && SYMBOLS[s].rarity !== 'bad')?.[0];
+  const reach = reachSym !== undefined;
   // 最後のリールが金の種なら溜めを入れる。外れでもたまに溜めて読めないようにする
   const suspense = reach || state.results[last].symbol === 'goldSeed' || state.fever.some((s) => SYMBOLS[s].rarity !== 'bad') || (state.bag.goldSeed > 0 && rng() < 0.15);
   // カットインが出る日は、出ている間リールを回し続ける
@@ -902,6 +912,11 @@ function spinReels(show: SpinShow = { cutIn: null }): Promise<void> {
           el.machine.classList.add('spotlight');
           sfx.reach();
           vibrate([30, 290, 30, 290, 30]);
+          // 何がそろいそうで、そろうと何が起きるか
+          const call = document.createElement('div');
+          call.className = 'reach-call';
+          call.innerHTML = `リーチ！ あと1つで ${symHtml(reachSym!)}<small>${SYMBOLS[reachSym!].feverDesc}</small>`;
+          el.machine.appendChild(call);
         }
       }, dur - hold);
     }
@@ -933,6 +948,7 @@ function spinReels(show: SpinShow = { cutIn: null }): Promise<void> {
     clearInterval(tick);
     tick = 0;
     el.machine.classList.remove('rumble', 'spotlight');
+    el.machine.querySelector('.reach-call')?.remove();
   });
 }
 

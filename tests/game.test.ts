@@ -604,3 +604,21 @@ describe('ショップは週替わり', () => {
     expect(seen.size).toBeGreaterThan(CONFIG.weeklyCount);
   });
 });
+
+describe('狙い', () => {
+  it('一番多く実らせられる育ての絵柄と、その数を出す', () => {
+    const s = newGame();
+    const C = CONFIG.fieldCols;
+    for (const k of Object.keys(s.bag) as SymbolId[]) s.bag[k] = 0;
+    s.bag.rain = 1;
+    s.bag.sun = 1;
+    // 縦一列に3つ、あと1で実るトマト → 太陽なら3つ、雨（十字）なら最大3つ
+    [0, C, 2 * C].forEach((c) => (s.field[c] = { ...newCrop('tomato'), growth: 2 }));
+    s.field[1] = { ...newCrop('tomato'), growth: 2 };
+    const aim = bestAim(s)!;
+    expect(aim.ripen).toBe(3);
+    expect(['rain', 'sun']).toContain(aim.symbol);
+    s.field = s.field.map(() => null);
+    expect(bestAim(s)).toBeNull();
+  });
+});

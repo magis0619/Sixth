@@ -1495,3 +1495,35 @@ export function place(state: GameState, cell: number): PlaceId | null {
   else state.tiles[cell] = id;
   return id;
 }
+
+// ---- 狙い：次に回す前に「何が出たら嬉しいか」 ----
+
+export interface Aim {
+  symbol: SymbolId;
+  /** その絵柄を一番いいマスに使ったとき、新しく実る作物の数 */
+  ripen: number;
+  /** 1本のリールにその絵柄が出る確率（%） */
+  pct: number;
+}
+
+/** 育てる絵柄のうち、今の畑で一番多く実らせられるもの（夜の成長は数えない） */
+export function bestAim(state: GameState): Aim | null {
+  const bag = drawBag(state);
+  const total = bagTotal(bag);
+  if (!total) return null;
+  const ripeNow = (s: GameState) => fieldCells(s).filter((i) => s.field[i] && s.field[i]!.anchor === undefined && isRipe(s.field[i])).length;
+  const base = ripeNow(state);
+  let best: Aim | null = null;
+  (['rain', 'sun', 'bee', 'thunder', 'moon'] as SymbolId[]).forEach((symbol) => {
+    if (!bag[symbol]) return;
+    const cells = SYMBOLS[symbol].shape === 'all' ? [null] : fieldCells(state);
+    let top = 0;
+    cells.forEach((cell) => {
+      const s = structuredClone({ ...state, results: [{ symbol, used: false, total: 1, left: 1, power: 1 }], notices: [] }) as GameState;
+      if (useSymbol(s, 0, cell)) top = Math.max(top, ripeNow(s) - base);
+    });
+    const pct = Math.round((bag[symbol] / total) * 100);
+    if (top > 0 && (!best || top > best.ripen || (top === best.ripen && pct > best.pct))) best = { symbol, ripen: top, pct };
+  });
+  return best;
+}
