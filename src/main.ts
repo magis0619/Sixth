@@ -3,7 +3,7 @@ import {
   CHARMS, CHARM_ORDER, DIFFICULTIES, TOOL_EVOLVE, CONFIG, CROPS, PLACES, PLACE_ORDER, SEEDS, SHAPE_NAMES, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL, type PlaceId, type SymbolId, type UpgradeId,
 } from './config.ts';
 import {
-  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawDay, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels,
+  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawDay, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful,
 } from './game.ts';
 import { isMuted, sfx, toggleMute, unlockAudio } from './audio.ts';
 import { setupFrom } from './meta.ts';
@@ -166,6 +166,9 @@ function renderStatus(): void {
   if (bad.length) chips.push(`<span class="st danger">⚠️ ${bad.map((s) => `${SYMBOLS[s].name}の群れ`).join('・')}</span>`);
   if (state.priceMult > 1) chips.push(`<span class="st merchant">🧑‍🌾 今日の売値 ×${fmtMult(state.priceMult)}</span>`);
   if (state.cloverBoost > 1) chips.push(`<span class="st clover">🍀 明日は金の種が出やすい（×${fmtMult(state.cloverBoost)}）</span>`);
+  // セット効果：そろっている間だけ
+  if (hasRanch(state)) chips.push(`<span class="st set">${art('henhouse')}${art('cowshed')}${art('hive')} 牧場 ×2</span>`);
+  if (isColorful(state)) chips.push(`<span class="st set">${art('sunBlessing')} 彩りの畑 +${Math.round(CONFIG.colorfulBonus * 100)}%</span>`);
   setHtml(el.status, chips.join(''));
 }
 

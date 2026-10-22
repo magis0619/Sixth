@@ -64,6 +64,10 @@ export type CharmId =
   | 'heater'
   | 'goldenWell'
   | 'queenHive'
+  | 'rancher'
+  | 'bigGame'
+  | 'wheelwright'
+  | 'tillMaster'
   // ---- 条件を満たすと出る特別なお守り ----
   | 'thunderstorm'
   | 'tomatoFest'
@@ -183,12 +187,12 @@ export const PLACES: Record<PlaceId, PlaceDef> = {
   bigScarecrow: { id: 'bigScarecrow', kind: 'tool', name: '大かかし', desc: '2マス以内を守る', price: null },
   well: { id: 'well', kind: 'tool', name: '井戸', desc: '上下左右 毎日+1', price: 60 },
   goldenWell: { id: 'goldenWell', kind: 'tool', name: '黄金の井戸', desc: '周り8マス 毎日+1', price: null },
-  hive: { id: 'hive', kind: 'tool', name: '巣箱', desc: '周り8マス 売値+2', price: 30 },
-  queenHive: { id: 'queenHive', kind: 'tool', name: '女王蜂の巣箱', desc: '周り8マス 売値+6', price: null },
+  hive: { id: 'hive', kind: 'tool', name: '巣箱', desc: '周り8マス 売値+2・苺が毎晩育つ', price: 30 },
+  queenHive: { id: 'queenHive', kind: 'tool', name: '女王蜂の巣箱', desc: '周り8マス 売値+6・苺が毎晩育つ', price: null },
   henhouse: { id: 'henhouse', kind: 'tool', name: '鶏小屋', desc: '毎日+2金・周り8マスの虫を食べる', price: 60 },
-  cowshed: { id: 'cowshed', kind: 'tool', name: '牛小屋', desc: '毎日+4金', price: 120 },
+  cowshed: { id: 'cowshed', kind: 'tool', name: '牛小屋', desc: '毎日+4金・隣に水路で+2', price: 120 },
   compost: { id: 'compost', kind: 'tile', name: '堆肥のマス', desc: '売値×2', price: 35 },
-  water: { id: 'water', kind: 'tile', name: '水路のマス', desc: '毎日+1・3つ並べると水車・囲むと釣り堀', price: 45 },
+  water: { id: 'water', kind: 'tile', name: '水路のマス', desc: '毎日+1・3つ並べると水車（隣も育つ）・囲むと釣り堀', price: 45 },
 };
 
 export const PLACE_ORDER = Object.keys(PLACES) as PlaceId[];
@@ -264,6 +268,11 @@ export const CONFIG = {
   fishGold: 4,
   bigFishChance: 0.15,
   bigFishGold: 20,
+  /** 牛小屋の隣に水路があると（水飲み場）毎晩の収入に上乗せ */
+  cowWaterGold: 2,
+  /** 彩りの畑：実った作物がこの種類以上同時にあると売値に上乗せ */
+  colorfulKinds: 4,
+  colorfulBonus: 0.1,
   /** 鶏小屋・牛小屋の毎晩の収入 */
   henhouseGold: 2,
   cowshedGold: 4,
@@ -461,6 +470,10 @@ export const CHARMS: Record<CharmId, CharmDef> = {
   bugWard: { id: 'bugWard', tier: 'common', name: '草よけ', emoji: '🌿', desc: (n) => `虫・雑草を${Math.round((1 - Math.pow(0.5, n)) * 100)}%防ぐ・草むしり無料`, max: 4 },
   heater: { id: 'heater', tier: 'common', name: '湯たんぽ', emoji: '♨️', desc: () => '霜が1日で溶ける', max: 1 },
   artisan: { id: 'artisan', tier: 'rare', name: 'からくり職人', emoji: '🎰', desc: (n) => `リール＋${n}`, max: 2 },
+  rancher: { id: 'rancher', tier: 'uncommon', name: '牧場主', emoji: '🤠', desc: (n) => `鶏小屋・牛小屋の収入＋${n}`, max: Infinity },
+  bigGame: { id: 'bigGame', tier: 'uncommon', name: '大物狙い', emoji: '🍉', desc: (n) => `スイカの売値＋${30 * n}`, max: Infinity },
+  wheelwright: { id: 'wheelwright', tier: 'uncommon', name: '水車職人', emoji: '🛞', desc: () => '水車のお金×2', max: 1 },
+  tillMaster: { id: 'tillMaster', tier: 'common', name: '耕作上手', emoji: '⛏️', desc: () => '耕した土に植えると成長+2', max: 1 },
   taxRelief: { id: 'taxRelief', tier: 'common', name: '年貢の減免', emoji: '📜', desc: (n) => `年貢−${Math.min(50, 10 * n)}%`, max: 5 },
   thunderstorm: { id: 'thunderstorm', tier: 'rare', name: '雷雨', emoji: '⛈️', desc: () => '雨が斜めにも効く', max: 1, special: { kind: 'bag', hint: '雨をたくさん…？' } },
   tomatoFest: { id: 'tomatoFest', tier: 'rare', name: 'トマト祭り', emoji: '🍅', desc: () => 'トマトだけの列 さらに×1.5', max: 1, special: { kind: 'bag', hint: 'トマトの種をたくさん…？' } },

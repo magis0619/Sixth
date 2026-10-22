@@ -4699,3 +4699,15 @@ body::before {
   height: 100cqw;
   font-size: 78cqw;
 }
+
+/* セット効果（牧場・彩りの畑）の札 */
+.st.set {
+  background: #fff1b8;
+  color: var(--ink);
+  box-shadow: inset 0 0 0 2px var(--gold);
+}
+
+.st.set .art {
+  font-size: 1.1em;
+  vertical-align: -0.2em;
+}

@@ -355,7 +355,8 @@ export function isPond(state: GameState, cell: number): boolean {
 /** 夜のうちに入るお金（水車・釣り堀・鶏小屋・牛小屋） */
 function collectNightIncome(state: GameState, rng: Rng): NightIncome {
   const wheels = waterWheels(state);
-  const wheel = wheels.reduce((n, w) => n + w.length * CONFIG.wheelGold, 0);
+  // 水車職人：水車のお金×2
+  const wheel = wheels.reduce((n, w) => n + w.length * CONFIG.wheelGold, 0) * (state.charms.wheelwright ? 2 : 1);
   let fish = 0;
   const bigFish: number[] = [];
   fieldCells(state).forEach((i) => {
@@ -366,9 +367,39 @@ function collectNightIncome(state: GameState, rng: Rng): NightIncome {
       bigFish.push(i);
     }
   });
-  const animals = fieldCells(state).reduce((n, i) => n + (state.tools[i] === 'henhouse' ? CONFIG.henhouseGold : state.tools[i] === 'cowshed' ? CONFIG.cowshedGold : 0), 0);
+  const animals = fieldCells(state).reduce((n, i) => n + animalGold(state, i), 0);
   earn(state, wheel + fish + animals);
   return { wheel, wheels, fish, bigFish, animals };
+}
+
+// ---- セット効果 ----
+
+/** 牧場：鶏小屋・牛小屋・巣箱（女王蜂の巣箱でもよい）が全部畑にあると、3つの効果が2倍 */
+export function hasRanch(state: GameState): boolean {
+  const has = (...ids: PlaceId[]) => fieldCells(state).some((i) => ids.includes(state.tools[i]!));
+  return has('henhouse') && has('cowshed') && has('hive', 'queenHive');
+}
+
+/** 彩りの畑：実った作物（凍っていない）の種類の数 */
+export function ripeKinds(state: GameState): CropKind[] {
+  return [...new Set(fieldCells(state).flatMap((i) => {
+    const c = state.field[i];
+    return c && c.anchor === undefined && isRipe(c) && !frozenCrop(state, i) ? [c.kind] : [];
+  }))];
+}
+
+export function isColorful(state: GameState): boolean {
+  return ripeKinds(state).length >= CONFIG.colorfulKinds;
+}
+
+/** 鶏小屋・牛小屋1つの毎晩の収入（牧場主・水飲み場・牧場のセット効果込み） */
+export function animalGold(state: GameState, cell: number): number {
+  const t = state.tools[cell];
+  if (t !== 'henhouse' && t !== 'cowshed') return 0;
+  let gold = (t === 'henhouse' ? CONFIG.henhouseGold : CONFIG.cowshedGold) + lv(state, 'rancher');
+  // 牛小屋の隣に水路があれば水飲み場
+  if (t === 'cowshed' && neighbors(state, cell).some((n) => state.tiles[n] === 'water')) gold += CONFIG.cowWaterGold;
+  return gold * (hasRanch(state) ? 2 : 1);
 }
 
 /** 鶏小屋の周り8マス（虫を食べる） */
@@ -573,6 +604,18 @@ export function overnightTargets(state: GameState): number[] {
 
 function overnightGrowth(state: GameState): number[] {
   const affected: number[] = [];
+  // 巣箱の周りの苺は受粉で育つ（牧場なら2倍）
+  const pollen = hasRanch(state) ? 2 : 1;
+  fieldCells(state).forEach((i) => {
+    if (state.tools[i] !== 'hive' && state.tools[i] !== 'queenHive') return;
+    around(state, i, 1).forEach((c) => state.field[c]?.kind === 'strawberry' && grow(state, c, pollen, affected));
+  });
+  // 水車の立った水路に隣り合うマスは、水が引かれて育つ（いくつの水車に隣り合っても1回）
+  const wheelSide = new Set<number>();
+  waterWheels(state).forEach((w) => w.forEach((c) => neighbors(state, c).forEach((n) => !w.includes(n) && state.tiles[n] !== 'water' && wheelSide.add(n))));
+  const sideGrown: number[] = [];
+  wheelSide.forEach((c) => grow(state, c, 1, sideGrown));
+  sideGrown.forEach((c) => affected.includes(c) || affected.push(c));
   fieldCells(state).forEach((i) => {
     if (state.tiles[i] === 'water') grow(state, i, 1, affected);
     const t = state.tools[i];
@@ -967,6 +1010,8 @@ export function canUse(state: GameState, reel: number, cell: number | null): boo
   if (seed) return CROPS[seed.crop].big ? bigFits(state, cell) : isOpen(state, cell);
   // 鍬は、横一列に耕せるマスが1つでもあれば使える
   if (r.symbol === 'hoe') return shapeCells(state, 'row', cell).some((i) => tillable(state, i));
+  // 太陽は霜も溶かすので、縦一列に霜があっても使える
+  if (r.symbol === 'sun' && shapeCells(state, 'column', cell).some((i) => state.frost[i] > 0)) return true;
   // 形で効く出目は、範囲に育てられる作物が1つでもあれば使える
   if (def.shape) return shapeCells(state, def.shape, cell).some((i) => growableAt(state, i));
   if (frozenCrop(state, cell)) return false;
@@ -1018,7 +1063,7 @@ export function useSymbol(state: GameState, reel: number, cell: number | null): 
     const crop = newCrop(seed.crop);
     const cells = CROPS[seed.crop].big ? bigCells(state, cell!) : [cell!];
     // 品種改良・耕した土は1段階育った状態から（実る手前まで）
-    const boost = (state.bred?.includes(r.symbol) ? 1 : 0) + (cells.some((i) => state.tilled[i]) ? 1 : 0);
+    const boost = (state.bred?.includes(r.symbol) ? 1 : 0) + (cells.some((i) => state.tilled[i]) ? (state.charms.tillMaster ? 2 : 1) : 0);
     crop.growth = Math.min(CROPS[seed.crop].ripe - 1, boost);
     cells.forEach((i, k) => {
       state.field[i] = k === 0 ? crop : { ...newCrop(seed.crop), anchor: cell! };
@@ -1049,6 +1094,13 @@ export function useSymbol(state: GameState, reel: number, cell: number | null): 
       fieldCells(state).forEach((i) => grow(state, i, r.power + state.charms.moonFeast, affected));
       return affected;
     case 'sun': {
+      // 霜を溶かしてから育てる（溶けたマスの作物もすぐ育つ）
+      shapeCells(state, 'column', cell!).forEach((i) => {
+        if (state.frost[i] > 0) {
+          state.frost[i] = 0;
+          if (!affected.includes(i)) affected.push(i);
+        }
+      });
       const amount = CONFIG.sunGrowth * r.power + state.charms.sunBlessing;
       shapeCells(state, 'column', cell!).forEach((i) => grow(state, i, amount, affected));
       state.today.sun.push(...shapeCells(state, 'column', cell!));
@@ -1064,17 +1116,18 @@ export function useSymbol(state: GameState, reel: number, cell: number | null): 
 
 /** 周りの巣箱で上がる売値 */
 export function hiveBonus(state: GameState, cell: number): number {
-  return around(state, cell, 1).reduce((n, i) => n + (state.tools[i] === 'hive' ? 2 : state.tools[i] === 'queenHive' ? 6 : 0), 0);
+  const ranch = hasRanch(state) ? 2 : 1;
+  return around(state, cell, 1).reduce((n, i) => n + (state.tools[i] === 'hive' ? 2 : state.tools[i] === 'queenHive' ? 6 : 0), 0) * ranch;
 }
 
 /** 列の倍率をかける前の売値。cell を渡すと巣箱・堆肥のマスも効く */
 export function cropPrice(state: GameState, crop: Crop, cell?: number): number {
   const def = CROPS[crop.kind];
-  const charm = def.gold ? 10 * lv(state, 'goldLuck') : 2 * lv(state, 'bumper');
+  const charm = (def.gold ? 10 * lv(state, 'goldLuck') : 2 * lv(state, 'bumper')) + (def.big ? 30 * lv(state, 'bigGame') : 0);
   const hive = cell === undefined ? 0 : hiveBonus(state, cell);
   const fert = crop.fertilized ? CONFIG.fertilizerMultiplier : 1;
   const tile = cell !== undefined && state.tiles[cell] === 'compost' ? 2 : 1;
-  const fair = 1 + CONFIG.exhibitionBonus * state.charms.exhibition;
+  const fair = (1 + CONFIG.exhibitionBonus * state.charms.exhibition) * (isColorful(state) ? 1 + CONFIG.colorfulBonus : 1);
   return Math.round((def.price + charm + crop.bonus + hive) * fert * tile * state.priceMult * marketMult(state, crop.kind) * fair);
 }
 
@@ -1292,6 +1345,12 @@ export function buy(state: GameState, id: UpgradeId): boolean {
 
 // ---- お守り ----
 
+/** そのゲームで役に立つお守りか（大物狙いはスイカの種を使えるときだけ） */
+function charmUseful(state: GameState, id: CharmId): boolean {
+  if (id === 'bigGame') return state.bag.watermelonSeed > 0 || state.shop.includes('addWatermelonSeed') || state.pool.includes('addWatermelonSeed');
+  return true;
+}
+
 export function rollCharmOffer(state: GameState, rng: Rng): CharmId[] {
   // 袋の条件を満たした特別なお守りは必ず並ぶ
   const offer: CharmId[] = state.ready.filter((id) => state.charms[id] === 0).slice(0, CONFIG.charmChoices);
@@ -1299,7 +1358,7 @@ export function rollCharmOffer(state: GameState, rng: Rng): CharmId[] {
   state.ready = state.ready.filter((id) => !offer.includes(id));
   offer.forEach((id) => state.specials.includes(id) || state.specials.push(id));
   const pool = state.charmPool
-    .filter((id) => (!CHARMS[id].special || state.specials.includes(id)) && !offer.includes(id) && state.charms[id] < CHARMS[id].max)
+    .filter((id) => (!CHARMS[id].special || state.specials.includes(id)) && !offer.includes(id) && state.charms[id] < CHARMS[id].max && charmUseful(state, id))
     .map((id) => ({
     id,
     w: CONFIG.charmTierWeights[CHARMS[id].tier],

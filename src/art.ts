@@ -520,6 +520,17 @@ const bale = `
   ${line('M22 17Q19 32.5 22 48M44 17Q48 32.5 44 48', C.brown[0], 2.5)}
   ${hl(36, 22, 6, 1.4, 0, 0.55)}`;
 
+/** 水車（水路の印と、水車職人のお守り） */
+const SCENE_WHEEL = `
+    ${face(E(32, 32, 24), C.tan, 26, 26, 0.9)}
+    ${face(E(32, 32, 17), ['#9ed6ff', '#6fb8ec'], 28, 28, 0.88, S2)}
+    ${Array.from({ length: 8 }, (_, i) => {
+      const a = (Math.PI / 4) * i;
+      const x1 = 32 + Math.cos(a) * 5, y1 = 32 + Math.sin(a) * 5, x2 = 32 + Math.cos(a) * 25, y2 = 32 + Math.sin(a) * 25;
+      return `<path d="M${x1.toFixed(1)} ${y1.toFixed(1)}L${x2.toFixed(1)} ${y2.toFixed(1)}" stroke="${INK}" stroke-width="5" stroke-linecap="round"/><path d="M${x1.toFixed(1)} ${y1.toFixed(1)}L${x2.toFixed(1)} ${y2.toFixed(1)}" stroke="${C.tan[0]}" stroke-width="2.4" stroke-linecap="round"/>`;
+    }).join('')}
+    ${face(E(32, 32, 6), C.brown, 31, 31, 0.8)}`;
+
 /** 景色・画面・演出 */
 const SCENE_ART = {
   compost: `
@@ -617,15 +628,7 @@ const SCENE_ART = {
     ${eye(27, 41, 1.6)}${eye(37, 41, 1.6)}
     ${face(E(32, 50, 7, 4.5), ['#ffc6d4', '#f0a0b6'], 31, 49, 0.84, S2)}
     <circle cx="29.5" cy="50" r="1" fill="${INK}"/><circle cx="34.5" cy="50" r="1" fill="${INK}"/>`,
-  waterwheel: `
-    ${face(E(32, 32, 24), C.tan, 26, 26, 0.9)}
-    ${face(E(32, 32, 17), ['#9ed6ff', '#6fb8ec'], 28, 28, 0.88, S2)}
-    ${Array.from({ length: 8 }, (_, i) => {
-      const a = (Math.PI / 4) * i;
-      const x1 = 32 + Math.cos(a) * 5, y1 = 32 + Math.sin(a) * 5, x2 = 32 + Math.cos(a) * 25, y2 = 32 + Math.sin(a) * 25;
-      return `<path d="M${x1.toFixed(1)} ${y1.toFixed(1)}L${x2.toFixed(1)} ${y2.toFixed(1)}" stroke="${INK}" stroke-width="5" stroke-linecap="round"/><path d="M${x1.toFixed(1)} ${y1.toFixed(1)}L${x2.toFixed(1)} ${y2.toFixed(1)}" stroke="${C.tan[0]}" stroke-width="2.4" stroke-linecap="round"/>`;
-    }).join('')}
-    ${face(E(32, 32, 6), C.brown, 31, 31, 0.8)}`,
+  waterwheel: SCENE_WHEEL,
   fish: `
     ${face('M48 32L60 22V42Z', ['#ff9f5a', '#e07a35'], 52, 30, 0.84)}
     ${face(E(30, 32, 20, 13), ['#ffb36b', '#e88a3e'], 24, 27, 0.88)}
@@ -640,6 +643,26 @@ const SCENE_ART = {
     <circle cx="32" cy="39" r="13" fill="none" stroke="${C.gold[1]}" stroke-width="2.4"/>
     <path d="M${starPts(32, 39, 5, 8.5, 8.5, 0.45, -90)}Z" fill="${C.gold[2]}" ${S2}/>
     ${hl(22, 31, 2.4, 4.5, -35, 0.8)}`,
+  rancher: `
+    ${line('M20 8Q32 2 44 8', C.red[1], 4)}
+    ${face('M24 10H40V16H24Z', C.red, 28, 12, 0.84, S2)}
+    ${face('M22 16H42L48 50Q48 56 42 56H22Q16 56 16 50Z', C.gold, 26, 26, 0.88)}
+    <path d="M18 46H46" fill="none" stroke="${C.gold[1]}" stroke-width="2"/>
+    ${face(E(32, 56, 5, 4), C.brown, 31, 55, 0.8, S2)}
+    ${hl(23, 30, 1.8, 7, -5, 0.75)}
+    <path d="M50 26Q55 22 54 16M54 32Q60 30 61 24" fill="none" stroke="${C.gold[1]}" stroke-width="2.2" stroke-linecap="round"/>`,
+  bigGame: `<g transform="translate(2 6) scale(0.86)">${watermelon}</g>
+    ${face(E(50, 14, 10), C.gold, 47, 11, 0.86, S2)}
+    <path d="M${starPts(50, 14, 5, 6, 6, 0.45, -90)}Z" fill="${C.gold[2]}" stroke="${INK}" stroke-width="1.4" stroke-linejoin="round"/>`,
+  wheelwright: `<g transform="scale(0.82)">${SCENE_WHEEL}</g>
+    ${line('M36 58L52 40', C.tan[0], 4)}
+    ${face('M44 30L58 44L54 48L40 34Z', C.stone, 48, 36, 0.84, S2)}`,
+  tillMaster: `
+    ${line('M12 58L42 14', C.tan[0], 4.5)}
+    ${line('M42 14Q48 12 50 18', C.gold[1], 3)}
+    ${face('M38 22L58 30L52 46L32 36Z', C.gold, 44, 30, 0.84)}
+    <path d="M33 36L52 46" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity="0.8"/>
+    ${sparkle(14, 16, 6, '#fff')}${sparkle(56, 54, 4.5, '#fff')}`,
   sparkle: `${sparkle(32, 32, 26, C.gold[0])}${hl(27, 27, 2, 5, 45, 0.8)}`,
   star: star5(32, 34, 27, C.gold),
   drop: `${face(dropD(32, 5, 3.7), C.blue, 27, 34, 0.84)}${hl(25, 42, 2.6, 6, 20, 0.85)}`,

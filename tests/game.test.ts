@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { CONFIG, CROPS, EVENT_CONDITIONS, THUNDER_LINES } from '../src/config.ts';
 import {
-  buy, buyPlace, drawDay, canPlace, canUse, cellMultiplier, cropPrice, isPond, waterWheels, checkReady, chooseCharm, endDay, evolveTools, expand, expandPrice,
+  animalGold, buy, buyPlace, drawDay, hasRanch, hiveBonus, isColorful, canPlace, canUse, cellMultiplier, cropPrice, isPond, waterWheels, checkReady, chooseCharm, endDay, evolveTools, expand, expandPrice,
   fieldCells, isGolden, lv, multSteps, newCrop, newGame, nextTax, obstacleRule, place, pullWeed, resolveAuto, ripeGroup,
   rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult,
 } from '../src/game.ts';
@@ -364,7 +364,8 @@ describe('水路のつながり・小屋・相場・品評会', () => {
     const n = s.nightIncome!;
     expect(n.wheel).toBe(3 * CONFIG.wheelGold);
     expect(n.fish).toBe(CONFIG.fishGold);
-    expect(n.animals).toBe(CONFIG.henhouseGold + CONFIG.cowshedGold);
+    // 牛小屋（2,2）は水路（1,2）の隣なので水飲み場の分も入る
+    expect(n.animals).toBe(CONFIG.henhouseGold + CONFIG.cowshedGold + CONFIG.cowWaterGold);
     expect(s.gold).toBe(n.wheel + n.fish + n.animals);
   });
 
@@ -416,5 +417,88 @@ describe('相場は難しい2から', () => {
       drawDay(s, Math.random);
       expect(s.market !== null).toBe(has);
     }
+  });
+});
+
+describe('シナジー', () => {
+  it('巣箱の周りの苺は毎晩育つ（苺以外は育たない）', () => {
+    const s = game();
+    s.tools[at(1, 1)] = 'hive';
+    s.field[at(0, 0)] = newCrop('strawberry');
+    s.field[at(2, 2)] = newCrop('tomato');
+    endDay(s, () => 0.99);
+    expect(s.field[at(0, 0)]!.growth).toBe(1);
+    expect(s.field[at(2, 2)]!.growth).toBe(0);
+  });
+
+  it('水車の立った水路に隣り合うマスは毎晩育つ', () => {
+    const s = game();
+    [at(0, 0), at(1, 0), at(2, 0)].forEach((c) => (s.tiles[c] = 'water'));
+    s.field[at(1, 1)] = newCrop('tomato');
+    s.field[at(1, 2)] = newCrop('tomato');
+    endDay(s, () => 0.99);
+    expect(s.field[at(1, 1)]!.growth).toBe(1);
+    expect(s.field[at(1, 2)]!.growth).toBe(0);
+  });
+
+  it('牛小屋の隣に水路があると収入+2、牧場主で鶏・牛とも+1、水車職人で水車×2', () => {
+    const s = game();
+    s.tools[at(0, 0)] = 'cowshed';
+    s.tiles[at(1, 0)] = 'water';
+    expect(animalGold(s, at(0, 0))).toBe(CONFIG.cowshedGold + CONFIG.cowWaterGold);
+    s.charms.rancher = 1;
+    expect(animalGold(s, at(0, 0))).toBe(CONFIG.cowshedGold + CONFIG.cowWaterGold + 1);
+    const t = game();
+    [at(0, 0), at(1, 0), at(2, 0)].forEach((c) => (t.tiles[c] = 'water'));
+    t.charms.wheelwright = 1;
+    endDay(t, () => 0.99);
+    expect(t.nightIncome!.wheel).toBe(3 * CONFIG.wheelGold * 2);
+  });
+
+  it('牧場：鶏小屋・牛小屋・巣箱がそろうと収入と巣箱の売値が2倍', () => {
+    const s = game();
+    s.tools[at(0, 0)] = 'henhouse';
+    s.tools[at(1, 0)] = 'cowshed';
+    expect(hasRanch(s)).toBe(false);
+    s.tools[at(2, 0)] = 'hive';
+    expect(hasRanch(s)).toBe(true);
+    expect(animalGold(s, at(0, 0))).toBe(CONFIG.henhouseGold * 2);
+    expect(hiveBonus(s, at(2, 1))).toBe(4);
+  });
+
+  it('彩りの畑：実った作物が4種類以上あると売値+10%', () => {
+    const s = game();
+    ripe(s, 'tomato', [at(0, 0)]);
+    ripe(s, 'strawberry', [at(1, 0)]);
+    ripe(s, 'pumpkin', [at(2, 0)]);
+    const before = cropPrice(s, s.field[at(2, 0)]!);
+    ripe(s, 'corn', [at(0, 2)]);
+    expect(isColorful(s)).toBe(true);
+    expect(cropPrice(s, s.field[at(2, 0)]!)).toBe(Math.round(before * (1 + CONFIG.colorfulBonus)));
+  });
+
+  it('太陽は縦一列の霜を溶かす（作物がなくても使える）', () => {
+    const s = game();
+    s.frost[at(1, 2)] = 3;
+    s.results = [reel('sun')];
+    expect(canUse(s, 0, at(1, 0))).toBe(true);
+    useSymbol(s, 0, at(1, 0));
+    expect(s.frost[at(1, 2)]).toBe(0);
+  });
+
+  it('大物狙いでスイカが高く、耕作上手で耕した土は成長+2', () => {
+    const s = game();
+    s.charms.bigGame = 1;
+    expect(cropPrice(s, newCrop('watermelon'))).toBe(CROPS.watermelon.price + 30);
+    s.charms.tillMaster = 1;
+    s.tilled[at(0, 0)] = true;
+    s.results = [reel('seed')];
+    useSymbol(s, 0, at(0, 0));
+    expect(s.field[at(0, 0)]!.growth).toBe(2);
+  });
+
+  it('大物狙いはスイカの種を使えないゲームでは3択に出ない', () => {
+    const s = newGame({ shop: ['addSun'], charmPool: ['bigGame', 'coinPurse', 'aging', 'crowToll'] });
+    for (let k = 0; k < 30; k++) expect(rollCharmOffer(s, Math.random)).not.toContain('bigGame');
   });
 });

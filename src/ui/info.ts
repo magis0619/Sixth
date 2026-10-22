@@ -3,7 +3,7 @@
 import {
   CHARM_TIER_NAMES, type CharmId, CHARMS, CONFIG, CROPS, type PlaceId, PLACES, SHAPE_NAMES, type SymbolId, SYMBOLS, TOOL_EVOLVE, UPGRADE_SYMBOL, UPGRADES,
 } from '../config.ts';
-import { cropPrice, inField, isGolden, isPond, isRipe, multSteps, rootOf, waterWheels, weedCost } from '../game.ts';
+import { animalGold, cropPrice, hasRanch, inField, isGolden, isPond, isRipe, multSteps, rootOf, waterWheels, weedCost } from '../game.ts';
 import { art } from '../art.ts';
 import { fmtMult, vibrate } from '../fx.ts';
 import { el, state } from './store.ts';
@@ -120,7 +120,8 @@ export function plotInfo(cell: number): string | null {
     if (state.tilled[cell]) parts.push('<p class="sub">植えると成長+1</p>');
   }
   const wheel = waterWheels(state).find((w) => w.includes(cell));
-  if (wheel) parts.push(`<p class="sub">${art('waterwheel')} 水車：水路${wheel.length}つ → 毎晩 +${wheel.length * CONFIG.wheelGold}金</p>`);
+  if (wheel) parts.push(`<p class="sub">${art('waterwheel')} 水車：水路${wheel.length}つ → 毎晩 +${wheel.length * CONFIG.wheelGold * (state.charms.wheelwright ? 2 : 1)}金・隣のマスも毎晩+1</p>`);
+  if (tool === 'henhouse' || tool === 'cowshed') parts.push(`<p class="sub">今の収入 毎晩 +${animalGold(state, cell)}金${hasRanch(state) ? '（牧場 ×2）' : ''}</p>`);
   if (tile) parts.push(`<p class="sub">${art(PLACE_ART[tile])} ${PLACES[tile].name}：${PLACES[tile].desc}</p>`);
   if (state.frost[cell]) parts.push(`<p class="sub">❄️ あと${state.frost[cell]}日凍っている</p>`);
   return parts.join('');

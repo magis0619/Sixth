@@ -134,7 +134,9 @@ function playDay(s: GameState): void {
     if (!s.bought.compost && canBuyPlace(s, 'compost') && s.gold - placePrice(s, 'compost')! >= reserve) { buyPlace(s, 'compost'); bought = true; continue; }
     // ANIMALS=1 で鶏小屋・牛小屋も買う（毎晩お金が入る道具の強さを見る）
     if (process.env.ANIMALS) {
-      const animal = (['henhouse', 'cowshed'] as const).find((id) => (s.bought[id] ?? 0) < 2 && canBuyPlace(s, id) && s.gold - placePrice(s, id)! >= reserve);
+      // RANCH=1 は巣箱も1つ買って牧場（セット効果）を作る
+      const kinds = process.env.RANCH ? (['henhouse', 'cowshed', 'hive'] as const) : (['henhouse', 'cowshed'] as const);
+      const animal = kinds.find((id) => (s.bought[id] ?? 0) < (id === 'hive' ? 1 : 2) && canBuyPlace(s, id) && s.gold - placePrice(s, id)! >= reserve);
       if (animal) { buyPlace(s, animal); bought = true; continue; }
     }
     // WATER=1 で水路を一列に並べて水車を作る
