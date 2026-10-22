@@ -6,7 +6,7 @@ import { CONFIG, CROPS, EVENT_CONDITIONS, THUNDER_LINES } from '../src/config.ts
 import {
   animalGold, buy, buyPlace, drawDay, hasRanch, hiveBonus, isColorful, canPlace, canUse, cellMultiplier, cropPrice, isPond, waterWheels, checkReady, chooseCharm, endDay, evolveTools, expand, expandPrice,
   fieldCells, isGolden, lv, multSteps, newCrop, newGame, nextTax, obstacleRule, place, pullWeed, resolveAuto, ripeGroup,
-  bestAim, canBuy, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult,
+  bestAim, canBuy, isPivotAdd, isPivotPlace, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult,
 } from '../src/game.ts';
 import { recordRun, type MetaState } from '../src/meta.ts';
 import type { CropKind, SymbolId } from '../src/config.ts';
@@ -619,5 +619,16 @@ describe('狙い', () => {
     expect(aim).toMatchObject({ symbol: 'rain', ripen: 4 });
     s.field = s.field.map(() => null);
     expect(bestAim(s)).toBeNull();
+  });
+});
+
+describe('作戦が変わる品', () => {
+  it('毎週、足す品・畑の品にそれぞれ1つは作戦が変わる品が並ぶ', () => {
+    for (let k = 0; k < 30; k++) {
+      const s = newGame();
+      drawDay(s, Math.random);
+      expect(s.weekly.some((id) => isPivotAdd(s, id))).toBe(true);
+      expect(s.weeklyPlaces.some((id) => isPivotPlace(s, id))).toBe(true);
+    }
   });
 });

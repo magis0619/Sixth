@@ -1,9 +1,9 @@
 import './style.css';
 import {
-  CHARMS, CHARM_ORDER, DIFFICULTIES, TOOL_EVOLVE, CONFIG, CROPS, PLACES, PLACE_ORDER, SEEDS, SHAPE_NAMES, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL, type PlaceId, type SymbolId, type UpgradeId,
+  CHARMS, CHARM_ORDER, DIFFICULTIES, TOOL_EVOLVE, CONFIG, CROPS, PLACES, PLACE_ORDER, SEEDS, SHAPE_NAMES, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL, type AddUpgradeId, type PlaceId, type SymbolId, type UpgradeId,
 } from './config.ts';
 import {
-  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawDay, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, bestAim, type Aim,
+  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawDay, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, bestAim, type Aim, isPivotAdd, isPivotPlace,
 } from './game.ts';
 import { isMuted, sfx, toggleMute, unlockAudio } from './audio.ts';
 import { setupFrom } from './meta.ts';
@@ -557,7 +557,9 @@ function renderShop(): void {
     const affordable = canBuy(state, u.id);
     b.className = `item${affordable ? ' affordable' : ''}${available ? '' : ' soldout'} kind-${u.id.startsWith('remove') ? 'remove' : 'add'}`;
     const ico = upgradeArt(u.id);
-    const html = `<span class="ico">${ico}</span><span class="text"><span class="name">${u.name}</span><span class="effect">${upgradeEffect(u.id)}</span></span>${costHtml(available ? price : null, affordable, u.id.startsWith('remove') && state.bag[UPGRADE_SYMBOL[u.id]!.symbol] > 0 ? '来週' : '完了')}`;
+    const pivot = u.id.startsWith('add') && isPivotAdd(state, u.id as AddUpgradeId);
+    b.classList.toggle('pivot', pivot);
+    const html = `<span class="ico">${ico}</span><span class="text"><span class="name">${u.name}${pivot ? '<span class="pivot-tag">新しい作戦</span>' : ''}</span><span class="effect">${pivot ? CONFIG.pivotAdds[u.id]!.split('：')[1] : upgradeEffect(u.id)}</span></span>${costHtml(available ? price : null, affordable, u.id.startsWith('remove') && state.bag[UPGRADE_SYMBOL[u.id]!.symbol] > 0 ? '来週' : '完了')}`;
     if (b.innerHTML !== html) b.innerHTML = html;
   });
 }
@@ -587,7 +589,7 @@ function showExpanded(): void {
 
 /** 畑のショップ：道具・特別なマス */
 function renderFarmShop(): void {
-  const items: { key: string; ico: string; name: string; effect: string; price: number | null; ok: boolean }[] = [];
+  const items: { key: string; ico: string; name: string; effect: string; price: number | null; ok: boolean; pivot?: boolean }[] = [];
   const ep = expandPrice(state);
   const nextCols = state.cols <= state.rows ? state.cols + 1 : state.cols;
   const nextRows = state.cols <= state.rows ? state.rows : state.rows + 1;
@@ -600,7 +602,7 @@ function renderFarmShop(): void {
     ok: canExpand(state),
   });
   PLACE_ORDER.filter((id) => state.weeklyPlaces.includes(id)).forEach((id) =>
-    items.push({ key: id, ico: art(PLACE_ART[id]), name: PLACES[id].name, effect: PLACES[id].desc, price: placePrice(state, id), ok: canBuyPlace(state, id) }),
+    items.push({ key: id, ico: art(PLACE_ART[id]), name: PLACES[id].name, effect: PLACES[id].desc, price: placePrice(state, id), ok: canBuyPlace(state, id), pivot: isPivotPlace(state, id) }),
   );
   if (el.farmShop.children.length !== items.length) {
     el.farmShop.innerHTML = '';
@@ -614,8 +616,8 @@ function renderFarmShop(): void {
   }
   items.forEach((it, i) => {
     const b = el.farmShop.children[i] as HTMLButtonElement;
-    b.className = `item${it.ok ? ' affordable' : ''}${it.price === null ? ' soldout' : ''}`;
-    const html = `<span class="ico">${it.ico}</span><span class="text"><span class="name">${it.name}</span><span class="effect">${it.effect}</span></span>${costHtml(it.price, it.ok)}`;
+    b.className = `item${it.ok ? ' affordable' : ''}${it.price === null ? ' soldout' : ''}${it.pivot ? ' pivot' : ''}`;
+    const html = `<span class="ico">${it.ico}</span><span class="text"><span class="name">${it.name}${it.pivot ? '<span class="pivot-tag">新しい作戦</span>' : ''}</span><span class="effect">${it.effect}</span></span>${costHtml(it.price, it.ok)}`;
     if (b.innerHTML !== html) b.innerHTML = html;
   });
 }

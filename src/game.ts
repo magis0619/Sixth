@@ -710,15 +710,31 @@ function pickWeighted<T>(items: { id: T; w: number }[], n: number, rng: Rng): T[
   return out;
 }
 
-/** 今週の「足す」品：準備で選んだ品（出やすい）・解放済みの品・満月から weeklyCount 個 */
-export function rollWeekly(state: GameState, rng: Rng): AddUpgradeId[] {
-  const ids = [...new Set<AddUpgradeId>([...state.shop, ...state.pool, 'addMoon'])];
-  return pickWeighted(ids.map((id) => ({ id, w: state.shop.includes(id) ? 2 : 1 })), CONFIG.weeklyCount, rng);
+/** 作戦が変わる「足す」品か（袋にまだない絵柄なら新しい作戦になる） */
+export function isPivotAdd(state: GameState, id: AddUpgradeId): boolean {
+  return id in CONFIG.pivotAdds && state.bag[UPGRADE_SYMBOL[id]!.symbol] === 0;
 }
 
-/** 今週の畑の品：ショップで買える道具・特別なマスから weeklyCount 個 */
-export function rollWeeklyPlaces(_state: GameState, rng: Rng): PlaceId[] {
-  return pickWeighted(PLACE_ORDER.filter((id) => PLACES[id].price !== null).map((id) => ({ id, w: 1 })), CONFIG.weeklyCount, rng);
+/** 作戦が変わる畑の品か（まだ買っていない道具・特別なマス） */
+export function isPivotPlace(state: GameState, id: PlaceId): boolean {
+  return id in CONFIG.pivotPlaces && !state.bought[id];
+}
+
+/** 1つ目は作戦が変わる品から（あれば）、残りは重みつきで */
+function rollWithPivot<T>(items: { id: T; w: number }[], pivot: (id: T) => boolean, rng: Rng): T[] {
+  const first = pickWeighted(items.filter((x) => pivot(x.id)), 1, rng);
+  return [...first, ...pickWeighted(items.filter((x) => !first.includes(x.id)), CONFIG.weeklyCount - first.length, rng)];
+}
+
+/** 今週の「足す」品：準備で選んだ品（出やすい）・解放済みの品・満月から weeklyCount 個。1つは作戦が変わる品 */
+export function rollWeekly(state: GameState, rng: Rng): AddUpgradeId[] {
+  const ids = [...new Set<AddUpgradeId>([...state.shop, ...state.pool, 'addMoon'])];
+  return rollWithPivot(ids.map((id) => ({ id, w: state.shop.includes(id) ? 2 : 1 })), (id) => isPivotAdd(state, id), rng);
+}
+
+/** 今週の畑の品：ショップで買える道具・特別なマスから weeklyCount 個。1つは作戦が変わる品 */
+export function rollWeeklyPlaces(state: GameState, rng: Rng): PlaceId[] {
+  return rollWithPivot(PLACE_ORDER.filter((id) => PLACES[id].price !== null).map((id) => ({ id, w: 1 })), (id) => isPivotPlace(state, id), rng);
 }
 
 /** 雑草を抜く（草よけのお守りがあれば無料） */

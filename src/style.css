@@ -4961,3 +4961,19 @@ body::before {
   font-weight: 800;
   color: #ffe08a;
 }
+
+/* 作戦が変わる品：目立つ札と縁 */
+.shop .item.pivot {
+  background: linear-gradient(90deg, #fff4d6, #fffdf7 70%);
+  box-shadow: inset 4px 0 0 #e8a33a;
+}
+
+.pivot-tag {
+  font-size: 0.62rem;
+  font-weight: 900;
+  color: #fff;
+  background: #e8a33a;
+  border-radius: 6px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}

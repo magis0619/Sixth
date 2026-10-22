@@ -352,6 +352,24 @@ export const CONFIG = {
   removesPerWeek: 1,
   /** ショップに週ごとに並ぶ数（絵柄を足す品・畑の品それぞれ）。消す品と畑を広げるはいつも並ぶ */
   weeklyCount: 3,
+  /** 毎週1つは必ず並ぶ「作戦が変わる品」と、その作戦のひと言 */
+  pivotAdds: {
+    addBerrySeed: '苺：2日で実る。巣箱の周りで毎晩育つ',
+    addPumpkinSeed: 'かぼちゃ：高くてカラスに強い',
+    addMelonSeed: 'メロン：1個で大きく稼ぐ',
+    addWatermelonSeed: 'スイカ：2×2の大物で一発',
+    addGoldSeed: '金のとうもろこし：レアで高い',
+    addHoe: '鍬：耕して次の作物を早く',
+    addThunder: '雷：横一列を一気に育てる',
+    addMerchant: '商人：売る日を選んで高く',
+  } as Partial<Record<string, string>>,
+  pivotPlaces: {
+    henhouse: '鶏小屋：毎晩のお金＋虫・モグラよけ',
+    cowshed: '牛小屋：毎晩のお金で稼ぐ',
+    hive: '巣箱：周りの売値アップ＋苺',
+    water: '水路：並べて水車・囲んで釣り堀',
+    well: '井戸：周りを毎晩育てる',
+  } as Partial<Record<string, string>>,
 
   /** 年貢：taxPeriod 日ごとに、その日の終わり（次の回転前）に自動で徴収 */
   taxPeriod: 7,
