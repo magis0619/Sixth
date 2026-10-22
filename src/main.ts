@@ -487,9 +487,10 @@ function renderField(): void {
         cls.push('tilled');
         label = '耕した土（植えると成長+1）';
       }
-      html += tile
+      const tilledMark = state.tilled[i] && !tile ? `<span class="till-mark">${art('hoe')}<b>+${state.charms.tillMaster ? 2 : 1}</b></span>` : '';
+      html += tilledMark || (tile
         ? `<span class="tile-label"><span class="tile-ico">${art(PLACE_ART[tile])}</span>${PLACES[tile].name.replace('のマス', '')}<small>${tile === 'water' ? '毎日 成長+1' : '売値 ×2'}</small></span>`
-        : '<span class="empty">空き</span>';
+        : '<span class="empty">空き</span>');
     }
     if (wheelEnds.has(i)) {
       html += `<span class="badge-wheel">${art('waterwheel')}</span>`;
