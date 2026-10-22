@@ -3,19 +3,21 @@ import { expect, test, type Page } from '@playwright/test';
 // 画面の通し確認：タイトル → 準備 → 遊ぶ（植える・使う・売る・次の日）→ 年貢 → 終わり
 // 演出は控えめにして待ち時間を短くする。脈打ち続けるボタン（スタートなど）は止まらないので force で押す
 
-async function boot(page: Page): Promise<string[]> {
+async function boot(page: Page, opts: { tutorial?: boolean } = {}): Promise<string[]> {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-  await page.addInitScript(() => {
+  await page.addInitScript((tutorial: boolean) => {
     try {
       if (!sessionStorage.getItem('e2e')) {
         localStorage.clear();
         sessionStorage.setItem('e2e', '1');
+        // ふだんの確認ではチュートリアルを済ませた状態から
+        if (!tutorial) localStorage.setItem('hatake-slot:meta', JSON.stringify({ tutorialDone: true }));
       }
       localStorage.setItem('hatake-slot:calm', '1');
     } catch { /* 保存できなくても遊べる */ }
-  });
+  }, !!opts.tutorial);
   await page.goto('./');
   return errors;
 }
@@ -195,5 +197,39 @@ test('お守りの3択を連打しても1つしか取れず、最後（7回目�
   await expect(page.locator('#overlay.show #clear-continue')).toBeVisible();
   const owned = await page.evaluate(() => document.querySelectorAll('#charms [data-charm]').length);
   expect(owned).toBe(1);
+  expect(errors).toEqual([]);
+});
+
+test('初めての人はチュートリアルで、横一列に植えて列で売るまで案内される', async ({ page }) => {
+  const errors = await boot(page, { tutorial: true });
+  await start(page);
+  const coach = page.locator('#coach');
+  await expect(coach).toContainText('リールをタップ');
+  await page.locator('#reels .reel').first().click({ force: true });
+  await expect(coach).toContainText('種のリール', { timeout: 15_000 });
+  // 案内と違うリールは触れない
+  await page.locator('#reels .reel').nth(2).click({ force: true });
+  await expect(coach).toContainText('種のリール');
+  await page.locator('#reels .reel').nth(0).click({ force: true });
+  await expect(coach).toContainText('横一列の3マス');
+  for (const c of [5, 6, 7]) await page.locator('#field .plot').nth(c).click({ force: true });
+  await expect(coach).toContainText('雨のリール');
+  await page.locator('#reels .reel').nth(1).click({ force: true });
+  await page.locator('#field .plot').nth(6).click({ force: true });
+  await expect(coach).toContainText('次の日へ');
+  await page.locator('#reels .reel').first().click({ force: true });
+  await expect(coach).toContainText('雷', { timeout: 15_000 });
+  await page.locator('#reels .reel').nth(0).click({ force: true });
+  await page.locator('#field .plot').nth(6).click({ force: true });
+  await expect(coach).toContainText('列ごと売ろう');
+  await page.locator('#field .plot').nth(6).click({ force: true });
+  await expect(coach).toContainText('単品は半値', { timeout: 15_000 });
+  await page.click('.coach-next');
+  await expect(coach).toContainText('年貢');
+  await page.click('.coach-next');
+  await expect(coach).toContainText('ショップ');
+  await page.click('.coach-next');
+  await expect(coach).toHaveCount(0);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('hatake-slot:meta')!).tutorialDone)).toBe(true);
   expect(errors).toEqual([]);
 });

@@ -130,10 +130,17 @@ export function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
     <div class="modal help-modal" role="dialog" aria-label="遊び方と図鑑">
       <div class="help-tabs">${tabs.map(([k, label]) => `<button class="${k === tab ? 'on' : ''}" data-tab="${k}">${label}</button>`).join('')}</div>
       <div class="help-body">${tab === 'rules' ? rules : tab === 'symbols' ? symbols : charms}</div>
+      <button class="secondary" id="tutorial-again">チュートリアルをもう一度<small>次に「はじめる」から</small></button>
       <button class="secondary" id="calm-toggle">演出控えめ：${isCalm() ? 'オン' : 'オフ'}<small>揺れ・点滅・フリーズを弱める</small></button>
       <button class="primary" id="help-close">閉じる</button>
     </div>`;
   el.overlay.classList.add('show');
+  $('tutorial-again').addEventListener('click', (e) => {
+    meta.tutorialDone = false;
+    saveMeta(meta);
+    (e.currentTarget as HTMLElement).firstChild!.textContent = 'チュートリアル：次に始めるときに出ます';
+    sfx.select();
+  });
   $('calm-toggle').addEventListener('click', (e) => {
     const on = toggleCalm();
     (e.currentTarget as HTMLElement).firstChild!.textContent = `演出控えめ：${on ? 'オン' : 'オフ'}`;

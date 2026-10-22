@@ -76,6 +76,8 @@ async function page(size, run) {
     sessionStorage.setItem('a', '1');
     localStorage.clear();
     localStorage.setItem('hatake-slot:calm', '1');
+    // チュートリアルは別に確かめる（ここでは済ませた状態から）
+    localStorage.setItem('hatake-slot:meta', JSON.stringify({ tutorialDone: true }));
     if (r) localStorage.setItem('hatake-slot:run', r);
   }, run ?? null);
   await p.goto(process.env.BASE ?? 'http://localhost:4173/');

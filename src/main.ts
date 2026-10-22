@@ -3,10 +3,10 @@ import {
   CHARMS, CHARM_ORDER, DIFFICULTIES, TOOL_EVOLVE, CONFIG, CROPS, PLACES, PLACE_ORDER, SEEDS, SHAPE_NAMES, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL, type AddUpgradeId, type PlaceId, type SymbolId, type UpgradeId,
 } from './config.ts';
 import {
-  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawDay, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, bestAim, type Aim, isPivotAdd, isPivotPlace,
+  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawDay, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, bestAim, type Aim, isPivotAdd, isPivotPlace, plantLineMult,
 } from './game.ts';
 import { isMuted, sfx, toggleMute, unlockAudio } from './audio.ts';
-import { setupFrom } from './meta.ts';
+import { saveMeta, setupFrom } from './meta.ts';
 import { art, type ArtId } from './art.ts';
 import { track } from './telemetry.ts';
 import {
@@ -84,6 +84,7 @@ function render(): void {
   saveRun();
   fitLayout();
   flushNotices();
+  renderTutorial();
 }
 
 /** ルール側から届いた知らせ（特別なお守り・金色・進化・大当たり）を演出する */
@@ -247,6 +248,10 @@ function usableReels(): number[] {
 function renderHint(): void {
   const t = nextTax(state);
   el.hint.className = 'hint';
+  if (tut) {
+    el.hint.textContent = '';
+    return;
+  }
   // 手元に置く物があっても、置ける空きマスがないときは案内しない（空いたら出す）
   if (state.stock.length && selected === null && state.field.some((_, i) => canPlace(state, i))) {
     const d = PLACES[state.stock[0]];
@@ -412,6 +417,8 @@ function renderField(): void {
   const placeable = state.stock.length ? state.field.flatMap((_, i) => (canPlace(state, i) ? [i] : [])) : [];
   const targets = selected !== null ? validTargets(state, selected) : placeable.length ? placeable : null;
   const preview = previewCells();
+  const selSeed = selected !== null ? SEEDS[state.results[selected].symbol] : undefined;
+  const plantKind = selSeed && !CROPS[selSeed.crop].big ? selSeed.crop : null;
   el.field.style.setProperty('--cols', String(state.cols));
   if (el.field.children.length !== state.field.length) {
     el.field.innerHTML = '';
@@ -519,6 +526,14 @@ function renderField(): void {
       label += `、凍っている（あと${state.frost[i]}日）`;
     }
     if (targets) cls.push(targets.includes(i) ? 'target' : 'dim');
+    // 種を選んでいるとき：ここに植えると列になるマスに倍率の見込み
+    if (plantKind && targets?.includes(i)) {
+      const m = plantLineMult(state, i, plantKind);
+      if (m > 0) {
+        html += `<span class="line-hint${m > CONFIG.lineMult ? ' same' : ''}">${MARK_LINE}×${fmtMult(m)}</span>`;
+        label += `、植えると列（×${fmtMult(m)}）`;
+      }
+    }
     if (preview.includes(i)) cls.push('preview');
     b.className = cls.join(' ');
     // innerHTML は書いた文字列と読み出しが一致しないことがあるので、前回書いた中身と比べる
@@ -680,6 +695,10 @@ function renderBag(): void {
 async function onSpin(): Promise<void> {
   unlockAudio();
   if (ui.busy || state.over) return;
+  if (!tutAllowsSpin()) {
+    sfx.error();
+    return;
+  }
   if (openSheetName) closeSheet();
   // 出目が残っているときは確認を出す（はい→armedNextDay を立てて回す）
   const leftover = state.day > 0 ? usableReels().length : 0;
@@ -724,6 +743,7 @@ async function onSpin(): Promise<void> {
     return;
   }
   drawDay(state, rng);
+  tutScript();
   // フリーズ中に結果が見えないよう、描き直すのは演出のあと
   const show = planShow();
   render();
@@ -1213,6 +1233,11 @@ function confirmSkip(left: number): void {
 function onReelTap(i: number): void {
   unlockAudio();
   if (ui.busy || state.over) return;
+  if (!tutAllowsReel(i)) {
+    sfx.error();
+    shake(el.reels.children[i] as HTMLElement, 4);
+    return;
+  }
   const r = state.results[i];
   // 1日目の前と、使える出目がない（使い切った・使えない・自動）リールのタップは「回す」
   if (!r || state.day === 0) {
@@ -1263,6 +1288,11 @@ function onPlotTap(cell: number): void {
   unlockAudio();
   if (ui.busy || state.over) return;
   const plot = el.field.children[cell] as HTMLElement;
+  if (!tutAllowsCell(cell)) {
+    sfx.error();
+    shake(plot, 4);
+    return;
+  }
   const p = center(plot);
   if (selected === null && state.stock.length && canPlace(state, cell)) {
     const id = place(state, cell)!;
@@ -1583,11 +1613,142 @@ function startGame(resume: GameState | null = null): void {
   selected = null;
   armedNextDay = false;
   if (!resume) done.spin = false;
+  tut = null;
+  document.getElementById('coach')?.remove();
+  if (!resume && !meta.tutorialDone) startTutorial();
   el.overlay.classList.remove('show', 'title');
   el.overlay.innerHTML = '';
   el.reels.innerHTML = '';
   el.shop.innerHTML = '';
   render();
+}
+
+// ---- チュートリアル：初めての人の最初の2日を案内する ----
+
+interface TutStep {
+  /** 吹き出しの文 */
+  text: string;
+  /** 光らせる要素 */
+  focus: () => Element[];
+  /** タップしてよいリール（なければリールは「回す」だけ、spin も false なら触れない） */
+  reel?: number;
+  /** リールで次の日へ回してよい */
+  spin?: boolean;
+  /** タップしてよいマス */
+  cells?: number[];
+  /** 終わったか（ボタンで進む手順は undefined） */
+  done?: () => boolean;
+  /** 押して進むボタン */
+  button?: string;
+}
+
+/** 横一列（真ん中の行）の3マス */
+const tutRow = (): number[] => [0, 1, 2].map((x) => CONFIG.fieldCols + x);
+const reelEl = (i: number): Element[] => (el.reels.children[i] ? [el.reels.children[i]] : []);
+const plotEls = (cells: number[]): Element[] => cells.map((c) => el.field.children[c]).filter(Boolean);
+
+const TUT_STEPS: TutStep[] = [
+  { text: 'ようこそ！ まずは<b>リールをタップ</b>して回そう', focus: () => [el.reels], spin: true, done: () => state.day >= 1 && !ui.busy },
+  { text: `${symHtml('seed')} 種が出た！ <b>種のリール</b>をタップ`, focus: () => reelEl(0), reel: 0, done: () => selected === 0 || tutRow().some((c) => state.field[c]) },
+  { text: '光る<b>横一列の3マス</b>に植えよう。<br>3つ並べると<b>列ごと高く売れる</b>！', focus: () => plotEls(tutRow()), reel: 0, cells: tutRow(), done: () => tutRow().every((c) => state.field[c]) },
+  { text: `${symHtml('rain')} 次は雨。<b>雨のリール</b>をタップして<br><b>真ん中のトマト</b>へ（縦横に育つ）`, focus: () => (selected === 1 ? plotEls([tutRow()[1]]) : reelEl(1)), reel: 1, cells: [tutRow()[1]], done: () => !!state.results[1]?.used },
+  { text: '今日はここまで。<b>リールをタップ</b>で次の日へ', focus: () => [el.reels], spin: true, done: () => state.day >= 2 && !ui.busy },
+  { text: `${symHtml('thunder')} 雷！ 横一列が<b>+2</b>育つ。<br>雷をタップ → <b>トマトの列</b>へ`, focus: () => (selected === 0 ? plotEls(tutRow()) : reelEl(0)), reel: 0, cells: tutRow(), done: () => !!state.results[0]?.used },
+  { text: '3つそろって実った！<br><b>タップで列ごと売ろう</b>', focus: () => plotEls(tutRow()), cells: tutRow(), done: () => state.stats.lineHarvests >= 1 && !ui.busy },
+  { text: `${MARK_LINE} 列は<b>×1.3</b>、同じ作物だけの列は<b>さらに×1.3</b>。<br>${MARK_SINGLE} 並んでいない<b>単品は半値</b>！<br>種を選ぶと、列になるマスに倍率が出るよ`, focus: () => [], button: 'なるほど' },
+  { text: `${art('official')} 7日ごとに<b>年貢</b>。払えないと終わり。<br><b>7回納める（49日目）とクリア</b>！`, focus: () => [el.tax], button: '次へ' },
+  { text: `${art('bargain')} お金がたまったら<b>ショップ</b>へ。<br>絵柄を足したり、畑の道具を買える`, focus: () => [document.querySelector('.tab[data-sheet="shop"]')!], button: 'はじめる！' },
+];
+
+let tut: { step: number } | null = null;
+let tutFocus: Element[] = [];
+
+function tutStep(): TutStep | null {
+  return tut ? TUT_STEPS[tut.step] : null;
+}
+
+function startTutorial(): void {
+  tut = { step: 0 };
+}
+
+function endTutorial(): void {
+  tut = null;
+  meta.tutorialDone = true;
+  saveMeta(meta);
+  tutFocus.forEach((e) => e.classList.remove('coach-focus'));
+  tutFocus = [];
+  document.getElementById('coach')?.remove();
+  render();
+}
+
+/** チュートリアルの日は出目を決めておく（1日目：種×3・雨・金貨、2日目：雷・金貨・金貨） */
+function tutScript(): void {
+  if (!tut) return;
+  const mk = (symbol: SymbolId, total = 1) => ({ symbol, used: false, total, left: total, power: 1 });
+  const plan: Record<number, ReturnType<typeof mk>[]> = { 1: [mk('seed', 3), mk('rain'), mk('coin')], 2: [mk('thunder'), mk('coin'), mk('coin')] };
+  const r = plan[state.day];
+  if (!r) return;
+  state.results = [...r, ...state.results.slice(r.length).map(() => mk('coin'))];
+  state.fever = [];
+}
+
+/** そのリールに触れてよいか */
+function tutAllowsReel(i: number): boolean {
+  const s = tutStep();
+  return !s || s.reel === i || (!!s.spin && s.reel === undefined);
+}
+
+/** 次の日へ回してよいか */
+function tutAllowsSpin(): boolean {
+  const s = tutStep();
+  return !s || !!s.spin;
+}
+
+function tutAllowsCell(cell: number): boolean {
+  const s = tutStep();
+  return !s || !!s.cells?.includes(cell);
+}
+
+function renderTutorial(): void {
+  while (tut && TUT_STEPS[tut.step].done?.()) {
+    tut.step++;
+    if (tut.step >= TUT_STEPS.length) return endTutorial();
+  }
+  const s = tutStep();
+  tutFocus.forEach((e) => e.classList.remove('coach-focus'));
+  tutFocus = [];
+  let coach = document.getElementById('coach');
+  if (!s) {
+    coach?.remove();
+    return;
+  }
+  if (!coach) {
+    coach = document.createElement('div');
+    coach.id = 'coach';
+    coach.className = 'coach';
+    coach.setAttribute('role', 'status');
+    document.body.appendChild(coach);
+  }
+  const html = `<p>${s.text}</p><div class="coach-actions">${s.button ? `<button class="primary coach-next">${s.button}</button>` : ''}<button class="coach-skip">スキップ</button></div>`;
+  if (coach.dataset.step !== String(tut!.step)) {
+    coach.dataset.step = String(tut!.step);
+    coach.innerHTML = html;
+    pop(coach, 1.04);
+    coach.querySelector('.coach-next')?.addEventListener('click', () => {
+      sfx.select();
+      tut!.step++;
+      if (tut!.step >= TUT_STEPS.length) endTutorial();
+      else render();
+    });
+    coach.querySelector('.coach-skip')!.addEventListener('click', () => {
+      sfx.cancel();
+      endTutorial();
+    });
+  }
+  // 吹き出しは光らせる物とかぶらない側へ（畑・リールなら上、上の札なら下）
+  tutFocus = s.focus().filter(Boolean);
+  tutFocus.forEach((e) => e.classList.add('coach-focus'));
+  coach.classList.toggle('low', tutFocus.some((e) => e === el.tax));
 }
 
 // ---- 起動 ----

@@ -5018,3 +5018,125 @@ body::before {
 .odds b {
   color: #3f8a26;
 }
+
+/* 植える前の列の予告：ここに植えると列になる */
+.plot .line-hint {
+  position: absolute;
+  bottom: 6%;
+  left: 50%;
+  translate: -50% 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--pink);
+  color: #fff;
+  font-weight: 900;
+  font-size: max(0.72rem, calc(var(--cell) * 0.15));
+  box-shadow: 0 2px 0 #b8336f;
+  white-space: nowrap;
+  animation: line-hint-bob 0.9s ease-in-out infinite;
+}
+
+.plot .line-hint.same {
+  background: #e8a33a;
+  box-shadow: 0 2px 0 #b07415;
+}
+
+.plot .line-hint .mk {
+  height: 0.62em;
+  width: auto;
+}
+
+@keyframes line-hint-bob {
+  50% { translate: -50% -3px; }
+}
+
+/* ==== チュートリアル：吹き出しと、光らせる場所 ==== */
+.coach {
+  position: fixed;
+  left: 50%;
+  top: calc(84px + env(safe-area-inset-top));
+  translate: -50% 0;
+  z-index: 40;
+  width: min(92vw, 420px);
+  padding: 12px 14px 10px;
+  border-radius: 16px;
+  background: #fffdf3;
+  color: #3d3326;
+  box-shadow: 0 6px 0 #d9c69c, 0 10px 24px rgba(0, 0, 0, 0.25);
+  border: 3px solid #5aae35;
+  font-size: 1rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.coach.low {
+  top: auto;
+  bottom: calc(110px + env(safe-area-inset-bottom));
+}
+
+.coach p b {
+  color: #c93c2b;
+}
+
+.coach .art,
+.coach .mk {
+  font-size: 1.4em;
+  height: 0.8em;
+  width: auto;
+  vertical-align: -0.2em;
+}
+
+.coach .art {
+  height: 1em;
+  width: 1em;
+}
+
+.coach-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.coach-actions .primary {
+  padding: 8px 22px;
+  font-size: 1rem;
+}
+
+.coach-skip {
+  border: none;
+  background: none;
+  color: #8a7a5c;
+  font: inherit;
+  font-size: 0.8rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.coach-focus {
+  position: relative;
+  z-index: 5;
+  outline: 4px solid #ffd84a;
+  outline-offset: 2px;
+  border-radius: 12px;
+  animation: coach-pulse 1s ease-in-out infinite;
+}
+
+@keyframes coach-pulse {
+  50% { outline-color: #ff8a3a; outline-offset: 5px; }
+}
+
+.coach .coach-next {
+  border: none;
+  border-radius: 12px;
+  background: #5aae35;
+  color: #fff;
+  font: inherit;
+  font-weight: 900;
+  box-shadow: 0 3px 0 #3f8a26;
+  cursor: pointer;
+}

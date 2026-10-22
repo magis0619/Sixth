@@ -6,7 +6,7 @@ import { CONFIG, CROPS, EVENT_CONDITIONS, THUNDER_LINES } from '../src/config.ts
 import {
   animalGold, buy, buyPlace, drawDay, hasRanch, hiveBonus, isColorful, canPlace, canUse, cellMultiplier, cropPrice, isPond, waterWheels, checkReady, chooseCharm, endDay, evolveTools, expand, expandPrice,
   fieldCells, isGolden, lv, multSteps, newCrop, newGame, nextTax, obstacleRule, place, pullWeed, resolveAuto, ripeGroup,
-  bestAim, canBuy, isPivotAdd, isPivotPlace, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult,
+  bestAim, canBuy, isPivotAdd, isPivotPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult,
 } from '../src/game.ts';
 import { recordRun, type MetaState } from '../src/meta.ts';
 import type { CropKind, SymbolId } from '../src/config.ts';
@@ -630,5 +630,17 @@ describe('作戦が変わる品', () => {
       expect(s.weekly.some((id) => isPivotAdd(s, id))).toBe(true);
       expect(s.weeklyPlaces.some((id) => isPivotPlace(s, id))).toBe(true);
     }
+  });
+});
+
+describe('列の予告', () => {
+  it('育ち中の作物と3つ並ぶマスに植えると列の見込み、同じ作物なら上乗せ', () => {
+    const s = newGame();
+    const C = CONFIG.fieldCols;
+    s.field[0] = newCrop('tomato');
+    s.field[1] = newCrop('tomato');
+    expect(plantLineMult(s, 2, 'tomato')).toBeCloseTo(CONFIG.lineMult * CONFIG.sameCropMult);
+    expect(plantLineMult(s, 2, 'strawberry')).toBeCloseTo(CONFIG.lineMult);
+    expect(plantLineMult(s, 2 * C + 2, 'tomato')).toBe(0);
   });
 });

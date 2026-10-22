@@ -1543,3 +1543,31 @@ export function bestAim(state: GameState): Aim | null {
   });
   return best;
 }
+
+// ---- 列の予告：植える前に、そこへ植えると列になるか ----
+
+/** cell に kind を植えたら、育ち中も含めた作物で縦・横・斜めに3つ以上並ぶか。並ぶなら売るときの倍率の見込み、並ばなければ 0 */
+export function plantLineMult(state: GameState, cell: number, kind: CropKind): number {
+  if (CROPS[kind].big) return 0;
+  const cropAt = (x: number, y: number): CropKind | null => {
+    const c = cellAt(state, x, y);
+    if (c === null) return null;
+    if (c === cell) return kind;
+    const f = state.field[c];
+    return f && !CROPS[f.kind].big ? f.kind : null;
+  };
+  const cx = cellX(cell);
+  const cy = cellY(cell);
+  const runs: CropKind[][] = [];
+  for (const [dx, dy] of RUN_DIRS) {
+    const run: CropKind[] = [kind];
+    for (let x = cx + dx, y = cy + dy, k = cropAt(x, y); k; x += dx, y += dy, k = cropAt(x, y)) run.push(k);
+    for (let x = cx - dx, y = cy - dy, k = cropAt(x, y); k; x -= dx, y -= dy, k = cropAt(x, y)) run.push(k);
+    if (run.length >= MIN_RUN) runs.push(run);
+  }
+  if (!runs.length) return 0;
+  let m = CONFIG.lineMult;
+  if (runs.some((r) => r.every((k) => k === kind))) m *= CONFIG.sameCropMult;
+  if (runs.length > 1) m *= 1 + CONFIG.crossBonus * (runs.length - 1);
+  return m;
+}

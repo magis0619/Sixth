@@ -25,6 +25,8 @@ export interface MetaState {
   skin: string;
   /** 次に遊ぶ難しさ */
   difficulty: number;
+  /** チュートリアルを終えた（スキップも含む） */
+  tutorialDone: boolean;
 }
 
 const KEY = 'hatake-slot:meta';
@@ -44,6 +46,7 @@ function fresh(): MetaState {
     skins: [],
     skin: '',
     difficulty: 0,
+    tutorialDone: false,
   };
 }
 
@@ -51,7 +54,10 @@ export function loadMeta(): MetaState {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return fresh();
-    return { ...fresh(), ...(JSON.parse(raw) as Partial<MetaState>) };
+    const m = { ...fresh(), ...(JSON.parse(raw) as Partial<MetaState>) };
+    // チュートリアルを入れる前から遊んでいる人には出さない
+    if ((JSON.parse(raw) as Partial<MetaState>).tutorialDone === undefined) m.tutorialDone = m.plays > 0;
+    return m;
   } catch {
     return fresh();
   }
