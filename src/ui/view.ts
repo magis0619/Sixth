@@ -1,7 +1,7 @@
 // 表示の部品：絵柄・作物の絵、引き出し、ひとこと、値札など（状態は読むだけ）
 
 import { CONFIG, type CropKind, CROPS, type PlaceId, SHAPE_NAMES, type SymbolId, SYMBOLS, UPGRADE_SYMBOL, type UpgradeId } from '../config.ts';
-import { bagTotal, type Crop } from '../game.ts';
+import { bagTotal, type Crop, removeLimitReached } from '../game.ts';
 import { art, type ArtId } from '../art.ts';
 import { el, state } from './store.ts';
 
@@ -103,8 +103,8 @@ export const PLACE_ART: Record<PlaceId, ArtId> = {
 };
 
 
-export function costHtml(price: number | null, affordable: boolean): string {
-  if (price === null) return '<span class="cost done">完了</span>';
+export function costHtml(price: number | null, affordable: boolean, doneText = '完了'): string {
+  if (price === null) return `<span class="cost done">${doneText}</span>`;
   return affordable
     ? `<span class="cost"><b>${price}金</b></span>`
     : `<span class="cost"><b>${price}金</b><small>あと${price - state.gold}</small></span>`;
@@ -118,7 +118,8 @@ export function bagPct(bag: Record<SymbolId, number>, id: SymbolId): number {
 export function upgradeEffect(id: UpgradeId): string {
   const { symbol, delta } = UPGRADE_SYMBOL[id]!;
   if (delta < 0 && state.bag[symbol] === 0) return `${SYMBOLS[symbol].name}はもういない！`;
+  if (delta < 0 && removeLimitReached(state)) return `お邪魔を消せるのは週${CONFIG.removesPerWeek}回まで（来週また消せる）`;
   const after = { ...state.bag, [symbol]: state.bag[symbol] + delta };
   const odds = `出る確率 ${bagPct(state.bag, symbol)}% → ${bagPct(after, symbol)}%`;
-  return delta < 0 ? `${odds}（消すたび価格×${CONFIG.removeGrowth}）` : odds;
+  return delta < 0 ? `${odds}（週${CONFIG.removesPerWeek}回まで・消すたび価格×${CONFIG.removeGrowth}）` : odds;
 }

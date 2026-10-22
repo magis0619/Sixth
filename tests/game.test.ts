@@ -6,7 +6,7 @@ import { CONFIG, CROPS, EVENT_CONDITIONS, THUNDER_LINES } from '../src/config.ts
 import {
   animalGold, buy, buyPlace, drawDay, hasRanch, hiveBonus, isColorful, canPlace, canUse, cellMultiplier, cropPrice, isPond, waterWheels, checkReady, chooseCharm, endDay, evolveTools, expand, expandPrice,
   fieldCells, isGolden, lv, multSteps, newCrop, newGame, nextTax, obstacleRule, place, pullWeed, resolveAuto, ripeGroup,
-  rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult,
+  canBuy, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult,
 } from '../src/game.ts';
 import { recordRun, type MetaState } from '../src/meta.ts';
 import type { CropKind, SymbolId } from '../src/config.ts';
@@ -500,5 +500,20 @@ describe('シナジー', () => {
   it('大物狙いはスイカの種を使えないゲームでは3択に出ない', () => {
     const s = newGame({ shop: ['addSun'], charmPool: ['bigGame', 'coinPurse', 'aging', 'crowToll'] });
     for (let k = 0; k < 30; k++) expect(rollCharmOffer(s, Math.random)).not.toContain('bigGame');
+  });
+});
+
+describe('お邪魔を消すのは週1回まで', () => {
+  it('同じ週に2回目は消せず、週が替わるとまた消せる', () => {
+    const s = newGame();
+    s.bag.crow = 3;
+    s.bag.bug = 2;
+    s.gold = 9999;
+    expect(buy(s, 'removeCrow')).toBe(true);
+    expect(canBuy(s, 'removeBug')).toBe(false);
+    expect(buy(s, 'removeCrow')).toBe(false);
+    s.order = null;
+    drawDay(s, Math.random);
+    expect(buy(s, 'removeBug')).toBe(true);
   });
 });

@@ -344,11 +344,13 @@ export const CONFIG = {
   moonGrowth: 1.5,
   /** カラス・虫を消す価格は、消すたびに removeGrowth 倍になる */
   removeGrowth: 2,
+  /** お邪魔を消せるのは1週間（次の年貢まで）にこの回数まで。一気に全部消して楽になりすぎないように */
+  removesPerWeek: 1,
 
   /** 年貢：taxPeriod 日ごとに、その日の終わり（次の回転前）に自動で徴収 */
   taxPeriod: 7,
   /** 1回目から順の年貢額。表を超えたら（エンドレス）直前の額 × taxGrowth */
-  taxSchedule: [5, 22, 55, 100, 140, 175, 205, 270],
+  taxSchedule: [5, 22, 60, 120, 175, 235, 295, 360],
   taxGrowth: 1.5,
   /** この回数の年貢を納めるとクリア（その後はエンドレス） */
   winTaxes: 7,

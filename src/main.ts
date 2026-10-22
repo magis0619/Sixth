@@ -547,7 +547,7 @@ function renderShop(): void {
     const weekly = state.weekly.includes(u.id as never);
     b.className = `item${affordable ? ' affordable' : ''}${available ? '' : ' soldout'}${weekly ? ' weekly' : ''}`;
     const ico = upgradeArt(u.id);
-    const html = `<span class="ico">${ico}</span><span class="text"><span class="name">${u.name}${weekly ? '<span class="weekly-tag">週替わり</span>' : ''}</span><span class="effect">${upgradeEffect(u.id)}</span></span>${costHtml(available ? price : null, affordable)}`;
+    const html = `<span class="ico">${ico}</span><span class="text"><span class="name">${u.name}${weekly ? '<span class="weekly-tag">週替わり</span>' : ''}</span><span class="effect">${upgradeEffect(u.id)}</span></span>${costHtml(available ? price : null, affordable, u.id.startsWith('remove') && state.bag[UPGRADE_SYMBOL[u.id]!.symbol] > 0 ? '来週' : '完了')}`;
     if (b.innerHTML !== html) b.innerHTML = html;
   });
 }

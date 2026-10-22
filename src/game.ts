@@ -143,6 +143,8 @@ export interface GameState {
   charmPool: CharmId[];
   /** これまでに消した枚数（絵柄ごと。消す価格が上がる） */
   removed: Partial<Record<SymbolId, number>>;
+  /** 今週お邪魔を消した回数（週が替わると0に戻る） */
+  removedThisWeek: number;
   stats: {
     spins: number;
     totalEarned: number;
@@ -194,6 +196,7 @@ export function newGame(setup: GameSetup = { shop: ALL_ADDS, charmPool: CHARM_OR
     weekly: [],
     charmPool: [...setup.charmPool],
     removed: {},
+    removedThisWeek: 0,
     day: 0,
     gold: CONFIG.initialGold,
     reels: CONFIG.initialReels,
@@ -581,6 +584,7 @@ export function drawDay(state: GameState, rng: Rng): void {
   if (!state.order || state.order.dueDay < state.day) {
     state.order = makeOrder(state, rng);
     state.weekly = rollWeekly(state, rng);
+    state.removedThisWeek = 0;
     // 相場は難しいモードから（marketFrom 以上）
     state.market = state.difficulty >= CONFIG.marketFrom ? rollMarket(state, rng) : null;
   }
@@ -1325,7 +1329,12 @@ export function upgradeAvailable(state: GameState, id: UpgradeId): boolean {
   const change = UPGRADE_SYMBOL[id]!;
   if (id === 'addMoon') return true;
   if (change.delta > 0) return state.shop.includes(id as AddUpgradeId) || state.weekly.includes(id as AddUpgradeId);
-  return state.bag[change.symbol] > 0;
+  return state.bag[change.symbol] > 0 && !removeLimitReached(state);
+}
+
+/** 今週はもうお邪魔を消せない */
+export function removeLimitReached(state: GameState): boolean {
+  return state.removedThisWeek >= CONFIG.removesPerWeek;
 }
 
 export function canBuy(state: GameState, id: UpgradeId): boolean {
@@ -1337,7 +1346,10 @@ export function buy(state: GameState, id: UpgradeId): boolean {
   state.gold -= upgradePrice(state, id);
   const change = UPGRADE_SYMBOL[id]!;
   state.bag[change.symbol] += change.delta;
-  if (change.delta < 0) state.removed[change.symbol] = (state.removed[change.symbol] ?? 0) + 1;
+  if (change.delta < 0) {
+    state.removed[change.symbol] = (state.removed[change.symbol] ?? 0) + 1;
+    state.removedThisWeek++;
+  }
   state.stats.purchases.push({ day: state.day, id });
   checkReady(state);
   return true;

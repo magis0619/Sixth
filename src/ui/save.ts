@@ -53,6 +53,7 @@ export function loadRun(): GameState | null {
     s.stats.soldKinds ??= [];
     CHARM_ORDER.forEach((id) => (s.charms[id] ??= 0));
     s.removed ??= {};
+    s.removedThisWeek ??= 0;
     // 畑の広さを変えられるようにする前（3×3固定）の保存データは、マスの番号を5×5の数え方に直す
     if (s.cols === undefined) {
       const size = CONFIG.fieldCols * CONFIG.fieldRows;
