@@ -1,7 +1,7 @@
 // ゲームのルール本体。画面に依存しない純粋なロジック。
 
 import {
-  BAG_CONDITIONS, CHARMS, CHARM_ORDER, CHARM_PLACE, CONFIG, CROPS, EVENT_CONDITIONS, PLACES, SEEDS, SYMBOLS, SYMBOL_ORDER, TOOL_EVOLVE, UPGRADE_SYMBOL,
+  BAG_CONDITIONS, CHARMS, CHARM_ORDER, CHARM_PLACE, CONFIG, CROPS, EVENT_CONDITIONS, PLACE_ORDER, PLACES, SEEDS, SYMBOLS, SYMBOL_ORDER, TOOL_EVOLVE, UPGRADE_SYMBOL,
   type AddUpgradeId, type CharmId, type CropKind, type PlaceId, type ShapeId, type SymbolId, type UpgradeId,
 } from './config.ts';
 
@@ -140,7 +140,10 @@ export interface GameState {
   /** 週替わりで並ぶ候補（解放済みの「足す」強化） */
   pool: AddUpgradeId[];
   /** 今週の週替わり */
+  /** 今週ショップに並ぶ「足す」品（weeklyCount 個。週ごとに入れ替わる） */
   weekly: AddUpgradeId[];
+  /** 今週ショップに並ぶ畑の品（道具・特別なマス） */
+  weeklyPlaces: PlaceId[];
   /** このゲームで出るお守り（解放済みのもの） */
   charmPool: CharmId[];
   /** これまでに消した枚数（絵柄ごと。消す価格が上がる） */
@@ -198,6 +201,7 @@ export function newGame(setup: GameSetup = { shop: ALL_ADDS, charmPool: CHARM_OR
     shop: [...setup.shop],
     pool: [...(setup.pool ?? setup.shop)],
     weekly: [],
+    weeklyPlaces: [],
     charmPool: [...setup.charmPool],
     removed: {},
     removedThisWeek: 0,
@@ -595,6 +599,7 @@ export function drawDay(state: GameState, rng: Rng): void {
   if (!state.order || state.order.dueDay < state.day) {
     state.order = makeOrder(state, rng);
     state.weekly = rollWeekly(state, rng);
+    state.weeklyPlaces = rollWeeklyPlaces(state, rng);
     state.removedThisWeek = 0;
     // 相場は難しいモードから（marketFrom 以上）
     state.market = CONFIG.marketOn && state.difficulty >= CONFIG.marketFrom ? rollMarket(state, rng) : null;
@@ -693,12 +698,27 @@ export function isGuarded(state: GameState, cell: number): boolean {
   });
 }
 
-/** 週替わり：いつも並ぶ品以外の解放済みから2つ */
-export function rollWeekly(state: GameState, rng: Rng): AddUpgradeId[] {
-  const pool = state.pool.filter((id) => !state.shop.includes(id));
-  const out: AddUpgradeId[] = [];
-  while (out.length < 2 && pool.length) out.push(pool.splice(Math.floor(rng() * pool.length), 1)[0]);
+/** 重みつきで重ならないように n 個選ぶ */
+function pickWeighted<T>(items: { id: T; w: number }[], n: number, rng: Rng): T[] {
+  const pool = [...items];
+  const out: T[] = [];
+  while (out.length < n && pool.length) {
+    let r = rng() * pool.reduce((s, p) => s + p.w, 0);
+    const k = Math.max(0, pool.findIndex((p) => (r -= p.w) < 0));
+    out.push(pool.splice(k, 1)[0].id);
+  }
   return out;
+}
+
+/** 今週の「足す」品：準備で選んだ品（出やすい）・解放済みの品・満月から weeklyCount 個 */
+export function rollWeekly(state: GameState, rng: Rng): AddUpgradeId[] {
+  const ids = [...new Set<AddUpgradeId>([...state.shop, ...state.pool, 'addMoon'])];
+  return pickWeighted(ids.map((id) => ({ id, w: state.shop.includes(id) ? 2 : 1 })), CONFIG.weeklyCount, rng);
+}
+
+/** 今週の畑の品：ショップで買える道具・特別なマスから weeklyCount 個 */
+export function rollWeeklyPlaces(_state: GameState, rng: Rng): PlaceId[] {
+  return pickWeighted(PLACE_ORDER.filter((id) => PLACES[id].price !== null).map((id) => ({ id, w: 1 })), CONFIG.weeklyCount, rng);
 }
 
 /** 雑草を抜く（草よけのお守りがあれば無料） */
@@ -1346,8 +1366,7 @@ export function upgradePrice(state: GameState, id: UpgradeId): number {
 
 export function upgradeAvailable(state: GameState, id: UpgradeId): boolean {
   const change = UPGRADE_SYMBOL[id]!;
-  if (id === 'addMoon') return true;
-  if (change.delta > 0) return state.shop.includes(id as AddUpgradeId) || state.weekly.includes(id as AddUpgradeId);
+  if (change.delta > 0) return state.weekly.includes(id as AddUpgradeId);
   return state.bag[change.symbol] > 0 && !removeLimitReached(state);
 }
 
@@ -1447,7 +1466,7 @@ export function placePrice(state: GameState, id: PlaceId): number | null {
 
 export function canBuyPlace(state: GameState, id: PlaceId): boolean {
   const p = placePrice(state, id);
-  return !state.over && p !== null && state.gold >= p;
+  return !state.over && p !== null && state.weeklyPlaces.includes(id) && state.gold >= p;
 }
 
 /** 買って手元に置く。畑に置くのは place で */

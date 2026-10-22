@@ -391,15 +391,38 @@ button {
 
 .price {
   position: absolute;
-  top: 5%;
-  right: 5%;
-  background: var(--gold);
-  color: #4a3200;
-  border-radius: 8px;
-  font-size: max(0.72rem, calc(var(--cell) * 0.13));
+  top: 2%;
+  right: 2%;
+  width: max(26px, calc(var(--cell) * 0.4));
+  height: max(26px, calc(var(--cell) * 0.4));
+  display: grid;
+  place-items: center;
+  color: #5a3a00;
   font-weight: 800;
-  padding: 0 6px;
-  box-shadow: 0 2px 0 var(--gold-dark);
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.25));
+}
+
+.price .art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.price b {
+  position: relative;
+  font-size: max(0.78rem, calc(var(--cell) * 0.17));
+  line-height: 1;
+  letter-spacing: -0.03em;
+  text-shadow: 0 1px 0 #fff3b0;
+}
+
+.price.d3 b {
+  font-size: max(0.66rem, calc(var(--cell) * 0.135));
+}
+
+.price.d4 b {
+  font-size: max(0.56rem, calc(var(--cell) * 0.11));
 }
 
 .badge-fert {
@@ -1878,7 +1901,8 @@ button {
 }
 
 .price.adj {
-  box-shadow: 0 2px 0 var(--gold-dark), 0 0 0 2px var(--pink);
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--pink);
 }
 
 /* ---- お邪魔：雑草・霜 ---- */

@@ -350,6 +350,8 @@ export const CONFIG = {
   removeGrowth: 2,
   /** お邪魔を消せるのは1週間（次の年貢まで）にこの回数まで。一気に全部消して楽になりすぎないように */
   removesPerWeek: 1,
+  /** ショップに週ごとに並ぶ数（絵柄を足す品・畑の品それぞれ）。消す品と畑を広げるはいつも並ぶ */
+  weeklyCount: 3,
 
   /** 年貢：taxPeriod 日ごとに、その日の終わり（次の回転前）に自動で徴収 */
   taxPeriod: 7,

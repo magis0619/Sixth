@@ -209,6 +209,7 @@ describe('道具・特別なマス', () => {
   it('買った道具は手元に入り、同じ物は買うたびに高くなる', () => {
     const s = game();
     s.gold = 1000;
+    s.weeklyPlaces = ['scarecrow'];
     expect(buyPlace(s, 'scarecrow')).toBe(true);
     expect(s.stock).toEqual(['scarecrow']);
   });
@@ -246,6 +247,7 @@ describe('お守り', () => {
     const s = game();
     s.bag.rain = 4;
     s.gold = 100;
+    s.weekly = ['addRain'];
     buy(s, 'addRain');
     expect(s.ready).toContain('thunderstorm');
   });
@@ -572,5 +574,33 @@ describe('シナジーの手直し', () => {
     s.field[at(0, 0)] = newCrop('strawberry');
     endDay(s, () => 0.99);
     expect(s.nightIncome?.grown).toContain(at(0, 0));
+  });
+});
+
+describe('ショップは週替わり', () => {
+  it('足す品・畑の品は週ごとに3つずつ。並んでいない品は買えず、消す品はいつでも', () => {
+    const s = newGame();
+    drawDay(s, Math.random);
+    expect(s.weekly).toHaveLength(CONFIG.weeklyCount);
+    expect(s.weeklyPlaces).toHaveLength(CONFIG.weeklyCount);
+    s.gold = 9999;
+    const notAdd = (['addSeed', 'addRain', 'addSun', 'addMoon'] as const).find((id) => !s.weekly.includes(id))!;
+    expect(canBuy(s, notAdd)).toBe(false);
+    expect(canBuy(s, s.weekly[0])).toBe(true);
+    const notPlace = (['scarecrow', 'well', 'hive', 'compost'] as const).find((id) => !s.weeklyPlaces.includes(id))!;
+    expect(buyPlace(s, notPlace)).toBe(false);
+    s.bag.crow = 2;
+    expect(canBuy(s, 'removeCrow')).toBe(true);
+  });
+
+  it('年貢のあとの週で入れ替わる', () => {
+    const s = newGame();
+    const seen = new Set<string>();
+    for (let k = 0; k < 6; k++) {
+      s.order = null;
+      drawDay(s, Math.random);
+      s.weekly.forEach((id) => seen.add(id));
+    }
+    expect(seen.size).toBeGreaterThan(CONFIG.weeklyCount);
   });
 });

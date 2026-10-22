@@ -1,7 +1,7 @@
 // 中断セーブ（途中から続ける）と最高記録
 
 import { CHARM_ORDER, CONFIG, type CropKind, SYMBOL_ORDER } from '../config.ts';
-import { type GameState } from '../game.ts';
+import { type GameState, rollWeekly, rollWeeklyPlaces } from '../game.ts';
 import { state, ui } from './store.ts';
 
 export const RUN_KEY = 'hatake-slot:run';
@@ -32,6 +32,11 @@ export function loadRun(): GameState | null {
     s.frost ??= s.field.map(() => 0);
     s.pool ??= [...s.shop];
     s.weekly ??= [];
+    // 週替わり3品にする前の保存データ：今週の品を選び直す
+    if (!s.weeklyPlaces || s.weekly.length < CONFIG.weeklyCount) {
+      s.weekly = rollWeekly(s, Math.random);
+      s.weeklyPlaces = rollWeeklyPlaces(s, Math.random);
+    }
     s.bred ??= [];
     s.lastObstacles ??= [];
     s.runId ??= Math.random().toString(36).slice(2, 10);

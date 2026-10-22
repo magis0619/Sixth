@@ -266,6 +266,11 @@ const SYMBOL_ART = {
     <rect x="26" y="26" width="12" height="12" rx="1.5" fill="${C.gold[1]}" ${S2}/>
     <path d="M16 23Q20 14 29 11" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" opacity="0.9"/>
     <circle cx="14" cy="29" r="1.5" fill="#fff" opacity="0.9"/>`,
+  // 売値の札の下地：穴のない金貨（上に数字を重ねる）
+  coinBlank: `
+    ${face(E(32, 32, 28), C.gold, 22, 22, 0.9)}
+    <circle cx="32" cy="32" r="21.5" fill="none" stroke="${C.gold[1]}" stroke-width="2.5"/>
+    <path d="M13 26Q17 14 28 10" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" opacity="0.85"/>`,
   merchant: `
     ${face('M14 64Q14 48 32 47Q50 48 50 64Z', C.indigo, 24, 52, 0.88)}
     <path d="M26 48L32 58L38 48" fill="#fff8e7" ${S2}/>

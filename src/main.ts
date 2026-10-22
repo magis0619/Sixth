@@ -464,7 +464,8 @@ function renderField(): void {
         if (def.big) cls.push('bigripe');
         else if (inLine) cls.push('line', inSameCropLine(state, i) ? 'lines-3' : 'lines-1');
         else cls.push('single');
-        html += `<span class="price">${price}金</span>`;
+        // 金貨の上に数字（「金」の字は入れない）。桁が多いほど字を小さく
+        html += `<span class="price d${String(price).length}">${art('coinBlank')}<b>${price}</b></span>`;
         if (def.big) html += '<span class="badge-line">大物</span>';
         else html += inLine ? `<span class="badge-line">列 ×${fmtMult(mult)}</span>` : `<span class="badge-single">単品 ×${fmtMult(singleMult(state))}</span>`;
         label = `${def.name} 実、タップで${price}金で売る${def.big ? '' : inLine ? '（列ごと）' : '（単品は半値）'}`;
@@ -519,8 +520,7 @@ function renderField(): void {
 /** いつも並ぶ品・週替わり・袋に入っているお邪魔を消す品 */
 function shopItems(): typeof UPGRADES {
   return UPGRADES.filter((u) => {
-    if (u.id === 'addMoon') return true;
-    if (u.id.startsWith('add')) return state.shop.includes(u.id as never) || state.weekly.includes(u.id as never);
+    if (u.id.startsWith('add')) return state.weekly.includes(u.id as never);
     return state.bag[UPGRADE_SYMBOL[u.id]!.symbol] > 0;
   });
 }
@@ -545,10 +545,9 @@ function renderShop(): void {
     const available = upgradeAvailable(state, u.id);
     const price = upgradePrice(state, u.id);
     const affordable = canBuy(state, u.id);
-    const weekly = state.weekly.includes(u.id as never);
-    b.className = `item${affordable ? ' affordable' : ''}${available ? '' : ' soldout'}${weekly ? ' weekly' : ''}`;
+    b.className = `item${affordable ? ' affordable' : ''}${available ? '' : ' soldout'}`;
     const ico = upgradeArt(u.id);
-    const html = `<span class="ico">${ico}</span><span class="text"><span class="name">${u.name}${weekly ? '<span class="weekly-tag">週替わり</span>' : ''}</span><span class="effect">${upgradeEffect(u.id)}</span></span>${costHtml(available ? price : null, affordable, u.id.startsWith('remove') && state.bag[UPGRADE_SYMBOL[u.id]!.symbol] > 0 ? '来週' : '完了')}`;
+    const html = `<span class="ico">${ico}</span><span class="text"><span class="name">${u.name}</span><span class="effect">${upgradeEffect(u.id)}</span></span>${costHtml(available ? price : null, affordable, u.id.startsWith('remove') && state.bag[UPGRADE_SYMBOL[u.id]!.symbol] > 0 ? '来週' : '完了')}`;
     if (b.innerHTML !== html) b.innerHTML = html;
   });
 }
@@ -577,7 +576,7 @@ function renderFarmShop(): void {
     price: ep,
     ok: canExpand(state),
   });
-  PLACE_ORDER.filter((id) => PLACES[id].price !== null).forEach((id) =>
+  PLACE_ORDER.filter((id) => state.weeklyPlaces.includes(id)).forEach((id) =>
     items.push({ key: id, ico: art(PLACE_ART[id]), name: PLACES[id].name, effect: PLACES[id].desc, price: placePrice(state, id), ok: canBuyPlace(state, id) }),
   );
   if (el.farmShop.children.length !== items.length) {
@@ -710,6 +709,11 @@ async function onSpin(): Promise<void> {
   await resolveAutos();
   ui.busy = false;
   render();
+}
+
+/** 動物がマスからひょっこり出てくる（何の動物か分かる大きさで） */
+function critterPop(q: { x: number; y: number }, html: string): void {
+  floatText(q.x, q.y - 6, html, { size: 2.8, rise: 16, dur: 1300 });
 }
 
 /** ゆうべ育ったマス（巣箱の苺・水車の隣・水路・井戸）と、入ったお金（水車・釣り堀・鶏小屋・牛小屋） */
@@ -985,13 +989,14 @@ async function resolveAutos(): Promise<void> {
         floatText(from.x, from.y - 30, '虫は空振り', { size: 0.6 });
       } else {
         const plot = el.field.children[ev.cell] as HTMLElement;
-        await new Promise<void>((r) => flyTo(from, plot, '🐛', 1, r));
+        await travel(from, plot, symHtml('bug'), true);
         const p = center(plot);
         if (ev.warded) {
           autoOutcome[i] = ev.hen ? '鶏が食べた' : 'よけた';
           sfx.shoo();
-          burst(p.x, p.y, ev.hen ? [art('henhouse'), '✨'] : ['🌿', '✨'], 8, 50);
-          floatText(p.x, p.y - 20, ev.hen ? '鶏が虫を食べた！' : '虫よけ成功！', { cls: 'good', size: 0.8 });
+          if (ev.hen) critterPop(p, art('henhouse'));
+          burst(p.x, p.y, ev.hen ? ['🪶', '✨'] : ['🌿', '✨'], 8, 50);
+          floatText(p.x, ev.hen ? p.y + 28 : p.y - 20, ev.hen ? '鶏がパクッ！' : '虫よけ成功！', { cls: 'good', size: 0.8 });
         } else {
           autoOutcome[i] = `成長−${ev.damage}`;
           sfx.bug();
@@ -1055,12 +1060,16 @@ async function resolveAutos(): Promise<void> {
       }
     } else if (ev.type === 'mole') {
       autoOutcome[i] = ev.moves.length ? `${ev.moves.length}つ移動` : ev.chased.length ? '鶏が追い払った' : '空振り';
-      ev.chased.forEach((c) => {
+      // モグラが顔を出したところへ鶏が来て、追い払う
+      for (const c of ev.chased) {
         const q = center(el.field.children[c]);
+        critterPop(q, symHtml('mole'));
+        await sleep(isCalm() ? 150 : 450);
         sfx.shoo();
-        burst(q.x, q.y, [art('henhouse'), '💨'], 8, 50);
-        floatText(q.x, q.y - 20, '鶏がモグラを追い払った！', { cls: 'good', size: 0.75 });
-      });
+        critterPop(q, art('henhouse'));
+        burst(q.x, q.y, ['🪶', '💨'], 8, 50);
+        floatText(q.x, q.y + 28, '追い払った！', { cls: 'good', size: 0.8 });
+      }
       if (!ev.moves.length && !ev.chased.length) {
         floatText(from.x, from.y - 30, 'モグラは空振り', { size: 0.6 });
       } else {
@@ -1070,7 +1079,7 @@ async function resolveAutos(): Promise<void> {
           const q = center(fp);
           burst(q.x, q.y + 12, ['💨', '🌰'], 8, 40);
           // 土の中から顔を出し、作物をとなりへ押し出す
-          floatText(q.x, q.y - 4, symHtml('mole'), { size: 1.4, rise: 10, dur: 700 });
+          critterPop(q, symHtml('mole'));
           pop(fp, 1.12);
         }
         await sleep(350);

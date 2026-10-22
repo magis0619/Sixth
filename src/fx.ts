@@ -284,7 +284,8 @@ export function shakeFor(amount: number): number {
 export function travel(from: { x: number; y: number }, toEl: Element, html: string, hop: boolean): Promise<void> {
   const to = center(toEl);
   const el = spawn(html, `fx-travel${hop ? ' hop' : ' fly'}`, from.x, from.y);
-  el.style.fontSize = '2.2rem';
+  // 動物は何か分かる大きさで
+  el.style.fontSize = '3rem';
   // 左から右へ進むときは向きを反転（絵は右向き）
   if (to.x < from.x) el.classList.add('flip');
   const dur = calm ? 350 : hop ? 900 : 800;
