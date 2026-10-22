@@ -612,12 +612,11 @@ describe('狙い', () => {
     for (const k of Object.keys(s.bag) as SymbolId[]) s.bag[k] = 0;
     s.bag.rain = 1;
     s.bag.sun = 1;
-    // 縦一列に3つ、あと1で実るトマト → 太陽なら3つ、雨（十字）なら最大3つ
+    // 左の縦一列に3つと右隣に1つ、あと1で実るトマト → 太陽（縦一列）は3つ、雨（縦横十字）は4つ
     [0, C, 2 * C].forEach((c) => (s.field[c] = { ...newCrop('tomato'), growth: 2 }));
     s.field[1] = { ...newCrop('tomato'), growth: 2 };
     const aim = bestAim(s)!;
-    expect(aim.ripen).toBe(3);
-    expect(['rain', 'sun']).toContain(aim.symbol);
+    expect(aim).toMatchObject({ symbol: 'rain', ripen: 4 });
     s.field = s.field.map(() => null);
     expect(bestAim(s)).toBeNull();
   });
