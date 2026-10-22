@@ -18,6 +18,7 @@ export function openSheet(name: SheetName): void {
   openSheetName = name;
   el.sheetTitle.textContent = SHEET_TITLES[name];
   el.sheet.querySelectorAll<HTMLElement>('.sheet-pane').forEach((p) => (p.hidden = p.dataset.pane !== name));
+  el.sheet.dataset.pane = name;
   document.querySelectorAll<HTMLElement>('.tab').forEach((t) => t.classList.toggle('on', t.dataset.sheet === name));
   el.sheet.classList.add('open');
   el.sheetBackdrop.classList.add('open');

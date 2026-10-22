@@ -4889,3 +4889,8 @@ body::before {
   font-weight: 800;
   color: #5aae35;
 }
+
+/* ショップはタブを切り替えても引き出しの高さが変わらないよう、高さを固定する */
+.sheet[data-pane='shop'] {
+  height: 72dvh;
+}
