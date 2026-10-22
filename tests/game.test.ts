@@ -6,7 +6,7 @@ import { CONFIG, CROPS, EVENT_CONDITIONS, THUNDER_LINES } from '../src/config.ts
 import {
   animalGold, buy, buyPlace, drawDay, hasRanch, hiveBonus, isColorful, canPlace, canUse, cellMultiplier, cropPrice, isPond, waterWheels, checkReady, chooseCharm, endDay, evolveTools, expand, expandPrice,
   fieldCells, isGolden, lv, multSteps, newCrop, newGame, nextTax, obstacleRule, place, pullWeed, resolveAuto, ripeGroup,
-  canBuy, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult,
+  bestAim, canBuy, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult,
 } from '../src/game.ts';
 import { recordRun, type MetaState } from '../src/meta.ts';
 import type { CropKind, SymbolId } from '../src/config.ts';
