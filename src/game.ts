@@ -1438,7 +1438,7 @@ export function chooseCharm(state: GameState, id: CharmId): boolean {
 
 export function expandPrice(state: GameState): number | null {
   const p = CONFIG.expandPrices[state.bought.expand ?? 0];
-  if (p === undefined) return null;
+  if (p === undefined || (state.cols >= CONFIG.fieldCols && state.rows >= CONFIG.fieldRows)) return null;
   return Math.max(1, Math.round(p * (1 - Math.min(0.5, 0.1 * lv(state, 'bargain'))) * shopMult(state)));
 }
 
