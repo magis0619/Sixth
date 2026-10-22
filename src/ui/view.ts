@@ -121,5 +121,5 @@ export function upgradeEffect(id: UpgradeId): string {
   if (delta < 0 && removeLimitReached(state)) return `お邪魔を消せるのは週${CONFIG.removesPerWeek}回まで（来週また消せる）`;
   const after = { ...state.bag, [symbol]: state.bag[symbol] + delta };
   const odds = `出る確率 ${bagPct(state.bag, symbol)}% → ${bagPct(after, symbol)}%`;
-  return delta < 0 ? `${odds}（週${CONFIG.removesPerWeek}回まで・消すたび価格×${CONFIG.removeGrowth}）` : odds;
+  return odds;
 }

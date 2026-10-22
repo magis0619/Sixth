@@ -4754,3 +4754,138 @@ body::before {
   font-size: 1.1em;
   vertical-align: -0.2em;
 }
+
+/* ==== ショップ：屋台（左にタブ、右に品を大きく） ==== */
+.stall {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.stall-tabs {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: none;
+}
+
+.stall-tab {
+  position: relative;
+  width: 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px 6px;
+  border: none;
+  border-radius: 12px;
+  background: #f0e3c4;
+  color: #5e4a2c;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  box-shadow: 0 3px 0 #d9c69c;
+  cursor: pointer;
+}
+
+.stall-tab .tab-ico {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.stall-tab.on {
+  background: #5aae35;
+  color: #fff;
+  box-shadow: 0 3px 0 #3f8a26;
+}
+
+/* 買える品があるタブの印 */
+.stall-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #e0453a;
+  box-shadow: 0 0 0 2px #fff;
+  display: none;
+}
+
+.stall-tab.ready .stall-dot {
+  display: block;
+}
+
+.stall-pane {
+  flex: 1;
+  min-width: 0;
+  background: #fffdf7;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 3px 0 #e2d2ad;
+}
+
+/* 屋台の日よけ（赤白の縞） */
+.awning {
+  height: 16px;
+  background:
+    radial-gradient(circle at 11px 0, transparent 11px, transparent 11px),
+    repeating-linear-gradient(90deg, #e0453a 0 22px, #fff 22px 44px);
+  -webkit-mask: radial-gradient(circle at 11px 100%, transparent 0 0, #000 0) 0 0 / 22px 100%;
+  border-bottom: 2px solid rgba(0, 0, 0, 0.08);
+}
+
+.stall-lead {
+  display: none;
+  margin: 8px 12px 2px;
+  font-size: 0.72rem;
+  color: #8a7a5c;
+}
+
+.stall[data-tab='farm'] .stall-lead[data-for='farm'],
+.stall[data-tab='add'] .stall-lead[data-for='add'],
+.stall[data-tab='remove'] .stall-lead[data-for='remove'] {
+  display: block;
+}
+
+.stall:not([data-tab='farm']) #farm-shop,
+.stall[data-tab='farm'] #shop,
+.stall[data-tab='add'] #shop .item.kind-remove,
+.stall[data-tab='remove'] #shop .item.kind-add {
+  display: none;
+}
+
+.stall .shop,
+.stall .shop:is(*) {
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+
+.stall .shop .item {
+  grid-template-columns: 52px 1fr 72px;
+  border-radius: 0;
+  background: transparent;
+  border-bottom: 1px dashed #ead9b0;
+  padding: 10px 10px 10px 8px;
+}
+
+.stall .shop .item:last-child {
+  border-bottom: none;
+}
+
+.stall .shop .item .ico {
+  font-size: 2.6rem;
+}
+
+.stall .shop .item .name {
+  font-size: 0.95rem;
+}
+
+.stall-empty {
+  margin: 18px 12px 22px;
+  text-align: center;
+  font-weight: 800;
+  color: #5aae35;
+}

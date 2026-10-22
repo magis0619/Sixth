@@ -76,6 +76,7 @@ function render(): void {
   renderField();
   renderShop();
   renderFarmShop();
+  renderStall();
   renderBag();
   renderSky();
   renderDanger();
@@ -545,11 +546,24 @@ function renderShop(): void {
     const available = upgradeAvailable(state, u.id);
     const price = upgradePrice(state, u.id);
     const affordable = canBuy(state, u.id);
-    b.className = `item${affordable ? ' affordable' : ''}${available ? '' : ' soldout'}`;
+    b.className = `item${affordable ? ' affordable' : ''}${available ? '' : ' soldout'} kind-${u.id.startsWith('remove') ? 'remove' : 'add'}`;
     const ico = upgradeArt(u.id);
     const html = `<span class="ico">${ico}</span><span class="text"><span class="name">${u.name}</span><span class="effect">${upgradeEffect(u.id)}</span></span>${costHtml(available ? price : null, affordable, u.id.startsWith('remove') && state.bag[UPGRADE_SYMBOL[u.id]!.symbol] > 0 ? '来週' : '完了')}`;
     if (b.innerHTML !== html) b.innerHTML = html;
   });
+}
+
+/** 屋台のタブ：買える品があるタブに印、消す品がないときはひと言 */
+function renderStall(): void {
+  const stall = $('stall');
+  const has = (sel: string) => !!stall.querySelector(sel);
+  const dots = { farm: has('#farm-shop .item.affordable'), add: has('#shop .item.kind-add.affordable'), remove: has('#shop .item.kind-remove.affordable') };
+  stall.querySelectorAll<HTMLElement>('.stall-tab').forEach((t) => {
+    const k = t.dataset.stall as keyof typeof dots;
+    t.classList.toggle('on', stall.dataset.tab === k);
+    t.classList.toggle('ready', dots[k]);
+  });
+  $('stall-empty').hidden = !(stall.dataset.tab === 'remove' && !has('#shop .item.kind-remove'));
 }
 
 /** 畑が広がった演出（お守り「開墾」） */
@@ -1570,6 +1584,28 @@ el.order.addEventListener('click', () => {
 });
 el.goldBox.querySelector('.stat-icon')!.innerHTML = art('coin');
 document.querySelector('.machine-top')!.innerHTML = `${art('coin')} 畑スロット ${art('coin')}`;
+// 屋台のタブ（最後に開いたタブを覚えておく）
+{
+  const stall = $('stall');
+  try {
+    const saved = localStorage.getItem('hatake-slot:stall');
+    if (saved === 'farm' || saved === 'add' || saved === 'remove') stall.dataset.tab = saved;
+  } catch {
+    // 保存できない環境では毎回「畑」から
+  }
+  stall.querySelectorAll<HTMLElement>('.stall-tab').forEach((t) =>
+    t.addEventListener('click', () => {
+      sfx.select();
+      stall.dataset.tab = t.dataset.stall!;
+      try {
+        localStorage.setItem('hatake-slot:stall', t.dataset.stall!);
+      } catch {
+        // 覚えられなくても遊べる
+      }
+      renderStall();
+    }),
+  );
+}
 document.querySelectorAll<HTMLElement>('.tab-ico[data-art]').forEach((n) => (n.innerHTML = art(n.dataset.art as ArtId)));
 document.querySelectorAll<HTMLButtonElement>('.tab').forEach((t) =>
   t.addEventListener('click', () => {

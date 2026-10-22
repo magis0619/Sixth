@@ -69,10 +69,23 @@
         <button class="sheet-close" id="sheet-close" aria-label="閉じる">×</button>
       </div>
       <div class="sheet-pane" data-pane="shop">
-        <h3 class="shop-title">畑<small>今週の3品（年貢のあと入れ替わり）・広げるはいつでも</small></h3>
-        <div class="shop" id="farm-shop"></div>
-        <h3 class="shop-title">絵柄袋<small>足すのは今週の3品・消すのはいつでも（週1回）</small></h3>
-        <div class="shop" id="shop"></div>
+        <!-- 屋台：左のタブで「畑・足す・消す」を切り替え、右に品を大きく並べる -->
+        <div class="stall" id="stall" data-tab="farm">
+          <nav class="stall-tabs" aria-label="ショップの種類">
+            <button class="stall-tab" data-stall="farm"><span class="tab-ico" data-art="expand"></span>畑<span class="stall-dot"></span></button>
+            <button class="stall-tab" data-stall="add"><span class="tab-ico" data-art="seed"></span>足す<span class="stall-dot"></span></button>
+            <button class="stall-tab" data-stall="remove"><span class="tab-ico" data-art="crow"></span>消す<span class="stall-dot"></span></button>
+          </nav>
+          <div class="stall-pane">
+            <div class="awning"></div>
+            <p class="stall-lead" data-for="farm">今週の3品（年貢のあと入れ替わり）・置くマスは買ったあとタップ</p>
+            <p class="stall-lead" data-for="add">今週の3品。足すとその絵柄が出やすくなる</p>
+            <p class="stall-lead" data-for="remove">いつでも並ぶ。消せるのは週1回、消すたび高くなる</p>
+            <div class="shop" id="farm-shop"></div>
+            <div class="shop" id="shop"></div>
+            <p class="stall-empty" id="stall-empty">袋にお邪魔はいない！</p>
+          </div>
+        </div>
       </div>
       <div class="sheet-pane" data-pane="bag">
         <p class="sheet-lead">スロットはこの袋から1枚ずつ引く。出る確率つき</p>
