@@ -348,10 +348,10 @@ export const CONFIG = {
   /** 年貢：taxPeriod 日ごとに、その日の終わり（次の回転前）に自動で徴収 */
   taxPeriod: 7,
   /** 1回目から順の年貢額。表を超えたら（エンドレス）直前の額 × taxGrowth */
-  taxSchedule: [5, 22, 60, 120, 175, 235, 295, 360],
+  taxSchedule: [5, 22, 55, 100, 140, 175, 205, 270],
   taxGrowth: 1.5,
   /** この回数の年貢を納めるとクリア（その後はエンドレス） */
-  winTaxes: 6,
+  winTaxes: 7,
   /** 年貢が近いことを警告し始める残り日数 */
   taxWarnDays: 2,
 

@@ -170,14 +170,14 @@ test('解放と遊び方の画面が開いて戻れる', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test('お守りの3択を連打しても1つしか取れず、6回目の年貢でクリア画面が残る', async ({ page }) => {
+test('お守りの3択を連打しても1つしか取れず、最後（7回目・49日目）の年貢でクリア画面が残る', async ({ page }) => {
   const errors = await boot(page);
   await start(page);
   await firstDay(page);
-  // 6回目の年貢の日に書き換える
+  // 最後の年貢の日に書き換える
   await page.evaluate(() => {
     const s = JSON.parse(localStorage.getItem('hatake-slot:run')!);
-    Object.assign(s, { day: 42, taxesPaid: 5, gold: 9999 });
+    Object.assign(s, { day: 49, taxesPaid: 6, gold: 9999 });
     for (const id of Object.keys(s.charms)) s.charms[id] = 0;
     localStorage.setItem('hatake-slot:run', JSON.stringify(s));
   });
