@@ -2,9 +2,9 @@
 // 画面に依存しない部分だけを確かめる。 npm test
 
 import { describe, expect, it } from 'vitest';
-import { CONFIG, EVENT_CONDITIONS, THUNDER_LINES } from '../src/config.ts';
+import { CONFIG, CROPS, EVENT_CONDITIONS, THUNDER_LINES } from '../src/config.ts';
 import {
-  buy, buyPlace, canPlace, canUse, cellMultiplier, checkReady, chooseCharm, endDay, evolveTools, expand, expandPrice,
+  buy, buyPlace, drawDay, canPlace, canUse, cellMultiplier, cropPrice, isPond, waterWheels, checkReady, chooseCharm, endDay, evolveTools, expand, expandPrice,
   fieldCells, isGolden, lv, multSteps, newCrop, newGame, nextTax, obstacleRule, place, pullWeed, resolveAuto, ripeGroup,
   rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult,
 } from '../src/game.ts';
@@ -292,5 +292,119 @@ describe('遊ぶたびに増える要素', () => {
     s.stats.lineHarvests = THUNDER_LINES;
     recordRun(m, s, true);
     expect(m.unlockedAdds).toContain('addThunder');
+  });
+});
+
+describe('スイカ（2×2）', () => {
+  it('4マス空いていれば左上に植えられ、4マスとも埋まる', () => {
+    const s = game();
+    s.results = [reel('watermelonSeed')];
+    expect(canUse(s, 0, at(2, 0))).toBe(false); // 右がはみ出す
+    expect(useSymbol(s, 0, at(0, 0))!.sort((a, b) => a - b)).toEqual([at(0, 0), at(1, 0), at(0, 1), at(1, 1)]);
+    expect(s.field[at(1, 1)]!.anchor).toBe(at(0, 0));
+  });
+
+  it('どのマスに雨が当たっても1回だけ育ち、列に入らず、実ったら単品でも満額で売れる', () => {
+    const s = game();
+    s.results = [reel('watermelonSeed'), reel('rain')];
+    useSymbol(s, 0, at(0, 0));
+    useSymbol(s, 1, at(1, 1));
+    expect(s.field[at(0, 0)]!.growth).toBe(1);
+    s.field[at(0, 0)]!.growth = 99;
+    ripe(s, 'tomato', [at(2, 0), at(2, 1), at(2, 2)]);
+    expect(multSteps(s, at(0, 0)).map((x) => x.label)).toEqual(['大物']);
+    const r = sell(s, at(1, 1))!;
+    expect(r.size).toBe(1);
+    expect(r.total).toBe(CROPS.watermelon.price);
+    expect([at(0, 0), at(1, 0), at(0, 1), at(1, 1)].every((c) => s.field[c] === null)).toBe(true);
+  });
+});
+
+describe('鍬とモグラ', () => {
+  it('鍬は横一列の雑草・霜を消して耕し、耕した土に植えると成長+1', () => {
+    const s = game();
+    s.weeds[at(0, 1)] = true;
+    s.frost[at(1, 1)] = 2;
+    s.results = [reel('hoe'), reel('seed')];
+    useSymbol(s, 0, at(2, 1));
+    expect(s.weeds[at(0, 1)]).toBe(false);
+    expect(s.frost[at(1, 1)]).toBe(0);
+    expect(s.tilled[at(2, 1)]).toBe(true);
+    useSymbol(s, 1, at(2, 1));
+    expect(s.field[at(2, 1)]!.growth).toBe(1);
+    expect(s.tilled[at(2, 1)]).toBe(false);
+  });
+
+  it('モグラは作物を隣の空きマスへ押し出す（スイカは動かせない）', () => {
+    const s = game();
+    s.field[at(1, 1)] = newCrop('tomato');
+    s.results = [{ symbol: 'mole', used: false, total: 1, left: 1, power: 1 }];
+    const ev = resolveAuto(s, 0, () => 0);
+    expect(ev?.type).toBe('mole');
+    expect(s.field[at(1, 1)]).toBeNull();
+    expect(fieldCells(s).filter((c) => s.field[c]).length).toBe(1);
+    const t = game();
+    t.results = [reel('watermelonSeed')];
+    useSymbol(t, 0, at(0, 0));
+    t.results = [{ symbol: 'mole', used: false, total: 1, left: 1, power: 1 }];
+    expect(resolveAuto(t, 0, () => 0)).toEqual({ type: 'mole', moves: [] });
+  });
+});
+
+describe('水路のつながり・小屋・相場・品評会', () => {
+  it('水路を3つまっすぐ並べると水車、囲んだ空きマスは釣り堀で、夜にお金が入る', () => {
+    const s = game();
+    [at(0, 0), at(1, 0), at(2, 0)].forEach((c) => (s.tiles[c] = 'water'));
+    expect(waterWheels(s)).toEqual([[at(0, 0), at(1, 0), at(2, 0)]]);
+    [at(0, 1), at(2, 1), at(1, 2)].forEach((c) => (s.tiles[c] = 'water'));
+    expect(isPond(s, at(1, 1))).toBe(true);
+    s.tools[at(0, 2)] = 'henhouse';
+    s.tools[at(2, 2)] = 'cowshed';
+    endDay(s, () => 0.99);
+    const n = s.nightIncome!;
+    expect(n.wheel).toBe(3 * CONFIG.wheelGold);
+    expect(n.fish).toBe(CONFIG.fishGold);
+    expect(n.animals).toBe(CONFIG.henhouseGold + CONFIG.cowshedGold);
+    expect(s.gold).toBe(n.wheel + n.fish + n.animals);
+  });
+
+  it('鶏小屋の周りの虫は食べられる', () => {
+    const s = game();
+    s.tools[at(1, 1)] = 'henhouse';
+    s.field[at(0, 0)] = { ...newCrop('tomato'), growth: 2 };
+    s.results = [{ symbol: 'bug', used: false, total: 1, left: 1, power: 1 }];
+    const ev = resolveAuto(s, 0, () => 0.9);
+    expect(ev?.type === 'bug' && ev.warded).toBe(true);
+    expect(s.field[at(0, 0)]!.growth).toBe(2);
+  });
+
+  it('相場の高値・安値が売値にかかる', () => {
+    const s = game();
+    s.market = { high: 'tomato', low: 'strawberry' };
+    expect(cropPrice(s, newCrop('tomato'))).toBe(Math.round(CROPS.tomato.price * CONFIG.marketHigh));
+    expect(cropPrice(s, newCrop('strawberry'))).toBe(Math.round(CROPS.strawberry.price * CONFIG.marketLow));
+  });
+
+  it('作物を全種類売ると品評会がもらえる', () => {
+    const s = game();
+    s.stats.soldKinds = ['tomato', 'strawberry', 'pumpkin', 'melon', 'corn'];
+    expect(s.charms.exhibition).toBe(0);
+    s.results = [reel('watermelonSeed')];
+    useSymbol(s, 0, at(0, 0));
+    s.field[at(0, 0)]!.growth = 99;
+    sell(s, at(0, 0));
+    expect(s.charms.exhibition).toBe(1);
+  });
+});
+
+describe('大きな種袋', () => {
+  it('1個ずつ植える種（かぼちゃ・スイカなど）も含めて、全部の種の植えられる数が増える', () => {
+    const s = game();
+    s.charms.seedSack = 1;
+    s.bag = Object.fromEntries(Object.keys(s.bag).map((k) => [k, 0])) as GameState['bag'];
+    s.bag.pumpkinSeed = 1;
+    drawDay(s, () => 0);
+    expect(s.results[0].symbol).toBe('pumpkinSeed');
+    expect(s.results[0].total).toBe(2);
   });
 });

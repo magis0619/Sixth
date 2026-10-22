@@ -13,6 +13,8 @@ export interface Crop {
   fertilized: boolean;
   /** 熟成のお守りで上がった売値 */
   bonus: number;
+  /** 2×2の大物（スイカ）の右・下・右下のマス：本体（左上）のマスの番号。本体と成長・売値は本体が持つ */
+  anchor?: number;
 }
 
 export interface ReelResult {
@@ -45,6 +47,23 @@ export type Notice =
   | { kind: 'golden'; id: CharmId }
   | { kind: 'evolve'; cell: number; from: PlaceId; to: PlaceId }
   | { kind: 'jackpot'; amount: number };
+
+/** 夜のうちに入ったお金（水車・釣り堀・鶏小屋・牛小屋） */
+export interface NightIncome {
+  wheel: number;
+  /** 水車の立った水路の並び */
+  wheels: number[][];
+  fish: number;
+  /** 大物が釣れた池 */
+  bigFish: number[];
+  animals: number;
+}
+
+/** 週ごとの相場：高値と安値の作物 */
+export interface Market {
+  high: CropKind | null;
+  low: CropKind | null;
+}
 
 export interface Purchase {
   day: number;
@@ -85,6 +104,12 @@ export interface GameState {
   notices: Notice[];
   /** 買った回数（畑を広げる・道具ごと。価格が上がる） */
   bought: Partial<Record<PlaceId | 'expand', number>>;
+  /** 鍬で耕したマス（次に植えた作物が成長+1） */
+  tilled: boolean[];
+  /** 今週の相場 */
+  market: Market | null;
+  /** ゆうべ入ったお金（画面で知らせる） */
+  nightIncome: NightIncome | null;
   /** 雑草が生えているマス（植えられない。毎日となりへ広がる） */
   weeds: boolean[];
   /** 霜で凍っている残り日数（0 は凍っていない）。凍ったマスは植える・育つ・売るができない */
@@ -129,6 +154,8 @@ export interface GameState {
     fevers: number;
     lineHarvests: number;
     ordersDone: number;
+    /** このプレイで売ったことのある作物（品評会の条件） */
+    soldKinds: CropKind[];
     purchases: Purchase[];
     charms: { day: number; id: CharmId }[];
   };
@@ -156,7 +183,7 @@ export interface GameSetup {
   difficulty?: number;
 }
 
-export const ALL_ADDS: AddUpgradeId[] = ['addSeed', 'addBerrySeed', 'addPumpkinSeed', 'addMelonSeed', 'addRain', 'addSun', 'addThunder', 'addFertilizer', 'addBee', 'addMerchant', 'addGoldSeed', 'addClover'];
+export const ALL_ADDS: AddUpgradeId[] = ['addSeed', 'addBerrySeed', 'addPumpkinSeed', 'addMelonSeed', 'addWatermelonSeed', 'addRain', 'addSun', 'addThunder', 'addHoe', 'addFertilizer', 'addBee', 'addMerchant', 'addGoldSeed', 'addClover'];
 
 export function newGame(setup: GameSetup = { shop: ALL_ADDS, charmPool: CHARM_ORDER }): GameState {
   return {
@@ -184,6 +211,9 @@ export function newGame(setup: GameSetup = { shop: ALL_ADDS, charmPool: CHARM_OR
     today: { rain: [], sun: [], boosted: [] },
     halfTax: false,
     notices: [],
+    tilled: Array.from({ length: CONFIG.fieldCols * CONFIG.fieldRows }, () => false),
+    market: null,
+    nightIncome: null,
     weeds: Array.from({ length: CONFIG.fieldCols * CONFIG.fieldRows }, () => false),
     frost: Array.from({ length: CONFIG.fieldCols * CONFIG.fieldRows }, () => 0),
     results: [],
@@ -200,7 +230,7 @@ export function newGame(setup: GameSetup = { shop: ALL_ADDS, charmPool: CHARM_OR
     cleared: false,
     stats: {
       spins: 0, totalEarned: 0, cropsSold: 0, cropsEaten: 0, crowEaten: 0, crowsMissed: 0, fevers: 0, lineHarvests: 0, ordersDone: 0,
-      purchases: [], charms: [],
+      soldKinds: [], purchases: [], charms: [],
     },
   };
 }
@@ -263,6 +293,109 @@ export function shapeCells(state: GameState, shape: ShapeId, cell: number): numb
   if (shape === 'row') return fieldCells(state).filter((c) => cellY(c) === cellY(cell));
   // 縦一列：その列の全マス
   return fieldCells(state).filter((c) => cellX(c) === cellX(cell));
+}
+
+// ---- 2×2の大物（スイカ） ----
+
+/** そのマスの作物の本体のマス（大物の右・下・右下は左上の本体を指す） */
+export function rootOf(state: GameState, cell: number): number {
+  return state.field[cell]?.anchor ?? cell;
+}
+
+/** 本体 root から右・下・右下の4マス（畑の外は除く） */
+export function bigCells(state: GameState, root: number): number[] {
+  return [root, ...offsets(state, root, [[1, 0], [0, 1], [1, 1]])];
+}
+
+/** 作物が占めるマス（大物なら4マス） */
+export function cropCells(state: GameState, cell: number): number[] {
+  const root = rootOf(state, cell);
+  const c = state.field[root];
+  return c && CROPS[c.kind].big ? bigCells(state, root) : [root];
+}
+
+/** 作物を畑から取り除く（大物は4マスとも） */
+export function removeCrop(state: GameState, cell: number): void {
+  cropCells(state, cell).forEach((i) => (state.field[i] = null));
+}
+
+/** 作物の占めるマスのどれかが凍っているか */
+function frozenCrop(state: GameState, cell: number): boolean {
+  return cropCells(state, cell).some((i) => state.frost[i] > 0);
+}
+
+// ---- 水路のつながり ----
+
+/** 水車：縦か横に wheelMin 個以上まっすぐ並んだ水路の並び */
+export function waterWheels(state: GameState): number[][] {
+  const out: number[][] = [];
+  const scan = (lines: number[][]) =>
+    lines.forEach((line) => {
+      let run: number[] = [];
+      [...line, -1].forEach((c) => {
+        if (c >= 0 && state.tiles[c] === 'water') run.push(c);
+        else {
+          if (run.length >= CONFIG.wheelMin) out.push(run);
+          run = [];
+        }
+      });
+    });
+  scan(Array.from({ length: state.rows }, (_, y) => Array.from({ length: state.cols }, (_, x) => cellAt(state, x, y)!)));
+  scan(Array.from({ length: state.cols }, (_, x) => Array.from({ length: state.rows }, (_, y) => cellAt(state, x, y)!)));
+  return out;
+}
+
+/** 釣り堀：上下左右（畑の中のもの）がすべて水路で、3方以上が水路の空きマス */
+export function isPond(state: GameState, cell: number): boolean {
+  if (!inField(state, cell) || state.tiles[cell] === 'water' || state.field[cell] || state.tools[cell]) return false;
+  const n = neighbors(state, cell);
+  return n.length >= 3 && n.every((i) => state.tiles[i] === 'water');
+}
+
+/** 夜のうちに入るお金（水車・釣り堀・鶏小屋・牛小屋） */
+function collectNightIncome(state: GameState, rng: Rng): NightIncome {
+  const wheels = waterWheels(state);
+  const wheel = wheels.reduce((n, w) => n + w.length * CONFIG.wheelGold, 0);
+  let fish = 0;
+  const bigFish: number[] = [];
+  fieldCells(state).forEach((i) => {
+    if (!isPond(state, i)) return;
+    fish += CONFIG.fishGold;
+    if (rng() < CONFIG.bigFishChance) {
+      fish += CONFIG.bigFishGold;
+      bigFish.push(i);
+    }
+  });
+  const animals = fieldCells(state).reduce((n, i) => n + (state.tools[i] === 'henhouse' ? CONFIG.henhouseGold : state.tools[i] === 'cowshed' ? CONFIG.cowshedGold : 0), 0);
+  earn(state, wheel + fish + animals);
+  return { wheel, wheels, fish, bigFish, animals };
+}
+
+/** 鶏小屋の周り8マス（虫を食べる） */
+function nearHenhouse(state: GameState, cell: number): boolean {
+  return around(state, cell, 1).some((i) => state.tools[i] === 'henhouse');
+}
+
+// ---- 相場 ----
+
+/** 今の絵柄袋で育てられる作物 */
+function growableKinds(state: GameState): CropKind[] {
+  return [...new Set(Object.entries(SEEDS).filter(([sym]) => state.bag[sym as SymbolId] > 0).map(([, d]) => d!.crop))];
+}
+
+/** 週ごとの相場：全作物から高値1つ・安値1つ（育てている作物だけから選ぶと、ただの値上げになる） */
+export function rollMarket(_state: GameState, rng: Rng): Market {
+  const kinds = Object.keys(CROPS) as CropKind[];
+  const high = kinds.length ? kinds.splice(Math.floor(rng() * kinds.length), 1)[0] : null;
+  const low = kinds.length ? kinds[Math.floor(rng() * kinds.length)] : null;
+  return { high, low };
+}
+
+/** 相場の倍率 */
+export function marketMult(state: GameState, kind: CropKind): number {
+  if (state.market?.high === kind) return CONFIG.marketHigh;
+  if (state.market?.low === kind) return CONFIG.marketLow;
+  return 1;
 }
 
 // ---- 絵柄袋 ----
@@ -341,8 +474,9 @@ export function endDay(state: GameState, rng: Rng): EndDayResult {
       if (c && isRipe(c)) c.bonus += 3 * lv(state, 'aging');
     });
   }
-  // 井戸・水路は夜のうちに作物を育てる
+  // 井戸・水路は夜のうちに作物を育てる。水車・釣り堀・鶏小屋・牛小屋のお金が入る
   if (state.day > 0) overnightGrowth(state);
+  state.nightIncome = state.day > 0 ? collectNightIncome(state, rng) : null;
   // 霜は日ごとに溶けていく。雑草はとなりの空きマスへ広がる
   state.frost = state.frost.map((d) => Math.max(0, d - 1));
   if (state.day > 0) {
@@ -408,19 +542,21 @@ export function drawDay(state: GameState, rng: Rng): void {
   state.results = symbols.map((symbol) => {
     const power = state.fever.includes(symbol) && SYMBOLS[symbol].rarity === 'bad' ? CONFIG.feverPower : 1;
     const seed = SEEDS[symbol];
-    const total = seed && !seed.single ? rollSeedCount(rng) + seed.extra + lv(state, 'seedSack') : 1;
+    // 大きな種袋は、1個ずつ植える種（かぼちゃ・メロン・金の種・スイカ）も含めて全部の種に効く
+    const total = seed ? (seed.single ? 1 : rollSeedCount(rng) + seed.extra) + lv(state, 'seedSack') : 1;
     return { symbol, used: false, total, left: total, power };
   });
   // 新しい週には新しい注文と週替わりの品が来る
   if (!state.order || state.order.dueDay < state.day) {
     state.order = makeOrder(state, rng);
     state.weekly = rollWeekly(state, rng);
+    state.market = rollMarket(state, rng);
   }
 }
 
-/** 空きマス（畑の中で、作物・道具・雑草・霜がない） */
+/** 空きマス（畑の中で、作物・道具・雑草・霜・池がない） */
 export function isOpen(state: GameState, cell: number): boolean {
-  return inField(state, cell) && !state.field[cell] && !state.tools[cell] && !state.weeds[cell] && !state.frost[cell];
+  return inField(state, cell) && !state.field[cell] && !state.tools[cell] && !state.weeds[cell] && !state.frost[cell] && !isPond(state, cell);
 }
 
 /** 井戸・黄金の井戸・水路のマスで、夜のうちに育つマス */
@@ -523,11 +659,11 @@ export function pullWeed(state: GameState, cell: number): boolean {
 
 /** 今の絵柄袋で育てられる作物から、週（年貢の回数）に応じた数の注文を作る */
 export function makeOrder(state: GameState, rng: Rng): Order | null {
-  const kinds = [...new Set(Object.entries(SEEDS).filter(([sym]) => state.bag[sym as SymbolId] > 0).map(([, d]) => d!.crop))];
+  const kinds = growableKinds(state);
   if (!kinds.length) return null;
   const crop = kinds[Math.floor(rng() * kinds.length)];
   const w = state.taxesPaid;
-  const need = { strawberry: 5 + 3 * w, tomato: 3 + 2 * w, pumpkin: 1 + Math.ceil(w / 2), melon: 1 + Math.floor(w / 2), corn: 1 + Math.floor(w / 2) }[crop];
+  const need = { strawberry: 5 + 3 * w, tomato: 3 + 2 * w, pumpkin: 1 + Math.ceil(w / 2), melon: 1 + Math.floor(w / 2), corn: 1 + Math.floor(w / 2), watermelon: 1 }[crop];
   const reward = Math.round(need * CROPS[crop].price * CONFIG.orderRewardMult) + CONFIG.orderRewardBase * (w + 1);
   return { crop, need, have: 0, reward, dueDay: nextTax(state).dueDay, done: false };
 }
@@ -596,6 +732,10 @@ export function resolveFever(state: GameState, rng: Rng): FeverEvent[] {
       const cells: number[] = [];
       fieldCells(state).forEach((i) => grow(state, i, 1, cells));
       events.push({ ...base, jackpot, role: 'grow', cells });
+    } else if (symbol === 'hoe') {
+      const cells: number[] = [];
+      fieldCells(state).forEach((i) => till(state, i) && cells.push(i));
+      events.push({ ...base, jackpot, role: 'grow', cells });
     } else if (symbol === 'clover') {
       state.charmOffer = rollCharmOffer(state, rng);
       events.push({ ...base, jackpot, role: 'luck' });
@@ -630,6 +770,7 @@ export type AutoEvent =
   | { type: 'weed'; cells: number[]; warded: boolean }
   | { type: 'tanuki'; taken: { cell: number; crop: Crop; price: number }[]; escaped: boolean; stolen: number; guarded: number[] }
   | { type: 'frost'; cells: number[] }
+  | { type: 'mole'; moves: { from: number; to: number; crop: Crop }[] }
   | { type: 'clover'; boost: number };
 
 export function crowEatChance(_state: GameState, power: number): number {
@@ -662,7 +803,8 @@ export function resolveAuto(state: GameState, reel: number, rng: Rng): AutoEvent
       const targets = state.field.flatMap((c, i) => (c && c.growth > 0 ? [i] : []));
       if (targets.length === 0) return { type: 'bug', cell: null, warded: false, damage: 0 };
       const cell = targets[Math.floor(rng() * targets.length)];
-      if (rng() < 1 - Math.pow(0.5, lv(state, 'bugWard'))) return { type: 'bug', cell, warded: true, damage: 0 };
+      // 鶏小屋の周りの虫は食べられてしまう
+      if (nearHenhouse(state, cell) || rng() < 1 - Math.pow(0.5, lv(state, 'bugWard'))) return { type: 'bug', cell, warded: true, damage: 0 };
       const crop = state.field[cell]!;
       const damage = Math.min(crop.growth, CONFIG.bugDamage * r.power);
       crop.growth -= damage;
@@ -690,7 +832,7 @@ export function resolveAuto(state: GameState, reel: number, rng: Rng): AutoEvent
           .flatMap((c, i) => (c && isRipe(c) && !state.frost[i] && !isGuarded(state, i) ? [{ cell: i, crop: c, price: cropPrice(state, c, i) }] : []))
           .sort((a, b) => b.price - a.price);
         if (!ripe.length) break;
-        state.field[ripe[0].cell] = null;
+        removeCrop(state, ripe[0].cell);
         state.stats.cropsEaten++;
         taken.push(ripe[0]);
       }
@@ -721,6 +863,25 @@ export function resolveAuto(state: GameState, reel: number, rng: Rng): AutoEvent
       }
       return { type: 'frost', cells };
     }
+    case 'mole': {
+      // 地面の下から来るので、かかしでは防げない。大物は重くて動かせない
+      const moves: { from: number; to: number; crop: Crop }[] = [];
+      for (let k = 0; k < r.power; k++) {
+        const movable = fieldCells(state).filter((i) => {
+          const c = state.field[i];
+          return c && !CROPS[c.kind].big && !state.frost[i] && neighbors(state, i).some((n) => isOpen(state, n));
+        });
+        if (!movable.length) break;
+        const from = movable[Math.floor(rng() * movable.length)];
+        const open = neighbors(state, from).filter((n) => isOpen(state, n));
+        const to = open[Math.floor(rng() * open.length)];
+        const crop = state.field[from]!;
+        state.field[to] = crop;
+        state.field[from] = null;
+        moves.push({ from, to, crop });
+      }
+      return { type: 'mole', moves };
+    }
     case 'crow': {
       const toll = 2 * lv(state, 'crowToll') + 3 * state.charms.crowReturn;
       if (toll) earn(state, toll);
@@ -740,7 +901,7 @@ export function resolveAuto(state: GameState, reel: number, rng: Rng): AutoEvent
         state.stats.crowsMissed++;
         return { type: 'crow', cell, crop, eaten: false, toll, guarded: false };
       }
-      state.field[cell] = null;
+      removeCrop(state, cell);
       state.stats.cropsEaten++;
       state.stats.crowEaten++;
       // カラス返し：たくさん食べられたらその場でもらえる
@@ -764,8 +925,31 @@ export function resolveAllAuto(state: GameState, rng: Rng): AutoEvent[] {
 // ---- 手動の絵柄 ----
 
 const growable = (c: Crop | null): c is Crop => c !== null && c.growth < CROPS[c.kind].ripe;
-/** 凍っていない、育てられる作物 */
-const growableAt = (state: GameState, i: number): boolean => growable(state.field[i]) && !state.frost[i];
+/** 凍っていない、育てられる作物（大物は本体で見る） */
+const growableAt = (state: GameState, i: number): boolean => growable(state.field[rootOf(state, i)]) && !frozenCrop(state, i);
+
+/** 鍬で耕せるマス：雑草・霜があるか、耕していない空きの土 */
+function tillable(state: GameState, i: number): boolean {
+  if (!inField(state, i) || state.tools[i] || isPond(state, i)) return false;
+  return state.weeds[i] || state.frost[i] > 0 || (!state.field[i] && !state.tilled[i]);
+}
+
+/** 耕す：雑草と霜を消し、空きの土を耕す。変わったら true */
+function till(state: GameState, i: number): boolean {
+  if (!tillable(state, i)) return false;
+  state.weeds[i] = false;
+  state.frost[i] = 0;
+  if (!state.field[i]) state.tilled[i] = true;
+  return true;
+}
+
+/** 大物の種を cell（左上）に植えられるか：4マスとも空き */
+function bigFits(state: GameState, cell: number): boolean {
+  const x = cellX(cell);
+  const y = cellY(cell);
+  const cells = [cellAt(state, x, y), cellAt(state, x + 1, y), cellAt(state, x, y + 1), cellAt(state, x + 1, y + 1)];
+  return cells.every((c) => c !== null && isOpen(state, c));
+}
 
 /** 出目 reel をマス cell に使えるか。太陽は cell を問わない */
 export function canUse(state: GameState, reel: number, cell: number | null): boolean {
@@ -777,11 +961,14 @@ export function canUse(state: GameState, reel: number, cell: number | null): boo
   if (def.shape === 'all') return fieldCells(state).some((i) => growableAt(state, i));
   if (cell === null) return validTargets(state, reel).length > 0;
   if (!inField(state, cell)) return false;
-  const crop = state.field[cell];
-  if (SEEDS[r.symbol]) return isOpen(state, cell);
+  const crop = state.field[rootOf(state, cell)];
+  const seed = SEEDS[r.symbol];
+  if (seed) return CROPS[seed.crop].big ? bigFits(state, cell) : isOpen(state, cell);
+  // 鍬は、横一列に耕せるマスが1つでもあれば使える
+  if (r.symbol === 'hoe') return shapeCells(state, 'row', cell).some((i) => tillable(state, i));
   // 形で効く出目は、範囲に育てられる作物が1つでもあれば使える
   if (def.shape) return shapeCells(state, def.shape, cell).some((i) => growableAt(state, i));
-  if (state.frost[cell]) return false;
+  if (frozenCrop(state, cell)) return false;
   if (r.symbol === 'fertilizer') return crop !== null && !crop.fertilized;
   return false;
 }
@@ -795,19 +982,27 @@ export function validTargets(state: GameState, reel: number): number[] {
 /** 天気雨：同じ日に雨と太陽が両方効いたマスは、さらに+1（1日1回） */
 function sunshower(state: GameState, affected: number[]): void {
   if (!state.charms.sunshower) return;
-  state.today.rain
-    .filter((c) => state.today.sun.includes(c) && !state.today.boosted.includes(c))
+  // 大物は本体ごとに1回だけ
+  const roots = [...new Set(state.today.rain.filter((c) => state.today.sun.includes(c)).map((c) => rootOf(state, c)))];
+  roots
+    .filter((c) => !state.today.boosted.includes(c))
     .forEach((c) => {
       state.today.boosted.push(c);
-      grow(state, c, 1, affected);
+      // 天気雨は同じ日の上乗せなので、その日の雨・太陽で育ったあとでも別に数える
+      const extra: number[] = [];
+      grow(state, c, 1, extra);
+      extra.forEach((x) => affected.includes(x) || affected.push(x));
     });
 }
 
+/** 育てる。大物は本体を1回だけ育てる（同じ出目で4マスに当たっても1回） */
 function grow(state: GameState, cell: number, amount: number, affected: number[]): void {
-  const c = state.field[cell];
-  if (!growable(c) || state.frost[cell] || amount <= 0) return;
+  const root = rootOf(state, cell);
+  const c = state.field[root];
+  if (!growable(c) || frozenCrop(state, root) || amount <= 0) return;
+  if (CROPS[c.kind].big && affected.includes(root)) return;
   c.growth = Math.min(CROPS[c.kind].ripe, c.growth + amount);
-  if (!affected.includes(cell)) affected.push(cell);
+  if (!affected.includes(root)) affected.push(root);
 }
 
 /** 出目を使う。成功したら影響を受けたマスを返す */
@@ -820,9 +1015,15 @@ export function useSymbol(state: GameState, reel: number, cell: number | null): 
   const seed = SEEDS[r.symbol];
   if (seed) {
     const crop = newCrop(seed.crop);
-    if (state.bred?.includes(r.symbol)) crop.growth = Math.min(CROPS[seed.crop].ripe - 1, 1);
-    state.field[cell!] = crop;
-    return [cell!];
+    const cells = CROPS[seed.crop].big ? bigCells(state, cell!) : [cell!];
+    // 品種改良・耕した土は1段階育った状態から（実る手前まで）
+    const boost = (state.bred?.includes(r.symbol) ? 1 : 0) + (cells.some((i) => state.tilled[i]) ? 1 : 0);
+    crop.growth = Math.min(CROPS[seed.crop].ripe - 1, boost);
+    cells.forEach((i, k) => {
+      state.field[i] = k === 0 ? crop : { ...newCrop(seed.crop), anchor: cell! };
+      state.tilled[i] = false;
+    });
+    return cells;
   }
   switch (r.symbol) {
     case 'rain':
@@ -832,8 +1033,11 @@ export function useSymbol(state: GameState, reel: number, cell: number | null): 
       sunshower(state, affected);
       return affected;
     case 'fertilizer':
-      state.field[cell!]!.fertilized = true;
-      return [cell!];
+      state.field[rootOf(state, cell!)]!.fertilized = true;
+      return cropCells(state, cell!);
+    case 'hoe':
+      shapeCells(state, 'row', cell!).forEach((i) => till(state, i) && affected.push(i));
+      return affected;
     case 'bee':
       shapeCells(state, 'x', cell!).forEach((i) => grow(state, i, CONFIG.beeGrowth * r.power, affected));
       return affected;
@@ -869,7 +1073,8 @@ export function cropPrice(state: GameState, crop: Crop, cell?: number): number {
   const hive = cell === undefined ? 0 : hiveBonus(state, cell);
   const fert = crop.fertilized ? CONFIG.fertilizerMultiplier : 1;
   const tile = cell !== undefined && state.tiles[cell] === 'compost' ? 2 : 1;
-  return Math.round((def.price + charm + crop.bonus + hive) * fert * tile * state.priceMult);
+  const fair = 1 + CONFIG.exhibitionBonus * state.charms.exhibition;
+  return Math.round((def.price + charm + crop.bonus + hive) * fert * tile * state.priceMult * marketMult(state, crop.kind) * fair);
 }
 
 export function isRipe(crop: Crop | null): boolean {
@@ -885,10 +1090,12 @@ const RUN_DIRS: [number, number][] = [[1, 0], [0, 1], [1, 1], [1, -1]];
  * 一列にならない並び（L字の3個など）は含まれない
  */
 function runsThrough(state: GameState, cell: number): number[][] {
+  // 大物は列に入らない
   const ok = (x: number, y: number) => {
     const c = cellAt(state, x, y);
-    return c !== null && isRipe(state.field[c]) && !state.frost[c];
+    return c !== null && isRipe(state.field[c]) && !state.frost[c] && !CROPS[state.field[c]!.kind].big;
   };
+  if (!ok(cellX(cell), cellY(cell))) return [];
   const cx = cellX(cell);
   const cy = cellY(cell);
   const runs: number[][] = [];
@@ -912,6 +1119,8 @@ export function cellMultiplier(state: GameState, cell: number): number {
 
 /** 倍率の内訳（演出で1つずつ乗せて見せる） */
 export function multSteps(state: GameState, cell: number): { label: string; x: number }[] {
+  // 大物は1個で売る作物なので、単品でも半値にならない
+  if (state.field[cell] && CROPS[state.field[cell]!.kind].big) return [{ label: '大物', x: 1 }];
   const runs = runsThrough(state, cell);
   if (!runs.length) return [{ label: '単品', x: singleMult(state) }];
   const steps = [{ label: '列', x: CONFIG.lineMult }];
@@ -991,8 +1200,9 @@ export interface SellResult {
 
 /** single=true は列を崩さず1マスだけ、列の倍率なしで売る（大商い用） */
 export function sell(state: GameState, cell: number, single = false): SellResult | null {
+  cell = rootOf(state, cell);
   const crop = state.field[cell];
-  if (state.over || !crop || !isRipe(crop) || state.frost[cell]) return null;
+  if (state.over || !crop || !isRipe(crop) || frozenCrop(state, cell)) return null;
   const group = single ? [cell] : harvestGroup(state, cell);
   const size = group.length;
   const line = size >= MIN_RUN;
@@ -1015,9 +1225,12 @@ export function sell(state: GameState, cell: number, single = false): SellResult
       if (state.tools[i] === 'hive' && group.some((c) => Math.abs(cellX(c) - cellX(i)) <= 1 && Math.abs(cellY(c) - cellY(i)) <= 1)) state.toolXp[i]++;
     });
   }
-  cells.forEach(({ cell: i }) => (state.field[i] = null));
+  cells.forEach(({ cell: i }) => removeCrop(state, i));
   const total = cells.reduce((n, c) => n + c.price, 0);
   earn(state, total);
+  // 品評会：このプレイで作物を全種類売った
+  cells.forEach(({ kind }) => state.stats.soldKinds.includes(kind) || state.stats.soldKinds.push(kind));
+  if (state.charms.exhibition === 0 && (Object.keys(CROPS) as CropKind[]).every((k) => state.stats.soldKinds.includes(k))) grant(state, 'exhibition');
   let bumper = 0;
   if (whole) {
     if (state.charms.bumperHarvest === 0) grant(state, 'bumperHarvest');
@@ -1158,10 +1371,11 @@ export function buyPlace(state: GameState, id: PlaceId): boolean {
 /** 手元の先頭の物を cell に置けるか。道具は空いたマス（特別なマスの上でもよい）、特別なマスは道具・特別なマスのないマス */
 export function canPlace(state: GameState, cell: number): boolean {
   const id = state.stock[0];
-  if (!id || !inField(state, cell) || state.tools[cell]) return false;
+  if (!id || !inField(state, cell) || state.tools[cell] || isPond(state, cell)) return false;
   // 道具は、特別なマスの上にも置ける（空きマスなら）。特別なマスは、すでに特別なマスがあるマスには置けない
   if (PLACES[id].kind === 'tool') return isOpen(state, cell);
-  return !state.tiles[cell];
+  // 特別なマスは大物の一部には置けない（本体と売値がずれるので）
+  return !state.tiles[cell] && !(state.field[cell] && CROPS[state.field[cell]!.kind].big);
 }
 
 export function place(state: GameState, cell: number): PlaceId | null {

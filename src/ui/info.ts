@@ -3,7 +3,7 @@
 import {
   CHARM_TIER_NAMES, type CharmId, CHARMS, CONFIG, CROPS, type PlaceId, PLACES, SHAPE_NAMES, type SymbolId, SYMBOLS, TOOL_EVOLVE, UPGRADE_SYMBOL, UPGRADES,
 } from '../config.ts';
-import { cropPrice, inField, isGolden, isRipe, multSteps, weedCost } from '../game.ts';
+import { cropPrice, inField, isGolden, isPond, isRipe, multSteps, rootOf, waterWheels, weedCost } from '../game.ts';
 import { art } from '../art.ts';
 import { fmtMult, vibrate } from '../fx.ts';
 import { el, state } from './store.ts';
@@ -92,7 +92,9 @@ export function symbolInfo(id: SymbolId, extra = ''): string {
 export function plotInfo(cell: number): string | null {
   if (!inField(state, cell)) return null;
   const parts: string[] = [];
-  const crop = state.field[cell];
+  // 大物（スイカ）の右・下・右下は本体の説明を出す
+  const root = rootOf(state, cell);
+  const crop = state.field[root];
   const tool = state.tools[cell];
   const tile = state.tiles[cell];
   if (tool) {
@@ -101,19 +103,24 @@ export function plotInfo(cell: number): string | null {
   } else if (crop) {
     const def = CROPS[crop.kind];
     const ripe = isRipe(crop);
-    const base = cropPrice(state, crop, cell);
+    const base = cropPrice(state, crop, root);
     let sellLine = '';
     if (ripe) {
-      const steps = multSteps(state, cell);
+      const steps = multSteps(state, root);
       const mult = steps.reduce((m, x) => m * x.x, 1);
       sellLine = `<p>今売ると <b>${Math.round(base * mult)}金</b></p><p class="sub">${base}金 ${steps.map((x) => `×${fmtMult(x.x)}（${x.label}）`).join(' ')}</p>`;
     }
-    parts.push(`${infoHead(art(FRUIT[crop.kind]), def.name, ripe ? '実り' : `${crop.growth}/${def.ripe}`)}<p>売値 ${def.price}金${crop.fertilized ? '・肥料×2' : ''}</p>${sellLine}`);
+    parts.push(`${infoHead(art(FRUIT[crop.kind]), def.name, ripe ? '実り' : `${crop.growth}/${def.ripe}`)}<p>売値 ${def.price}金${crop.fertilized ? '・肥料×2' : ''}${def.big ? '・2×2マス（列には入らない）' : ''}</p>${sellLine}`);
   } else if (state.weeds[cell]) {
     parts.push(`${infoHead(art('weed'), '雑草', 'お邪魔')}<p>タップで抜く（${weedCost(state)}金）</p>`);
+  } else if (isPond(state, cell)) {
+    parts.push(`${infoHead(art('fish'), '釣り堀')}<p>毎晩 +${CONFIG.fishGold}金</p><p class="sub">ときどき大物 +${CONFIG.bigFishGold}金</p>`);
   } else {
-    parts.push(infoHead(art('sprout'), '空きマス'));
+    parts.push(infoHead(art('sprout'), state.tilled[cell] ? '耕した土' : '空きマス'));
+    if (state.tilled[cell]) parts.push('<p class="sub">植えると成長+1</p>');
   }
+  const wheel = waterWheels(state).find((w) => w.includes(cell));
+  if (wheel) parts.push(`<p class="sub">${art('waterwheel')} 水車：水路${wheel.length}つ → 毎晩 +${wheel.length * CONFIG.wheelGold}金</p>`);
   if (tile) parts.push(`<p class="sub">${art(PLACE_ART[tile])} ${PLACES[tile].name}：${PLACES[tile].desc}</p>`);
   if (state.frost[cell]) parts.push(`<p class="sub">❄️ あと${state.frost[cell]}日凍っている</p>`);
   return parts.join('');

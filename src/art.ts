@@ -133,6 +133,16 @@ const melon = `
   ${hl(21, 28, 3, 5, -35, 0.6)}
   ${line('M32 17V9', '#8a9a3a', 3.5)}${line('M26 9H38', '#8a9a3a', 3.5)}`;
 
+const watermelon = `
+  ${face(E(32, 36, 25, 22), ['#4fa83a', '#3a8a2a'], 25, 29, 0.88)}
+  <g fill="none" stroke="#2c6e1f" stroke-width="3.2" stroke-linecap="round">
+    <path d="M32 14.5Q27 24 30 36Q27 48 32 57.5"/><path d="M20 18Q13 28 16 38Q14 48 20 54"/><path d="M44 18Q51 28 48 38Q50 48 44 54"/>
+    <path d="M11 30Q9 38 12 46M53 30Q55 38 52 46"/>
+  </g>
+  ${hl(19, 27, 3.4, 6, -30, 0.7)}
+  ${line('M32 15Q31 9 35 6', C.leaf[1], 3)}
+  <path d="M35 9Q42 5 46 10Q40 13 35 9Z" fill="${C.leaf[0]}" ${S2}/>`;
+
 /** 種の袋：袋の色と、窓に描いた作物で何が育つか分かるようにする */
 const packet = (bag: string[], inner: string) => `
   ${face('M12 14H52V54Q52 58 48 58H16Q12 58 12 54Z', bag, 20, 24, 0.9)}
@@ -169,6 +179,7 @@ const CROP_ART = {
   pumpkin,
   corn,
   melon,
+  watermelon,
   goldSeed: `
     ${face('M32 58C22 52 17 42 18 33H46C47 42 42 52 32 58Z', C.gold, 26, 38, 0.84)}
     ${hl(24, 40, 2.4, 6, -15)}
@@ -309,6 +320,23 @@ const SYMBOL_ART = {
     <path d="M30 41Q32 43 34 41" fill="none" ${S2}/>
     ${sparkle(9, 11, 5, '#fff')}${sparkle(56, 54, 4, '#fff')}`,
   thunder: bolt(),
+  hoe: `
+    ${line('M12 58L42 14', C.tan[0], 4.5)}
+    ${hl(20, 45, 0.9, 6, 34, 0.6)}
+    ${line('M42 14Q48 12 50 18', '#8c8880', 3)}
+    ${face('M38 22L58 30L52 46L32 36Z', C.stone, 44, 30, 0.84)}
+    <path d="M33 36L52 46" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity="0.7"/>
+    ${[[16, 55], [24, 58]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="3" ry="1.6" fill="${C.brown[0]}" opacity="0.6"/>`).join('')}`,
+  mole: `
+    ${face('M6 60Q10 46 20 44H44Q54 46 58 60Z', ['#9a6a40', '#7a5030'], 24, 50, 0.9)}
+    <path d="M12 54Q14 50 18 52M46 52Q50 50 52 54" fill="none" stroke="#c99a6a" stroke-width="2" stroke-linecap="round"/>
+    ${face(E(32, 34, 17, 15), ['#6a5a6e', '#4e4054'], 27, 29, 0.88)}
+    ${face('M20 44Q14 42 13 47Q16 50 21 48Z', ['#ffb3c6', '#e88aa2'], 17, 45, 0.8, S2)}${face('M44 44Q50 42 51 47Q48 50 43 48Z', ['#ffb3c6', '#e88aa2'], 47, 45, 0.8, S2)}
+    <path d="M24 31Q26 29 28 31M36 31Q38 29 40 31" fill="none" ${S2}/>
+    ${face(E(32, 40, 4.5, 3.5), ['#ff8fb4', '#e5688f'], 31, 39, 0.8, S2)}
+    ${blush(21, 37, 2.6, 1.6)}${blush(43, 37, 2.6, 1.6)}
+    <path d="M22 41L15 40M22 43L16 45M42 41L49 40M42 43L48 45" fill="none" stroke="${INK}" stroke-width="1.2" stroke-linecap="round"/>
+    ${hl(25, 25, 3, 1.6, -25, 0.5)}`,
 };
 
 // ---- お守り ----
@@ -569,6 +597,49 @@ const SCENE_ART = {
     ${face('M26 40H38L41 60H23Z', C.straw, 30, 46, 0.86)}
     ${line('M24 45H40', C.red[0], 3)}
     ${sparkle(53, 44, 6, C.gold[2])}${sparkle(10, 46, 4.5, C.gold[2])}${sparkle(54, 8, 4, '#fff')}`,
+  henhouse: `
+    ${face('M10 30L32 12L54 30Z', C.red, 26, 22, 0.84)}
+    ${face('M14 30H50V56H14Z', C.straw, 24, 36, 0.9)}
+    <path d="M14 38H50M14 46H50" fill="none" stroke="${C.straw[1]}" stroke-width="1.6"/>
+    <path d="M26 56V44Q26 40 32 40Q38 40 38 44V56Z" fill="#4a3324" ${S2}/>
+    ${face(E(44, 50, 7.5, 7), C.white, 42, 48, 0.86)}
+    <path d="M42 42.5Q43 39 45 41Q46 38.5 48 41Z" fill="${C.red[0]}" ${S2}/>
+    <path d="M50.5 49L54 50.5L50.5 52Z" fill="${C.gold[0]}" stroke="${INK}" stroke-width="1.4" stroke-linejoin="round"/>
+    ${eye(47, 47.5, 1.4)}
+    ${face(E(18, 51, 5, 4), ['#fff1a6', '#f0d36a'], 17, 50, 0.84, S2)}`,
+  cowshed: `
+    ${face('M6 28L32 8L58 28Z', ['#c9502f', '#9e3a20'], 26, 18, 0.86)}
+    ${face('M10 28H54V58H10Z', C.tan, 24, 36, 0.9)}
+    <path d="M10 28L54 58M54 28L10 58" fill="none" stroke="${C.tan[1]}" stroke-width="1.6"/>
+    ${face(E(32, 44, 13, 11), C.white, 29, 41, 0.88)}
+    <path d="M22 40Q25 36 28 39Q26 43 22 40Z M37 47Q40 44 43 46Q41 50 37 47Z" fill="${INK}"/>
+    ${face('M19 36Q14 32 16 30Q20 31 22 35Z', C.white, 18, 33, 0.8, S2)}${face('M45 36Q50 32 48 30Q44 31 42 35Z', C.white, 46, 33, 0.8, S2)}
+    ${eye(27, 41, 1.6)}${eye(37, 41, 1.6)}
+    ${face(E(32, 50, 7, 4.5), ['#ffc6d4', '#f0a0b6'], 31, 49, 0.84, S2)}
+    <circle cx="29.5" cy="50" r="1" fill="${INK}"/><circle cx="34.5" cy="50" r="1" fill="${INK}"/>`,
+  waterwheel: `
+    ${face(E(32, 32, 24), C.tan, 26, 26, 0.9)}
+    ${face(E(32, 32, 17), ['#9ed6ff', '#6fb8ec'], 28, 28, 0.88, S2)}
+    ${Array.from({ length: 8 }, (_, i) => {
+      const a = (Math.PI / 4) * i;
+      const x1 = 32 + Math.cos(a) * 5, y1 = 32 + Math.sin(a) * 5, x2 = 32 + Math.cos(a) * 25, y2 = 32 + Math.sin(a) * 25;
+      return `<path d="M${x1.toFixed(1)} ${y1.toFixed(1)}L${x2.toFixed(1)} ${y2.toFixed(1)}" stroke="${INK}" stroke-width="5" stroke-linecap="round"/><path d="M${x1.toFixed(1)} ${y1.toFixed(1)}L${x2.toFixed(1)} ${y2.toFixed(1)}" stroke="${C.tan[0]}" stroke-width="2.4" stroke-linecap="round"/>`;
+    }).join('')}
+    ${face(E(32, 32, 6), C.brown, 31, 31, 0.8)}`,
+  fish: `
+    ${face('M48 32L60 22V42Z', ['#ff9f5a', '#e07a35'], 52, 30, 0.84)}
+    ${face(E(30, 32, 20, 13), ['#ffb36b', '#e88a3e'], 24, 27, 0.88)}
+    <path d="M24 23Q30 32 24 41" fill="none" stroke="#e07a35" stroke-width="2" stroke-linecap="round"/>
+    <path d="M30 20Q36 16 42 21" fill="none" stroke="#e07a35" stroke-width="2" stroke-linecap="round"/>
+    ${eye(17, 29, 2.4)}${blush(18, 36, 2.4, 1.5)}
+    <path d="M11 34Q13 36 15 35" fill="none" ${S2}/>
+    ${hl(26, 26, 3.6, 1.6, -15, 0.7)}`,
+  exhibition: `
+    ${face('M20 6H30L34 24H24Z', C.blue, 26, 12, 0.84, S2)}${face('M44 6H34L30 24H40Z', C.red, 38, 12, 0.84, S2)}
+    ${face(E(32, 39, 19), C.gold, 26, 33, 0.88)}
+    <circle cx="32" cy="39" r="13" fill="none" stroke="${C.gold[1]}" stroke-width="2.4"/>
+    <path d="M${starPts(32, 39, 5, 8.5, 8.5, 0.45, -90)}Z" fill="${C.gold[2]}" ${S2}/>
+    ${hl(22, 31, 2.4, 4.5, -35, 0.8)}`,
   sparkle: `${sparkle(32, 32, 26, C.gold[0])}${hl(27, 27, 2, 5, 45, 0.8)}`,
   star: star5(32, 34, 27, C.gold),
   drop: `${face(dropD(32, 5, 3.7), C.blue, 27, 34, 0.84)}${hl(25, 42, 2.6, 6, 20, 0.85)}`,
@@ -599,6 +670,7 @@ export const ART = {
   berrySeed: packet(C.pink, strawberry),
   pumpkinSeed: packet(C.orange, pumpkin),
   melonSeed: packet(C.green, melon),
+  watermelonSeed: packet(['#ff6b6b', '#d94a4a', '#ffb0b0'], watermelon),
 };
 
 export type ArtId = keyof typeof ART;

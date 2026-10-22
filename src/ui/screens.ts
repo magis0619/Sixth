@@ -104,6 +104,7 @@ export function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
       <li>${art('bale')}<span>${CONFIG.taxPeriod}日ごとに年貢。払えないと終わり／${CONFIG.winTaxes}回でクリア</span></li>
       <li>${art('coinPurse')}<span>年貢のあと：お守り1つ＋お邪魔が増える</span></li>
       <li>${art('bargain')}<span>ショップ：絵柄・道具・畑を広げる</span></li>
+      <li>${art('waterwheel')}<span>水路：3つ並べると水車・囲むと釣り堀（毎晩お金）</span></li>
       <li>${art('sprout')}<span>遊ぶほどポイント → 解放</span></li>
     </ul>`;
   const symbols = SYMBOL_ORDER.map((id) => {

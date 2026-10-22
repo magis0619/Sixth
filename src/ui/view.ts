@@ -45,7 +45,7 @@ export function roleClass(id: SymbolId): string {
 }
 
 export const CROP_STAGES: ArtId[] = ['sprout', 'leaf', 'bud'];
-export const FRUIT: Record<CropKind, ArtId> = { tomato: 'tomato', strawberry: 'strawberry', pumpkin: 'pumpkin', melon: 'melon', corn: 'corn' };
+export const FRUIT: Record<CropKind, ArtId> = { tomato: 'tomato', strawberry: 'strawberry', pumpkin: 'pumpkin', melon: 'melon', corn: 'corn', watermelon: 'watermelon' };
 export const STAGE_NAMES = ['芽', '若葉', 'つぼみ', '実'];
 
 /** 実るまでの成長は作物ごとに違うので、見た目の段階（芽・若葉・つぼみ・実）に割り当てる */
@@ -99,7 +99,7 @@ export function shapeIcon(shape: string): string {
 
 export const PLACE_ART: Record<PlaceId, ArtId> = {
   scarecrow: 'scarecrow', bigScarecrow: 'bigScarecrow', well: 'well', goldenWell: 'goldenWell',
-  hive: 'hive', queenHive: 'queenHive', compost: 'compost', water: 'water',
+  hive: 'hive', queenHive: 'queenHive', henhouse: 'henhouse', cowshed: 'cowshed', compost: 'compost', water: 'water',
 };
 
 

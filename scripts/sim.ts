@@ -2,7 +2,7 @@
 // npm run sim -- [回数] [starter|full|addX,addY…] [smart|random]   （FOCUS=1 で買い物を絞る）
 //   smart: 列を狙って置き、列がそろうまで待つ / random: 置き場所・使う場所・買い物を適当に決め、実ったらすぐ売る
 
-import { CHARMS, CHARM_ORDER, CONFIG, META, PLACES, SEEDS, SYMBOLS, type CropKind, type PlaceId, type UpgradeId } from '../src/config.ts';
+import { CHARMS, CHARM_ORDER, CONFIG, CROPS, META, PLACES, SEEDS, SYMBOLS, type CropKind, type PlaceId, type UpgradeId } from '../src/config.ts';
 import {
   buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, expand, expandPrice, canUse, cellAt, cellX, cellY, chooseCharm, fieldCells,
   isOpen, isRipe, newGame, nextTax, place, placePrice, pullWeed, resolveAllAuto, resolveFever, ripeGroup, sell, shapeCells,
@@ -28,12 +28,14 @@ function wants(s: GameState, id: UpgradeId): boolean {
   if (id === 'addRain') return s.bag.rain < 4;
   if (id === 'addBerrySeed') return s.bag.berrySeed < 3;
   if (id === 'addPumpkinSeed') return s.bag.pumpkinSeed < 2;
+  if (id === 'addWatermelonSeed') return s.bag.watermelonSeed < 2;
+  if (id === 'addHoe') return s.bag.hoe < 1 && (s.bag.weed > 0 || s.bag.frost > 0);
   return true;
 }
 // FOCUS=1 は種をトマトに絞って買う（袋を薄めない買い方）
 const PRIORITY: UpgradeId[] = process.env.FOCUS
-  ? ['removeTanuki', 'removeFrost', 'removeWeed', 'removeBug', 'removeCrow', 'addSeed', 'addRain', 'addSun', 'addMoon', 'addBee', 'addFertilizer']
-  : ['removeTanuki', 'removeFrost', 'removeWeed', 'removeBug', 'removeCrow', 'addSeed', 'addBerrySeed', 'addPumpkinSeed', 'addRain', 'addGoldSeed', 'addSun', 'addMoon', 'addBee', 'addFertilizer', 'addMerchant', 'addClover'];
+  ? ['removeTanuki', 'removeFrost', 'removeWeed', 'removeMole', 'removeBug', 'removeCrow', 'addSeed', 'addRain', 'addSun', 'addMoon', 'addBee', 'addFertilizer']
+  : ['removeTanuki', 'removeFrost', 'removeWeed', 'removeMole', 'removeBug', 'removeCrow', 'addHoe', 'addSeed', 'addBerrySeed', 'addPumpkinSeed', 'addWatermelonSeed', 'addRain', 'addGoldSeed', 'addSun', 'addMoon', 'addBee', 'addFertilizer', 'addMerchant', 'addClover'];
 
 /** 3マスの並び（縦・横・斜め）全部。列になり得る窓 */
 function windows(s: GameState): number[][] {
@@ -73,6 +75,11 @@ function placeStock(s: GameState): void {
     if (!cells.length) return;
     if (!smart) { place(s, pick(cells)); continue; }
     const id = s.stock[0];
+    if (id === 'water') {
+      cells.sort((a, b) => cellY(a) - cellY(b) || cellX(a) - cellX(b));
+      place(s, cells[0]);
+      continue;
+    }
     // 道具は列を潰しにくい端へ、特別なマスは列の多い中央へ
     const lines = (c: number) => windows(s).filter((w) => w.includes(c)).length;
     cells.sort((a, b) => (PLACES[id].kind === 'tool' ? lines(a) - lines(b) : lines(b) - lines(a)));
@@ -92,7 +99,9 @@ function playDay(s: GameState): void {
     const seed = SEEDS[sym];
     const shape = SYMBOLS[sym].shape;
     let score: (c: number) => number;
-    if (seed) score = (c) => plantScore(s, c, seed.crop);
+    if (seed && CROPS[seed.crop].big) score = (c) => (cellX(c) === 0 || cellY(c) === 0 ? 2 : 0) - plantScore(s, c, 'tomato') * 0.01;
+    else if (seed) score = (c) => plantScore(s, c, seed.crop);
+    else if (sym === 'hoe') score = (c) => shapeCells(s, 'row', c).reduce((n, x) => n + (s.weeds[x] ? 3 : s.frost[x] ? 2 : !s.field[x] && !s.tilled[x] ? 1 : 0), 0);
     else if (shape) score = (c) => shapeCells(s, shape, c).reduce((n, x) => {
       const crop = s.field[x];
       return n + (crop && !isRipe(crop) && !s.frost[x] ? 1 : 0);
@@ -123,6 +132,13 @@ function playDay(s: GameState): void {
     }
     if (canExpand(s) && s.gold - expandPrice(s)! >= reserve) { expand(s); bought = true; continue; }
     if (!s.bought.compost && canBuyPlace(s, 'compost') && s.gold - placePrice(s, 'compost')! >= reserve) { buyPlace(s, 'compost'); bought = true; continue; }
+    // ANIMALS=1 で鶏小屋・牛小屋も買う（毎晩お金が入る道具の強さを見る）
+    if (process.env.ANIMALS) {
+      const animal = (['henhouse', 'cowshed'] as const).find((id) => (s.bought[id] ?? 0) < 2 && canBuyPlace(s, id) && s.gold - placePrice(s, id)! >= reserve);
+      if (animal) { buyPlace(s, animal); bought = true; continue; }
+    }
+    // WATER=1 で水路を一列に並べて水車を作る
+    if (process.env.WATER && (s.bought.water ?? 0) < 4 && canBuyPlace(s, 'water') && s.gold - placePrice(s, 'water')! >= reserve) { buyPlace(s, 'water'); bought = true; continue; }
     for (const id of PRIORITY) {
       if (wants(s, id) && canBuy(s, id) && s.gold - upgradePrice(s, id) >= reserve) { buy(s, id); bought = true; break; }
     }

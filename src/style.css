@@ -4564,3 +4564,122 @@ body::before {
 .scene-hill {
   transition: --grass 1.2s, --grass2 1.2s;
 }
+
+/* ==== スイカ（2×2）：本体のマスから4マス分の大きさで重ねて描く ==== */
+.plot.big {
+  z-index: 2;
+}
+
+.plot .big-wrap {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: calc(var(--cell) * 2 + 5px);
+  height: calc(var(--cell) * 2 + 5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.plot.big .big-wrap .crop {
+  font-size: calc(var(--cell) * 1.3);
+}
+
+.plot.big.g0 .big-wrap .crop {
+  font-size: calc(var(--cell) * 0.9);
+}
+
+.plot.big-part {
+  filter: brightness(0.92);
+}
+
+/* 実ったスイカは4マスまとめて金色の縁 */
+.plot.bigripe,
+.plot.big-part.ripe {
+  box-shadow: inset 0 0 0 2px rgba(255, 241, 168, 0.85), inset 0 -4px 0 rgba(0, 0, 0, 0.25);
+}
+
+/* ==== 耕した土：畝の筋が入る ==== */
+.plot.tilled {
+  background-image:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.26) 0 3px, rgba(255, 220, 180, 0.1) 3px 5px, transparent 5px 11px),
+    radial-gradient(circle, rgba(255, 220, 180, 0.16) 0 1.5px, transparent 2px);
+  background-size: 100% 100%, 13px 11px;
+}
+
+/* ==== 釣り堀：水路に囲まれた池 ==== */
+.plot.pond {
+  background: radial-gradient(ellipse 60% 45% at 40% 35%, rgba(255, 255, 255, 0.35), transparent 70%), #4f9fd8;
+  box-shadow: inset 0 0 0 3px #3a7fb8, inset 0 -4px 0 rgba(0, 0, 0, 0.2);
+}
+
+.plot.pond .crop {
+  font-size: calc(var(--cell) * 0.42);
+  animation: bob 2s ease-in-out infinite;
+}
+
+/* ==== 水車：水路の並びの端でくるくる回る ==== */
+/* 値札（右上）・目盛り（下）と重ならないよう、右下の角から外へ半分はみ出す */
+.plot .badge-wheel {
+  position: absolute;
+  right: -9%;
+  bottom: -9%;
+  z-index: 3;
+  display: flex;
+  font-size: max(1rem, calc(var(--cell) * 0.4));
+  animation: wheel-turn 4s linear infinite;
+}
+
+@keyframes wheel-turn {
+  to { rotate: 360deg; }
+}
+
+.calm .plot .badge-wheel {
+  animation: none;
+}
+
+/* ==== 相場：今週の高値・安値。注文の看板の反対側（畑の右上）に小さな札 ==== */
+.market-tag {
+  position: absolute;
+  right: -6px;
+  top: -24px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #fff8e7;
+  box-shadow: 0 2px 0 #c9a46a, inset 0 0 0 2px #e8cf9e;
+  font-size: 0.8rem;
+  font-weight: 900;
+  color: var(--ink);
+}
+
+.market-tag[hidden] {
+  display: none;
+}
+
+.market-tag .art {
+  font-size: 1.15em;
+  vertical-align: -0.2em;
+}
+
+.market-tag .up {
+  color: #2f8a2a;
+}
+
+.market-tag .down {
+  color: var(--danger);
+}
+
+/* 横長の画面は畑が小さく注文の看板と重なるので、相場の札は畑の右の外側に出す */
+@media (min-width: 860px) and (orientation: landscape) {
+  .market-tag {
+    right: auto;
+    left: calc(100% + 8px);
+    top: 0;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

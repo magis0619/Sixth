@@ -44,6 +44,11 @@ export function loadRun(): GameState | null {
     s.halfTax ??= false;
     s.notices ??= [];
     s.stats.crowEaten ??= 0;
+    // スイカ・鍬・水路のつながり・相場・品評会を入れる前の保存データ
+    s.tilled ??= s.field.map(() => false);
+    s.market ??= null;
+    s.nightIncome ??= null;
+    s.stats.soldKinds ??= [];
     CHARM_ORDER.forEach((id) => (s.charms[id] ??= 0));
     s.removed ??= {};
     // 畑の広さを変えられるようにする前（3×3固定）の保存データは、マスの番号を5×5の数え方に直す

@@ -3,7 +3,7 @@ import {
   CHARMS, CHARM_ORDER, DIFFICULTIES, TOOL_EVOLVE, CONFIG, CROPS, PLACES, PLACE_ORDER, SEEDS, SHAPE_NAMES, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL, type PlaceId, type SymbolId, type UpgradeId,
 } from './config.ts';
 import {
-  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawDay, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState,
+  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawDay, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels,
 } from './game.ts';
 import { isMuted, sfx, toggleMute, unlockAudio } from './audio.ts';
 import { setupFrom } from './meta.ts';
@@ -20,8 +20,7 @@ import { clearRun, saveRun } from './ui/save.ts';
 import { $, el, hooks, meta, rng, setState, state, ui } from './ui/store.ts';
 import { renderDanger, renderSky, setupScene } from './ui/scene.ts';
 import { setupLongPress } from './ui/info.ts';
-import { CUTIN_MS, playCutIn, showCharmOffer, showTaxStamp, witherField } from './ui/shows.ts';
-import { feverBanner } from './ui/shows.ts';
+import { CUTIN_MS, feverBanner, playCutIn, showCharmOffer, showTaxStamp, witherField } from './ui/shows.ts';
 
 let selected: number | null = null;
 let armedNextDay = false;
@@ -68,6 +67,7 @@ function render(): void {
   if (!goldHeld && shownGold !== state.gold) setGold(state.gold);
   renderTax();
   renderOrder();
+  renderMarket();
   renderGoal();
   renderStatus();
   renderHint();
@@ -167,6 +167,17 @@ function renderStatus(): void {
   if (state.priceMult > 1) chips.push(`<span class="st merchant">🧑‍🌾 今日の売値 ×${fmtMult(state.priceMult)}</span>`);
   if (state.cloverBoost > 1) chips.push(`<span class="st clover">🍀 明日は金の種が出やすい（×${fmtMult(state.cloverBoost)}）</span>`);
   setHtml(el.status, chips.join(''));
+}
+
+/** 今週の相場：畑の右上の札に、高値と安値の作物を絵と記号だけで */
+function renderMarket(): void {
+  const m = state.market;
+  const box = $('market');
+  box.hidden = !(state.day > 0 && m && (m.high || m.low));
+  if (box.hidden || !m) return;
+  const up = m.high ? `<span class="up">▲${art(FRUIT[m.high])}×${fmtMult(CONFIG.marketHigh)}</span>` : '';
+  const down = m.low ? `<span class="down">▼${art(FRUIT[m.low])}×${fmtMult(CONFIG.marketLow)}</span>` : '';
+  setHtml(box, `${up}${down}`);
 }
 
 function renderCharms(): void {
@@ -371,11 +382,16 @@ let previewCell: number | null = null;
 
 function previewCells(): number[] {
   if (selected === null || previewCell === null) return [];
-  const shape = SYMBOLS[state.results[selected].symbol].shape;
+  const sym = state.results[selected].symbol;
+  // 大物の種は、植わる2×2を下見する
+  if (SEEDS[sym] && CROPS[SEEDS[sym]!.crop].big) return bigCells(state, previewCell);
+  const shape = SYMBOLS[sym].shape;
   return shape ? shapeCells(state, shape, previewCell) : [];
 }
 
 function renderField(): void {
+  // 水車は水路の並びの端に立つ
+  const wheelEnds = new Set(waterWheels(state).map((w) => w[w.length - 1]));
   const placeable = state.stock.length ? state.field.flatMap((_, i) => (canPlace(state, i) ? [i] : [])) : [];
   const targets = selected !== null ? validTargets(state, selected) : placeable.length ? placeable : null;
   const preview = previewCells();
@@ -409,13 +425,19 @@ function renderField(): void {
     let label = '空きマス';
     const tool = state.tools[i];
     const tile = state.tiles[i];
+    const part = crop?.anchor !== undefined ? state.field[crop.anchor] : null;
     if (tile) {
       cls.push(`tile-${tile}`);
       // 空きマスでは中央に大きな名札を出すので、角の札は作物が乗っているときだけ
       // 水路は土の色（青）で分かるので、作物が乗っているときは印を出さない
       // 特別なマスは土の色で分かるので、作物・道具が乗っているときは印を出さない
     }
-    if (tool) {
+    if (part) {
+      // 大物の右・下・右下：絵は本体のマスから重ねて描くので、ここは土だけ
+      cls.push('big-part');
+      if (isRipe(part)) cls.push('ripe');
+      label = `${CROPS[part.kind].name}（2×2）`;
+    } else if (tool) {
       cls.push('tool');
       html += `<span class="crop">${art(PLACE_ART[tool])}</span><span class="tool-name">${PLACES[tool].name}</span>`;
       label = `${PLACES[tool].name}：${PLACES[tool].desc}`;
@@ -425,6 +447,7 @@ function renderField(): void {
       cls.push(`g${stageOf(crop)}`, `crop-${crop.kind}`);
       if (ripe) cls.push('ripe');
       if (def.gold) cls.push('goldcrop');
+      if (def.big) cls.push('big');
       // 実るまでは成長に合わせて少しずつ大きくなる
       html += `<span class="crop"${ripe ? '' : ` style="--g:${(0.55 + 0.45 * (crop.growth / def.ripe)).toFixed(2)}"`}>${cropEmoji(crop)}</span>`;
       // 育っている間も何の作物か分かるように小さな札を出す
@@ -435,23 +458,39 @@ function renderField(): void {
         const mult = cellMultiplier(state, i);
         const inLine = mult > CONFIG.singleMult;
         const price = Math.round(cropPrice(state, crop, i) * mult);
-        if (inLine) cls.push('line', inSameCropLine(state, i) ? 'lines-3' : 'lines-1');
+        if (def.big) cls.push('bigripe');
+        else if (inLine) cls.push('line', inSameCropLine(state, i) ? 'lines-3' : 'lines-1');
         else cls.push('single');
         html += `<span class="price">${price}金</span>`;
-        html += inLine ? `<span class="badge-line">列 ×${fmtMult(mult)}</span>` : `<span class="badge-single">単品 ×${fmtMult(singleMult(state))}</span>`;
-        label = `${def.name} 実、タップで${price}金で売る${inLine ? '（列ごと）' : '（単品は半値）'}`;
+        if (def.big) html += '<span class="badge-line">大物</span>';
+        else html += inLine ? `<span class="badge-line">列 ×${fmtMult(mult)}</span>` : `<span class="badge-single">単品 ×${fmtMult(singleMult(state))}</span>`;
+        label = `${def.name} 実、タップで${price}金で売る${def.big ? '' : inLine ? '（列ごと）' : '（単品は半値）'}`;
       } else {
         html += `<span class="pips">${Array.from({ length: def.ripe }, (_, k) => `<i class="pip${k < crop.growth ? ' on' : ''}"></i>`).join('')}</span>`;
         label = `${def.name} ${STAGE_NAMES[stageOf(crop)]}（あと${def.ripe - crop.growth}で実る）`;
       }
+      // 大物は本体のマスから2×2の大きさで重ねて描く
+      if (def.big) html = `<span class="big-wrap">${html}</span>`;
     } else if (state.weeds[i]) {
       cls.push('weedy');
       html += `<span class="crop">${art('weed')}</span><span class="pull">${weedCost(state) ? `抜く ${weedCost(state)}金` : '抜く'}</span>`;
       label = `雑草、タップで抜く（${weedCost(state)}金）`;
+    } else if (isPond(state, i)) {
+      cls.push('pond');
+      html += `<span class="crop">${art('fish')}</span>`;
+      label = `釣り堀：毎晩+${CONFIG.fishGold}金、ときどき大物`;
     } else {
+      if (state.tilled[i]) {
+        cls.push('tilled');
+        label = '耕した土（植えると成長+1）';
+      }
       html += tile
         ? `<span class="tile-label"><span class="tile-ico">${art(PLACE_ART[tile])}</span>${PLACES[tile].name.replace('のマス', '')}<small>${tile === 'water' ? '毎日 成長+1' : '売値 ×2'}</small></span>`
         : '<span class="empty">空き</span>';
+    }
+    if (wheelEnds.has(i)) {
+      html += `<span class="badge-wheel">${art('waterwheel')}</span>`;
+      label += '、水車';
     }
     if (tile) label += `、${PLACES[tile].name}（${PLACES[tile].desc}）`;
     if (state.frost[i]) {
@@ -631,6 +670,7 @@ async function onSpin(): Promise<void> {
 
   const res = endDay(state, rng);
   autoOutcome = {};
+  await showNightIncome();
   if (res.tax !== null) {
     if (res.ok) track('progress', state, { tax: res.tax });
     await showTaxStamp(res.tax, res.ok);
@@ -666,6 +706,35 @@ async function onSpin(): Promise<void> {
   await resolveAutos();
   ui.busy = false;
   render();
+}
+
+/** ゆうべ入ったお金：水車・釣り堀・鶏小屋・牛小屋から財布へ */
+async function showNightIncome(): Promise<void> {
+  const n = state.nightIncome;
+  if (!n || n.wheel + n.fish + n.animals === 0) return;
+  const at = (c: number) => center(el.field.children[c]);
+  n.wheels.forEach((w) => {
+    const q = at(w[w.length - 1]);
+    floatText(q.x, q.y - 16, `水車 +${w.length * CONFIG.wheelGold}`, { cls: 'gold', size: 0.7 });
+    flyTo(q, el.goldBox, '🪙', 1);
+  });
+  fieldCells().forEach((c) => {
+    const q = at(c);
+    if (isPond(state, c)) {
+      const big = n.bigFish.includes(c);
+      floatText(q.x, q.y - 16, big ? `大物！ +${CONFIG.fishGold + CONFIG.bigFishGold}` : `+${CONFIG.fishGold}`, { cls: 'gold', size: big ? 1 : 0.7 });
+      if (big) burst(q.x, q.y, [art('fish'), '✨'], 8, 50);
+      flyTo(q, el.goldBox, '🪙', big ? 3 : 1);
+    }
+    const t = state.tools[c];
+    if (t === 'henhouse' || t === 'cowshed') {
+      floatText(q.x, q.y - 16, `+${t === 'henhouse' ? CONFIG.henhouseGold : CONFIG.cowshedGold}`, { cls: 'gold', size: 0.7 });
+      flyTo(q, el.goldBox, '🪙', 1);
+    }
+  });
+  sfx.coin();
+  await sleep(isCalm() ? 200 : 650);
+  setGold(state.gold);
 }
 
 /** ゾロ目の演出。良い絵柄はフィーバー、カラス・虫は「群れ」として不吉に見せる */
@@ -967,6 +1036,28 @@ async function resolveAutos(): Promise<void> {
         shake(el.app, 5);
         vibrate(120);
       }
+    } else if (ev.type === 'mole') {
+      autoOutcome[i] = ev.moves.length ? `${ev.moves.length}つ移動` : '空振り';
+      if (!ev.moves.length) {
+        floatText(from.x, from.y - 30, 'モグラは空振り', { size: 0.6 });
+      } else {
+        sfx.poof();
+        for (const m of ev.moves) {
+          const fp = el.field.children[m.from] as HTMLElement;
+          const q = center(fp);
+          burst(q.x, q.y + 12, ['💨', '🌰'], 8, 40);
+          // 土の中から顔を出し、作物をとなりへ押し出す
+          floatText(q.x, q.y - 4, symHtml('mole'), { size: 1.4, rise: 10, dur: 700 });
+          pop(fp, 1.12);
+        }
+        await sleep(350);
+        renderField();
+        ev.moves.forEach((m) => {
+          const q = center(el.field.children[m.to]);
+          pop(el.field.children[m.to], 1.15);
+          floatText(q.x, q.y - 20, '押し出された！', { cls: 'bad', size: 0.7 });
+        });
+      }
     } else if (ev.type === 'frost') {
       autoOutcome[i] = ev.cells.length ? `${ev.cells.length}マス` : '空振り';
       if (ev.cells.length) {
@@ -1139,6 +1230,13 @@ function onPlotTap(cell: number): void {
       const name = CROPS[SEEDS[sym]!.crop].name;
       floatText(p.x, p.y - 20, `${name}を植えた！${more}`, { size: 0.7, cls: sym === 'goldSeed' ? 'gold' : 'good' });
       if (left > 0 && selected === null) say('空きマスなし');
+    } else if (sym === 'hoe') {
+      sfx.poof();
+      affected.forEach((c, k) => {
+        const q = center(el.field.children[c]);
+        window.setTimeout(() => burst(q.x, q.y + 10, ['💨', '🌰'], 5, 34), k * 70);
+      });
+      floatText(p.x, p.y - 20, '耕した！', { cls: 'good', size: 0.8 });
     } else if (sym === 'fertilizer' && left > 0) {
       sfx.fertilizer();
       floatText(p.x, p.y - 20, '売値×2！（あと1つ）', { cls: 'combo', size: 0.9 });
@@ -1197,9 +1295,15 @@ function onPlotTap(cell: number): void {
     pop(plot, 1.08);
     return;
   }
-  const crop = state.field[cell];
+  if (isPond(state, cell)) {
+    pop(plot, 1.08);
+    say(`釣り堀：毎晩+${CONFIG.fishGold}金`);
+    return;
+  }
+  const root = rootOf(state, cell);
+  const crop = state.field[root];
   if (isRipe(crop)) {
-    sellCrop(cell);
+    sellCrop(root);
     return;
   }
   if (crop) {
@@ -1235,9 +1339,14 @@ function afterGrowth(cells: number[], label: string): void {
   });
 }
 
+/** 作物の真ん中（大物は4マスの真ん中） */
+function cropCenter(cell: number): { x: number; y: number } {
+  const pts = cropCells(state, cell).map((c) => center(el.field.children[c]));
+  return { x: pts.reduce((n, q) => n + q.x, 0) / pts.length, y: pts.reduce((n, q) => n + q.y, 0) / pts.length };
+}
+
 function sellCrop(cell: number): void {
-  const plot = el.field.children[cell] as HTMLElement;
-  const p = center(plot);
+  const p = cropCenter(cell);
   const centers = state.field.map((_, i) => center(el.field.children[i]));
   const res = sell(state, cell);
   if (res === null) return;
