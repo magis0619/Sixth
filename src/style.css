@@ -4683,3 +4683,19 @@ body::before {
     align-items: flex-start;
   }
 }
+
+/* ==== リールの窓は正方形：幅は --reel-h まで、高さは幅と同じ。絵柄の高さも窓の幅（cqw）に合わせる ==== */
+.reel {
+  max-width: var(--reel-h);
+}
+
+.window {
+  height: auto;
+  aspect-ratio: 1;
+  container-type: inline-size;
+}
+
+.cell-sym {
+  height: 100cqw;
+  font-size: 78cqw;
+}

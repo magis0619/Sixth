@@ -408,3 +408,13 @@ describe('大きな種袋', () => {
     expect(s.results[0].total).toBe(2);
   });
 });
+
+describe('相場は難しい2から', () => {
+  it('ふつう・難しい1では相場が立たず、難しい2では立つ', () => {
+    for (const [difficulty, has] of [[0, false], [1, false], [CONFIG.marketFrom, true]] as const) {
+      const s = newGame({ shop: ['addSun'], charmPool: [], difficulty });
+      drawDay(s, Math.random);
+      expect(s.market !== null).toBe(has);
+    }
+  });
+});

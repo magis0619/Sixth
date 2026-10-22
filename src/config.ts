@@ -267,7 +267,8 @@ export const CONFIG = {
   /** 鶏小屋・牛小屋の毎晩の収入 */
   henhouseGold: 2,
   cowshedGold: 4,
-  /** 市場の相場：週ごとに1品が高値・1品が安値 */
+  /** 市場の相場：週ごとに1品が高値・1品が安値。難しい marketFrom から */
+  marketFrom: 2,
   marketHigh: 1.5,
   marketLow: 0.7,
   /** 品評会：売値の上乗せ */
@@ -504,7 +505,7 @@ export const TOOL_EVOLVE: Partial<Record<PlaceId, { to: PlaceId; need: number; w
 export const DIFFICULTIES = [
   { name: 'ふつう', desc: '' },
   { name: '難しい1', desc: '年貢×1.3' },
-  { name: '難しい2', desc: '＋ショップ×1.3' },
+  { name: '難しい2', desc: '＋ショップ×1.3・相場' },
   { name: '難しい3', desc: '＋お邪魔が早く多い' },
   { name: '難しい4', desc: '＋単品×0.3' },
 ];

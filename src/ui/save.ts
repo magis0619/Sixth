@@ -47,6 +47,8 @@ export function loadRun(): GameState | null {
     // スイカ・鍬・水路のつながり・相場・品評会を入れる前の保存データ
     s.tilled ??= s.field.map(() => false);
     s.market ??= null;
+    // 相場は難しいモードだけ（ふつうで遊んでいた途中の相場は消す）
+    if (s.difficulty < CONFIG.marketFrom) s.market = null;
     s.nightIncome ??= null;
     s.stats.soldKinds ??= [];
     CHARM_ORDER.forEach((id) => (s.charms[id] ??= 0));

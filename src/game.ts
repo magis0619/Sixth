@@ -550,7 +550,8 @@ export function drawDay(state: GameState, rng: Rng): void {
   if (!state.order || state.order.dueDay < state.day) {
     state.order = makeOrder(state, rng);
     state.weekly = rollWeekly(state, rng);
-    state.market = rollMarket(state, rng);
+    // 相場は難しいモードから（marketFrom 以上）
+    state.market = state.difficulty >= CONFIG.marketFrom ? rollMarket(state, rng) : null;
   }
 }
 
