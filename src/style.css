@@ -4977,3 +4977,44 @@ body::before {
   padding: 1px 6px;
   white-space: nowrap;
 }
+
+/* 倍率の札：印と数字だけ（文字は使わない） */
+.badge-line,
+.badge-single {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: max(0.72rem, calc(var(--cell) * 0.14));
+}
+
+.badge-line .mk,
+.badge-single .mk {
+  height: 0.62em;
+  width: auto;
+}
+
+/* 特別なマス：絵と数字だけ */
+.tile-label {
+  font-size: max(1rem, calc(var(--cell) * 0.22));
+}
+
+.tile-label .tile-ico {
+  font-size: 1.5em;
+}
+
+/* ショップの出やすさ：袋の絵と「今→買ったあと」 */
+.odds {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.odds .art {
+  font-size: 1.15em;
+}
+
+.odds b {
+  color: #3f8a26;
+}

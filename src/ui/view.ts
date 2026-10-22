@@ -119,8 +119,8 @@ export function bagPct(bag: Record<SymbolId, number>, id: SymbolId): number {
 export function upgradeEffect(id: UpgradeId): string {
   const { symbol, delta } = UPGRADE_SYMBOL[id]!;
   if (delta < 0 && state.bag[symbol] === 0) return `${SYMBOLS[symbol].name}はもういない！`;
-  if (delta < 0 && removeLimitReached(state)) return `お邪魔を消せるのは週${CONFIG.removesPerWeek}回まで（来週また消せる）`;
+  if (delta < 0 && removeLimitReached(state)) return `今週はもう消した（来週また消せる）`;
   const after = { ...state.bag, [symbol]: state.bag[symbol] + delta };
-  const odds = `出る確率 ${bagPct(state.bag, symbol)}% → ${bagPct(after, symbol)}%`;
-  return odds;
+  // 袋の絵と「今→買ったあと」の数字だけで、出やすさの変化を見せる
+  return `<span class="odds">${art('seed')} ${bagPct(state.bag, symbol)}% → <b>${bagPct(after, symbol)}%</b></span>`;
 }

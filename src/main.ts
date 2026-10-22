@@ -378,6 +378,10 @@ function renderSpinButton(): void {
       : `▼ タップで${state.day + 1}日目へ ▼`);
 }
 
+/** 売値の倍率の印：3つ並んだ点（列）と1つの点（単品） */
+const MARK_LINE = '<svg class="mk" viewBox="0 0 26 10" aria-hidden="true"><path d="M4 5H22" stroke="currentColor" stroke-width="2.4"/><circle cx="4" cy="5" r="3.4" fill="currentColor"/><circle cx="13" cy="5" r="3.4" fill="currentColor"/><circle cx="22" cy="5" r="3.4" fill="currentColor"/></svg>';
+const MARK_SINGLE = '<svg class="mk" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="3.4" fill="currentColor"/></svg>';
+
 /** 狙い（同じ畑なら計算し直さない） */
 let aimCache: { key: string; aim: Aim | null } | null = null;
 function aimOf(): Aim | null {
@@ -476,8 +480,9 @@ function renderField(): void {
         else cls.push('single');
         // 金貨の上に数字（「金」の字は入れない）。桁が多いほど字を小さく
         html += `<span class="price d${String(price).length}">${art('coinBlank')}<b>${price}</b></span>`;
+        // 倍率は文字ではなく印と数字で：並んだ点＝列、1つの点＝単品
         if (def.big) html += '<span class="badge-line">大物</span>';
-        else html += inLine ? `<span class="badge-line">列 ×${fmtMult(mult)}</span>` : `<span class="badge-single">単品 ×${fmtMult(singleMult(state))}</span>`;
+        else html += inLine ? `<span class="badge-line">${MARK_LINE}×${fmtMult(mult)}</span>` : `<span class="badge-single">${MARK_SINGLE}×${fmtMult(singleMult(state))}</span>`;
         label = `${def.name} 実、タップで${price}金で売る${def.big ? '' : inLine ? '（列ごと）' : '（単品は半値）'}`;
       } else {
         html += `<span class="pips">${Array.from({ length: def.ripe }, (_, k) => `<i class="pip${k < crop.growth ? ' on' : ''}"></i>`).join('')}</span>`;
@@ -500,7 +505,7 @@ function renderField(): void {
       }
       const tilledMark = state.tilled[i] && !tile ? `<span class="till-mark">${art('hoe')}<b>+${state.charms.tillMaster ? 2 : 1}</b></span>` : '';
       html += tilledMark || (tile
-        ? `<span class="tile-label"><span class="tile-ico">${art(PLACE_ART[tile])}</span>${PLACES[tile].name.replace('のマス', '')}<small>${tile === 'water' ? '毎日 成長+1' : '売値 ×2'}</small></span>`
+        ? `<span class="tile-label"><span class="tile-ico">${art(PLACE_ART[tile])}</span>${tile === 'water' ? '+1' : '×2'}</span>`
         : '<span class="empty">空き</span>');
     }
     if (wheelEnds.has(i)) {
