@@ -10,7 +10,7 @@ import { saveMeta, setupFrom } from './meta.ts';
 import { art, type ArtId } from './art.ts';
 import { track } from './telemetry.ts';
 import {
-  burst, center, coinRain, confetti, flash, floatText, flyTo, hitStop, isCalm, pop, rollNumber, scanlines, shake, shakeFor, sleep, slamText, slowFactor, speedLines, stackMultipliers, toggleCalm, vibrate, rainShower, fmtMult, travel, sunBeam, beeFlight,
+  burst, center, coinRain, confetti, flash, floatText, flyTo, hitStop, isCalm, pop, rollNumber, scanlines, shake, shakeFor, sleep, slamText, slowFactor, speedLines, stackMultipliers, toggleCalm, vibrate, rainShower, setHurry, fmtMult, travel, sunBeam, beeFlight,
 } from './fx.ts';
 import {
   FRUIT, PLACE_ART, setHtml, STAGE_NAMES, type SheetName, bagPct, closeSheet, costHtml, cropEmoji, openSheet, openSheetName, roleClass, say, shapeIcon, stageOf, symHtml, upgradeArt, upgradeEffect, visibleOr,
@@ -18,8 +18,9 @@ import {
 import { applySkin, showClear, showGameOver, showHelp, showTitle } from './ui/screens.ts';
 import { clearRun, saveRun } from './ui/save.ts';
 import { $, el, hooks, meta, rng, setState, state, ui } from './ui/store.ts';
+import { pressable } from './ui/press.ts';
 import { renderDanger, renderSky, setupScene } from './ui/scene.ts';
-import { setupLongPress } from './ui/info.ts';
+import { blockLongPress, setupLongPress } from './ui/info.ts';
 import { CUTIN_MS, feverBanner, playCutIn, showCharmOffer, showTaxStamp, witherField } from './ui/shows.ts';
 
 let selected: number | null = null;
@@ -310,7 +311,7 @@ function buildReels(): void {
     b.dataset.i = String(i);
     const prev = state.results[i]?.symbol ?? drawSymbol(state.bag, rng);
     b.innerHTML = `<div class="window"><div class="strip"><div class="cell-sym">${symHtml(prev)}</div></div></div><div class="tag">—</div>`;
-    b.addEventListener('click', () => onReelTap(i));
+    b.addEventListener('click', () => clickAllowed('reel') && onReelTap(i));
     el.reels.appendChild(b);
     if (state.day > 0) b.classList.add('enter');
   }
@@ -425,7 +426,7 @@ function renderField(): void {
     state.field.forEach((_, i) => {
       const b = document.createElement('button');
       b.className = 'plot';
-      b.addEventListener('click', () => onPlotTap(i));
+      b.addEventListener('click', () => clickAllowed('plot') && onPlotTap(i));
       b.addEventListener('pointerenter', () => {
         previewCell = i;
         if (selected !== null && SYMBOLS[state.results[selected].symbol].shape) renderField();
@@ -728,7 +729,7 @@ async function onSpin(): Promise<void> {
     await showTaxStamp(res.tax, res.ok);
     if (!res.ok) {
       await witherField();
-      ui.busy = false;
+      endBusy();
       showGameOver();
       return;
     }
@@ -738,7 +739,7 @@ async function onSpin(): Promise<void> {
     await showCharmOffer();
   }
   if (res.cleared && !(await showClear())) {
-    ui.busy = false;
+    endBusy();
     showGameOver(true);
     return;
   }
@@ -757,13 +758,20 @@ async function onSpin(): Promise<void> {
     }
   }
   await resolveAutos();
-  ui.busy = false;
+  endBusy();
+  autoSelect();
   render();
 }
 
 /** 動物がマスからひょっこり出てくる（何の動物か分かる大きさで） */
 function critterPop(q: { x: number; y: number }, html: string): void {
   floatText(q.x, q.y - 6, html, { size: 2.8, rise: 16, dur: 1300 });
+}
+
+/** 演出が終わって操作を受け付ける（早送りも止める） */
+function endBusy(): void {
+  ui.busy = false;
+  setHurry(false);
 }
 
 /** ゆうべ育ったマス（巣箱の苺・水車の隣・水路・井戸）と、入ったお金（水車・釣り堀・鶏小屋・牛小屋） */
@@ -1318,6 +1326,7 @@ function onPlotTap(cell: number): void {
     const affected = useSymbol(state, reel, cell) ?? [];
     const left = state.results[reel].left;
     selected = left > 0 && canUse(state, reel, null) ? reel : null;
+    if (selected === null) autoSelect();
     done.use = true;
     armedNextDay = false;
     render();
@@ -1623,6 +1632,105 @@ function startGame(resume: GameState | null = null): void {
   render();
 }
 
+// ---- 押す回数を減らす：なぞって植える・リールから畑へ引っぱる・使える出目が1つなら選んでおく ----
+
+/** なぞる・引っぱる操作のあとに1回だけ来る click（押し始めた要素のもの）は無視する */
+let suppressClick: { kind: 'plot' | 'reel'; until: number } | null = null;
+function clickAllowed(kind: 'plot' | 'reel'): boolean {
+  const s = suppressClick;
+  if (!s || s.kind !== kind) return true;
+  suppressClick = null;
+  return performance.now() > s.until;
+}
+
+/** 指の下にある畑のマス */
+function plotAt(x: number, y: number): number | null {
+  const p = document.elementFromPoint(x, y)?.closest<HTMLElement>('.plot');
+  if (!p || !el.field.contains(p)) return null;
+  const i = [...el.field.children].indexOf(p);
+  return i >= 0 && inField(state, i) ? i : null;
+}
+
+let drag: { kind: 'plant' | 'reel'; reel: number; x: number; y: number; moved: boolean; last: number | null; ghost: HTMLElement | null } | null = null;
+
+/** 種を選んでいるとき：押したマスから、なぞったマスへ続けて植える */
+el.field.addEventListener('pointerdown', (e) => {
+  if (ui.busy || state.over || selected === null || !SEEDS[state.results[selected].symbol]) return;
+  const cell = plotAt(e.clientX, e.clientY);
+  if (cell === null || !canUse(state, selected, cell) || !tutAllowsCell(cell)) return;
+  drag = { kind: 'plant', reel: selected, x: e.clientX, y: e.clientY, moved: false, last: cell, ghost: null };
+  suppressClick = { kind: 'plot', until: Infinity };
+  blockLongPress();
+  onPlotTap(cell);
+});
+
+/** 使える出目のリールを押して引っぱると、畑のマスへ持っていける（離したマスに使う） */
+el.reels.addEventListener('pointerdown', (e) => {
+  const reel = (e.target as Element).closest<HTMLElement>('.reel');
+  if (!reel || ui.busy || state.over || state.day === 0) return;
+  const i = Number(reel.dataset.i);
+  const r = state.results[i];
+  if (!r || r.used || !canUse(state, i, null) || SYMBOLS[r.symbol].shape === 'all' || !tutAllowsReel(i)) return;
+  drag = { kind: 'reel', reel: i, x: e.clientX, y: e.clientY, moved: false, last: null, ghost: null };
+});
+
+document.addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  if (drag.kind === 'plant') {
+    const cell = plotAt(e.clientX, e.clientY);
+    if (cell === null || cell === drag.last || selected !== drag.reel || !canUse(state, drag.reel, cell) || !tutAllowsCell(cell)) return;
+    drag.last = cell;
+    onPlotTap(cell);
+    return;
+  }
+  if (!drag.moved) {
+    if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 12) return;
+    // 引っぱり始め：その出目を選んで、指に絵柄を持たせる
+    drag.moved = true;
+    suppressClick = { kind: 'reel', until: Infinity };
+    blockLongPress();
+    selected = drag.reel;
+    armedNextDay = false;
+    sfx.select();
+    drag.ghost = document.createElement('div');
+    drag.ghost.className = 'drag-ghost';
+    drag.ghost.innerHTML = symHtml(state.results[drag.reel].symbol);
+    document.body.appendChild(drag.ghost);
+    render();
+  }
+  drag.ghost!.style.translate = `${e.clientX}px ${e.clientY}px`;
+  const cell = plotAt(e.clientX, e.clientY);
+  if (cell !== previewCell) {
+    previewCell = cell;
+    renderField();
+  }
+});
+
+function endDrag(e: PointerEvent): void {
+  if (!drag) return;
+  const d = drag;
+  drag = null;
+  d.ghost?.remove();
+  if (d.kind === 'reel' && d.moved) {
+    const cell = plotAt(e.clientX, e.clientY);
+    // 使えるマスで離したら使う。ほかで離したら選んだままにする（あとでマスをタップできる）
+    if (cell !== null && selected === d.reel && canUse(state, d.reel, cell) && tutAllowsCell(cell)) onPlotTap(cell);
+  }
+  if (suppressClick) suppressClick.until = performance.now() + 350;
+}
+document.addEventListener('pointerup', endDrag);
+document.addEventListener('pointercancel', endDrag);
+
+/** 使える出目が1つだけなら、最初から選んでおく（リールを押す手間を省く） */
+function autoSelect(): void {
+  if (tut || selected !== null || state.over) return;
+  const usable = usableReels();
+  if (usable.length !== 1) return;
+  const r = state.results[usable[0]];
+  if (SYMBOLS[r.symbol].shape === 'all') return;
+  selected = usable[0];
+}
+
 // ---- チュートリアル：初めての人の最初の2日を案内する ----
 
 interface TutStep {
@@ -1768,6 +1876,16 @@ el.order.addEventListener('click', () => {
 });
 el.goldBox.querySelector('.stat-icon')!.innerHTML = art('coin');
 document.querySelector('.machine-top')!.innerHTML = `${art('coin')} 畑スロット ${art('coin')}`;
+// 演出の最中に画面をタップすると早送り
+document.addEventListener('pointerdown', () => {
+  if (ui.busy) setHurry(true);
+}, { capture: true });
+// 押した瞬間の手応え
+pressable(el.field, '.plot');
+pressable(el.reels, '.reel');
+pressable($('sheet'), '.item, .stall-tab');
+document.querySelectorAll<HTMLElement>('.tabs').forEach((t) => pressable(t, '.tab'));
+
 // 屋台のタブ（最後に開いたタブを覚えておく）
 {
   const stall = $('stall');

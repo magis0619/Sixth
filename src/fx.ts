@@ -175,7 +175,32 @@ export function fmtMult(x: number): string {
   return String(Math.round(x * 10) / 10);
 }
 
-export const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+// ---- 早送り：演出の最中に画面をタップすると、残りの演出を速く流す ----
+
+const HURRY_RATE = 4;
+let hurry = false;
+
+export function isHurry(): boolean {
+  return hurry;
+}
+
+/** 早送りを始める（いま動いている演出も速める）／止める */
+export function setHurry(on: boolean): void {
+  if (hurry === on) return;
+  hurry = on;
+  document.documentElement.classList.toggle('hurry', on);
+  document.getAnimations().forEach((a) => (a.playbackRate = on ? HURRY_RATE : 1));
+}
+
+// 早送り中に始まる演出も速くする（演出はどれも Element.animate で作っている）
+const baseAnimate = Element.prototype.animate;
+Element.prototype.animate = function (this: Element, ...args: Parameters<Element['animate']>) {
+  const a = baseAnimate.apply(this, args);
+  if (hurry) a.playbackRate = HURRY_RATE;
+  return a;
+};
+
+export const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, hurry ? ms / HURRY_RATE : ms));
 
 /**
  * 金額を桁ごとに回して止める（スロットのリールのように右の桁から止まる）。

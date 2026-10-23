@@ -5140,3 +5140,71 @@ body::before {
   box-shadow: 0 3px 0 #3f8a26;
   cursor: pointer;
 }
+
+/* ==== 押した瞬間の手応え：触れたらへこみ、離すと跳ね返る ==== */
+.plot.pressing,
+.reel.pressing .window,
+.item.pressing,
+.stall-tab.pressing,
+.tab.pressing {
+  scale: 0.9;
+  filter: brightness(1.1);
+  transition: scale 40ms ease-out, filter 40ms;
+}
+
+.plot.released,
+.reel.released .window,
+.item.released,
+.stall-tab.released,
+.tab.released {
+  animation: press-back 240ms cubic-bezier(0.3, 1.8, 0.5, 1);
+}
+
+@keyframes press-back {
+  0% { scale: 0.9; }
+  55% { scale: 1.06; }
+  100% { scale: 1; }
+}
+
+/* 早送り中：筐体の隅に印 */
+.hurry .machine::after {
+  content: '⏩';
+  position: absolute;
+  right: 10px;
+  top: 6px;
+  font-size: 1.1rem;
+  z-index: 7;
+  opacity: 0.85;
+}
+
+.calm .plot.released,
+.calm .reel.released .window,
+.calm .item.released,
+.calm .stall-tab.released,
+.calm .tab.released {
+  animation: none;
+}
+
+/* なぞる・引っぱるの最中にページがスクロールしないように */
+.field .plot,
+.reels .reel {
+  touch-action: none;
+}
+
+/* リールから引っぱっている絵柄 */
+.drag-ghost {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 60;
+  font-size: 3.2rem;
+  line-height: 1;
+  margin: -1.2em 0 0 -0.5em;
+  pointer-events: none;
+  filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.35));
+  animation: ghost-in 0.15s ease-out;
+}
+
+@keyframes ghost-in {
+  from { scale: 0.4; opacity: 0; }
+}

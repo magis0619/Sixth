@@ -39,6 +39,12 @@ export function showInfo(anchor: Element, html: string): void {
   window.setTimeout(() => document.addEventListener('pointerdown', closeInfo, { once: true }), 0);
 }
 
+/** なぞって植えるなど、押した瞬間に操作が起きたときは長押しの説明を出さない */
+let lpBlockUntil = 0;
+export function blockLongPress(): void {
+  lpBlockUntil = performance.now() + 600;
+}
+
 /** root の中の selector に合う要素を長押し（0.45秒）すると info の内容を出す。長押しのあとのタップは無視する */
 export function longPress(root: HTMLElement, selector: string, info: (target: HTMLElement) => string | null): void {
   root.addEventListener('pointerdown', (e) => {
@@ -49,6 +55,7 @@ export function longPress(root: HTMLElement, selector: string, info: (target: HT
     const sx = e.clientX;
     const sy = e.clientY;
     lpTimer = window.setTimeout(() => {
+      if (performance.now() < lpBlockUntil) return;
       const html = info(target);
       if (!html) return;
       lpFired = true;

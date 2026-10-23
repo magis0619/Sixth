@@ -233,3 +233,34 @@ test('初めての人はチュートリアルで、横一列に植えて列で�
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('hatake-slot:meta')!).tutorialDone)).toBe(true);
   expect(errors).toEqual([]);
 });
+
+test('種はなぞって続けて植えられ、出目はリールから畑へ引っぱって使える', async ({ page }) => {
+  const errors = await boot(page);
+  await start(page);
+  await firstDay(page);
+  await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('hatake-slot:run')!);
+    s.results = [{ symbol: 'seed', used: false, total: 3, left: 3, power: 1 }, { symbol: 'rain', used: false, total: 1, left: 1, power: 1 }, { symbol: 'coin', used: true, total: 1, left: 0, power: 1 }];
+    s.field = s.field.map(() => null);
+    localStorage.setItem('hatake-slot:run', JSON.stringify(s));
+  });
+  await page.reload();
+  await page.click('#title-resume', { force: true });
+  const mid = async (loc: ReturnType<Page['locator']>) => { const r = (await loc.boundingBox())!; return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; };
+  await page.locator('#reels .reel').nth(0).click();
+  const a = await mid(page.locator('#field .plot').nth(0));
+  const c = await mid(page.locator('#field .plot').nth(2));
+  await page.mouse.move(a.x, a.y);
+  await page.mouse.down();
+  for (let k = 1; k <= 10; k++) await page.mouse.move(a.x + ((c.x - a.x) * k) / 10, a.y);
+  await page.mouse.up();
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('hatake-slot:run')!).field.filter(Boolean).length)).toBe(3);
+  const r = await mid(page.locator('#reels .reel').nth(1));
+  const b = await mid(page.locator('#field .plot').nth(1));
+  await page.mouse.move(r.x, r.y);
+  await page.mouse.down();
+  for (let k = 1; k <= 12; k++) await page.mouse.move(r.x + ((b.x - r.x) * k) / 12, r.y + ((b.y - r.y) * k) / 12);
+  await page.mouse.up();
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('hatake-slot:run')!).results[1].used)).toBe(true);
+  expect(errors).toEqual([]);
+});
