@@ -768,6 +768,21 @@ function critterPop(q: { x: number; y: number }, html: string): void {
   floatText(q.x, q.y - 6, html, { size: 2.8, rise: 16, dur: 1300 });
 }
 
+/** その日の出目を使い切った瞬間に、ひと言ほめる（1日1回） */
+let praisedDay = -1;
+function praiseAllUsed(): void {
+  if (praisedDay === state.day || state.day === 0 || tut) return;
+  const manual = state.results.filter((r) => SYMBOLS[r.symbol].kind === 'manual');
+  if (!manual.length || !manual.every((r) => r.used)) return;
+  praisedDay = state.day;
+  const c = center(el.reels);
+  window.setTimeout(() => {
+    sfx.pon();
+    floatText(c.x, c.y - 50, '全部使った！', { cls: 'good', size: 0.9, dur: 1100 });
+    burst(c.x, c.y - 20, ['✨', '⭐'], 8, 70);
+  }, 350);
+}
+
 /** 演出が終わって操作を受け付ける（早送りも止める） */
 function endBusy(): void {
   ui.busy = false;
@@ -784,11 +799,14 @@ async function showNightIncome(): Promise<void> {
     n.grown.forEach((c) => {
       const plot = el.field.children[c] as HTMLElement;
       const q = at(c);
-      pop(plot, 1.1);
-      burst(q.x, q.y, ['💧', '✨'], 4, 30);
-      floatText(q.x, q.y + 10, '育った', { cls: 'good', size: 0.8, rise: 20, dur: 1000 });
+      const ripe = isRipe(state.field[c]);
+      pop(plot, ripe ? 1.2 : 1.1);
+      burst(q.x, q.y, ripe ? ['✨', '⭐'] : ['💧', '✨'], ripe ? 8 : 4, ripe ? 50 : 30);
+      floatText(q.x, q.y + 10, ripe ? '実った！' : '育った', { cls: ripe ? 'gold' : 'good', size: ripe ? 0.9 : 0.8, rise: 20, dur: 1000 });
     });
     sfx.grow();
+    if (n.grown.some((c) => isRipe(state.field[c]))) sfx.pon();
+    announceLines(n.grown);
     await sleep(isCalm() ? 150 : 500);
   }
   if (n.wheel + n.fish + n.animals === 0) return;
@@ -1327,6 +1345,7 @@ function onPlotTap(cell: number): void {
     const left = state.results[reel].left;
     selected = left > 0 && canUse(state, reel, null) ? reel : null;
     if (selected === null) autoSelect();
+    praiseAllUsed();
     done.use = true;
     armedNextDay = false;
     render();
@@ -1370,6 +1389,15 @@ function onPlotTap(cell: number): void {
       });
       afterGrowth(affected, `+${CONFIG.beeGrowth * power}`);
       if (left > 0 && selected === null) say('使える場所なし');
+    } else if (sym === 'thunder') {
+      sfx.crt();
+      flash('#fff6c0', 220);
+      shapeCells(state, 'row', cell).forEach((c, k) => {
+        const q = center(el.field.children[c]);
+        window.setTimeout(() => burst(q.x, q.y, ['⚡', '✨'], 4, 36), k * 60);
+      });
+      shake(el.field, 4);
+      afterGrowth(affected, `+${2 * power}`);
     } else if (sym === 'fertilizer') {
       sfx.fertilizer();
       burst(p.x, p.y, ['✨', '💜'], 10, 50);
@@ -1423,7 +1451,23 @@ function onPlotTap(cell: number): void {
   }
 }
 
+/** 育って新しく列がそろったら、その列を光らせて知らせる */
+function announceLines(cells: number[]): void {
+  const formed = [...new Set(cells.flatMap((c) => (isRipe(state.field[c]) ? [ripeGroup(state, c)] : [])).filter((g) => g.length >= 3).map((g) => [...g].sort((a, b) => a - b).join()))];
+  formed.forEach((key, k) => {
+    const group = key.split(',').map(Number);
+    window.setTimeout(() => {
+      sfx.bonus();
+      group.forEach((c, j) => window.setTimeout(() => pop(el.field.children[c], 1.12), j * 60));
+      const pts = group.map((c) => center(el.field.children[c]));
+      const q = { x: pts.reduce((n, v) => n + v.x, 0) / pts.length, y: pts.reduce((n, v) => n + v.y, 0) / pts.length };
+      floatText(q.x, q.y - 10, `${MARK_LINE} 列ができた！`, { cls: 'combo', size: 0.95, dur: 1300 });
+    }, 500 + k * 250);
+  });
+}
+
 function afterGrowth(cells: number[], label: string): void {
+  announceLines(cells);
   cells.forEach((cell, k) => {
     const plot = el.field.children[cell] as HTMLElement;
     const p = center(plot);
@@ -1625,6 +1669,7 @@ function startGame(resume: GameState | null = null): void {
   tut = null;
   document.getElementById('coach')?.remove();
   if (!resume && !meta.tutorialDone) startTutorial();
+  if (resume) autoSelect();
   el.overlay.classList.remove('show', 'title');
   el.overlay.innerHTML = '';
   el.reels.innerHTML = '';

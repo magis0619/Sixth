@@ -5208,3 +5208,9 @@ body::before {
 @keyframes ghost-in {
   from { scale: 0.4; opacity: 0; }
 }
+
+.fx-text .mk {
+  height: 0.6em;
+  width: auto;
+  vertical-align: 0.05em;
+}
