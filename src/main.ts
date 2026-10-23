@@ -807,7 +807,7 @@ async function showNightIncome(): Promise<void> {
     sfx.grow();
     if (n.grown.some((c) => isRipe(state.field[c]))) sfx.pon();
     announceLines(n.grown);
-    await sleep(isCalm() ? 150 : 500);
+    await sleep(isCalm() ? 120 : 320);
   }
   if (n.wheel + n.fish + n.animals === 0) return;
   n.wheels.forEach((w) => {
@@ -830,7 +830,7 @@ async function showNightIncome(): Promise<void> {
     }
   });
   sfx.coin();
-  await sleep(isCalm() ? 200 : 650);
+  await sleep(isCalm() ? 150 : 420);
   setGold(state.gold);
 }
 
@@ -943,7 +943,7 @@ function spinReels(show: SpinShow = { cutIn: null }): Promise<void> {
   const suspense = reach || state.results[last].symbol === 'goldSeed' || state.fever.some((s) => SYMBOLS[s].rarity !== 'bad') || (state.bag.goldSeed > 0 && rng() < 0.15);
   // カットインが出る日は、出ている間リールを回し続ける
   const extra = show.cutIn !== null ? CUTIN_MS : 0;
-  const hold = reach ? 1900 : 900;
+  const hold = reach ? 1500 : 600;
   if (show.cutIn !== null) window.setTimeout(() => void playCutIn(show.cutIn!), 150);
   el.machine.classList.add('rumble');
   let tick = window.setInterval(() => sfx.tick(), 70);
@@ -1279,6 +1279,13 @@ function onReelTap(i: number): void {
     void onSpin();
     return;
   }
+  // 自動で選んでおいたリールを押したときは、外さずにそのまま（押した人は「選んだ」つもり）
+  if (selected === i && autoSelected) {
+    autoSelected = false;
+    sfx.select();
+    say(def.name);
+    return;
+  }
   if (selected === i) {
     selected = null;
     sfx.cancel();
@@ -1290,6 +1297,7 @@ function onReelTap(i: number): void {
     return;
   }
   selected = i;
+  autoSelected = false;
   armedNextDay = false;
   sfx.select();
   say(def.name);
@@ -1344,6 +1352,7 @@ function onPlotTap(cell: number): void {
     const affected = useSymbol(state, reel, cell) ?? [];
     const left = state.results[reel].left;
     selected = left > 0 && canUse(state, reel, null) ? reel : null;
+    autoSelected = false;
     if (selected === null) autoSelect();
     praiseAllUsed();
     done.use = true;
@@ -1703,7 +1712,11 @@ el.field.addEventListener('pointerdown', (e) => {
   if (ui.busy || state.over || selected === null || !SEEDS[state.results[selected].symbol]) return;
   const cell = plotAt(e.clientX, e.clientY);
   if (cell === null || !canUse(state, selected, cell) || !tutAllowsCell(cell)) return;
-  drag = { kind: 'plant', reel: selected, x: e.clientX, y: e.clientY, moved: false, last: cell, ghost: null };
+  // 自動で選んだだけの種は、押した瞬間には植えない（長押しの説明を見たいだけかもしれない）。
+  // なぞり始めたら植える。動かさずに離したら、ふつうのタップとして植わる
+  const pending = autoSelected;
+  drag = { kind: 'plant', reel: selected, x: e.clientX, y: e.clientY, moved: !pending, last: cell, ghost: null };
+  if (pending) return;
   suppressClick = { kind: 'plot', until: Infinity };
   blockLongPress();
   onPlotTap(cell);
@@ -1724,6 +1737,14 @@ document.addEventListener('pointermove', (e) => {
   if (drag.kind === 'plant') {
     const cell = plotAt(e.clientX, e.clientY);
     if (cell === null || cell === drag.last || selected !== drag.reel || !canUse(state, drag.reel, cell) || !tutAllowsCell(cell)) return;
+    if (!drag.moved) {
+      // なぞり始め：押したマスにも植える
+      drag.moved = true;
+      suppressClick = { kind: 'plot', until: Infinity };
+      blockLongPress();
+      onPlotTap(drag.last!);
+      if (selected !== drag.reel || !canUse(state, drag.reel, cell)) return;
+    }
     drag.last = cell;
     onPlotTap(cell);
     return;
@@ -1732,6 +1753,7 @@ document.addEventListener('pointermove', (e) => {
     if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 12) return;
     // 引っぱり始め：その出目を選んで、指に絵柄を持たせる
     drag.moved = true;
+    autoSelected = false;
     suppressClick = { kind: 'reel', until: Infinity };
     blockLongPress();
     selected = drag.reel;
@@ -1766,6 +1788,9 @@ function endDrag(e: PointerEvent): void {
 document.addEventListener('pointerup', endDrag);
 document.addEventListener('pointercancel', endDrag);
 
+/** 今選ばれているリールは、自動で選んだもの */
+let autoSelected = false;
+
 /** 使える出目が1つだけなら、最初から選んでおく（リールを押す手間を省く） */
 function autoSelect(): void {
   if (tut || selected !== null || state.over) return;
@@ -1774,6 +1799,7 @@ function autoSelect(): void {
   const r = state.results[usable[0]];
   if (SYMBOLS[r.symbol].shape === 'all') return;
   selected = usable[0];
+  autoSelected = true;
 }
 
 // ---- チュートリアル：初めての人の最初の2日を案内する ----

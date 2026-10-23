@@ -392,9 +392,9 @@ export const CONFIG = {
 
   /** 演出のタイミング（ミリ秒） */
   timing: {
-    spinBase: 650,
-    spinStagger: 260,
-    autoStep: 420,
+    spinBase: 480,
+    spinStagger: 170,
+    autoStep: 280,
     comboWindow: 1600,
   },
 
