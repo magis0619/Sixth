@@ -651,9 +651,10 @@ button {
   animation: none;
 }
 
-.reel.selected .tag {
-  background: #fff;
-  color: var(--role);
+.reel.selected .tag,
+.reel.selected .tag.shape {
+  background: #e8a33a;
+  color: #fff;
 }
 
 /* 使い終わった出目は暗くして✓（色だけに頼らない） */
@@ -5224,4 +5225,99 @@ body::before {
 
 .fx-text.pill {
   rotate: -2deg;
+}
+
+/* ==== いま選んでいる出目 ==== */
+/* 畑の右上の札：絵柄・名前・効く形 */
+.pick-tag {
+  position: absolute;
+  right: -6px;
+  top: -26px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px 3px 4px;
+  border-radius: 999px;
+  background: #fff8e7;
+  box-shadow: 0 2px 0 #b07415, inset 0 0 0 3px #ffb52e;
+  font-size: 0.85rem;
+  font-weight: 900;
+  color: var(--ink);
+  animation: pick-in 0.2s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+
+.pick-tag[hidden] {
+  display: none;
+}
+
+.pick-label {
+  font-size: 0.66rem;
+  color: #fff;
+  background: #e8a33a;
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+
+.pick-sym .art {
+  font-size: 1.6rem;
+  display: block;
+}
+
+.pick-what {
+  font-size: 0.72rem;
+  color: #8a5a10;
+}
+
+.pick-what .shape-icon {
+  display: inline-grid;
+  vertical-align: middle;
+}
+
+.pick-what .shape-icon i {
+  background: rgba(94, 61, 36, 0.18);
+}
+
+.pick-what .shape-icon i.on {
+  background: #e8a33a;
+  box-shadow: none;
+}
+
+@keyframes pick-in {
+  from { scale: 0.6; opacity: 0; }
+}
+
+/* 選んだリール：大きく持ち上げ、金色の太い縁と「選択中」の札。ほかの使えるリールは控えめに */
+.reel.selected .window {
+  transform: translateY(-12px) scale(1.08);
+  box-shadow: inset 0 0 0 5px #ffb52e, 0 0 0 4px #fff, 0 0 18px 6px rgba(255, 181, 46, 0.85), 0 10px 16px rgba(0, 0, 0, 0.45);
+  animation: none;
+}
+
+.reel.selected::before {
+  content: '選択中';
+  position: absolute;
+  top: -30px;
+  left: 50%;
+  translate: -50% 0;
+  z-index: 5;
+  padding: 1px 9px;
+  border-radius: 999px;
+  background: #e8a33a;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 900;
+  white-space: nowrap;
+  box-shadow: 0 2px 0 #b07415;
+}
+
+.reels:has(.reel.selected) .reel.usable:not(.selected) .window {
+  opacity: 0.6;
+  scale: 0.94;
+}
+
+/* 自動の出目が動いている間：そのリールを光らせる */
+.reel.acting .window {
+  box-shadow: inset 0 0 0 4px #fff, 0 0 0 3px var(--role), 0 0 16px 4px rgba(255, 255, 255, 0.8);
+  transform: translateY(-6px);
 }

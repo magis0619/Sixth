@@ -70,6 +70,7 @@ function render(): void {
   renderTax();
   renderOrder();
   renderMarket();
+  renderPick();
   renderGoal();
   renderStatus();
   renderReelStates();
@@ -93,11 +94,21 @@ function render(): void {
   renderTutorial();
 }
 
+/** 出来事と出来事の間の小さな間（同時に起こさず、順番に見せる） */
+const EVENT_GAP = 260;
+/** 1つの出来事を見せておく長さ（次の出来事はこのあと） */
+const EVENT_HOLD = 650;
+let noticeChain: Promise<void> = Promise.resolve();
+/** いま出来事を見せている自動の出目のリール */
+let actingReel: number | null = null;
+
 /** ルール側から届いた知らせ（特別なお守り・金色・進化・大当たり）を演出する */
 function flushNotices(): void {
   const list = state.notices.splice(0);
-  // 直前の操作の演出（売った・買った）と重ならないよう少し遅らせる
-  list.forEach((n: Notice, k) => later(() => playNotice(n), 700 + k * 900));
+  // 知らせは1つずつ順番に（直前の操作の演出と重ならないよう、少し間を空けてから）
+  list.forEach((n: Notice) => {
+    noticeChain = noticeChain.then(() => sleep(EVENT_GAP + 500)).then(() => playNotice(n)).then(() => sleep(900));
+  });
 }
 
 function playNotice(n: Notice): void {
@@ -183,6 +194,17 @@ function renderStatus(): void {
 }
 
 /** 今週の相場：畑の右上の札に、高値と安値の作物を絵と記号だけで */
+/** いま選んでいる出目：畑の右上の札に、絵柄・名前・効く形（何を選んでいるか一目で分かるように） */
+function renderPick(): void {
+  const box = $('pick');
+  const r = selected !== null ? state.results[selected] : null;
+  box.hidden = !r;
+  if (!r) return;
+  const def = SYMBOLS[r.symbol];
+  const what = SEEDS[r.symbol] ? `植える${r.left > 1 ? ` あと${r.left}` : ''}` : def.shape ? shapeIcon(def.shape) : '';
+  setHtml(box, `<span class="pick-label">選択中</span><span class="pick-sym">${symHtml(r.symbol)}</span><b>${def.name}</b><span class="pick-what">${what}</span>`);
+}
+
 function renderMarket(): void {
   const m = state.market;
   const box = $('market');
@@ -289,7 +311,7 @@ function renderReelStates(): void {
     const tag = reelTag(i);
     const fever = r && r.power > 1;
     const badFever = fever && SYMBOLS[r.symbol].rarity === 'bad';
-    b.className = `reel ${r ? roleClass(r.symbol) : ''} ${tag.cls}${r?.symbol === 'goldSeed' ? ' rare' : ''}${fever ? (badFever ? ' fever-bad' : ' fever') : ''}${r && el.machine.classList.contains('rainbow') && state.fever.includes(r.symbol) ? ' rainbow-sym' : ''}`;
+    b.className = `reel ${r ? roleClass(r.symbol) : ''} ${tag.cls}${r?.symbol === 'goldSeed' ? ' rare' : ''}${fever ? (badFever ? ' fever-bad' : ' fever') : ''}${r && el.machine.classList.contains('rainbow') && state.fever.includes(r.symbol) ? ' rainbow-sym' : ''}${actingReel === i ? ' acting' : ''}`;
     // 札：自動の出目は結果を短く、手動の出目は効く形の絵（3×3のマス目）
     const shape = r ? SYMBOLS[r.symbol].shape : undefined;
     const tagEl = b.querySelector('.tag') as HTMLElement;
@@ -671,6 +693,7 @@ async function onSpin(): Promise<void> {
   autoOutcome = {};
   await showNightIncome();
   if (res.tax !== null) {
+    await sleep(EVENT_GAP);
     if (res.ok) track('progress', state, { tax: res.tax });
     await showTaxStamp(res.tax, res.ok);
     if (!res.ok) {
@@ -737,31 +760,49 @@ async function showNightIncome(): Promise<void> {
     });
     sfx.grow();
     if (n.grown.some((c) => isRipe(state.field[c]))) sfx.pon();
-    announceLines(n.grown);
-    await sleep(isCalm() ? 120 : 320);
+    await sleep(EVENT_HOLD);
+    // 育って列がそろったら、そのあとに知らせる
+    if (announceLines(n.grown, 0)) await sleep(EVENT_HOLD + 300);
+    await sleep(EVENT_GAP);
   }
   if (n.wheel + n.fish + n.animals === 0) return;
-  n.wheels.forEach((w) => {
-    const q = at(w[w.length - 1]);
-    floatText(q.x, q.y - 16, `水車 +${wheelGold(state, w)}`, { cls: 'gold', size: 0.7 });
-    flyTo(q, el.goldBox, '🪙', 1);
-  });
-  fieldCells().forEach((c) => {
-    const q = at(c);
-    if (isPond(state, c)) {
-      const big = n.bigFish.includes(c);
-      floatText(q.x, q.y - 16, big ? `大物！ +${CONFIG.fishGold + CONFIG.bigFishGold}` : `+${CONFIG.fishGold}`, { cls: 'gold', size: big ? 1 : 0.7 });
-      if (big) burst(q.x, q.y, [art('fish'), '✨'], 8, 50);
-      flyTo(q, el.goldBox, '🪙', big ? 3 : 1);
-    }
-    const t = state.tools[c];
-    if (t === 'henhouse' || t === 'cowshed') {
-      floatText(q.x, q.y - 16, `+${animalGold(state, c)}`, { cls: 'gold', size: 0.7 });
-      flyTo(q, el.goldBox, '🪙', 1);
-    }
-  });
-  sfx.coin();
-  await sleep(isCalm() ? 150 : 420);
+  // 水車 → 釣り堀 → 小屋 の順に、1種類ずつ
+  const groups: (() => boolean)[] = [
+    () => {
+      n.wheels.forEach((w) => {
+        const q = at(w[w.length - 1]);
+        floatText(q.x, q.y - 16, `水車 +${wheelGold(state, w)}`, { cls: 'gold', size: 0.7 });
+        flyTo(q, el.goldBox, '🪙', 1);
+      });
+      return n.wheels.length > 0;
+    },
+    () => {
+      const ponds = fieldCells().filter((c) => isPond(state, c));
+      ponds.forEach((c) => {
+        const q = at(c);
+        const big = n.bigFish.includes(c);
+        floatText(q.x, q.y - 16, big ? `大物！ +${CONFIG.fishGold + CONFIG.bigFishGold}` : `+${CONFIG.fishGold}`, { cls: 'gold', size: big ? 1 : 0.7 });
+        if (big) burst(q.x, q.y, [art('fish'), '✨'], 8, 50);
+        flyTo(q, el.goldBox, '🪙', big ? 3 : 1);
+      });
+      return ponds.length > 0;
+    },
+    () => {
+      const sheds = fieldCells().filter((c) => state.tools[c] === 'henhouse' || state.tools[c] === 'cowshed');
+      sheds.forEach((c) => {
+        const q = at(c);
+        floatText(q.x, q.y - 16, `+${animalGold(state, c)}`, { cls: 'gold', size: 0.7 });
+        flyTo(q, el.goldBox, '🪙', 1);
+      });
+      return sheds.length > 0;
+    },
+  ];
+  for (const show of groups) {
+    if (!show()) continue;
+    sfx.coin();
+    await sleep(EVENT_HOLD);
+    await sleep(EVENT_GAP);
+  }
   setGold(state.gold);
 }
 
@@ -973,10 +1014,15 @@ function edgeFrom(plot: Element, sky: boolean): { x: number; y: number } {
 
 async function resolveAutos(): Promise<void> {
   const reels = [...el.reels.children] as HTMLElement[];
+  // リールが止まったときの演出（レア・種の数）が終わってから始める
+  if (state.results.some((r) => SYMBOLS[r.symbol].kind === 'auto')) await sleep(EVENT_HOLD);
   for (let i = 0; i < state.results.length; i++) {
     if (SYMBOLS[state.results[i].symbol].kind !== 'auto') continue;
     const ev = resolveAuto(state, i, rng);
     if (!ev) continue;
+    // いま動いている出目のリールを光らせる（どのリールの出来事か分かるように）
+    actingReel = i;
+    reels[i].classList.add('acting');
     const from = center(reels[i]);
     if (ev.type === 'coin') {
       autoOutcome[i] = `+${ev.amount}金`;
@@ -1154,7 +1200,11 @@ async function resolveAutos(): Promise<void> {
       setGold(state.gold);
     }
     renderReelStates();
-    await sleep(CONFIG.timing.autoStep);
+    // 1つずつ見せきってから、少し間を空けて次へ
+    await sleep(EVENT_HOLD);
+    actingReel = null;
+    reels[i].classList.remove('acting');
+    await sleep(EVENT_GAP);
   }
 }
 
@@ -1385,7 +1435,7 @@ function onPlotTap(cell: number): void {
 }
 
 /** 育って新しく列がそろったら、その列を光らせて知らせる */
-function announceLines(cells: number[]): void {
+function announceLines(cells: number[], delay = 500): number {
   const formed = [...new Set(cells.flatMap((c) => (isRipe(state.field[c]) ? [ripeGroup(state, c)] : [])).filter((g) => g.length >= 3).map((g) => [...g].sort((a, b) => a - b).join()))];
   formed.forEach((key, k) => {
     const group = key.split(',').map(Number);
@@ -1395,8 +1445,9 @@ function announceLines(cells: number[]): void {
       const pts = group.map((c) => center(el.field.children[c]));
       const q = { x: pts.reduce((n, v) => n + v.x, 0) / pts.length, y: pts.reduce((n, v) => n + v.y, 0) / pts.length };
       floatText(q.x, q.y - 10, `${MARK_LINE} 列ができた！`, { cls: 'combo pill', size: 0.95, dur: 1300 });
-    }, 500 + k * 250);
+    }, delay + k * 250);
   });
+  return formed.length;
 }
 
 function afterGrowth(cells: number[], label: string): void {
