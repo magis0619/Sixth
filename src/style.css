@@ -5239,3 +5239,88 @@ body::before {
 .fx-text.pill.combo {
   background: #e0458f;
 }
+
+/* ==== ボタンの成功・失敗（どの部品も同じ見せ方） ==== */
+.is-ok {
+  animation: state-ok 0.6s ease-out;
+}
+
+.is-ng {
+  animation: state-ng 0.5s ease-out;
+}
+
+@keyframes state-ok {
+  0% { box-shadow: 0 0 0 0 rgba(79, 158, 42, 0.9), inset 0 0 0 3px #4f9e2a; }
+  100% { box-shadow: 0 0 0 14px rgba(79, 158, 42, 0), inset 0 0 0 3px rgba(79, 158, 42, 0); }
+}
+
+@keyframes state-ng {
+  0%, 60% { box-shadow: 0 0 0 3px #d64545, inset 0 0 0 3px #d64545; filter: saturate(1.2); }
+  100% { box-shadow: 0 0 0 3px rgba(214, 69, 69, 0), inset 0 0 0 3px rgba(214, 69, 69, 0); }
+}
+
+.fx-text.pill.bad {
+  background: #c8392f;
+}
+
+/* ==== 手の感じ：枠の線をわずかに揺らし、紙のかすれを重ね、札とカードを少し傾ける ==== */
+/* 枠の内側に、手描き風に揺れた線と紙のかすれ（中身の文字には掛けない） */
+.coach::after,
+.stall-pane::after,
+.info-pop::after,
+.charm-card::after,
+.order-tag::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 2px solid rgba(94, 61, 36, 0.38);
+  border-radius: inherit;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='3'/%3E%3CfeColorMatrix values='0 0 0 0 0.35 0 0 0 0 0.24 0 0 0 0 0.14 0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.55;
+  mix-blend-mode: multiply;
+  filter: url(#wobble);
+  pointer-events: none;
+}
+
+/* 長く巻く画面（遊び方・解放）は枠が一緒に流れてしまうので、紙のかすれだけを地に敷く */
+.modal {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='3'/%3E%3CfeColorMatrix values='0 0 0 0 0.35 0 0 0 0 0.24 0 0 0 0 0.14 0 0 0 0.12 0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* 札・カードのわずかな傾き（読みやすさを崩さない ±2度以内） */
+.coach {
+  rotate: -0.6deg;
+}
+
+.hint {
+  rotate: 0.5deg;
+}
+
+.info-pop {
+  rotate: 0.6deg;
+}
+
+.charm-card:nth-child(1) { rotate: -1.4deg; }
+.charm-card:nth-child(2) { rotate: 0.8deg; }
+.charm-card:nth-child(3) { rotate: -0.6deg; }
+
+.stall .shop .item:nth-child(odd) .ico { rotate: -4deg; }
+.stall .shop .item:nth-child(even) .ico { rotate: 3deg; }
+
+.pivot-tag,
+.tab-note,
+.st {
+  rotate: -2deg;
+}
+
+.fx-text.pill {
+  rotate: -2deg;
+}
+
+.calm .coach::after,
+.calm .stall-pane::after,
+.calm .info-pop::after,
+.calm .charm-card::after,
+.calm .order-tag::after {
+  filter: none;
+}

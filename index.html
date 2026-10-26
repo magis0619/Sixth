@@ -11,6 +11,13 @@
     <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&display=swap" rel="stylesheet" />
   </head>
   <body>
+    <!-- 手描き風の線：枠の線をわずかに揺らす（style.css の .sketch-line） -->
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <filter id="wobble">
+        <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" seed="7" />
+        <feDisplacementMap in="SourceGraphic" scale="3.2" />
+      </filter>
+    </svg>
     <div id="app">
       <header class="hud">
         <div class="hud-bar">

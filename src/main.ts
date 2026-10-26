@@ -19,6 +19,7 @@ import { applySkin, showClear, showGameOver, showHelp, showTitle } from './ui/sc
 import { clearRun, saveRun } from './ui/save.ts';
 import { $, el, hooks, meta, rng, setState, state, ui } from './ui/store.ts';
 import { pressable } from './ui/press.ts';
+import { accept, reject } from './ui/states.ts';
 import { renderDanger, renderSky, setupScene } from './ui/scene.ts';
 import { blockLongPress, setupLongPress } from './ui/info.ts';
 import { CUTIN_MS, feverBanner, playCutIn, showCharmOffer, showTaxStamp, witherField } from './ui/shows.ts';
@@ -650,22 +651,20 @@ function onBuyFarm(key: PlaceId | 'expand'): void {
   if (key === 'expand') {
     const price = expandPrice(state);
     if (price === null || !expand(state)) {
-      sfx.error();
-      shake(card, 4);
-      say(price === null ? '最大' : `${price - state.gold}金たりない`);
+      reject(card, price === null ? 'もう広げられない' : `あと${price - state.gold}金`);
       return;
     }
+    accept(card);
     closeSheet();
     render();
     showExpanded();
     return;
   }
   if (!buyPlace(state, key)) {
-    sfx.error();
-    shake(card, 4);
-    say(`${(placePrice(state, key) ?? 0) - state.gold}金たりない`);
+    reject(card, `あと${(placePrice(state, key) ?? 0) - state.gold}金`);
     return;
   }
+  accept(card);
   sfx.buy();
   selected = null;
   closeSheet();
@@ -1261,8 +1260,7 @@ function onReelTap(i: number): void {
   unlockAudio();
   if (ui.busy || state.over) return;
   if (!tutAllowsReel(i)) {
-    sfx.error();
-    shake(el.reels.children[i] as HTMLElement, 4);
+    reject(el.reels.children[i], '光っている所へ');
     return;
   }
   const r = state.results[i];
@@ -1324,8 +1322,7 @@ function onPlotTap(cell: number): void {
   if (ui.busy || state.over) return;
   const plot = el.field.children[cell] as HTMLElement;
   if (!tutAllowsCell(cell)) {
-    sfx.error();
-    shake(plot, 4);
+    reject(plot, '光っている所へ');
     return;
   }
   const p = center(plot);
@@ -1343,10 +1340,8 @@ function onPlotTap(cell: number): void {
     const reel = selected;
     const sym = state.results[reel].symbol;
     if (!canUse(state, reel, cell)) {
-      sfx.error();
-      shake(plot, 5);
       const crop = state.field[cell];
-      say(SEEDS[sym] ? '空きマスへ' : SYMBOLS[sym].shape ? '範囲に作物なし' : !crop ? '作物なし' : '肥料済み');
+      reject(plot, SEEDS[sym] ? '空きマスへ' : SYMBOLS[sym].shape ? '範囲に作物なし' : !crop ? '作物なし' : '肥料済み');
       return;
     }
     const power = state.results[reel].power;
@@ -1423,9 +1418,7 @@ function onPlotTap(cell: number): void {
   }
   if (state.weeds[cell]) {
     if (!pullWeed(state, cell)) {
-      sfx.error();
-      shake(plot, 4);
-      say(`${weedCost(state)}金たりない`);
+      reject(plot, `あと${weedCost(state) - state.gold}金`);
       return;
     }
     sfx.poof();
@@ -1637,16 +1630,15 @@ function onBuy(id: UpgradeId): void {
   if (ui.busy || state.over) return;
   const card = el.shop.querySelector(`[data-id="${id}"]`) as HTMLElement;
   if (!upgradeAvailable(state, id)) {
-    say('最大');
-    shake(card, 3);
+    const sym = UPGRADE_SYMBOL[id]!.symbol;
+    reject(card, UPGRADE_SYMBOL[id]!.delta < 0 && state.bag[sym] === 0 ? 'もういない' : UPGRADE_SYMBOL[id]!.delta < 0 ? '来週また消せる' : '今週は並んでいない');
     return;
   }
   if (!canBuy(state, id)) {
-    sfx.error();
-    shake(card, 4);
-    say(`${upgradePrice(state, id) - state.gold}金たりない`);
+    reject(card, `あと${upgradePrice(state, id) - state.gold}金`);
     return;
   }
+  accept(card);
   const first = state.stats.purchases.length === 0;
   const from = center(card);
   buy(state, id);
