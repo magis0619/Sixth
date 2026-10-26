@@ -1,7 +1,21 @@
-// 自作のSVGイラスト。絵文字の代わりに使い、端末による見た目の差をなくす。
+// 自作のSVGイラストと、一部は描き込みのある画像（Fluent Emoji・MIT）。絵文字の代わりに使い、端末による見た目の差をなくす。
 // すべて 64×64 の格子に描く。外形は濃い茶の 3px の線、面は「地の色・右下の影・左上のハイライト」の3段。
 // 形は Fluent Emoji / Noto / Twemoji / OpenMoji / game-icons を参考に、その物と分かる特徴を入れる。
 // 生き物と太陽・月には顔（点目・頬紅）、作物と道具には顔を付けない。
+
+/**
+ * 描き込みのある絵（Fluent Emoji の3D画像を scripts/build-art.py で整えたもの）。
+ * あるものはこちらを使い、ないものは下の手描きの SVG を使う
+ */
+const IMAGES = Object.fromEntries(
+  Object.entries(import.meta.glob<string>('./assets/art/*.webp', { eager: true, query: '?url', import: 'default' })).map(([path, url]) => [
+    path.replace(/^.*\/(.+)\.webp$/, '$1'),
+    url,
+  ]),
+) as Partial<Record<string, string>>;
+
+/** 画像があれば 64×64 の画像の要素、なければ手描きの SVG */
+const imageOr = (id: string, svg: string) => (IMAGES[id] ? `<image href="${IMAGES[id]}" x="0" y="0" width="64" height="64"/>` : svg);
 
 const INK = '#3d3326';
 const S = `stroke="${INK}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"`;
@@ -34,6 +48,17 @@ function face(d: string, t: Tone | string[], ax: number, ay: number, k = 0.86, s
   const m = `matrix(${k} 0 0 ${k} ${(ax * (1 - k)).toFixed(2)} ${(ay * (1 - k)).toFixed(2)})`;
   return `<path d="${d}" fill="${t[1]}"/><path d="${d}" fill="${t[0]}" transform="${m}"/><path d="${d}" fill="none" ${stroke}/>`;
 }
+/**
+ * 立体の面：左上が明るく右下が暗い放射グラデーションで塗り、輪郭を引く（描き込みのある絵と並べても浮かないように）。
+ * id は絵ごとに一意にする（同じ id の定義が複数あっても中身は同じなので構わない）
+ */
+function ball(d: string, id: string, light: string, base: string, dark: string, fx = 0.32, fy = 0.28, stroke = S): string {
+  return `<defs><radialGradient id="${id}" cx="${fx}" cy="${fy}" r="0.85"><stop offset="0" stop-color="${light}"/><stop offset="0.45" stop-color="${base}"/><stop offset="1" stop-color="${dark}"/></radialGradient></defs><path d="${d}" fill="url(#${id})"/><path d="${d}" fill="none" ${stroke}/>`;
+}
+/** 光沢：ぼかした白い楕円 */
+const gloss = (x: number, y: number, rx: number, ry: number, rot = -30, op = 0.75) =>
+  `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" transform="rotate(${rot} ${x} ${y})" fill="#fff" opacity="${op}"/><ellipse cx="${x}" cy="${y}" rx="${rx * 1.8}" ry="${ry * 1.8}" transform="rotate(${rot} ${x} ${y})" fill="#fff" opacity="${op * 0.25}"/>`;
+
 /** 楕円の path */
 const E = (cx: number, cy: number, rx: number, ry = rx) =>
   `M${cx - rx} ${cy}A${rx} ${ry} 0 1 0 ${cx + rx} ${cy}A${rx} ${ry} 0 1 0 ${cx - rx} ${cy}Z`;
@@ -100,15 +125,16 @@ const strawberry = `
   ${line('M32 20V11', C.green[1], 3.5)}`;
 
 const pumpkin = `
-  ${face(E(17, 40, 11, 15.5), ['#e77f22', '#c9651a'], 13, 34, 0.84)}
-  ${face(E(47, 40, 11, 15.5), ['#e77f22', '#c9651a'], 43, 34, 0.84)}
-  ${face(E(25, 40, 10, 17), C.orange, 21, 33, 0.86)}
-  ${face(E(39, 40, 10, 17), C.orange, 35, 33, 0.86)}
-  ${face(E(32, 40, 9, 18), ['#ffa743', '#e3801f'], 29, 32, 0.86)}
-  ${hl(29, 33, 2.2, 6, -10)}
-  ${line('M31 23Q30 15 35 10', '#6e8a2a', 5)}
-  <path d="M36 15Q46 8 52 16Q44 21 36 15Z" fill="${C.leaf[0]}" ${S2}/>
-  <path d="M38 15Q44 13 49 15.5" fill="none" stroke="${C.leaf[1]}" stroke-width="1.5" stroke-linecap="round"/>`;
+  ${ball(E(17, 41, 11, 15), 'pk-side', '#ffb15a', '#e9781e', '#b24f10', 0.3, 0.3)}
+  ${ball(E(47, 41, 11, 15), 'pk-side', '#ffb15a', '#e9781e', '#b24f10', 0.3, 0.3)}
+  ${ball(E(25, 41, 10, 17), 'pk-mid', '#ffc070', '#f58a26', '#c05a12', 0.3, 0.28)}
+  ${ball(E(39, 41, 10, 17), 'pk-mid', '#ffc070', '#f58a26', '#c05a12', 0.3, 0.28)}
+  ${ball(E(32, 41, 9, 18), 'pk-front', '#ffd08a', '#ff9a33', '#cf6414', 0.35, 0.25)}
+  ${gloss(28.5, 32, 2, 5.5, -10, 0.7)}${gloss(20, 34, 1.3, 3.5, -15, 0.45)}
+  <defs><linearGradient id="pk-stem" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9fbf4a"/><stop offset="1" stop-color="#5b7420"/></linearGradient></defs>
+  <path d="M29 25Q28 15 34 9L38 12Q33 17 34 25Z" fill="url(#pk-stem)" ${S}/>
+  ${ball('M37 15Q47 6 54 15Q46 22 37 15Z', 'pk-leaf', '#b5e57c', '#6cbf3f', '#3e8a24', 0.3, 0.3, S2)}
+  <path d="M39 15Q45 12.5 51 15" fill="none" stroke="#3e8a24" stroke-width="1.4" stroke-linecap="round"/>`;
 
 const corn = `
   ${face('M32 7C40 7 44 18 44 30C44 42 40 50 32 50C24 50 20 42 20 30C20 18 24 7 32 7Z', C.gold, 28, 22, 0.86)}
@@ -210,15 +236,16 @@ const sunRays = (cx: number, cy: number, r1: number, r2: number, n = 8) =>
   }).join('');
 
 const crowBody = `
-  ${face('M20 40L5 47L8 52L22 47Z', C.black, 12, 46, 0.8)}
+  ${ball('M20 40L5 47L8 52L22 47Z', 'cw-tail', '#5d5872', '#34303c', '#16141c', 0.3, 0.3)}
   ${line('M27 51L25 58M35 51L35 58', '#f2a33a', 2.5)}
-  ${face(E(30, 40, 18, 13), C.black, 24, 34, 0.86)}
-  ${face(E(44, 26, 11, 11), C.black, 40, 22, 0.86)}
-  ${hl(39, 20, 3, 1.6, -30, 0.35)}
-  <path d="M53 22L62 27L53 31Z" fill="#f6a93b" ${S}/>
+  ${ball(E(30, 40, 18, 13), 'cw-body', '#6a6584', '#3a3546', '#16141c', 0.35, 0.25)}
+  ${ball(E(44, 26, 11, 11), 'cw-head', '#706b8c', '#3a3546', '#16141c', 0.32, 0.25)}
+  ${gloss(39.5, 20.5, 3.2, 1.6, -30, 0.45)}${gloss(22, 33, 4, 1.6, -15, 0.25)}
+  <defs><linearGradient id="cw-beak" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd27a"/><stop offset="1" stop-color="#e9861f"/></linearGradient></defs>
+  <path d="M53 22L62 27L53 31Z" fill="url(#cw-beak)" ${S}/>
   <circle cx="46.5" cy="23" r="3.6" fill="#fff" ${S2}/><circle cx="47.3" cy="23" r="1.8" fill="${INK}"/><circle cx="46.6" cy="22.2" r="0.7" fill="#fff"/>
-  ${face('M17 37Q28 29 40 39Q30 49 17 37Z', ['#4b465a', '#34303c'], 26, 37, 0.85, S2)}
-  <path d="M22 39Q29 37 35 41" fill="none" stroke="#6a6582" stroke-width="1.4" stroke-linecap="round"/>`;
+  ${ball('M17 37Q28 29 40 39Q30 49 17 37Z', 'cw-wing', '#7c7798', '#4b465a', '#262230', 0.3, 0.3, S2)}
+  <path d="M22 39Q29 37 35 41" fill="none" stroke="#8d88a8" stroke-width="1.4" stroke-linecap="round"/>`;
 
 /** スロットの絵柄（天気・生き物など） */
 const SYMBOL_ART = {
@@ -694,18 +721,23 @@ export const ART = {
   ...SYMBOL_ART,
   ...CHARM_ART,
   ...SCENE_ART,
-  seed: packet(C.red, tomato),
-  berrySeed: packet(C.pink, strawberry),
-  pumpkinSeed: packet(C.orange, pumpkin),
-  melonSeed: packet(C.green, melon),
-  watermelonSeed: packet(['#ff6b6b', '#d94a4a', '#ffb0b0'], watermelon),
+  seed: packet(C.red, imageOr('tomato', tomato)),
+  berrySeed: packet(C.pink, imageOr('strawberry', strawberry)),
+  pumpkinSeed: packet(C.orange, imageOr('pumpkin', pumpkin)),
+  melonSeed: packet(C.green, imageOr('melon', melon)),
+  watermelonSeed: packet(['#ff6b6b', '#d94a4a', '#ffb0b0'], imageOr('watermelon', watermelon)),
 };
 
 export type ArtId = keyof typeof ART;
 
+/** 絵の中身（SVG の中に置く要素）。画像があれば画像 */
+function inner(id: ArtId): string {
+  return imageOr(id, ART[id]);
+}
+
 /** SVG文字列。大きさは周りの font-size に合わせる（1em 四方） */
 export function art(id: ArtId, cls = ''): string {
-  return `<svg class="art ${cls}" viewBox="0 0 64 64" width="1em" height="1em" aria-hidden="true">${ART[id]}</svg>`;
+  return `<svg class="art ${cls}" viewBox="0 0 64 64" width="1em" height="1em" aria-hidden="true">${inner(id)}</svg>`;
 }
 
 /** 演出で使っていた絵文字をイラストに置き換える。対応がなければそのまま */
