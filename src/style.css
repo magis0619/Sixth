@@ -5583,3 +5583,77 @@ body {
 .review b {
   white-space: nowrap;
 }
+
+/* 大豊作：後光と暗幕 */
+.fx-rays {
+  width: 220vmax;
+  height: 220vmax;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(255, 240, 160, 0.95) 0 4%, rgba(255, 200, 60, 0.5) 12%, transparent 40%),
+    repeating-conic-gradient(rgba(255, 214, 80, 0.55) 0 7deg, transparent 7deg 18deg);
+  z-index: 3;
+  pointer-events: none;
+}
+
+.fx-dim {
+  position: fixed;
+  inset: 0;
+  left: 0 !important;
+  top: 0 !important;
+  transform: none;
+  background: #1a0d00;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.fx-slam.harvest {
+  color: #fff3a0;
+  -webkit-text-stroke: 4px #8a2a00;
+  text-shadow: 0 7px 0 #8a2a00, 0 0 40px #ffb000, 0 0 80px #ff6a00;
+  white-space: nowrap;
+}
+
+/* 言語の切り替え（2択のボタン） */
+.set-row .seg {
+  display: flex;
+  border-radius: 999px;
+  background: #e8dcc2;
+  padding: 3px;
+}
+
+.set-row .seg button {
+  border: none;
+  border-radius: 999px;
+  padding: 5px 12px;
+  background: transparent;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #8a7a5c;
+}
+
+.set-row .seg button.on {
+  background: #5aae35;
+  color: #fff;
+  box-shadow: 0 2px 0 #3d7f22;
+}
+
+html[lang='en'] .reel.selected::before {
+  content: 'Selected';
+}
+
+/* 英語は名前が長いので、準備画面の名前は折り返す */
+html[lang='en'] .prep-item b {
+  white-space: normal;
+  text-align: center;
+  line-height: 1.15;
+}
+
+.prep-grid > * {
+  min-width: 0;
+}
+
+.stall-head > span small {
+  margin-left: 6px;
+}

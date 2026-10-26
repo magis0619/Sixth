@@ -1,13 +1,16 @@
 // 設定：音量・振動・演出の速さ・演出控えめ・プレイ記録・データを消す・クレジット
 
+import { EN, L, setLang } from '../i18n.ts';
 import { CONFIG, TELEMETRY_URL } from '../config.ts';
-import { isMuted, setVolume, sfx, toggleMute } from '../audio.ts';
+import { isMuted, setBgmVolume, setVolume, sfx, toggleMute } from '../audio.ts';
 import { isCalm, setFastFx, setVibrate, toggleCalm } from '../fx.ts';
 import { $, el } from './store.ts';
 
 export interface Settings {
   /** 効果音の大きさ（0〜1） */
   volume: number;
+  /** BGM の大きさ（0〜1） */
+  bgm: number;
   vibrate: boolean;
   /** 演出をはやく */
   fast: boolean;
@@ -16,7 +19,7 @@ export interface Settings {
 }
 
 const KEY = 'hatake-slot:settings';
-const DEFAULTS: Settings = { volume: 0.7, vibrate: true, fast: false, telemetry: true };
+const DEFAULTS: Settings = { volume: 0.7, bgm: 0.5, vibrate: true, fast: false, telemetry: true };
 
 export const settings: Settings = load();
 
@@ -39,6 +42,7 @@ function save(): void {
 /** 起動時に設定を反映する */
 export function applySettings(): void {
   setVolume(settings.volume);
+  setBgmVolume(settings.bgm);
   setVibrate(settings.vibrate);
   setFastFx(settings.fast);
 }
@@ -49,21 +53,23 @@ export function showSettings(onClose?: () => void): void {
     `<button class="set-row toggle${on ? ' on' : ''}" id="${id}" role="switch" aria-checked="${on}"><span>${label}${note ? `<small>${note}</small>` : ''}</span><i class="sw"></i></button>`;
   const paint = () => {
     el.overlay.innerHTML = `
-      <div class="modal settings-modal" role="dialog" aria-label="設定">
-        <h2>⚙ 設定</h2>
-        <label class="set-row"><span>効果音の大きさ</span><input type="range" id="set-volume" min="0" max="100" step="10" value="${Math.round(settings.volume * 100)}" /></label>
-        ${toggle('set-mute', '音を消す', isMuted())}
-        ${toggle('set-vibrate', '振動', settings.vibrate, '対応している端末だけ')}
-        ${toggle('set-fast', '演出をはやく', settings.fast, '慣れてきた人向け')}
-        ${toggle('set-calm', '演出控えめ', isCalm(), '揺れ・点滅・フリーズを弱める')}
-        ${TELEMETRY_URL ? toggle('set-telemetry', '遊んだ記録を送る', settings.telemetry, '匿名。難しさの調整に使います') : ''}
-        <button class="set-row danger" id="set-reset"><span>データを消す<small>解放・記録・途中のゲームがすべて消えます</small></span></button>
+      <div class="modal settings-modal" role="dialog" aria-label="${L('設定', 'Settings')}">
+        <h2>⚙ ${L('設定', 'Settings')}</h2>
+        <div class="set-row lang-row"><span>${L('言語', 'Language')}</span><span class="seg"><button id="set-lang-ja" class="${EN ? '' : 'on'}">日本語</button><button id="set-lang-en" class="${EN ? 'on' : ''}">English</button></span></div>
+        <label class="set-row"><span>${L('BGMの大きさ', 'Music volume')}</span><input type="range" id="set-bgm" min="0" max="100" step="10" value="${Math.round(settings.bgm * 100)}" /></label>
+        <label class="set-row"><span>${L('効果音の大きさ', 'Sound volume')}</span><input type="range" id="set-volume" min="0" max="100" step="10" value="${Math.round(settings.volume * 100)}" /></label>
+        ${toggle('set-mute', L('音を消す', 'Mute'), isMuted())}
+        ${toggle('set-vibrate', L('振動', 'Vibration'), settings.vibrate, L('対応している端末だけ', 'On supported devices'))}
+        ${toggle('set-fast', L('演出をはやく', 'Faster effects'), settings.fast, L('慣れてきた人向け', 'For experienced players'))}
+        ${toggle('set-calm', L('演出控えめ', 'Calm effects'), isCalm(), L('揺れ・点滅・フリーズを弱める', 'Less shaking, flashing and freezing'))}
+        ${TELEMETRY_URL ? toggle('set-telemetry', L('遊んだ記録を送る', 'Send play stats'), settings.telemetry, L('匿名。難しさの調整に使います', 'Anonymous; used to tune difficulty')) : ''}
+        <button class="set-row danger" id="set-reset"><span>${L('データを消す', 'Erase data')}<small>${L('解放・記録・途中のゲームがすべて消えます', 'Erases unlocks, records and any game in progress')}</small></span></button>
         <div class="credits">
-          <b>畑スロット</b>
-          <small>書体：Mochiy Pop One、M PLUS Rounded 1c（SIL Open Font License）</small>
-          <small>版：${__BUILD__}・年貢${CONFIG.winTaxes}回でクリア</small>
+          <b>${L('畑スロット', 'Farm Slots')}</b>
+          <small>${L('書体', 'Fonts')}：Mochiy Pop One、M PLUS Rounded 1c（SIL Open Font License）</small>
+          <small>${L('版', 'Version')}：${__BUILD__}・${L(`年貢${CONFIG.winTaxes}回でクリア`, `Win by paying ${CONFIG.winTaxes} taxes`)}</small>
         </div>
-        <button class="primary" id="set-close">閉じる</button>
+        <button class="primary" id="set-close">${L('閉じる', 'Close')}</button>
       </div>`;
     el.overlay.classList.add('show');
     const flip = (id: string, fn: () => void) =>
@@ -79,6 +85,13 @@ export function showSettings(onClose?: () => void): void {
       save();
       sfx.select();
     });
+    $<HTMLInputElement>('set-bgm').addEventListener('input', (e) => {
+      settings.bgm = Number((e.target as HTMLInputElement).value) / 100;
+      setBgmVolume(settings.bgm);
+      save();
+    });
+    $('set-lang-ja').addEventListener('click', () => EN && setLang('ja'));
+    $('set-lang-en').addEventListener('click', () => !EN && setLang('en'));
     flip('set-mute', () => toggleMute());
     flip('set-vibrate', () => {
       settings.vibrate = !settings.vibrate;
@@ -97,7 +110,7 @@ export function showSettings(onClose?: () => void): void {
       if (!armed) {
         armed = true;
         sfx.error();
-        b.querySelector('span')!.firstChild!.textContent = 'もう一度押すと消します';
+        b.querySelector('span')!.firstChild!.textContent = L('もう一度押すと消します', 'Press again to erase');
         b.classList.add('armed');
         return;
       }

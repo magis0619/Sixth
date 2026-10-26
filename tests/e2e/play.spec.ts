@@ -16,6 +16,7 @@ async function boot(page: Page, opts: { tutorial?: boolean } = {}): Promise<stri
         if (!tutorial) localStorage.setItem('hatake-slot:meta', JSON.stringify({ tutorialDone: true }));
       }
       localStorage.setItem('hatake-slot:calm', '1');
+      localStorage.setItem('hatake-slot:lang', 'ja');
     } catch { /* 保存できなくても遊べる */ }
   }, !!opts.tutorial);
   await page.goto('./');

@@ -1,5 +1,6 @@
 // ゲームのルール本体。画面に依存しない純粋なロジック。
 
+import { L } from './i18n.ts';
 import {
   BAG_CONDITIONS, CHARMS, CHARM_ORDER, CHARM_PLACE, CONFIG, CROPS, EVENT_CONDITIONS, PLACE_ORDER, PLACES, SEEDS, SYMBOLS, SYMBOL_ORDER, TOOL_EVOLVE, UPGRADE_SYMBOL,
   type AddUpgradeId, type CharmId, type CropKind, type PlaceId, type ShapeId, type SymbolId, type UpgradeId,
@@ -45,8 +46,7 @@ export type Notice =
   | { kind: 'ready'; id: CharmId }
   | { kind: 'got'; id: CharmId }
   | { kind: 'golden'; id: CharmId }
-  | { kind: 'evolve'; cell: number; from: PlaceId; to: PlaceId }
-  | { kind: 'jackpot'; amount: number };
+  | { kind: 'evolve'; cell: number; from: PlaceId; to: PlaceId };
 
 /** 夜のうちに入ったお金（水車・釣り堀・鶏小屋・牛小屋） */
 export interface NightIncome {
@@ -673,10 +673,10 @@ function guardians(state: GameState, cell: number): number[] {
 }
 
 /** 特別なお守りをその場でもらう */
-function grant(state: GameState, id: CharmId): void {
+function grant(state: GameState, id: CharmId, notice = true): void {
   state.charms[id]++;
   state.stats.charms.push({ day: state.day, id });
-  state.notices.push({ kind: 'got', id });
+  if (notice) state.notices.push({ kind: 'got', id });
 }
 
 /** 袋の中身の条件を満たした特別なお守りを、次の3択に並ぶようにする */
@@ -1235,16 +1235,16 @@ export function cellMultiplier(state: GameState, cell: number): number {
 /** 倍率の内訳（演出で1つずつ乗せて見せる） */
 export function multSteps(state: GameState, cell: number): { label: string; x: number }[] {
   // 大物は1個で売る作物なので、単品でも半値にならない
-  if (state.field[cell] && CROPS[state.field[cell]!.kind].big) return [{ label: '大物', x: 1 }];
+  if (state.field[cell] && CROPS[state.field[cell]!.kind].big) return [{ label: L('大物', 'Big'), x: 1 }];
   const runs = runsThrough(state, cell);
-  if (!runs.length) return [{ label: '単品', x: singleMult(state) }];
-  const steps = [{ label: '列', x: CONFIG.lineMult }];
+  if (!runs.length) return [{ label: L('単品', 'Single'), x: singleMult(state) }];
+  const steps = [{ label: L('列', 'Line'), x: CONFIG.lineMult }];
   if (inSameCropLine(state, cell)) {
-    steps.push({ label: '同じ作物', x: CONFIG.sameCropMult });
+    steps.push({ label: L('同じ作物', 'Same crop'), x: CONFIG.sameCropMult });
     // トマト祭り：トマトだけの列はさらに上乗せ
-    if (state.charms.tomatoFest && state.field[cell]!.kind === 'tomato') steps.push({ label: 'トマト祭り', x: 1.5 });
+    if (state.charms.tomatoFest && state.field[cell]!.kind === 'tomato') steps.push({ label: L('トマト祭り', 'Tomato Fest'), x: 1.5 });
   }
-  if (runs.length > 1) steps.push({ label: `${runs.length}本が交差`, x: 1 + CONFIG.crossBonus * (runs.length - 1) });
+  if (runs.length > 1) steps.push({ label: L(`${runs.length}本が交差`, `${runs.length} lines cross`), x: 1 + CONFIG.crossBonus * (runs.length - 1) });
   return steps;
 }
 
@@ -1309,7 +1309,7 @@ export interface SellResult {
   steps: { label: string; x: number }[];
   /** この売却で注文を達成したときの報酬 */
   orderReward: number;
-  /** 豊年満作の大当たり */
+  /** 大豊作の大当たり */
   bumper: number;
 }
 
@@ -1332,7 +1332,7 @@ export function sell(state: GameState, cell: number, single = false): SellResult
     const c = state.field[i]!;
     return { cell: i, price: Math.round(cropPrice(state, c, i) * mults[k]), kind: c.kind };
   });
-  // 豊年満作：畑の植えられるマスを全部いっぺんに売った
+  // 大豊作：畑の植えられるマスを全部いっぺんに売った
   const plantable = fieldCells(state).filter((i) => !state.tools[i]).length;
   const whole = !single && size >= plantable && size >= 9;
   // 巣箱は周りで列が売れるたびに経験を積む
@@ -1348,11 +1348,11 @@ export function sell(state: GameState, cell: number, single = false): SellResult
   cells.forEach(({ kind }) => state.stats.soldKinds.includes(kind) || state.stats.soldKinds.push(kind));
   if (CONFIG.exhibitionOn && state.charms.exhibition === 0 && (Object.keys(CROPS) as CropKind[]).every((k) => state.stats.soldKinds.includes(k))) grant(state, 'exhibition');
   let bumper = 0;
-  if (whole) {
-    if (state.charms.bumperHarvest === 0) grant(state, 'bumperHarvest');
+  // 大豊作は1プレイに1回だけ
+  if (whole && state.charms.bumperHarvest === 0) {
+    grant(state, 'bumperHarvest', false);
     bumper = Math.round(CONFIG.bumperJackpot * (1 + state.taxesPaid * CONFIG.jackpotGrowth));
     earn(state, bumper);
-    state.notices.push({ kind: 'jackpot', amount: bumper });
   }
   if (line) evolveTools(state);
   state.stats.cropsSold += cells.length;

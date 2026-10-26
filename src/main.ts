@@ -1,3 +1,4 @@
+import { applyStaticLang, EN, gold, L } from './i18n.ts';
 import './style.css';
 import {
   CHARMS, CHARM_ORDER, DIFFICULTIES, TOOL_EVOLVE, CONFIG, CROPS, PLACES, PLACE_ORDER, SEEDS, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL, type AddUpgradeId, type PlaceId, type SymbolId, type UpgradeId,
@@ -5,12 +6,12 @@ import {
 import {
   isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawDay, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult, mustPlace, hasRoomFor,
 } from './game.ts';
-import { isMuted, sfx, suspendAudio, toggleMute, unlockAudio } from './audio.ts';
+import { duckBgm, isMuted, sfx, suspendAudio, toggleMute, unlockAudio } from './audio.ts';
 import { saveMeta, setupFrom } from './meta.ts';
 import { art, type ArtId } from './art.ts';
 import { track } from './telemetry.ts';
 import {
-  burst, center, coinRain, confetti, flash, floatText, flyTo, hitStop, isCalm, pop, rollNumber, scanlines, shake, shakeFor, sleep, slamText, slowFactor, speedLines, stackMultipliers, toggleCalm, vibrate, rainShower, setHurry, later, fmtMult, travel, sunBeam, beeFlight,
+  burst, center, coinRain, rays, dim, firework, confetti, flash, floatText, flyTo, hitStop, isCalm, pop, rollNumber, scanlines, shake, shakeFor, sleep, slamText, slowFactor, speedLines, stackMultipliers, toggleCalm, vibrate, rainShower, setHurry, later, fmtMult, travel, sunBeam, beeFlight,
 } from './fx.ts';
 import {
   FRUIT, PLACE_ART, setHtml, STAGE_NAMES, type SheetName, bagPct, closeSheet, costHtml, cropEmoji, openSheet, openSheetName, roleClass, say, shapeIcon, stageOf, symHtml, upgradeArt, upgradeEffect, visibleOr,
@@ -95,6 +96,11 @@ function render(): void {
   renderTutorial();
 }
 
+/** 先に置く物があるときの断りのひと言 */
+const placeFirst = () => L(`先に${PLACES[state.stock[0]].name}を置く`, `Place the ${PLACES[state.stock[0]].name} first`);
+/** お金が足りないときのひと言 */
+const needGold = (price: number) => L(`あと${price - state.gold}金`, `${price - state.gold}g short`);
+
 /** 出来事と出来事の間の小さな間（同時に起こさず、順番に見せる） */
 const EVENT_GAP = 260;
 /** 1つの出来事を見せておく長さ（次の出来事はこのあと） */
@@ -117,8 +123,8 @@ function playNotice(n: Notice): void {
   const tab = visibleOr(null, 'charms');
   if (n.kind === 'ready') {
     sfx.rare();
-    floatText(top.x, top.y, `${CHARMS[n.id].name} 解放！`, { cls: 'gold', size: 1.2, dur: 1800 });
-    floatText(top.x, top.y + 34, '次の年貢で選べる', { size: 0.7, dur: 1800 });
+    floatText(top.x, top.y, L(`${CHARMS[n.id].name} 解放！`, `${CHARMS[n.id].name} unlocked!`), { cls: 'gold', size: 1.2, dur: 1800 });
+    floatText(top.x, top.y + 34, L('次の年貢で選べる', 'Pickable after the next tax'), { size: 0.7, dur: 1800 });
     burst(top.x, top.y, [art(n.id), '✨', '⭐'], 14, 110);
     pop(tab, 1.2);
   } else if (n.kind === 'got') {
@@ -132,7 +138,7 @@ function playNotice(n: Notice): void {
   } else if (n.kind === 'golden') {
     sfx.fever();
     flash('#ffd84a', 500);
-    void slamText(`✦ ${CHARMS[n.id].name} 金色！`, { size: 0.6, dur: 1500 });
+    void slamText(L(`✦ ${CHARMS[n.id].name} 金色！`, `✦ ${CHARMS[n.id].name} golden!`), { size: 0.6, dur: 1500 });
     coinRain(20);
   } else if (n.kind === 'evolve') {
     const plot = el.field.children[n.cell];
@@ -142,15 +148,53 @@ function playNotice(n: Notice): void {
     sfx.rare();
     burst(q.x, q.y, ['✨', '🌟', '⭐'], 16, 90);
     pop(plot, 1.3);
-    floatText(q.x, q.y - 30, `${PLACES[n.to].name}に進化！`, { cls: 'gold', size: 1, dur: 1600 });
-  } else if (n.kind === 'jackpot') {
-    sfx.fever();
-    coinRain(50);
-    confetti(40);
-    void slamText('豊年満作!!', { dur: 1500 });
-    const f = center(el.field);
-    void rollNumber(f.x, f.y + 40, n.amount, { prefix: '+', size: 1.1, hold: 700, rise: true });
+    floatText(q.x, q.y - 30, L(`${PLACES[n.to].name}に進化！`, `Evolved into ${PLACES[n.to].name}!`), { cls: 'gold', size: 1, dur: 1600 });
   }
+}
+
+/** 大豊作の幕開け：畑いっぱいの実が真ん中から順に跳ね、後光とともに「大豊作！」 */
+async function bigHarvestIntro(ghosts: HTMLElement[]): Promise<void> {
+  const f = center(el.field);
+  duckBgm(7000);
+  sfx.reach();
+  await hitStop(220);
+  const order = ghosts
+    .map((g) => ({ g, d: Math.hypot(parseFloat(g.style.left) - f.x, parseFloat(g.style.top) - f.y) }))
+    .sort((a, b) => a.d - b.d);
+  order.forEach(({ g }, k) => {
+    later(() => {
+      g.animate([{ scale: 1 }, { scale: 1.6, offset: 0.4 }, { scale: 0.9, offset: 0.75 }, { scale: 1.1 }], { duration: 420, easing: 'cubic-bezier(.3,1.6,.5,1)', fill: 'forwards' });
+      burst(parseFloat(g.style.left), parseFloat(g.style.top), ['🌾', '✨'], 4, 40);
+      sfx.pon();
+    }, k * 55);
+  });
+  await sleep(order.length * 55 + 300);
+  dim(3400, 0.55);
+  rays(3200);
+  flash('#fff2a0', 600);
+  shake(el.app, 16);
+  vibrate([80, 40, 80, 40, 200]);
+  sfx.fanfare();
+  await slamText(L('大豊作！', 'BIG HARVEST!'), { cls: 'harvest', size: 1.5, dur: 2600 });
+}
+
+/** 大豊作の締め：花火・金貨の雨・紙吹雪の中で大当たりの額 */
+async function bigHarvestFinale(amount: number): Promise<void> {
+  const f = center(el.field);
+  sfx.fever();
+  flash('#ffe680', 500);
+  shake(el.app, 12);
+  coinRain(90);
+  confetti(110);
+  const colors = ['#ffd84a', '#ff6a4a', '#7fe07f', '#6ac8ff', '#ff9ae0', '#ffd84a'];
+  colors.forEach((c, i) =>
+    later(() => {
+      firework(window.innerWidth * (0.15 + (0.7 * ((i * 2) % 5)) / 4), window.innerHeight * (0.16 + 0.1 * (i % 2)), c);
+      sfx.firework();
+    }, i * 300),
+  );
+  flyTo(f, el.goldBox, '🪙', 16, () => setGold(state.gold), true);
+  await rollNumber(f.x, f.y, amount, { prefix: L('大豊作 +', 'Big harvest +'), size: 1.5, hold: 1400, rise: true });
 }
 
 // ---- 画面の高さに合わせて畑のマスの大きさを決める（まわすボタンが必ず画面内に入るように） ----
@@ -184,13 +228,13 @@ function renderStatus(): void {
   const chips: string[] = [];
   const good = state.fever.filter((s) => SYMBOLS[s].rarity !== 'bad');
   const bad = state.fever.filter((s) => SYMBOLS[s].rarity === 'bad');
-  if (good.length) chips.push(`<span class="st fever">🔥 フィーバー：${good.map((s) => SYMBOLS[s].name).join('・')}</span>`);
-  if (bad.length) chips.push(`<span class="st danger">⚠️ ${bad.map((s) => `${SYMBOLS[s].name}の群れ`).join('・')}</span>`);
-  if (state.priceMult > 1) chips.push(`<span class="st merchant">🧑‍🌾 今日の売値 ×${fmtMult(state.priceMult)}</span>`);
-  if (state.cloverBoost > 1) chips.push(`<span class="st clover">🍀 明日は金の種が出やすい（×${fmtMult(state.cloverBoost)}）</span>`);
+  if (good.length) chips.push(`<span class="st fever">🔥 ${L('フィーバー', 'Fever')}：${good.map((s) => SYMBOLS[s].name).join(L('・', ', '))}</span>`);
+  if (bad.length) chips.push(`<span class="st danger">⚠️ ${bad.map((s) => L(`${SYMBOLS[s].name}の群れ`, `${SYMBOLS[s].name} swarm`)).join(L('・', ', '))}</span>`);
+  if (state.priceMult > 1) chips.push(`<span class="st merchant">🧑‍🌾 ${L('今日の売値', "Today's prices")} ×${fmtMult(state.priceMult)}</span>`);
+  if (state.cloverBoost > 1) chips.push(`<span class="st clover">🍀 ${L('明日は金の種が出やすい', 'Golden seeds likelier tomorrow')}（×${fmtMult(state.cloverBoost)}）</span>`);
   // セット効果：そろっている間だけ
-  if (hasRanch(state)) chips.push(`<span class="st set">${art('henhouse')}${art('cowshed')}${art('hive')} 牧場 ×2</span>`);
-  if (isColorful(state)) chips.push(`<span class="st set">${art('sunBlessing')} 彩りの畑 +${Math.round(CONFIG.colorfulBonus * 100)}%</span>`);
+  if (hasRanch(state)) chips.push(`<span class="st set">${art('henhouse')}${art('cowshed')}${art('hive')} ${L('牧場', 'Ranch')} ×2</span>`);
+  if (isColorful(state)) chips.push(`<span class="st set">${art('sunBlessing')} ${L('彩りの畑', 'Colorful field')} +${Math.round(CONFIG.colorfulBonus * 100)}%</span>`);
   setHtml(el.status, chips.join(''));
 }
 
@@ -202,15 +246,15 @@ function renderPick(): void {
     // 買った建物・土地を置くところ
     const id = state.stock[0];
     box.hidden = false;
-    setHtml(box, `<span class="pick-label">置く</span><span class="pick-sym">${art(PLACE_ART[id])}</span><b>${PLACES[id].name}</b><span class="pick-what">${PLACES[id].kind === 'tool' ? '空きマスへ' : '植わっていてもOK'}</span>`);
+    setHtml(box, `<span class="pick-label">${L('置く', 'Place')}</span><span class="pick-sym">${art(PLACE_ART[id])}</span><b>${PLACES[id].name}</b><span class="pick-what">${PLACES[id].kind === 'tool' ? L('空きマスへ', 'on an empty plot') : L('植わっていてもOK', 'crops are OK')}</span>`);
     return;
   }
   const r = selected !== null ? state.results[selected] : null;
   box.hidden = !r;
   if (!r) return;
   const def = SYMBOLS[r.symbol];
-  const what = SEEDS[r.symbol] ? `植える${r.left > 1 ? ` あと${r.left}` : ''}` : def.shape ? shapeIcon(def.shape) : '';
-  setHtml(box, `<span class="pick-label">選択中</span><span class="pick-sym">${symHtml(r.symbol)}</span><b>${def.name}</b><span class="pick-what">${what}</span>`);
+  const what = SEEDS[r.symbol] ? L(`植える${r.left > 1 ? ` あと${r.left}` : ''}`, `plant${r.left > 1 ? ` ×${r.left}` : ''}`) : def.shape ? shapeIcon(def.shape) : '';
+  setHtml(box, `<span class="pick-label">${L('選択中', 'Selected')}</span><span class="pick-sym">${symHtml(r.symbol)}</span><b>${def.name}</b><span class="pick-what">${what}</span>`);
 }
 
 function renderMarket(): void {
@@ -226,7 +270,7 @@ function renderMarket(): void {
 function renderCharms(): void {
   const owned = CHARM_ORDER.filter((id) => state.charms[id] > 0);
   el.charmPanel.hidden = owned.length > 0;
-  el.charmCount.textContent = state.stock.length ? `置く待ち${state.stock.length}` : owned.length ? `${owned.reduce((n, id) => n + state.charms[id], 0)}個` : '';
+  el.charmCount.textContent = state.stock.length ? L(`置く待ち${state.stock.length}`, `${state.stock.length} to place`) : owned.length ? `${owned.reduce((n, id) => n + state.charms[id], 0)}` : '';
   setHtml(
     el.charms,
     owned
@@ -246,7 +290,7 @@ function renderOrder(): void {
   el.order.hidden = !o;
   if (!o) return;
   el.order.className = `order-tag${o.done ? ' done' : ''}`;
-  setHtml(el.order, `<span class="sign-nail l"></span><span class="sign-nail r"></span><small>ご注文</small><span class="order-ico">${art(FRUIT[o.crop])}</span><b>${o.done ? '達成！' : `${CROPS[o.crop].name} ${o.have}/${o.need}`}</b><span class="order-reward">${o.done ? '✓' : `${o.reward}金`}</span>`);
+  setHtml(el.order, `<span class="sign-nail l"></span><span class="sign-nail r"></span><small>${L('ご注文', 'Order')}</small><span class="order-ico">${art(FRUIT[o.crop])}</span><b>${o.done ? L('達成！', 'Done!') : `${CROPS[o.crop].name} ${o.have}/${o.need}`}</b><span class="order-reward">${o.done ? '✓' : gold(o.reward)}</span>`);
 }
 
 /** 年貢：「年貢 7金 あと2日」を言葉で。払えるときは緑、足りないときは赤 */
@@ -256,9 +300,9 @@ function renderTax(): void {
   const warn = short && t.daysLeft <= CONFIG.taxWarnDays;
   el.tax.className = `hud-tax${warn ? ' warn' : ''}${short ? ' short' : ' ok'}${state.difficulty ? ' hard' : ''}`;
   el.tax.innerHTML =
-    `<span class="tax-label">${art('bale')}<span class="tax-word">年貢</span></span><b>${t.amount}金</b>` +
-    `<span class="tax-when">${t.daysLeft === 0 ? '今日まで' : `あと${t.daysLeft}日`}</span>` +
-    `<span class="tax-mark">${short ? '足りない' : '払える'}</span>`;
+    `<span class="tax-label">${art('bale')}<span class="tax-word">${L('年貢', 'Tax')}</span></span><b>${gold(t.amount)}</b>` +
+    `<span class="tax-when">${t.daysLeft === 0 ? L('今日まで', 'today') : L(`あと${t.daysLeft}日`, `${t.daysLeft}d left`)}</span>` +
+    `<span class="tax-mark">${short ? L('足りない', 'short') : L('払える', 'ready')}</span>`;
 }
 
 /** 列（縦・横・斜めに3つ以上）にそろった実があるか */
@@ -269,11 +313,11 @@ function renderGoal(): void {
   const ready = available.some((u) => canBuy(state, u.id));
   tab.classList.toggle('ready', ready);
   if (ready) {
-    el.goal.textContent = '買える！';
+    el.goal.textContent = L('買える！', 'Can buy!');
     return;
   }
   const next = available.sort((a, b) => upgradePrice(state, a.id) - upgradePrice(state, b.id))[0];
-  el.goal.textContent = next ? `あと${upgradePrice(state, next.id) - state.gold}金` : '';
+  el.goal.textContent = next ? L(`あと${upgradePrice(state, next.id) - state.gold}金`, `${upgradePrice(state, next.id) - state.gold}g to go`) : '';
 }
 
 function usableReels(): number[] {
@@ -286,7 +330,7 @@ function reelTag(i: number): { text: string; cls: string } {
   const def = SYMBOLS[r.symbol];
   if (def.kind === 'auto') {
     // 絵柄はイラストで分かるので、札には結果だけを短く書く
-    const text = autoOutcome[i] ?? '自動';
+    const text = autoOutcome[i] ?? L('自動', 'Auto');
     return { text, cls: def.rarity === 'bad' ? 'auto-bad used' : 'used' };
   }
   if (r.used) return { text: '', cls: 'used' };
@@ -328,7 +372,7 @@ function renderReelStates(): void {
     tagEl.classList.toggle('empty', !html);
     tagEl.classList.toggle('shape', !tag.text && !!shape);
     renderCount(b, i);
-    b.setAttribute('aria-label', r ? `${SYMBOLS[r.symbol].name}: ${tag.text}` : 'リール');
+    b.setAttribute('aria-label', r ? `${SYMBOLS[r.symbol].name}: ${tag.text}` : L('リール', 'Reel'));
   });
 }
 
@@ -362,18 +406,18 @@ function renderSpinButton(): void {
   go.hidden = !ready;
   go.classList.toggle('tax', state.day > 0 && t.daysLeft === 0);
   setHtml(go, state.day === 0
-    ? '<span class="go-hand">👆</span><span class="go-text"><b>タップで回す</b></span>'
-    : `<span class="go-hand">👆</span><span class="go-text">${t.daysLeft === 0 ? `<small>年貢${t.amount}金を納めて</small>` : ''}<b>${state.day + 1}日目へ</b><small>リールをタップ</small></span>`);
+    ? '<span class="go-hand">👆</span><span class="go-text"><b>' + L('タップで回す', 'Tap to spin') + '</b></span>'
+    : `<span class="go-hand">👆</span><span class="go-text">${t.daysLeft === 0 ? `<small>${L(`年貢${t.amount}金を納めて`, `Pay ${t.amount}g tax`)}</small>` : ''}<b>${L(`${state.day + 1}日目へ`, `To day ${state.day + 1}`)}</b><small>${L('リールをタップ', 'Tap the reels')}</small></span>`);
   // 筐体の看板の文字を、回せるときだけ「タップで回す」に切り替える
   const cue = document.querySelector('.machine-top') as HTMLElement;
   cue.classList.toggle('cue', ready);
   setHtml(cue, !ready
-    ? `${art('coin')} 畑スロット ${art('coin')}`
+    ? `${art('coin')} ${L('畑スロット', 'FARM SLOTS')} ${art('coin')}`
     : state.day === 0
-    ? '▼ タップで回す ▼'
+    ? L('▼ タップで回す ▼', '▼ TAP TO SPIN ▼')
     : t.daysLeft === 0
-      ? `▼ タップで年貢 ${t.amount}金を納めて回す ▼`
-      : `▼ タップで${state.day + 1}日目へ ▼`);
+      ? L(`▼ タップで年貢 ${t.amount}金を納めて回す ▼`, `▼ TAP: PAY ${t.amount}g TAX & SPIN ▼`)
+      : L(`▼ タップで${state.day + 1}日目へ ▼`, `▼ TAP FOR DAY ${state.day + 1} ▼`));
 }
 
 /** 売値の倍率の印：3つ並んだ点（列）と1つの点（単品） */
@@ -431,7 +475,7 @@ function renderField(): void {
     }
     const cls = ['plot'];
     let html = '';
-    let label = '空きマス';
+    let label = L('空きマス', 'Empty plot');
     const tool = state.tools[i];
     const tile = state.tiles[i];
     const part = crop?.anchor !== undefined ? state.field[crop.anchor] : null;
@@ -461,7 +505,7 @@ function renderField(): void {
       html += `<span class="crop"${ripe ? '' : ` style="--g:${(0.55 + 0.45 * (crop.growth / def.ripe)).toFixed(2)}"`}>${cropEmoji(crop)}</span>`;
       // 育っている間も何の作物か分かるように小さな札を出す
       if (!ripe) html += `<span class="badge-kind">${art(FRUIT[crop.kind])}</span>`;
-      if (crop.fertilized) html += '<span class="badge-fert">肥×2</span>';
+      if (crop.fertilized) html += `<span class="badge-fert">${L('肥×2', 'F×2')}</span>`;
       if (ripe) {
         // 列に入っていれば倍率、入っていなければ単品（半値）
         const mult = cellMultiplier(state, i);
@@ -473,42 +517,42 @@ function renderField(): void {
         // 金貨の上に数字（「金」の字は入れない）。桁が多いほど字を小さく
         html += `<span class="price d${String(price).length}">${art('coinBlank')}<b>${price}</b></span>`;
         // 倍率は文字ではなく印と数字で：並んだ点＝列、1つの点＝単品
-        if (def.big) html += '<span class="badge-line">大物</span>';
+        if (def.big) html += `<span class="badge-line">${L('大物', 'Big')}</span>`;
         else html += inLine ? `<span class="badge-line">${MARK_LINE}×${fmtMult(mult)}</span>` : `<span class="badge-single">${MARK_SINGLE}×${fmtMult(singleMult(state))}</span>`;
-        label = `${def.name} 実、タップで${price}金で売る${def.big ? '' : inLine ? '（列ごと）' : '（単品は半値）'}`;
+        label = L(`${def.name} 実、タップで${price}金で売る${def.big ? '' : inLine ? '（列ごと）' : '（単品は半値）'}`, `${def.name}, ripe: tap to sell for ${price}g${def.big ? '' : inLine ? ' (whole line)' : ' (single: half price)'}`);
       } else {
         html += `<span class="pips">${Array.from({ length: def.ripe }, (_, k) => `<i class="pip${k < crop.growth ? ' on' : ''}"></i>`).join('')}</span>`;
-        label = `${def.name} ${STAGE_NAMES[stageOf(crop)]}（あと${def.ripe - crop.growth}で実る）`;
+        label = L(`${def.name} ${STAGE_NAMES[stageOf(crop)]}（あと${def.ripe - crop.growth}で実る）`, `${def.name}, ${STAGE_NAMES[stageOf(crop)]} (ripe in ${def.ripe - crop.growth})`);
       }
       // 大物は本体のマスから2×2の大きさで重ねて描く
       if (def.big) html = `<span class="big-wrap">${html}</span>`;
     } else if (state.weeds[i]) {
       cls.push('weedy');
-      html += `<span class="crop">${art('weed')}</span><span class="pull">${weedCost(state) ? `抜く ${weedCost(state)}金` : '抜く'}</span>`;
-      label = `雑草、タップで抜く（${weedCost(state)}金）`;
+      html += `<span class="crop">${art('weed')}</span><span class="pull">${weedCost(state) ? L(`抜く ${weedCost(state)}金`, `Pull ${weedCost(state)}g`) : L('抜く', 'Pull')}</span>`;
+      label = L(`雑草、タップで抜く（${weedCost(state)}金）`, `Weed: tap to pull (${weedCost(state)}g)`);
     } else if (isPond(state, i)) {
       cls.push('pond');
       html += `<span class="crop">${art('fish')}</span>`;
-      label = `釣り堀：毎晩+${CONFIG.fishGold}金、ときどき大物`;
+      label = L(`釣り堀：毎晩+${CONFIG.fishGold}金、ときどき大物`, `Fishing pond: +${CONFIG.fishGold}g nightly, sometimes a big catch`);
     } else {
       if (state.tilled[i]) {
         cls.push('tilled');
-        label = '耕した土（植えると成長+1）';
+        label = L('耕した土（植えると成長+1）', 'Tilled soil (planting gives +1 growth)');
       }
       const tilledMark = state.tilled[i] && !tile ? `<span class="till-mark">${art('hoe')}<b>+${state.charms.tillMaster ? 2 : 1}</b></span>` : '';
       html += tilledMark || (tile
         ? `<span class="tile-label"><span class="tile-ico">${art(PLACE_ART[tile])}</span>${tile === 'water' ? '+1' : '×2'}</span>`
-        : '<span class="empty">空き</span>');
+        : `<span class="empty">${L('空き', 'empty')}</span>`);
     }
     if (wheelEnds.has(i)) {
       html += `<span class="badge-wheel">${art('waterwheel')}</span>`;
-      label += '、水車';
+      label += L('、水車', ', waterwheel');
     }
     if (tile) label += `、${PLACES[tile].name}（${PLACES[tile].desc}）`;
     if (state.frost[i]) {
       cls.push('frozen');
-      html += `<span class="ice"></span><span class="badge-frost">${art('frost')}${state.frost[i]}日</span>`;
-      label += `、凍っている（あと${state.frost[i]}日）`;
+      html += `<span class="ice"></span><span class="badge-frost">${art('frost')}${state.frost[i]}${L('日', 'd')}</span>`;
+      label += L(`、凍っている（あと${state.frost[i]}日）`, `, frozen (${state.frost[i]} more days)`);
     }
     if (targets) cls.push(targets.includes(i) ? 'target' : 'dim');
     // 種を選んでいるとき：ここに植えると列になるマスに倍率の見込み
@@ -516,7 +560,7 @@ function renderField(): void {
       const m = plantLineMult(state, i, plantKind);
       if (m > 0) {
         html += `<span class="line-hint${m > CONFIG.lineMult ? ' same' : ''}">${MARK_LINE}×${fmtMult(m)}</span>`;
-        label += `、植えると列（×${fmtMult(m)}）`;
+        label += L(`、植えると列（×${fmtMult(m)}）`, `, planting makes a line (×${fmtMult(m)})`);
       }
     }
     if (preview.includes(i)) cls.push('preview');
@@ -570,7 +614,7 @@ function renderUpgradeList(container: HTMLElement, items: typeof UPGRADES): void
     const ico = upgradeArt(u.id);
     const pivot = u.id.startsWith('add') && isPivotAdd(state, u.id as AddUpgradeId);
     b.classList.toggle('pivot', pivot);
-    const html = `<span class="ico">${ico}</span><span class="text"><span class="name">${u.name}${pivot ? '<span class="pivot-tag">新しい作戦</span>' : ''}</span><span class="effect">${pivot ? CONFIG.pivotAdds[u.id]!.split('：')[1] : upgradeEffect(u.id)}</span></span>${costHtml(available ? price : null, affordable, u.id.startsWith('remove') && state.bag[UPGRADE_SYMBOL[u.id]!.symbol] > 0 ? '来週' : '完了')}`;
+    const html = `<span class="ico">${ico}</span><span class="text"><span class="name">${u.name}${pivot ? `<span class="pivot-tag">${L('新しい作戦', 'New plan')}</span>` : ''}</span><span class="effect">${pivot ? CONFIG.pivotAdds[u.id]!.split(/：|: /)[1] : upgradeEffect(u.id)}</span></span>${costHtml(available ? price : null, affordable, u.id.startsWith('remove') && state.bag[UPGRADE_SYMBOL[u.id]!.symbol] > 0 ? L('来週', 'Next wk') : L('完了', 'Done'))}`;
     if (b.innerHTML !== html) b.innerHTML = html;
   });
   if (container.id === 'remove-shop') $('stall-empty').hidden = items.length > 0;
@@ -582,7 +626,7 @@ function showExpanded(): void {
   flash('#c8f0a0', 400);
   const f = center(el.field);
   burst(f.x, f.y, ['🌱', '✨', '⭐'], 18, 160);
-  floatText(f.x, f.y, `畑が広がった！ ${state.cols}×${state.rows}`, { cls: 'good', size: 1.2, dur: 1500 });
+  floatText(f.x, f.y, L(`畑が広がった！ ${state.cols}×${state.rows}`, `Field expanded! ${state.cols}×${state.rows}`), { cls: 'good', size: 1.2, dur: 1500 });
   fieldCells().forEach((c) => pop(el.field.children[c], 1.08));
 }
 
@@ -595,15 +639,15 @@ function renderFarmShop(): void {
   const expandItem = {
     key: 'expand',
     ico: art('expand'),
-    name: '畑を広げる',
-    effect: ep === null ? `これ以上は広げられない（${CONFIG.fieldCols}×${CONFIG.fieldRows}）` : `${state.cols}×${state.rows} → ${nextCols}×${nextRows}`,
+    name: L('畑を広げる', 'Expand field'),
+    effect: ep === null ? L(`これ以上は広げられない（${CONFIG.fieldCols}×${CONFIG.fieldRows}）`, `Already at max (${CONFIG.fieldCols}×${CONFIG.fieldRows})`) : `${state.cols}×${state.rows} → ${nextCols}×${nextRows}`,
     price: ep,
     ok: canExpand(state),
   };
   // 広げきったら「完了」は一番下へ（今週の品を上に）
   if (ep !== null) items.push(expandItem);
   PLACE_ORDER.filter((id) => state.weeklyPlaces.includes(id)).forEach((id) =>
-    items.push({ key: id, ico: art(PLACE_ART[id]), name: PLACES[id].name, effect: mustPlace(state) ? `先に${PLACES[state.stock[0]].name}を置く` : hasRoomFor(state, id) ? PLACES[id].desc : PLACES[id].kind === 'tool' ? '置ける空きマスがない' : '敷けるマスがない', price: placePrice(state, id), ok: canBuyPlace(state, id), pivot: isPivotPlace(state, id) }),
+    items.push({ key: id, ico: art(PLACE_ART[id]), name: PLACES[id].name, effect: mustPlace(state) ? placeFirst() : hasRoomFor(state, id) ? PLACES[id].desc : PLACES[id].kind === 'tool' ? L('置ける空きマスがない', 'No empty plot to place it') : L('敷けるマスがない', 'No plot to lay it on'), price: placePrice(state, id), ok: canBuyPlace(state, id), pivot: isPivotPlace(state, id) }),
   );
   if (ep === null) items.push(expandItem);
   // 週が替わって品が入れ替わったら作り直す（数が同じでも、ボタンが前の品のまま押されないように）
@@ -622,7 +666,7 @@ function renderFarmShop(): void {
   items.forEach((it, i) => {
     const b = el.farmShop.children[i] as HTMLButtonElement;
     b.className = `item${it.ok ? ' affordable' : ''}${it.price === null ? ' soldout' : ''}${it.pivot ? ' pivot' : ''}`;
-    const html = `<span class="ico">${it.ico}</span><span class="text"><span class="name">${it.name}${it.pivot ? '<span class="pivot-tag">新しい作戦</span>' : ''}</span><span class="effect">${it.effect}</span></span>${costHtml(it.price, it.ok)}`;
+    const html = `<span class="ico">${it.ico}</span><span class="text"><span class="name">${it.name}${it.pivot ? `<span class="pivot-tag">${L('新しい作戦', 'New plan')}</span>` : ''}</span><span class="effect">${it.effect}</span></span>${costHtml(it.price, it.ok)}`;
     if (b.innerHTML !== html) b.innerHTML = html;
   });
 }
@@ -634,7 +678,7 @@ function onBuyFarm(key: PlaceId | 'expand'): void {
   if (key === 'expand') {
     const price = expandPrice(state);
     if (price === null || !expand(state)) {
-      reject(card, price === null ? 'もう広げられない' : `あと${price - state.gold}金`);
+      reject(card, price === null ? L('もう広げられない', 'Max size') : needGold(price));
       return;
     }
     accept(card);
@@ -644,7 +688,7 @@ function onBuyFarm(key: PlaceId | 'expand'): void {
     return;
   }
   if (!buyPlace(state, key)) {
-    reject(card, mustPlace(state) ? `先に${PLACES[state.stock[0]].name}を置く` : !hasRoomFor(state, key) ? '置ける所がない' : `あと${(placePrice(state, key) ?? 0) - state.gold}金`);
+    reject(card, mustPlace(state) ? placeFirst() : !hasRoomFor(state, key) ? L('置ける所がない', 'No room') : needGold(placePrice(state, key) ?? 0));
     return;
   }
   accept(card);
@@ -652,7 +696,7 @@ function onBuyFarm(key: PlaceId | 'expand'): void {
   selected = null;
   closeSheet();
   render();
-  say(`👆 ${PLACES[key].name}を置く`);
+  say(`👆 ${L(`${PLACES[key].name}を置く`, `Place the ${PLACES[key].name}`)}`);
 }
 
 function fieldCells(): number[] {
@@ -660,14 +704,14 @@ function fieldCells(): number[] {
 }
 
 function renderBag(): void {
-  el.bagTotal.textContent = `${bagTotal(state.bag)}枚`;
+  el.bagTotal.textContent = L(`${bagTotal(state.bag)}枚`, `${bagTotal(state.bag)}`);
   setHtml(
     el.bag,
     SYMBOL_ORDER.filter((id) => state.bag[id] > 0 || id === 'crow')
       .map((id) => {
         const def = SYMBOLS[id];
         const cls = `chip${def.rarity === 'bad' ? ' bad' : ''}${state.bag[id] === 0 ? ' zero' : ''}`;
-        return `<span class="${cls}" data-sym="${id}" title="${def.desc}（フィーバー：${def.feverDesc}）"><span class="e">${symHtml(id)}</span>${def.name}×${state.bag[id]} <span class="pct">${bagPct(state.bag, id)}%</span></span>`;
+        return `<span class="${cls}" data-sym="${id}" title="${def.desc}（${L('フィーバー', 'Fever')}：${def.feverDesc}）"><span class="e">${symHtml(id)}</span>${def.name}×${state.bag[id]} <span class="pct">${bagPct(state.bag, id)}%</span></span>`;
       })
       .join(''),
   );
@@ -684,7 +728,7 @@ async function onSpin(): Promise<void> {
   }
   // 買った建物・土地を置くまでは次の日へ進めない
   if (mustPlace(state)) {
-    reject(el.field, `先に${PLACES[state.stock[0]].name}を置く`);
+    reject(el.field, placeFirst());
     return;
   }
   if (openSheetName) closeSheet();
@@ -775,7 +819,7 @@ async function showNightIncome(): Promise<void> {
       const ripe = isRipe(state.field[c]);
       pop(plot, ripe ? 1.2 : 1.1);
       burst(q.x, q.y, ripe ? ['✨', '⭐'] : ['💧', '✨'], ripe ? 8 : 4, ripe ? 50 : 30);
-      floatText(q.x, q.y + 10, ripe ? '実った！' : '育った', { cls: ripe ? 'gold pill' : 'good pill', size: ripe ? 0.8 : 0.7, rise: 20, dur: 1000 });
+      floatText(q.x, q.y + 10, ripe ? L('実った！', 'Ripe!') : L('育った', 'Grew'), { cls: ripe ? 'gold pill' : 'good pill', size: ripe ? 0.8 : 0.7, rise: 20, dur: 1000 });
     });
     sfx.grow();
     if (n.grown.some((c) => isRipe(state.field[c]))) sfx.pon();
@@ -790,7 +834,7 @@ async function showNightIncome(): Promise<void> {
     () => {
       n.wheels.forEach((w) => {
         const q = at(w[w.length - 1]);
-        floatText(q.x, q.y - 16, `水車 +${wheelGold(state, w)}`, { cls: 'gold', size: 0.7 });
+        floatText(q.x, q.y - 16, L(`水車 +${wheelGold(state, w)}`, `Wheel +${wheelGold(state, w)}`), { cls: 'gold', size: 0.7 });
         flyTo(q, el.goldBox, '🪙', 1);
       });
       return n.wheels.length > 0;
@@ -800,7 +844,7 @@ async function showNightIncome(): Promise<void> {
       ponds.forEach((c) => {
         const q = at(c);
         const big = n.bigFish.includes(c);
-        floatText(q.x, q.y - 16, big ? `大物！ +${CONFIG.fishGold + CONFIG.bigFishGold}` : `+${CONFIG.fishGold}`, { cls: 'gold', size: big ? 1 : 0.7 });
+        floatText(q.x, q.y - 16, big ? L(`大物！ +${CONFIG.fishGold + CONFIG.bigFishGold}`, `Big catch! +${CONFIG.fishGold + CONFIG.bigFishGold}`) : `+${CONFIG.fishGold}`, { cls: 'gold', size: big ? 1 : 0.7 });
         if (big) burst(q.x, q.y, [art('fish'), '✨'], 8, 50);
         flyTo(q, el.goldBox, '🪙', big ? 3 : 1);
       });
@@ -838,24 +882,24 @@ async function showFever(): Promise<void> {
 /** フィーバーの役と大当たりの演出 */
 async function playFeverRoles(events: FeverEvent[]): Promise<void> {
   for (const ev of events) {
-    const name = SYMBOLS[ev.symbol].feverDesc.split('：')[0];
+    const name = SYMBOLS[ev.symbol].feverDesc.split(/：|: /)[0];
     const mid = center(el.field);
     switch (ev.role) {
       case 'breed':
         sfx.plant();
-        floatText(mid.x, mid.y, `${name}！ 今日植える${CROPS[ev.crop].name}は育った状態から`, { cls: 'good', size: 1 });
+        floatText(mid.x, mid.y, L(`${name}！ 今日植える${CROPS[ev.crop].name}は育った状態から`, `${name}! ${CROPS[ev.crop].name} planted today start grown`), { cls: 'good', size: 1 });
         break;
       case 'grow':
         render();
         sfx.sun();
         flash('#bff3ff', 400);
         afterGrowth(ev.cells, '+1');
-        floatText(mid.x, mid.y, `${name}！ 全作物＋1`, { cls: 'good', size: 1.1 });
+        floatText(mid.x, mid.y, L(`${name}！ 全作物＋1`, `${name}! All crops +1`), { cls: 'good', size: 1.1 });
         break;
       case 'festival':
         sfx.merchant();
         render();
-        floatText(mid.x, mid.y, `${name}！ 今日の売値×${fmtMult(ev.mult)}`, { cls: 'gold', size: 1.1 });
+        floatText(mid.x, mid.y, L(`${name}！ 今日の売値×${fmtMult(ev.mult)}`, `${name}! Prices ×${fmtMult(ev.mult)} today`), { cls: 'gold', size: 1.1 });
         el.field.querySelectorAll('.plot.ripe').forEach((p) => pop(p, 1.15));
         break;
       case 'compost':
@@ -865,24 +909,24 @@ async function playFeverRoles(events: FeverEvent[]): Promise<void> {
           const q = center(el.field.children[c]);
           burst(q.x, q.y, ['✨', '💜'], 5, 40);
         });
-        floatText(mid.x, mid.y, `${name}！ ${ev.cells.length}つに肥料`, { cls: 'combo', size: 1.1 });
+        floatText(mid.x, mid.y, L(`${name}！ ${ev.cells.length}つに肥料`, `${name}! Fertilized ${ev.cells.length}`), { cls: 'combo', size: 1.1 });
         break;
       case 'honey':
         sfx.coin();
-        floatText(mid.x, mid.y, `${name}！ +${ev.amount}金`, { cls: 'gold', size: 1.1 });
+        floatText(mid.x, mid.y, `${name}! +${gold(ev.amount)}`, { cls: 'gold', size: 1.1 });
         flyTo(mid, el.goldBox, '🪙', 5);
         break;
       case 'bigsale': {
         sfx.lineHarvest();
         const total = ev.sold.reduce((n, r) => n + r.total, 0);
         render();
-        floatText(mid.x, mid.y, ev.sold.length ? `${name}！ ${ev.sold.length}個を×2で +${total}金` : `${name}！（実りなし→大当たり2倍）`, { cls: 'gold', size: 1.1 });
+        floatText(mid.x, mid.y, ev.sold.length ? L(`${name}！ ${ev.sold.length}個を×2で +${total}金`, `${name}! Sold ${ev.sold.length} at ×2: +${total}g`) : L(`${name}！（実りなし→大当たり2倍）`, `${name}! (nothing ripe → jackpot ×2)`), { cls: 'gold', size: 1.1 });
         if (ev.sold.length) flyTo(mid, el.goldBox, '🪙', 8);
         break;
       }
       case 'luck':
         sfx.charmGet();
-        floatText(mid.x, mid.y, `${name}！ お守りを1つ選べる`, { cls: 'good', size: 1.1 });
+        floatText(mid.x, mid.y, L(`${name}！ お守りを1つ選べる`, `${name}! Pick a charm`), { cls: 'good', size: 1.1 });
         break;
       case 'jackpot':
         break;
@@ -893,7 +937,7 @@ async function playFeverRoles(events: FeverEvent[]): Promise<void> {
     const m = center(el.reels);
     shake(el.app, shakeFor(ev.jackpot));
     scanlines(Math.min(1, ev.jackpot / 120));
-    const roll = rollNumber(m.x, m.y - 10, ev.jackpot, { prefix: '大当たり +', size: ev.role === 'jackpot' ? 1.2 : 0.95, hold: 400, rise: true });
+    const roll = rollNumber(m.x, m.y - 10, ev.jackpot, { prefix: L('大当たり +', 'Jackpot +'), size: ev.role === 'jackpot' ? 1.2 : 0.95, hold: 400, rise: true });
     flyTo(m, el.goldBox, '🪙', Math.min(12, 3 + Math.ceil(ev.jackpot / 8)), () => setGold(state.gold));
     if (ev.role === 'jackpot') {
       confetti(50);
@@ -959,7 +1003,7 @@ function spinReels(show: SpinShow = { cutIn: null }): Promise<void> {
           // 何がそろいそうで、そろうと何が起きるか
           const call = document.createElement('div');
           call.className = 'reach-call';
-          call.innerHTML = `リーチ！ あと1つで ${symHtml(reachSym!)}`;
+          call.innerHTML = L(`リーチ！ あと1つで ${symHtml(reachSym!)}`, `REACH! One more ${symHtml(reachSym!)}`);
           el.machine.appendChild(call);
         }
       }, dur - hold);
@@ -1003,7 +1047,7 @@ function onReelLanded(i: number, reel: HTMLElement): void {
     sfx.rare();
     flash('#ffe680', 500);
     burst(c.x, c.y, ['✨', '🌟', '💛'], 16, 110);
-    floatText(c.x, c.y - 40, 'レア！金の種', { cls: 'gold', size: 1 });
+    floatText(c.x, c.y - 40, L('レア！金の種', 'Rare! Golden seed'), { cls: 'gold', size: 1 });
     vibrate([30, 30, 60]);
   }
   const total = state.results[i].total;
@@ -1013,7 +1057,7 @@ function onReelLanded(i: number, reel: HTMLElement): void {
     if (total >= 3) {
       sfx.bonus();
       burst(c.x, c.y, ['🌰', '✨'], 12, 80);
-      floatText(c.x, c.y - 40, `種×${total}！`, { cls: 'gold', size: 1 });
+      floatText(c.x, c.y - 40, L(`種×${total}！`, `Seeds ×${total}!`), { cls: 'gold', size: 1 });
       vibrate(40);
     } else {
       floatText(c.x, c.y - 40, `×${total}`, { cls: 'good', size: 0.8 });
@@ -1046,58 +1090,58 @@ async function resolveAutos(): Promise<void> {
     // 見せておく長さ（金貨はささっと回収するので短く）
     let hold = EVENT_HOLD;
     if (ev.type === 'coin') {
-      autoOutcome[i] = `+${ev.amount}金`;
+      autoOutcome[i] = `+${gold(ev.amount)}`;
       hold = 120;
       sfx.coin();
       floatText(from.x, from.y - 30, `+${ev.amount}`, { cls: 'gold', size: 0.9, dur: 700 });
       await new Promise<void>((r) => flyTo(from, el.goldBox, '🪙', Math.min(5, 1 + Math.ceil(ev.amount / 4)), r, true));
       setGold(state.gold);
     } else if (ev.type === 'merchant') {
-      autoOutcome[i] = `売値×${fmtMult(ev.mult)}`;
+      autoOutcome[i] = L(`売値×${fmtMult(ev.mult)}`, `Price ×${fmtMult(ev.mult)}`);
       sfx.merchant();
       burst(from.x, from.y, ['💰', '✨', '🪙'], 10, 70);
-      floatText(from.x, from.y - 40, `今日の売値 ×${fmtMult(ev.mult)}！`, { cls: 'gold', size: 0.9 });
+      floatText(from.x, from.y - 40, L(`今日の売値 ×${fmtMult(ev.mult)}！`, `Prices ×${fmtMult(ev.mult)} today!`), { cls: 'gold', size: 0.9 });
       render();
       el.field.querySelectorAll('.plot.ripe').forEach((p) => pop(p, 1.12));
     } else if (ev.type === 'clover') {
-      autoOutcome[i] = '明日 金の種↑';
+      autoOutcome[i] = L('明日 金の種↑', 'Gold seed↑');
       sfx.rare();
       burst(from.x, from.y, ['🍀', '✨', '🌟'], 12, 80);
-      floatText(from.x, from.y - 40, '明日は金の種が出やすい！', { cls: 'good', size: 0.8 });
+      floatText(from.x, from.y - 40, L('明日は金の種が出やすい！', 'Golden seeds likelier tomorrow!'), { cls: 'good', size: 0.8 });
       renderStatus();
     } else if (ev.type === 'bug') {
       if (ev.cell === null) {
-        autoOutcome[i] = '空振り';
-        floatText(from.x, from.y - 30, '虫は空振り', { size: 0.6 });
+        autoOutcome[i] = L('空振り', 'Miss');
+        floatText(from.x, from.y - 30, L('虫は空振り', 'The bug missed'), { size: 0.6 });
       } else {
         const plot = el.field.children[ev.cell] as HTMLElement;
         await travel(from, plot, symHtml('bug'), true);
         const p = center(plot);
         if (ev.warded) {
-          autoOutcome[i] = ev.hen ? '鶏が食べた' : 'よけた';
+          autoOutcome[i] = ev.hen ? L('鶏が食べた', 'Hen ate it') : L('よけた', 'Blocked');
           sfx.shoo();
           if (ev.hen) critterPop(p, art('henhouse'));
           burst(p.x, p.y, ev.hen ? ['🪶', '✨'] : ['🌿', '✨'], 8, 50);
-          floatText(p.x, ev.hen ? p.y + 28 : p.y - 20, ev.hen ? '鶏がパクッ！' : '虫よけ成功！', { cls: 'good pill', size: 0.8 });
+          floatText(p.x, ev.hen ? p.y + 28 : p.y - 20, ev.hen ? L('鶏がパクッ！', 'Hen gobbled it!') : L('虫よけ成功！', 'Bug blocked!'), { cls: 'good pill', size: 0.8 });
         } else {
-          autoOutcome[i] = `成長−${ev.damage}`;
+          autoOutcome[i] = L(`成長−${ev.damage}`, `Growth −${ev.damage}`);
           sfx.bug();
           burst(p.x, p.y, ['🐛', '🍂'], 6, 40);
-          floatText(p.x, p.y - 20, `かじられた！ 成長−${ev.damage}`, { cls: 'bad', size: 0.8 });
+          floatText(p.x, p.y - 20, L(`かじられた！ 成長−${ev.damage}`, `Nibbled! Growth −${ev.damage}`), { cls: 'bad', size: 0.8 });
           shake(plot, 6);
           renderField();
         }
       }
     } else if (ev.type === 'weed') {
       if (ev.warded) {
-        autoOutcome[i] = 'よけた';
+        autoOutcome[i] = L('よけた', 'Blocked');
         sfx.shoo();
-        floatText(from.x, from.y - 30, '草よけ成功！', { cls: 'good', size: 0.7 });
+        floatText(from.x, from.y - 30, L('草よけ成功！', 'Weed blocked!'), { cls: 'good', size: 0.7 });
       } else if (!ev.cells.length) {
-        autoOutcome[i] = '空振り';
-        floatText(from.x, from.y - 30, '生える場所がない', { size: 0.6 });
+        autoOutcome[i] = L('空振り', 'Miss');
+        floatText(from.x, from.y - 30, L('生える場所がない', 'Nowhere to grow'), { size: 0.6 });
       } else {
-        autoOutcome[i] = `${ev.cells.length}か所`;
+        autoOutcome[i] = L(`${ev.cells.length}か所`, `${ev.cells.length} spots`);
         sfx.bug();
         for (const c of ev.cells) {
           const plot = el.field.children[c] as HTMLElement;
@@ -1105,26 +1149,26 @@ async function resolveAutos(): Promise<void> {
           renderField();
           pop(plot, 1.15);
           const q = center(plot);
-          floatText(q.x, q.y - 20, '雑草が生えた…', { cls: 'bad', size: 0.7 });
+          floatText(q.x, q.y - 20, L('雑草が生えた…', 'Weeds sprouted…'), { cls: 'bad', size: 0.7 });
         }
       }
     } else if (ev.type === 'tanuki') {
       if (ev.escaped) {
-        autoOutcome[i] = '逃げた';
+        autoOutcome[i] = L('逃げた', 'Fled');
         sfx.shoo();
-        floatText(from.x, from.y - 30, 'かかしがいてタヌキは近寄れない！', { cls: 'good', size: 0.7 });
+        floatText(from.x, from.y - 30, L('かかしがいてタヌキは近寄れない！', "The scarecrow kept the tanuki away!"), { cls: 'good', size: 0.7 });
         ev.guarded.forEach((c) => pop(el.field.children[c], 1.12));
       } else if (!ev.taken.length) {
-        autoOutcome[i] = ev.stolen ? `−${ev.stolen}金` : '空振り';
+        autoOutcome[i] = ev.stolen ? `−${gold(ev.stolen)}` : L('空振り', 'Miss');
         if (ev.stolen) {
           sfx.crow();
           const g = center(el.goldBox);
-          floatText(g.x, g.y + 30, `タヌキにお金を盗まれた −${ev.stolen}`, { cls: 'bad', size: 0.9 });
+          floatText(g.x, g.y + 30, L(`タヌキにお金を盗まれた −${ev.stolen}`, `A tanuki stole gold −${ev.stolen}`), { cls: 'bad', size: 0.9 });
           setGold(state.gold);
           shake(el.goldBox, 6);
-        } else floatText(from.x, from.y - 30, '何も取れずに帰っていった', { size: 0.6 });
+        } else floatText(from.x, from.y - 30, L('何も取れずに帰っていった', 'Left empty-handed'), { size: 0.6 });
       } else {
-        autoOutcome[i] = `−${ev.taken.reduce((n, t) => n + t.price, 0)}金分`;
+        autoOutcome[i] = `−${gold(ev.taken.reduce((n, t) => n + t.price, 0))}`;
         for (const t of ev.taken) {
           const plot = el.field.children[t.cell] as HTMLElement;
           // タヌキは畑の横から跳ねながら走ってくる
@@ -1133,7 +1177,7 @@ async function resolveAutos(): Promise<void> {
           sfx.poof();
           const q = center(plot);
           burst(q.x, q.y, ['💨', '🍂'], 8, 50);
-          floatText(q.x, q.y - 20, `持っていかれた！ ${t.price}金が…`, { cls: 'bad', size: 0.9 });
+          floatText(q.x, q.y - 20, L(`持っていかれた！ ${t.price}金が…`, `Stolen! ${t.price}g gone…`), { cls: 'bad', size: 0.9 });
           shake(plot, 8);
           renderField();
         }
@@ -1141,7 +1185,7 @@ async function resolveAutos(): Promise<void> {
         vibrate(120);
       }
     } else if (ev.type === 'mole') {
-      autoOutcome[i] = ev.moves.length ? `${ev.moves.length}つ移動` : ev.chased.length ? '鶏が追い払った' : '空振り';
+      autoOutcome[i] = ev.moves.length ? L(`${ev.moves.length}つ移動`, `Moved ${ev.moves.length}`) : ev.chased.length ? L('鶏が追い払った', 'Hen chased it') : L('空振り', 'Miss');
       // モグラが顔を出したところへ鶏が来て、追い払う
       for (const c of ev.chased) {
         const q = center(el.field.children[c]);
@@ -1150,10 +1194,10 @@ async function resolveAutos(): Promise<void> {
         sfx.shoo();
         critterPop(q, art('henhouse'));
         burst(q.x, q.y, ['🪶', '💨'], 8, 50);
-        floatText(q.x, q.y + 28, '追い払った！', { cls: 'good pill', size: 0.8 });
+        floatText(q.x, q.y + 28, L('追い払った！', 'Chased off!'), { cls: 'good pill', size: 0.8 });
       }
       if (!ev.moves.length && !ev.chased.length) {
-        floatText(from.x, from.y - 30, 'モグラは空振り', { size: 0.6 });
+        floatText(from.x, from.y - 30, L('モグラは空振り', 'The mole missed'), { size: 0.6 });
       } else {
         sfx.poof();
         for (const m of ev.moves) {
@@ -1169,11 +1213,11 @@ async function resolveAutos(): Promise<void> {
         ev.moves.forEach((m) => {
           const q = center(el.field.children[m.to]);
           pop(el.field.children[m.to], 1.15);
-          floatText(q.x, q.y - 20, '押し出された！', { cls: 'bad', size: 0.7 });
+          floatText(q.x, q.y - 20, L('押し出された！', 'Pushed out!'), { cls: 'bad', size: 0.7 });
         });
       }
     } else if (ev.type === 'frost') {
-      autoOutcome[i] = ev.cells.length ? `${ev.cells.length}マス` : '空振り';
+      autoOutcome[i] = ev.cells.length ? L(`${ev.cells.length}マス`, `${ev.cells.length} plots`) : L('空振り', 'Miss');
       if (ev.cells.length) {
         sfx.tax();
         flash('#dff1ff', 400);
@@ -1181,25 +1225,25 @@ async function resolveAutos(): Promise<void> {
         ev.cells.forEach((c) => {
           const q = center(el.field.children[c]);
           burst(q.x, q.y, ['❄️', '✨'], 8, 40);
-          floatText(q.x, q.y - 20, '凍った！', { cls: 'bad', size: 0.8 });
+          floatText(q.x, q.y - 20, L('凍った！', 'Frozen!'), { cls: 'bad', size: 0.8 });
         });
       }
     } else if (ev.cell === null) {
-      autoOutcome[i] = '空振り';
+      autoOutcome[i] = L('空振り', 'Miss');
       sfx.crow();
-      floatText(from.x, from.y - 30, 'カラスは空振り', { size: 0.6 });
+      floatText(from.x, from.y - 30, L('カラスは空振り', 'The crow missed'), { size: 0.6 });
     } else if (!ev.eaten) {
-      autoOutcome[i] = 'セーフ';
+      autoOutcome[i] = L('セーフ', 'Safe');
       const plot = el.field.children[ev.cell] as HTMLElement;
       // カラスは空から羽ばたいて飛んでくる
       await travel(edgeFrom(plot, true), plot, symHtml('crow'), false);
       sfx.shoo();
       const p = center(plot);
       burst(p.x, p.y, ['💨', '🪶', '✨'], 8, 60);
-      floatText(p.x, p.y - 20, ev.guarded ? 'かかしが追い払った！' : ev.crop && isRipe(ev.crop) ? 'セーフ！ 守った！' : 'セーフ！', { cls: 'good', size: ev.crop && isRipe(ev.crop) ? 1 : 0.8 });
+      floatText(p.x, p.y - 20, ev.guarded ? L('かかしが追い払った！', 'Scarecrow chased it off!') : ev.crop && isRipe(ev.crop) ? L('セーフ！ 守った！', 'Safe! Protected!') : L('セーフ！', 'Safe!'), { cls: 'good', size: ev.crop && isRipe(ev.crop) ? 1 : 0.8 });
       pop(plot, 1.12);
     } else {
-      autoOutcome[i] = 'パクッ…';
+      autoOutcome[i] = L('パクッ…', 'Chomp…');
       const plot = el.field.children[ev.cell] as HTMLElement;
       // カラスは空から羽ばたいて飛んでくる
       await travel(edgeFrom(plot, true), plot, symHtml('crow'), false);
@@ -1207,8 +1251,8 @@ async function resolveAutos(): Promise<void> {
       sfx.poof();
       const p = center(plot);
       burst(p.x, p.y, ['🪶', '💨', '🍂'], 8, 50);
-      const lost = ev.crop ? (isRipe(ev.crop) ? `${cropPrice(state, ev.crop)}金が…` : CROPS[ev.crop.kind].name) : '';
-      floatText(p.x, p.y - 20, `パクッ！ ${lost}`, { cls: 'bad', size: ev.crop && isRipe(ev.crop) ? 1 : 0.8 });
+      const lost = ev.crop ? (isRipe(ev.crop) ? L(`${cropPrice(state, ev.crop)}金が…`, `${cropPrice(state, ev.crop)}g gone…`) : CROPS[ev.crop.kind].name) : '';
+      floatText(p.x, p.y - 20, L(`パクッ！ ${lost}`, `Chomp! ${lost}`), { cls: 'bad', size: ev.crop && isRipe(ev.crop) ? 1 : 0.8 });
       shake(plot, 8);
       if (ev.crop && isRipe(ev.crop)) {
         shake(el.app, 5);
@@ -1218,7 +1262,7 @@ async function resolveAutos(): Promise<void> {
     }
     if (ev.type === 'crow' && ev.toll > 0) {
       sfx.coin();
-      floatText(center(el.goldBox).x, center(el.goldBox).y + 28, `通行料 +${ev.toll}`, { cls: 'gold', size: 0.8 });
+      floatText(center(el.goldBox).x, center(el.goldBox).y + 28, L(`通行料 +${ev.toll}`, `Toll +${ev.toll}`), { cls: 'gold', size: 0.8 });
       setGold(state.gold);
     }
     renderReelStates();
@@ -1235,11 +1279,11 @@ async function resolveAutos(): Promise<void> {
 /** 出目を残したまま次の日へ進むかの確認 */
 function confirmSkip(left: number): void {
   el.overlay.innerHTML = `
-    <div class="modal confirm-modal" role="dialog" aria-label="確認">
-      <h2>出目が${left}つ残っています</h2>
-      <p class="sub">使わずに次の日へ進むと消えます</p>
-      <button class="primary" id="skip-yes">次の日へ</button>
-      <button class="secondary" id="skip-no">もどる</button>
+    <div class="modal confirm-modal" role="dialog" aria-label="${L('確認', 'Confirm')}">
+      <h2>${L(`出目が${left}つ残っています`, `${left} unused reel(s) left`)}</h2>
+      <p class="sub">${L('使わずに次の日へ進むと消えます', 'They vanish if you move to the next day')}</p>
+      <button class="primary" id="skip-yes">${L('次の日へ', 'Next day')}</button>
+      <button class="secondary" id="skip-no">${L('もどる', 'Back')}</button>
     </div>`;
   el.overlay.classList.add('show');
   const close = () => {
@@ -1263,11 +1307,11 @@ function onReelTap(i: number): void {
   unlockAudio();
   if (ui.busy || state.over) return;
   if (!tutAllowsReel(i)) {
-    reject(el.reels.children[i], '光っている所へ');
+    reject(el.reels.children[i], L('光っている所へ', 'Use the glowing spot'));
     return;
   }
   if (mustPlace(state)) {
-    reject(el.reels.children[i], `先に${PLACES[state.stock[0]].name}を置く`);
+    reject(el.reels.children[i], placeFirst());
     return;
   }
   const r = state.results[i];
@@ -1319,7 +1363,7 @@ function applyMoon(i: number): void {
   flash('#fff4b8', 500);
   const f = center(el.field);
   burst(f.x, f.y, ['🌟', '✨', '⭐'], 16, 160);
-  floatText(f.x, f.y - 60, '満月！ 全作物＋1', { cls: 'gold', size: 1.1 });
+  floatText(f.x, f.y - 60, L('満月！ 全作物＋1', 'Full moon! All crops +1'), { cls: 'gold', size: 1.1 });
   render();
   afterGrowth(affected, '+1');
 }
@@ -1329,12 +1373,12 @@ function onPlotTap(cell: number): void {
   if (ui.busy || state.over) return;
   const plot = el.field.children[cell] as HTMLElement;
   if (!tutAllowsCell(cell)) {
-    reject(plot, '光っている所へ');
+    reject(plot, L('光っている所へ', 'Use the glowing spot'));
     return;
   }
   const p = center(plot);
   if (mustPlace(state) && !canPlace(state, cell)) {
-    reject(plot, PLACES[state.stock[0]].kind === 'tool' ? '空きマスへ' : '置けるマスへ');
+    reject(plot, PLACES[state.stock[0]].kind === 'tool' ? L('空きマスへ', 'Needs an empty plot') : L('置けるマスへ', 'Pick a valid plot'));
     return;
   }
   if (state.stock.length && canPlace(state, cell)) {
@@ -1344,7 +1388,7 @@ function onPlotTap(cell: number): void {
     render();
     burst(p.x, p.y, ['✨', '⭐', '🌱'], 12, 60);
     pop(plot, 1.2);
-    floatText(p.x, p.y - 20, `${PLACES[id].name}を置いた！`, { cls: 'good', size: 0.8 });
+    floatText(p.x, p.y - 20, L(`${PLACES[id].name}を置いた！`, `Placed ${PLACES[id].name}!`), { cls: 'good', size: 0.8 });
     return;
   }
   if (selected !== null) {
@@ -1352,7 +1396,7 @@ function onPlotTap(cell: number): void {
     const sym = state.results[reel].symbol;
     if (!canUse(state, reel, cell)) {
       const crop = state.field[cell];
-      reject(plot, SEEDS[sym] ? '空きマスへ' : SYMBOLS[sym].shape ? '範囲に作物なし' : !crop ? '作物なし' : '肥料済み');
+      reject(plot, SEEDS[sym] ? L('空きマスへ', 'Needs an empty plot') : SYMBOLS[sym].shape ? L('範囲に作物なし', 'No crops in range') : !crop ? L('作物なし', 'No crop') : L('肥料済み', 'Already fertilized'));
       return;
     }
     const power = state.results[reel].power;
@@ -1368,20 +1412,20 @@ function onPlotTap(cell: number): void {
       sfx.plant();
       burst(p.x, p.y, sym === 'goldSeed' ? ['✨', '🌟'] : ['🌱', '·'], 8, 40);
       pop(plot, 1.15);
-      const more = left > 0 ? `（あと${left}）` : '';
+      const more = left > 0 ? L(`（あと${left}）`, ` (${left} more)`) : '';
       const name = CROPS[SEEDS[sym]!.crop].name;
-      floatText(p.x, p.y - 20, `${name}を植えた！${more}`, { size: 0.7, cls: sym === 'goldSeed' ? 'gold' : 'good' });
-      if (left > 0 && selected === null) say('空きマスなし');
+      floatText(p.x, p.y - 20, L(`${name}を植えた！${more}`, `Planted ${name}!${more}`), { size: 0.7, cls: sym === 'goldSeed' ? 'gold' : 'good' });
+      if (left > 0 && selected === null) say(L('空きマスなし', 'No empty plots'));
     } else if (sym === 'hoe') {
       sfx.poof();
       affected.forEach((c, k) => {
         const q = center(el.field.children[c]);
         later(() => burst(q.x, q.y + 10, ['💨', '🌰'], 5, 34), k * 70);
       });
-      floatText(p.x, p.y - 20, '耕した！', { cls: 'good', size: 0.8 });
+      floatText(p.x, p.y - 20, L('耕した！', 'Tilled!'), { cls: 'good', size: 0.8 });
     } else if (sym === 'fertilizer' && left > 0) {
       sfx.fertilizer();
-      floatText(p.x, p.y - 20, '売値×2！（あと1つ）', { cls: 'combo', size: 0.9 });
+      floatText(p.x, p.y - 20, L('売値×2！（あと1つ）', 'Price ×2! (1 more)'), { cls: 'combo', size: 0.9 });
     } else if (sym === 'rain') {
       sfx.rain();
       rainShower(shapeCells(state, 'cross', cell).map((c) => el.field.children[c]));
@@ -1403,7 +1447,7 @@ function onPlotTap(cell: number): void {
         later(() => burst(q.x, q.y, ['🌼'], 3, 30), k * 220);
       });
       afterGrowth(affected, `+${CONFIG.beeGrowth * power}`);
-      if (left > 0 && selected === null) say('使える場所なし');
+      if (left > 0 && selected === null) say(L('使える場所なし', 'Nowhere to use it'));
     } else if (sym === 'thunder') {
       sfx.crt();
       flash('#fff6c0', 220);
@@ -1417,36 +1461,36 @@ function onPlotTap(cell: number): void {
       sfx.fertilizer();
       burst(p.x, p.y, ['✨', '💜'], 10, 50);
       pop(plot, 1.15);
-      floatText(p.x, p.y - 20, '売値×2！', { cls: 'combo', size: 0.9 });
+      floatText(p.x, p.y - 20, L('売値×2！', 'Price ×2!'), { cls: 'combo', size: 0.9 });
     }
     return;
   }
   if (state.frost[cell]) {
     shake(plot, 3);
-    say(`❄️ ${state.frost[cell]}日`);
+    say(`❄️ ${state.frost[cell]}${L('日', 'd')}`);
     return;
   }
   if (state.weeds[cell]) {
     if (!pullWeed(state, cell)) {
-      reject(plot, `あと${weedCost(state) - state.gold}金`);
+      reject(plot, needGold(weedCost(state)));
       return;
     }
     sfx.poof();
     burst(p.x, p.y, ['🍃', '💨'], 8, 50);
-    floatText(p.x, p.y - 20, weedCost(state) ? `草むしり −${weedCost(state)}金` : '草むしり！', { size: 0.8 });
+    floatText(p.x, p.y - 20, weedCost(state) ? L(`草むしり −${weedCost(state)}金`, `Weeded −${weedCost(state)}g`) : L('草むしり！', 'Weeded!'), { size: 0.8 });
     render();
     return;
   }
   const tool = state.tools[cell];
   if (tool) {
     const ev = TOOL_EVOLVE[tool];
-    say(`${PLACES[tool].name}：${PLACES[tool].desc}${ev ? `（進化 ${state.toolXp[cell]}/${ev.need}）` : ''}`);
+    say(`${PLACES[tool].name}：${PLACES[tool].desc}${ev ? `（${L('進化', 'evolve')} ${state.toolXp[cell]}/${ev.need}）` : ''}`);
     pop(plot, 1.08);
     return;
   }
   if (isPond(state, cell)) {
     pop(plot, 1.08);
-    say(`釣り堀：毎晩+${CONFIG.fishGold}金`);
+    say(L(`釣り堀：毎晩+${CONFIG.fishGold}金`, `Fishing pond: +${CONFIG.fishGold}g nightly`));
     return;
   }
   const root = rootOf(state, cell);
@@ -1458,9 +1502,9 @@ function onPlotTap(cell: number): void {
   if (crop) {
     shake(plot, 3);
     const def = CROPS[crop.kind];
-    say(`${def.name} ${def.price}金`);
+    say(`${def.name} ${gold(def.price)}`);
   } else {
-    say(state.stock.length ? '置けない' : '空き');
+    say(state.stock.length ? L('置けない', "Can't place here") : L('空き', 'Empty'));
   }
 }
 
@@ -1474,7 +1518,7 @@ function announceLines(cells: number[], delay = 500): number {
       group.forEach((c, j) => later(() => pop(el.field.children[c], 1.12), j * 60));
       const pts = group.map((c) => center(el.field.children[c]));
       const q = { x: pts.reduce((n, v) => n + v.x, 0) / pts.length, y: pts.reduce((n, v) => n + v.y, 0) / pts.length };
-      floatText(q.x, q.y - 10, `${MARK_LINE} 列ができた！`, { cls: 'combo pill', size: 0.95, dur: 1300 });
+      floatText(q.x, q.y - 10, `${MARK_LINE} ${L('列ができた！', 'Line formed!')}`, { cls: 'combo pill', size: 0.95, dur: 1300 });
     }, delay + k * 250);
   });
   return formed.length;
@@ -1487,7 +1531,7 @@ function afterGrowth(cells: number[], label: string): void {
   if (ripened.length >= 2) {
     const pts = ripened.map((c) => center(el.field.children[c]));
     const q = { x: pts.reduce((n, v) => n + v.x, 0) / pts.length, y: Math.min(...pts.map((v) => v.y)) };
-    later(() => floatText(q.x, q.y - 30, `実った！ ×${ripened.length}`, { cls: 'gold pill', size: 1 }), 150);
+    later(() => floatText(q.x, q.y - 30, L(`実った！ ×${ripened.length}`, `Ripe! ×${ripened.length}`), { cls: 'gold pill', size: 1 }), 150);
   }
   cells.forEach((cell, k) => {
     const plot = el.field.children[cell] as HTMLElement;
@@ -1506,7 +1550,7 @@ function afterGrowth(cells: number[], label: string): void {
         later(() => plot.classList.remove('just-ripe'), 700);
         const big = CROPS[crop.kind].price >= 20;
         burst(p.x, p.y, ['✨', big ? '🌟' : '⭐'], 8, 50);
-        floatText(p.x, p.y - 20, big ? `実った！ ${cropPrice(state, crop, cell)}金` : '実った！', {
+        floatText(p.x, p.y - 20, big ? L(`実った！ ${cropPrice(state, crop, cell)}金`, `Ripe! ${cropPrice(state, crop, cell)}g`) : L('実った！', 'Ripe!'), {
           cls: big ? 'gold pill' : 'good pill',
           size: big ? 1 : 0.8,
         });
@@ -1541,7 +1585,7 @@ function sellCrop(cell: number): void {
     later(() => {
       sfx.bigBuy();
       const o = center(el.order);
-      floatText(o.x, o.y + 30, `注文達成！ +${res.orderReward}金`, { cls: 'gold', size: 1.3, dur: 1600 });
+      floatText(o.x, o.y + 30, L(`注文達成！ +${res.orderReward}金`, `Order done! +${res.orderReward}g`), { cls: 'gold', size: 1.3, dur: 1600 });
       burst(o.x, o.y, ['🪙', '✨', '⭐'], 16, 90);
       flyTo(o, el.goldBox, '🪙', 8, () => setGold(state.gold));
       pop(el.order, 1.1);
@@ -1558,7 +1602,7 @@ function sellCrop(cell: number): void {
     sfx.sell(price, combo);
     const size = Math.min(2, 0.8 + price / 25);
     floatText(p.x, p.y - 10, `+${price}`, { cls: 'gold', size, rise: big ? 110 : 70 });
-    floatText(p.x, p.y + 18, `単品（半値）`, { cls: 'pill', size: 0.6, dur: 900 });
+    floatText(p.x, p.y + 18, L('単品（半値）', 'Single (half price)'), { cls: 'pill', size: 0.6, dur: 900 });
     burst(p.x, p.y, big ? ['🪙', '✨', '🌟', '💰'] : ['🪙', '✨'], big ? 22 : 8, big ? 140 : 60);
   }
   if (combo >= 2) floatText(p.x, p.y - 60, `COMBO ×${combo}`, { cls: 'combo', size: 0.7 + Math.min(combo, 6) * 0.08, dur: 900 });
@@ -1599,9 +1643,10 @@ async function playLineHarvest(res: SellResult, centers: { x: number; y: number 
     flash('#ffffff', 250);
     speedLines(1600 + level * 300, level >= 3 ? 'rgba(255,216,74,0.6)' : 'rgba(255,255,255,0.55)');
   }
+  if (res.bumper) await bigHarvestIntro(ghosts);
   sfx.lineHarvest();
-  const name = ['', '一列そろい！', '二列そろい！！', '大収穫！！！', 'ほぼ全部！！！！'][level];
-  floatText(f.x, f.y - 90, name, { cls: 'combo', size: 1.1 + level * 0.2, rise: 60, dur: 1500 + level * 300 });
+  const name = (EN ? ['', 'LINE!', 'DOUBLE LINE!!', 'GREAT HARVEST!!!', 'NEARLY ALL!!!!'] : ['', '一列そろい！', '二列そろい！！', '大収穫！！！', 'ほぼ全部！！！！'])[level];
+  if (!res.bumper) floatText(f.x, f.y - 90, name, { cls: 'combo', size: 1.1 + level * 0.2, rise: 60, dur: 1500 + level * 300 });
   await stackMultipliers(f.x, Math.max(90, p.y - 60), res.steps);
   // 作物が1つずつ跳ねて財布に吸い込まれる
   const arrivals = res.cells.map(({ cell: c, price: each, kind }, k) =>
@@ -1632,6 +1677,7 @@ async function playLineHarvest(res: SellResult, centers: { x: number; y: number 
   if (level >= 2) confetti(20 + level * 20);
   if (level >= 3) coinRain(30 + level * 10);
   await rollNumber(f.x, f.y, amount, { prefix: '+', size: 0.9 + level * 0.15, hold: 500 + level * 150 });
+  if (res.bumper) await bigHarvestFinale(res.bumper);
 }
 
 // ---- 強化 ----
@@ -1641,16 +1687,16 @@ function onBuy(id: UpgradeId): void {
   if (ui.busy || state.over) return;
   const card = $('stall').querySelector(`[data-id="${id}"]`) as HTMLElement;
   if (mustPlace(state)) {
-    reject(card, `先に${PLACES[state.stock[0]].name}を置く`);
+    reject(card, placeFirst());
     return;
   }
   if (!upgradeAvailable(state, id)) {
     const sym = UPGRADE_SYMBOL[id]!.symbol;
-    reject(card, UPGRADE_SYMBOL[id]!.delta < 0 && state.bag[sym] === 0 ? 'もういない' : UPGRADE_SYMBOL[id]!.delta < 0 ? '来週また消せる' : '今週は並んでいない');
+    reject(card, UPGRADE_SYMBOL[id]!.delta < 0 && state.bag[sym] === 0 ? L('もういない', 'None left') : UPGRADE_SYMBOL[id]!.delta < 0 ? L('来週また消せる', 'Again next week') : L('今週は並んでいない', 'Not in stock this week'));
     return;
   }
   if (!canBuy(state, id)) {
-    reject(card, `あと${upgradePrice(state, id) - state.gold}金`);
+    reject(card, needGold(upgradePrice(state, id)));
     return;
   }
   accept(card);
@@ -1681,7 +1727,7 @@ function onBuy(id: UpgradeId): void {
   if (first) {
     sfx.bigBuy();
     confetti(24);
-    floatText(window.innerWidth / 2, window.innerHeight * 0.35, 'はじめての強化！', { cls: 'gold', size: 1.3, dur: 1500 });
+    floatText(window.innerWidth / 2, window.innerHeight * 0.35, L('はじめての強化！', 'First upgrade!'), { cls: 'gold', size: 1.3, dur: 1500 });
   }
 }
 
@@ -1848,16 +1894,16 @@ const reelEl = (i: number): Element[] => (el.reels.children[i] ? [el.reels.child
 const plotEls = (cells: number[]): Element[] => cells.map((c) => el.field.children[c]).filter(Boolean);
 
 const TUT_STEPS: TutStep[] = [
-  { text: 'ようこそ！ まずは<b>リールをタップ</b>して回そう', focus: () => [el.reels], spin: true, done: () => state.day >= 1 && !ui.busy },
-  { text: `${symHtml('seed')} 種が出た！ <b>種のリール</b>をタップ`, focus: () => reelEl(0), reel: 0, done: () => selected === 0 || tutRow().some((c) => state.field[c]) },
-  { text: '光る<b>横一列の3マス</b>に植えよう。<br>3つ並べると<b>列ごと高く売れる</b>！', focus: () => plotEls(tutRow()), reel: 0, cells: tutRow(), done: () => tutRow().every((c) => state.field[c]) },
-  { text: `${symHtml('rain')} 次は雨。<b>雨のリール</b>をタップして<br><b>真ん中のトマト</b>へ（縦横に育つ）`, focus: () => (selected === 1 ? plotEls([tutRow()[1]]) : reelEl(1)), reel: 1, cells: [tutRow()[1]], done: () => !!state.results[1]?.used },
-  { text: '今日はここまで。<b>リールをタップ</b>で次の日へ', focus: () => [el.reels], spin: true, done: () => state.day >= 2 && !ui.busy },
-  { text: `${symHtml('thunder')} 雷！ 横一列が<b>+2</b>育つ。<br>雷をタップ → <b>トマトの列</b>へ`, focus: () => (selected === 0 ? plotEls(tutRow()) : reelEl(0)), reel: 0, cells: tutRow(), done: () => !!state.results[0]?.used },
-  { text: '3つそろって実った！<br><b>タップで列ごと売ろう</b>', focus: () => plotEls(tutRow()), cells: tutRow(), done: () => state.stats.lineHarvests >= 1 && !ui.busy },
-  { text: `${MARK_LINE} 列は<b>×1.3</b>、同じ作物だけの列は<b>さらに×1.3</b>。<br>${MARK_SINGLE} 並んでいない<b>単品は半値</b>！<br>種を選ぶと、列になるマスに倍率が出るよ`, focus: () => [], button: 'なるほど' },
-  { text: `${art('official')} 7日ごとに<b>年貢</b>。払えないと終わり。<br><b>7回納める（49日目）とクリア</b>！`, focus: () => [el.tax], button: '次へ' },
-  { text: `${art('bargain')} お金がたまったら<b>ショップ</b>へ。<br>絵柄を足したり、畑の道具を買える`, focus: () => [document.querySelector('.tab[data-sheet="shop"]')!], button: 'はじめる！' },
+  { text: L('ようこそ！ まずは<b>リールをタップ</b>して回そう', 'Welcome! First, <b>tap the reels</b> to spin'), focus: () => [el.reels], spin: true, done: () => state.day >= 1 && !ui.busy },
+  { text: `${symHtml('seed')} ${L('種が出た！ <b>種のリール</b>をタップ', 'A seed! Tap the <b>seed reel</b>')}`, focus: () => reelEl(0), reel: 0, done: () => selected === 0 || tutRow().some((c) => state.field[c]) },
+  { text: L('光る<b>横一列の3マス</b>に植えよう。<br>3つ並べると<b>列ごと高く売れる</b>！', 'Plant in the <b>3 glowing plots</b>.<br>3 in a row <b>sell high as a line</b>!'), focus: () => plotEls(tutRow()), reel: 0, cells: tutRow(), done: () => tutRow().every((c) => state.field[c]) },
+  { text: `${symHtml('rain')} ${L('次は雨。<b>雨のリール</b>をタップして<br><b>真ん中のトマト</b>へ（縦横に育つ）', 'Now rain. Tap the <b>rain reel</b>,<br>then the <b>middle tomato</b> (grows a cross)')}`, focus: () => (selected === 1 ? plotEls([tutRow()[1]]) : reelEl(1)), reel: 1, cells: [tutRow()[1]], done: () => !!state.results[1]?.used },
+  { text: L('今日はここまで。<b>リールをタップ</b>で次の日へ', "That's today. <b>Tap the reels</b> for the next day"), focus: () => [el.reels], spin: true, done: () => state.day >= 2 && !ui.busy },
+  { text: `${symHtml('thunder')} ${L('雷！ 横一列が<b>+2</b>育つ。<br>雷をタップ → <b>トマトの列</b>へ', 'Thunder! A row grows <b>+2</b>.<br>Tap thunder → the <b>tomato row</b>')}`, focus: () => (selected === 0 ? plotEls(tutRow()) : reelEl(0)), reel: 0, cells: tutRow(), done: () => !!state.results[0]?.used },
+  { text: L('3つそろって実った！<br><b>タップで列ごと売ろう</b>', 'All 3 are ripe!<br><b>Tap to sell the whole line</b>'), focus: () => plotEls(tutRow()), cells: tutRow(), done: () => state.stats.lineHarvests >= 1 && !ui.busy },
+  { text: L(`${MARK_LINE} 列は<b>×1.3</b>、同じ作物だけの列は<b>さらに×1.3</b>。<br>${MARK_SINGLE} 並んでいない<b>単品は半値</b>！<br>種を選ぶと、列になるマスに倍率が出るよ`, `${MARK_LINE} Lines are <b>×1.3</b>; single-crop lines get <b>another ×1.3</b>.<br>${MARK_SINGLE} Crops not in a line sell at <b>half price</b>!<br>Pick a seed to see line multipliers on the plots`), focus: () => [], button: L('なるほど', 'Got it') },
+  { text: `${art('official')} ${L('7日ごとに<b>年貢</b>。払えないと終わり。<br><b>7回納める（49日目）とクリア</b>！', "Every 7 days there's a <b>tax</b>. Can't pay = game over.<br><b>Pay 7 times (day 49) to win</b>!")}`, focus: () => [el.tax], button: L('次へ', 'Next') },
+  { text: `${art('bargain')} ${L('お金がたまったら<b>ショップ</b>へ。<br>絵柄を足したり、畑の道具を買える', 'Got gold? Visit the <b>shop</b>.<br>Add symbols or buy farm tools')}`, focus: () => [document.querySelector('.tab[data-sheet="shop"]')!], button: L('はじめる！', "Let's go!") },
 ];
 
 let tut: { step: number } | null = null;
@@ -1929,7 +1975,7 @@ function renderTutorial(): void {
     coach.setAttribute('role', 'status');
     document.body.appendChild(coach);
   }
-  const html = `<p>${s.text}</p><div class="coach-actions">${s.button ? `<button class="primary coach-next">${s.button}</button>` : ''}<button class="coach-skip">スキップ</button></div>`;
+  const html = `<p>${s.text}</p><div class="coach-actions">${s.button ? `<button class="primary coach-next">${s.button}</button>` : ''}<button class="coach-skip">${L('スキップ', 'Skip')}</button></div>`;
   if (coach.dataset.step !== String(tut!.step)) {
     coach.dataset.step = String(tut!.step);
     coach.innerHTML = html;
@@ -1954,6 +2000,7 @@ function renderTutorial(): void {
 // ---- 起動 ----
 
 $('build-label').textContent = __BUILD__;
+applyStaticLang();
 applySettings();
 // ホーム画面に置いたとき・電波がないときも遊べるように（公開版だけ）
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
@@ -1962,22 +2009,35 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 // 画面を離れている間は音を止める
 document.addEventListener('visibilitychange', () => suspendAudio(document.hidden));
 // 思わぬエラーが起きても、遊び続けられるようにひと言だけ出す（途中は保存されている）
-window.addEventListener('error', () => say('うまく動かない所がありました。おかしければ再読み込みしてください', 4000));
-window.addEventListener('unhandledrejection', () => say('うまく動かない所がありました。おかしければ再読み込みしてください', 4000));
+const OOPS = L('うまく動かない所がありました。おかしければ再読み込みしてください', 'Something went wrong. If things look off, please reload');
+window.addEventListener('error', () => say(OOPS, 4000));
+window.addEventListener('unhandledrejection', () => say(OOPS, 4000));
 el.spin.addEventListener('click', () => void onSpin());
 $('spin-go').addEventListener('click', () => void onSpin());
 el.tax.addEventListener('click', () => {
   const t = nextTax(state);
-  say(`${state.difficulty ? `【${DIFFICULTIES[state.difficulty].name}】` : ''}年貢 ${t.amount}金・${t.daysLeft === 0 ? '今日の終わり' : `あと${t.daysLeft}日`}（${state.day}日目）${state.cleared ? '' : `・クリアまであと${CONFIG.winTaxes - state.taxesPaid}回`}`, 3000);
+  say(
+    `${state.difficulty ? `【${DIFFICULTIES[state.difficulty].name}】` : ''}` +
+      L(
+        `年貢 ${t.amount}金・${t.daysLeft === 0 ? '今日の終わり' : `あと${t.daysLeft}日`}（${state.day}日目）${state.cleared ? '' : `・クリアまであと${CONFIG.winTaxes - state.taxesPaid}回`}`,
+        `Tax ${t.amount}g · ${t.daysLeft === 0 ? 'due today' : `${t.daysLeft} days left`} (day ${state.day})${state.cleared ? '' : ` · ${CONFIG.winTaxes - state.taxesPaid} more to win`}`,
+      ),
+    3000,
+  );
 });
 el.order.addEventListener('click', () => {
   const o = state.order;
   if (!o) return;
   const left = o.dueDay - state.day;
-  say(o.done ? `注文達成 +${o.reward}金` : `注文：${CROPS[o.crop].name}を${o.need}個 → +${o.reward}金（${left > 0 ? `あと${left}日` : '今日まで'}）`, 3000);
+  say(
+    o.done
+      ? L(`注文達成 +${o.reward}金`, `Order done +${o.reward}g`)
+      : L(`注文：${CROPS[o.crop].name}を${o.need}個 → +${o.reward}金（${left > 0 ? `あと${left}日` : '今日まで'}）`, `Order: ${o.need} ${CROPS[o.crop].name} → +${o.reward}g (${left > 0 ? `${left} days left` : 'due today'})`),
+    3000,
+  );
 });
 el.goldBox.querySelector('.stat-icon')!.innerHTML = art('coin');
-document.querySelector('.machine-top')!.innerHTML = `${art('coin')} 畑スロット ${art('coin')}`;
+document.querySelector('.machine-top')!.innerHTML = `${art('coin')} ${L('畑スロット', 'FARM SLOTS')} ${art('coin')}`;
 // 演出の最中に画面をタップすると早送り
 document.addEventListener('pointerdown', () => {
   if (ui.busy) setHurry(true);
@@ -2006,8 +2066,8 @@ $('sheet-close').addEventListener('click', closeSheet);
 // メニュー（遊び方・音・演出控えめ）
 const menu = $('hud-menu');
 const menuLabels = () => {
-  el.mute.textContent = isMuted() ? '🔇 音オフ' : '🔊 音オン';
-  $('calm-btn').textContent = isCalm() ? '✨ 演出 控えめ' : '✨ 演出 ふつう';
+  el.mute.textContent = isMuted() ? L('🔇 音オフ', '🔇 Sound off') : L('🔊 音オン', '🔊 Sound on');
+  $('calm-btn').textContent = isCalm() ? L('✨ 演出 控えめ', '✨ Effects: calm') : L('✨ 演出 ふつう', '✨ Effects: normal');
 };
 $('menu-btn').addEventListener('click', (e) => {
   unlockAudio();

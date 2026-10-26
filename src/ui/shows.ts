@@ -1,5 +1,6 @@
 // 1日の節目の演出：年貢の判子、お守りの3択、ゾロ目（フィーバー）、予告のカットイン、枯れる畑
 
+import { EN, gold, L } from '../i18n.ts';
 import { CHARM_PLACE, CHARM_TIER_NAMES, type CharmId, CHARMS, CONFIG, PLACES, type SymbolId, SYMBOLS } from '../config.ts';
 import { chooseCharm } from '../game.ts';
 import { art, type ArtId } from '../art.ts';
@@ -22,7 +23,7 @@ export async function showTaxStamp(amount: number, ok: boolean): Promise<void> {
   // 役人が拍子木を鳴らしてやって来て、印を押す
   const official = document.createElement('div');
   official.className = `official${ok ? '' : ' angry'}`;
-  official.innerHTML = `<span class="official-body">${art('official')}</span><span class="official-say">${ok ? '年貢を納めよ！' : '年貢が足りぬ！'}</span>`;
+  official.innerHTML = `<span class="official-body">${art('official')}</span><span class="official-say">${ok ? L('年貢を納めよ！', 'Pay your taxes!') : L('年貢が足りぬ！', 'Not enough tax!')}</span>`;
   document.body.appendChild(official);
   sfx.official();
   official.animate([{ transform: 'translateX(120%)' }, { transform: 'translateX(0)' }], { duration: 420, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'forwards' });
@@ -36,8 +37,8 @@ export async function showTaxStamp(amount: number, ok: boolean): Promise<void> {
   const stamp = document.createElement('div');
   stamp.className = `stamp${ok ? ' ok' : ''}`;
   stamp.innerHTML = ok
-    ? `${art('bale')} 年貢 納付！<small>−${amount}金</small>`
-    : `${art('bale')} 年貢 未納…<small>${amount}金 払えなかった</small>`;
+    ? `${art('bale')} ${L('年貢 納付！', 'TAX PAID!')}<small>−${gold(amount)}</small>`
+    : `${art('bale')} ${L('年貢 未納…', 'UNPAID…')}<small>${L(`${amount}金 払えなかった`, `Couldn't pay ${amount}g`)}</small>`;
   document.body.appendChild(stamp);
   stamp.animate(
     [
@@ -60,14 +61,14 @@ export async function showTaxStamp(amount: number, ok: boolean): Promise<void> {
   stamp.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: 'forwards' }).onfinish = () => stamp.remove();
   if (ok) {
     burst(window.innerWidth / 2, window.innerHeight * 0.4, ['🎊', '✨', '🌾'], 14, 140);
-    floatText(window.innerWidth / 2, window.innerHeight * 0.4, state.cleared ? `年貢${state.taxesPaid}回 納付！` : `★${state.taxesPaid}/${CONFIG.winTaxes} あと${CONFIG.winTaxes - state.taxesPaid}回でクリア`, { cls: 'good', size: 1.1 });
+    floatText(window.innerWidth / 2, window.innerHeight * 0.4, state.cleared ? L(`年貢${state.taxesPaid}回 納付！`, `Tax #${state.taxesPaid} paid!`) : L(`★${state.taxesPaid}/${CONFIG.winTaxes} あと${CONFIG.winTaxes - state.taxesPaid}回でクリア`, `★${state.taxesPaid}/${CONFIG.winTaxes} ${CONFIG.winTaxes - state.taxesPaid} more to win`), { cls: 'good', size: 1.1 });
     await sleep(500);
     const added = state.lastObstacles;
     if (added.length) {
       hooks.render();
       const c = center(visibleOr(el.bag.querySelector(`[data-sym="${added[0]}"]`), 'bag'));
       const names = [...new Set(added)].map((s) => `${SYMBOLS[s].name}${added.filter((x) => x === s).length > 1 ? `×${added.filter((x) => x === s).length}` : ''}`).join('・');
-      floatText(c.x, c.y - 20, `${names}が袋に増えた…`, { cls: 'bad', size: 0.8 });
+      floatText(c.x, c.y - 20, L(`${names}が袋に増えた…`, `${names} joined your bag…`), { cls: 'bad', size: 0.8 });
     }
   }
 }
@@ -79,9 +80,9 @@ export function showCharmOffer(): Promise<void> {
   // レアが混ざっていたら当たりの合図
   if (offer.some((id) => CHARMS[id].tier === 'rare')) later(() => sfx.rare(), 450);
   el.overlay.innerHTML = `
-    <div class="modal charm-modal" role="dialog" aria-label="お守りを選ぶ">
-      <h2>🎁 お守りを1つ選ぼう</h2>
-      <p class="sub">重ねると強くなる</p>
+    <div class="modal charm-modal" role="dialog" aria-label="${L('お守りを選ぶ', 'Pick a charm')}">
+      <h2>🎁 ${L('お守りを1つ選ぼう', 'Pick a charm')}</h2>
+      <p class="sub">${L('重ねると強くなる', 'Stacks get stronger')}</p>
       <div class="charm-choices">
         ${offer
           .map((id) => {
@@ -90,10 +91,10 @@ export function showCharmOffer(): Promise<void> {
             // 3個目で金色（効果2倍）
             const toGold = c.max >= CONFIG.goldenAt && n + 1 === CONFIG.goldenAt;
             return `<button class="charm-card tier-${c.tier}${c.special ? ' special' : ''}${toGold ? ' golden' : ''}" data-charm="${id}" disabled>
-              <span class="tier">${c.special ? '特別' : CHARM_TIER_NAMES[c.tier]}</span>
+              <span class="tier">${c.special ? L('特別', 'Special') : CHARM_TIER_NAMES[c.tier]}</span>
               <span class="e">${art(id)}</span>
               <b>${c.name}${n > 0 ? ` <span class="lv">${n}→${n + 1}</span>` : ''}</b>
-              <small>${toGold ? '✦金色に！ ' : ''}${c.desc(toGold ? (n + 1) * 2 : n + 1)}</small>
+              <small>${toGold ? L('✦金色に！ ', '✦Goes golden! ') : ''}${c.desc(toGold ? (n + 1) * 2 : n + 1)}</small>
             </button>`;
           })
           .join('')}
@@ -136,11 +137,11 @@ export function showCharmOffer(): Promise<void> {
             flash('#ffffff', 300);
             const r = el.reels.lastElementChild as HTMLElement;
             burst(center(r).x, center(r).y, ['✨', '🎰', '⭐'], 14, 80);
-            floatText(center(r).x, center(r).y - 40, 'リール+1！', { cls: 'good', size: 1 });
+            floatText(center(r).x, center(r).y - 40, L('リール+1！', 'Reel +1!'), { cls: 'good', size: 1 });
           }
           const got = visibleOr(el.charms.querySelector(`[data-charm="${id}"]`), 'charms');
           if (got) pop(got, 1.2);
-          if (CHARM_PLACE[id]) say(`👆 ${PLACES[CHARM_PLACE[id]!].name}を置く`, 3000);
+          if (CHARM_PLACE[id]) say(`👆 ${L(`${PLACES[CHARM_PLACE[id]!].name}を置く`, `Place the ${PLACES[CHARM_PLACE[id]!].name}`)}`, 3000);
           resolve();
         }, 650);
       }),
@@ -150,7 +151,7 @@ export function showCharmOffer(): Promise<void> {
 
 export async function feverBanner(symbols: SymbolId[], bad: boolean): Promise<void> {
   const lines = symbols
-    .map((s) => `${symHtml(s)}${SYMBOLS[s].name}：${SYMBOLS[s].feverDesc}${SYMBOLS[s].rarity === 'bad' ? '' : '＋大当たり'}`)
+    .map((s) => `${symHtml(s)}${SYMBOLS[s].name}：${SYMBOLS[s].feverDesc}${SYMBOLS[s].rarity === 'bad' ? '' : L('＋大当たり', ' + jackpot')}`)
     .join('<br>');
   const banner = document.createElement('div');
   if (bad) {
@@ -161,9 +162,9 @@ export async function feverBanner(symbols: SymbolId[], bad: boolean): Promise<vo
     const c = center(el.machine);
     burst(c.x, c.y, ['🪶', '💀', '🖤'], 16, 140);
     speedLines(1400, 'rgba(60,0,90,0.55)');
-    await slamText('群れ!!', { cls: 'bad', dur: 1100 });
+    await slamText(L('群れ!!', 'SWARM!!'), { cls: 'bad', dur: 1100 });
     banner.className = 'fever-banner bad';
-    banner.innerHTML = `⚠️ ${symbols.map((s) => `${SYMBOLS[s].name}の群れ`).join('・')}！<small>${lines}</small>`;
+    banner.innerHTML = `⚠️ ${symbols.map((s) => L(`${SYMBOLS[s].name}の群れ`, `${SYMBOLS[s].name} swarm`)).join(L('・', ', '))}！<small>${lines}</small>`;
   } else {
     sfx.fever();
     flash('#ff9ad5', 600);
@@ -190,7 +191,7 @@ export async function feverBanner(symbols: SymbolId[], bad: boolean): Promise<vo
   banner.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: 'forwards' }).onfinish = () => banner.remove();
 }
 
-export const CUTIN_TEXT = ['チャンス？', 'チャンス！', '激アツ!!', '確定!!!'];
+export const CUTIN_TEXT = EN ? ['Chance?', 'Chance!', 'HOT!!', 'SURE THING!!!'] : ['チャンス？', 'チャンス！', '激アツ!!', '確定!!!'];
 export const CUTIN_MS = 1500;
 
 /** 予告のカットイン：キャラが斜めに飛び込んで期待度の色を見せる */

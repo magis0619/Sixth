@@ -1,5 +1,6 @@
 // 表示の部品：絵柄・作物の絵、引き出し、ひとこと、値札など（状態は読むだけ）
 
+import { EN, gold, L } from '../i18n.ts';
 import { CONFIG, type CropKind, CROPS, type PlaceId, SHAPE_NAMES, type SymbolId, SYMBOLS, UPGRADE_SYMBOL, type UpgradeId } from '../config.ts';
 import { bagTotal, type Crop, removeLimitReached } from '../game.ts';
 import { art, type ArtId } from '../art.ts';
@@ -11,7 +12,7 @@ import { el, state } from './store.ts';
 // ---- 引き出し（ショップ・絵柄袋・お守り） ----
 
 export type SheetName = 'shop' | 'bag' | 'charms';
-export const SHEET_TITLES: Record<SheetName, string> = { shop: 'ショップ', bag: '絵柄袋', charms: 'お守り' };
+export const SHEET_TITLES: Record<SheetName, string> = { shop: L('ショップ', 'Shop'), bag: L('絵柄袋', 'Bag'), charms: L('お守り', 'Charms') };
 export let openSheetName: SheetName | null = null;
 
 export function openSheet(name: SheetName): void {
@@ -47,7 +48,7 @@ export function roleClass(id: SymbolId): string {
 
 export const CROP_STAGES: ArtId[] = ['sprout', 'leaf', 'bud'];
 export const FRUIT: Record<CropKind, ArtId> = { tomato: 'tomato', strawberry: 'strawberry', pumpkin: 'pumpkin', melon: 'melon', corn: 'corn', watermelon: 'watermelon' };
-export const STAGE_NAMES = ['芽', '若葉', 'つぼみ', '実'];
+export const STAGE_NAMES = EN ? ['sprout', 'leaves', 'bud', 'ripe'] : ['芽', '若葉', 'つぼみ', '実'];
 
 /** 実るまでの成長は作物ごとに違うので、見た目の段階（芽・若葉・つぼみ・実）に割り当てる */
 export function stageOf(crop: Crop): number {
@@ -104,11 +105,11 @@ export const PLACE_ART: Record<PlaceId, ArtId> = {
 };
 
 
-export function costHtml(price: number | null, affordable: boolean, doneText = '完了'): string {
+export function costHtml(price: number | null, affordable: boolean, doneText = L('完了', 'Done')): string {
   if (price === null) return `<span class="cost done">${doneText}</span>`;
   return affordable
-    ? `<span class="cost"><b>${price}金</b></span>`
-    : `<span class="cost"><b>${price}金</b>${price > state.gold ? `<small>あと${price - state.gold}</small>` : ''}</span>`;
+    ? `<span class="cost"><b>${gold(price)}</b></span>`
+    : `<span class="cost"><b>${gold(price)}</b>${price > state.gold ? `<small>${L('あと', 'need ')}${price - state.gold}</small>` : ''}</span>`;
 }
 
 export function bagPct(bag: Record<SymbolId, number>, id: SymbolId): number {
@@ -118,8 +119,8 @@ export function bagPct(bag: Record<SymbolId, number>, id: SymbolId): number {
 
 export function upgradeEffect(id: UpgradeId): string {
   const { symbol, delta } = UPGRADE_SYMBOL[id]!;
-  if (delta < 0 && state.bag[symbol] === 0) return `${SYMBOLS[symbol].name}はもういない！`;
-  if (delta < 0 && removeLimitReached(state)) return `今週はもう消した（来週また消せる）`;
+  if (delta < 0 && state.bag[symbol] === 0) return L(`${SYMBOLS[symbol].name}はもういない！`, `No ${SYMBOLS[symbol].name} left!`);
+  if (delta < 0 && removeLimitReached(state)) return L('今週はもう消した（来週また消せる）', 'Already removed one this week (again next week)');
   const after = { ...state.bag, [symbol]: state.bag[symbol] + delta };
   // 袋の絵と「今→買ったあと」の数字だけで、出やすさの変化を見せる
   return `<span class="odds">${art('seed')} ${bagPct(state.bag, symbol)}% → <b>${bagPct(after, symbol)}%</b></span>`;

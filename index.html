@@ -26,15 +26,15 @@
       <header class="hud">
         <div class="hud-bar">
           <div class="hud-gold" id="gold-box"><span class="stat-icon"></span><span id="gold">0</span><span id="day" hidden></span></div>
-          <button class="hud-tax" id="tax" aria-label="年貢"></button>
-          <button class="icon-btn" id="menu-btn" aria-label="メニュー">≡</button>
+          <button class="hud-tax" id="tax" aria-label="年貢" data-en-label="Tax"></button>
+          <button class="icon-btn" id="menu-btn" aria-label="メニュー" data-en-label="Menu">≡</button>
         </div>
         <div class="hud-menu" id="hud-menu" hidden>
-          <button id="help">？ 遊び方</button>
+          <button id="help" data-en="？ How to play">？ 遊び方</button>
           <button id="mute">🔊 音</button>
           <button id="calm-btn">✨ 演出</button>
-          <button id="settings-btn">⚙ 設定</button>
-          <button id="to-title">🏠 タイトルへ<small>途中は保存されます</small></button>
+          <button id="settings-btn" data-en="⚙ Settings">⚙ 設定</button>
+          <button id="to-title" data-en="🏠 Title&lt;small&gt;Your game is saved&lt;/small&gt;">🏠 タイトルへ<small>途中は保存されます</small></button>
         </div>
       </header>
 
@@ -48,14 +48,14 @@
         <div class="scene-critters" id="critters"></div>
       </section>
 
-      <section class="farm" aria-label="畑">
-        <button class="order-tag" id="order" aria-label="注文"></button>
+      <section class="farm" aria-label="畑" data-en-label="Field">
+        <button class="order-tag" id="order" aria-label="注文" data-en-label="Order"></button>
         <div class="market-tag" id="market" aria-label="今週の相場" hidden></div>
         <div class="pick-tag" id="pick" aria-live="polite" hidden></div>
         <div class="field" id="field"></div>
       </section>
 
-      <section class="machine" id="machine" aria-label="スロット">
+      <section class="machine" id="machine" aria-label="スロット" data-en-label="Slot machine">
         <div class="machine-top"></div>
         <div class="reels-frame">
           <div class="reels" id="reels"></div>
@@ -63,13 +63,13 @@
         </div>
         <div class="msg" id="msg" aria-live="polite"></div>
         <!-- 回すのはリールをタップ。このボタンは見えない（キーボード・読み上げ用） -->
-        <button class="spin sr-only" id="spin">まわす</button>
+        <button class="spin sr-only" id="spin" data-en="Spin">まわす</button>
       </section>
 
-      <nav class="tabs" aria-label="メニュー">
-        <button class="tab" data-sheet="shop"><span class="tab-ico" data-art="bargain"></span>ショップ<span class="tab-note" id="goal"></span></button>
-        <button class="tab" data-sheet="bag"><span class="tab-ico" data-art="seed"></span>絵柄袋<span class="tab-note" id="bag-total"></span></button>
-        <button class="tab" data-sheet="charms"><span class="tab-ico" data-art="coinPurse"></span>お守り<span class="tab-note" id="charm-count"></span></button>
+      <nav class="tabs" aria-label="メニュー" data-en-label="Menu">
+        <button class="tab" data-sheet="shop"><span class="tab-ico" data-art="bargain"></span><span data-en="Shop">ショップ</span><span class="tab-note" id="goal"></span></button>
+        <button class="tab" data-sheet="bag"><span class="tab-ico" data-art="seed"></span><span data-en="Bag">絵柄袋</span><span class="tab-note" id="bag-total"></span></button>
+        <button class="tab" data-sheet="charms"><span class="tab-ico" data-art="coinPurse"></span><span data-en="Charms">お守り</span><span class="tab-note" id="charm-count"></span></button>
       </nav>
     </div>
 
@@ -79,35 +79,35 @@
     <aside class="sheet" id="sheet" aria-hidden="true">
       <div class="sheet-head">
         <h2 id="sheet-title"></h2>
-        <button class="sheet-close" id="sheet-close" aria-label="閉じる">×</button>
+        <button class="sheet-close" id="sheet-close" aria-label="閉じる" data-en-label="Close">×</button>
       </div>
       <div class="sheet-pane" data-pane="shop">
         <!-- 屋台：畑・絵柄を足す・お邪魔を消す を、1つの画面に見出しで分けて並べる -->
         <div class="stall" id="stall">
           <section class="stall-sec">
             <div class="awning"></div>
-            <h3 class="stall-head"><span class="tab-ico" data-art="expand"></span>畑<small>今週の3品・広げるはいつでも</small></h3>
+            <h3 class="stall-head"><span class="tab-ico" data-art="expand"></span><span data-en="Farm&lt;small&gt;3 picks this week · expand anytime&lt;/small&gt;">畑<small>今週の3品・広げるはいつでも</small></span></h3>
             <div class="shop" id="farm-shop"></div>
           </section>
           <section class="stall-sec">
             <div class="awning"></div>
-            <h3 class="stall-head"><span class="tab-ico" data-art="seed"></span>絵柄を足す<small>今週の3品・出やすくなる</small></h3>
+            <h3 class="stall-head"><span class="tab-ico" data-art="seed"></span><span data-en="Add symbols&lt;small&gt;3 picks this week · makes them likelier&lt;/small&gt;">絵柄を足す<small>今週の3品・出やすくなる</small></span></h3>
             <div class="shop" id="shop"></div>
           </section>
           <section class="stall-sec">
             <div class="awning"></div>
-            <h3 class="stall-head"><span class="tab-ico" data-art="crow"></span>お邪魔を消す<small>週1回・消すたび高くなる</small></h3>
+            <h3 class="stall-head"><span class="tab-ico" data-art="crow"></span><span data-en="Remove pests&lt;small&gt;Once a week · pricier each time&lt;/small&gt;">お邪魔を消す<small>週1回・消すたび高くなる</small></span></h3>
             <div class="shop" id="remove-shop"></div>
-            <p class="stall-empty" id="stall-empty">袋にお邪魔はいない！</p>
+            <p class="stall-empty" id="stall-empty" data-en="No pests in your bag!">袋にお邪魔はいない！</p>
           </section>
         </div>
       </div>
       <div class="sheet-pane" data-pane="bag">
-        <p class="sheet-lead">スロットはこの袋から1枚ずつ引く。出る確率つき</p>
+        <p class="sheet-lead" data-en="Each reel draws one symbol from this bag. Odds shown">スロットはこの袋から1枚ずつ引く。出る確率つき</p>
         <div class="bag" id="bag"></div>
       </div>
       <div class="sheet-pane" data-pane="charms">
-        <p class="sheet-lead" id="charm-panel">まだお守りはない。年貢を納めると3つから1つ選べる</p>
+        <p class="sheet-lead" id="charm-panel" data-en="No charms yet. Pay a tax to pick one of three">まだお守りはない。年貢を納めると3つから1つ選べる</p>
         <div class="charms" id="charms"></div>
       </div>
     </aside>

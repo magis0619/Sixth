@@ -73,15 +73,17 @@ async function page(size, run) {
   const p = await ctx.newPage();
   const errs = [];
   p.on('pageerror', (e) => errs.push(e.message));
-  await p.addInitScript((r) => {
+  await p.addInitScript(([r, lang]) => {
     if (sessionStorage.getItem('a')) return;
     sessionStorage.setItem('a', '1');
     localStorage.clear();
     localStorage.setItem('hatake-slot:calm', '1');
+    // 表示の言語（UI_LANG=en で英語の画面を確かめる）
+    localStorage.setItem('hatake-slot:lang', lang);
     // チュートリアルは別に確かめる（ここでは済ませた状態から）
     localStorage.setItem('hatake-slot:meta', JSON.stringify({ tutorialDone: true }));
     if (r) localStorage.setItem('hatake-slot:run', r);
-  }, run ?? null);
+  }, [run ?? null, process.env.UI_LANG ?? 'ja']);
   await p.goto(process.env.BASE ?? 'http://localhost:4173/');
   await p.waitForTimeout(300);
   return { p, ctx, errs };

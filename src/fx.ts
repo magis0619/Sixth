@@ -1,5 +1,6 @@
 // 画面演出（数字の飛び出し、粒子、揺れ、フラッシュ）。すべて fx レイヤー上に一時要素を出して消す。
 
+import { L } from './i18n.ts';
 import { glyph } from './art.ts';
 
 const layer = (): HTMLElement => document.getElementById('fx')!;
@@ -246,7 +247,7 @@ export function rollNumber(x: number, y: number, value: number, opts: { prefix?:
   el.innerHTML =
     (opts.prefix ? `<span class="roll-prefix">${opts.prefix}</span>` : '') +
     digits.map(() => `<span class="roll-digit"><span class="roll-strip">${'0123456789'.repeat(3).split('').map((d) => `<i>${d}</i>`).join('')}</span></span>`).join('') +
-    '<span class="roll-unit">金</span>';
+    `<span class="roll-unit">${L('金', 'g')}</span>`;
   // rise：下からせり上がって出る
   const from = opts.rise ? 'translate(-50%, calc(-50% + 70px)) scale(0.8)' : 'translate(-50%, -50%) scale(0.4)';
   el.animate([{ transform: from, opacity: 0 }, { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 }], {
@@ -468,4 +469,24 @@ export function firework(x: number, y: number, color: string): void {
       ).onfinish = () => spark.remove();
     }
   };
+}
+
+/** 後光：画面の真ん中から金色の光の筋が回りながら広がる（大豊作用） */
+export function rays(ms = 2600): void {
+  const el = spawn('', 'fx-rays', window.innerWidth / 2, window.innerHeight * 0.42);
+  el.animate(
+    [
+      { transform: 'translate(-50%, -50%) scale(0.2) rotate(0deg)', opacity: 0 },
+      { transform: 'translate(-50%, -50%) scale(1) rotate(40deg)', opacity: 1, offset: 0.15 },
+      { transform: 'translate(-50%, -50%) scale(1.1) rotate(120deg)', opacity: 1, offset: 0.8 },
+      { transform: 'translate(-50%, -50%) scale(1.3) rotate(150deg)', opacity: 0 },
+    ],
+    { duration: ms, easing: 'linear' },
+  ).onfinish = () => el.remove();
+}
+
+/** 画面を暗くして主役を引き立てる幕 */
+export function dim(ms = 2600, opacity = 0.55): void {
+  const el = spawn('', 'fx-dim', 0, 0);
+  el.animate([{ opacity: 0 }, { opacity, offset: 0.1 }, { opacity, offset: 0.85 }, { opacity: 0 }], { duration: ms }).onfinish = () => el.remove();
 }

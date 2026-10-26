@@ -1,5 +1,6 @@
 // 遊ぶたびに増える要素（豊穣ポイント・解放・ショップの組み合わせ）。ブラウザに保存する。
 
+import { L } from './i18n.ts';
 import { ACHIEVE_ADDS, CHARMS, CHARM_ORDER, DIFFICULTIES, META, THUNDER_LINES, type AddUpgradeId, type CharmId } from './config.ts';
 import { ALL_ADDS, type GameSetup, type GameState } from './game.ts';
 
@@ -165,13 +166,13 @@ export function recordRun(meta: MetaState, state: GameState, final: boolean): st
       meta.maxCleared = state.difficulty;
       if (state.difficulty + 1 < DIFFICULTIES.length) newly.push(DIFFICULTIES[state.difficulty + 1].name);
     }
-    add('addMelonSeed', 'メロンの種');
+    add('addMelonSeed', L('メロンの種', 'Melon Seed'));
     if (!meta.skins.includes('gold')) {
       meta.skins.push('gold');
-      newly.push('金色のスロット');
+      newly.push(L('金色のスロット', 'Golden slot machine'));
     }
   }
-  if (meta.lines >= THUNDER_LINES) add('addThunder', '雷');
+  if (meta.lines >= THUNDER_LINES) add('addThunder', L('雷', 'Thunder'));
   saveMeta(meta);
   return newly;
 }

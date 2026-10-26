@@ -108,13 +108,15 @@ describe('列の収穫', () => {
     expect(multSteps(s, at(0, 0)).map((x) => x.label)).toContain('トマト祭り');
   });
 
-  it('畑を全部いっぺんに売ると豊年満作', () => {
+  it('畑を全部いっぺんに売ると大豊作（1プレイに1回だけ）', () => {
     const s = game();
     ripe(s, 'tomato', fieldCells(s));
     const r = sell(s, at(0, 0))!;
     expect(r.size).toBe(9);
     expect(r.bumper).toBeGreaterThan(0);
     expect(s.charms.bumperHarvest).toBe(1);
+    ripe(s, 'tomato', fieldCells(s));
+    expect(sell(s, at(0, 0))!.bumper).toBe(0);
   });
 });
 

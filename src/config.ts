@@ -1,4 +1,5 @@
 // 畑スロットの調整用パラメータ。数値はすべてここで変える。
+import { EN } from './i18n.ts';
 
 export type SymbolId =
   | 'seed'
@@ -387,8 +388,8 @@ export const CONFIG = {
   charmTierWeights: { common: 10, uncommon: 5, rare: 1.5 } as Record<CharmTier, number>,
   /** 同じお守りをこの数そろえると金色に進化して効果が2倍 */
   goldenAt: 3,
-  /** 豊年満作の大当たり（年貢の回数で増える） */
-  bumperJackpot: 30,
+  /** 大豊作の大当たり（1プレイに1回。年貢の回数で増える） */
+  bumperJackpot: 80,
 
   /** 演出のタイミング（ミリ秒） */
   timing: {
@@ -505,7 +506,7 @@ export const CHARMS: Record<CharmId, CharmDef> = {
   tomatoFest: { id: 'tomatoFest', tier: 'rare', name: 'トマト祭り', emoji: '🍅', desc: () => 'トマトだけの列 さらに×1.5', max: 1, special: { kind: 'bag', hint: 'トマトの種をたくさん…？' } },
   sunshower: { id: 'sunshower', tier: 'rare', name: '天気雨', emoji: '🌦️', desc: () => '同じ日の雨と太陽が重なったマス +1', max: 1, special: { kind: 'bag', hint: '雨と太陽を両方…？' } },
   moonFeast: { id: 'moonFeast', tier: 'rare', name: '月の宴', emoji: '🎑', desc: () => '満月が全体+2', max: 1, special: { kind: 'bag', hint: '満月と太陽を…？' } },
-  bumperHarvest: { id: 'bumperHarvest', tier: 'rare', name: '豊年満作', emoji: '🌾', desc: () => '畑を一度に全部売ると大当たり', max: 1, special: { kind: 'event', hint: '畑をまるごと…？' } },
+  bumperHarvest: { id: 'bumperHarvest', tier: 'rare', name: '大豊作', emoji: '🌾', desc: () => '畑いっぱいの作物を一度に売った！（1回だけの大当たり）', max: 1, special: { kind: 'event', hint: '畑いっぱいを一度に売ると…？' } },
   crowReturn: { id: 'crowReturn', tier: 'rare', name: 'カラス返し', emoji: '🪃', desc: () => 'カラスが来るたび +3金', max: 1, special: { kind: 'event', hint: 'カラスにたくさん食べられると…？' } },
   lastStraw: { id: 'lastStraw', tier: 'rare', name: '首の皮', emoji: '🧵', desc: () => '次の年貢が半分', max: 1, special: { kind: 'event', hint: '年貢をギリギリで…？' } },
   exhibition: { id: 'exhibition', tier: 'rare', name: '品評会', emoji: '🏅', desc: () => '作物の売値+20%', max: 1, special: { kind: 'event', hint: '作物を全種類売ると…？' } },
@@ -602,3 +603,123 @@ export const ACHIEVE_ADDS: Partial<Record<AddUpgradeId, { hint: string; done: st
 
 /** 累計の列の数で雷が解放される */
 export const THUNDER_LINES = 100;
+
+// ---- 英語表示：名前と説明を差し替える ----
+if (EN) {
+  const sym: Partial<Record<SymbolId, [string, string, string]>> = {
+    seed: ['Tomato Seed', 'Plant 2–4 tomatoes', 'Breeding: tomatoes planted today start one stage grown'],
+    berrySeed: ['Strawberry Seed', 'Plant 3–5 strawberries', 'Breeding: strawberries planted today start one stage grown'],
+    pumpkinSeed: ['Pumpkin Seed', 'Plant 1 pumpkin', 'Breeding: pumpkins planted today start one stage grown'],
+    melonSeed: ['Melon Seed', 'Plant 1 melon', 'Breeding: melons planted today start one stage grown'],
+    watermelonSeed: ['Watermelon Seed', 'Plant 1 watermelon (2×2)', 'Breeding: watermelons planted today start one stage grown'],
+    goldSeed: ['Golden Seed', 'Plant golden corn', 'Golden harvest: jackpot ×3'],
+    rain: ['Rain', 'Cross: growth +1', 'Rainbow: all crops +1'],
+    sun: ['Sun', 'Column: growth +1', 'Summer festival: prices ×2 today'],
+    fertilizer: ['Fertilizer', 'Price ×2', 'Compost: fertilize every crop'],
+    bee: ['Bee', 'Diagonals: growth +1', 'Honey: +4g per crop'],
+    crow: ['Crow', 'Eats a crop 1/2 of the time (not pumpkins)', 'Flock: chance 1/2 → 3/4'],
+    bug: ['Bug', 'Growth −1', 'Swarm: growth −2'],
+    coin: ['Coin', '+gold', 'Jackpot ×3'],
+    merchant: ['Merchant', 'Prices ×1.5 today', 'Big deal: buys all ripe crops now at ×2'],
+    clover: ['Clover', 'Golden seed more likely tomorrow', 'Luck: pick a charm'],
+    thunder: ['Thunder', 'Row: growth +2', 'Great thunder: all crops +1'],
+    hoe: ['Hoe', 'Clears weeds/frost in a row and tills (next crop +1)', 'Great tilling: till the whole field'],
+    moon: ['Full Moon', 'All crops +1', 'Moon feast: all crops +1 more'],
+    weed: ['Weed', 'Blocks empty plots and spreads', 'Overgrowth: sprouts in 2 places'],
+    tanuki: ['Tanuki', 'Steals ripe crops', 'Pack: takes 2'],
+    frost: ['Frost', 'Freezes a plot for 3 days', 'Cold snap: freezes 2 plots'],
+    mole: ['Mole', 'Pushes a crop into a nearby empty plot', 'Pack: pushes 2'],
+  };
+  (Object.keys(sym) as SymbolId[]).forEach((id) => {
+    const [name, desc, feverDesc] = sym[id]!;
+    Object.assign(SYMBOLS[id], { name, desc, feverDesc });
+  });
+  const crop: Record<CropKind, string> = { strawberry: 'Strawberry', tomato: 'Tomato', pumpkin: 'Pumpkin', melon: 'Melon', corn: 'Golden Corn', watermelon: 'Watermelon' };
+  (Object.keys(crop) as CropKind[]).forEach((k) => (CROPS[k].name = crop[k]));
+  Object.assign(SHAPE_NAMES, { cross: 'Cross', column: 'Column', row: 'Row', x: 'Diagonals', all: 'Whole field' });
+  const place: Record<PlaceId, [string, string]> = {
+    scarecrow: ['Scarecrow', 'Guards the 8 plots around it'],
+    bigScarecrow: ['Big Scarecrow', 'Guards everything within 2 plots'],
+    well: ['Well', 'Up/down/left/right +1 growth each day'],
+    goldenWell: ['Golden Well', 'The 8 plots around +1 growth each day'],
+    hive: ['Beehive', '8 plots around: price +2; strawberries grow nightly'],
+    queenHive: ['Queen Hive', '8 plots around: price +6; strawberries grow nightly'],
+    henhouse: ['Henhouse', '+2g daily; eats nearby bugs, scares off moles'],
+    cowshed: ['Cowshed', '+4g daily; +2 next to water'],
+    compost: ['Compost Plot', 'Price ×2'],
+    water: ['Water Plot', '+1 daily; 3 in a row = waterwheel; surround a plot = fishing pond'],
+  };
+  (Object.keys(place) as PlaceId[]).forEach((id) => Object.assign(PLACES[id], { name: place[id][0], desc: place[id][1] }));
+  Object.assign(CONFIG.pivotAdds, {
+    addBerrySeed: 'Strawberry: ripens in 2 days, grows near hives',
+    addPumpkinSeed: 'Pumpkin: pricey and crow-proof',
+    addMelonSeed: 'Melon: one big earner',
+    addWatermelonSeed: 'Watermelon: a 2×2 heavy hitter',
+    addGoldSeed: 'Golden corn: rare and valuable',
+    addHoe: 'Hoe: till for faster crops',
+    addThunder: 'Thunder: grow a whole row at once',
+    addMerchant: 'Merchant: pick your day to sell high',
+  });
+  Object.assign(CONFIG.pivotPlaces, {
+    henhouse: 'Henhouse: nightly gold + pest control',
+    cowshed: 'Cowshed: earn gold every night',
+    hive: 'Beehive: higher prices + strawberries',
+    water: 'Water: wheels in a row, ponds when enclosed',
+    well: 'Well: grows its neighbours nightly',
+  });
+  const up: Partial<Record<UpgradeId, string>> = {
+    addSeed: 'Tomato Seed', addBerrySeed: 'Strawberry Seed', addPumpkinSeed: 'Pumpkin Seed', addRain: 'Rain', addSun: 'Sun', addFertilizer: 'Fertilizer',
+    addGoldSeed: 'Golden Seed', addMelonSeed: 'Melon Seed', addThunder: 'Thunder', addWatermelonSeed: 'Watermelon Seed', addHoe: 'Hoe', addBee: 'Bee',
+    addMerchant: 'Merchant', addClover: 'Clover', addMoon: 'Full Moon',
+    removeCrow: 'Crow', removeBug: 'Bug', removeWeed: 'Weed', removeTanuki: 'Tanuki', removeFrost: 'Frost', removeMole: 'Mole',
+  };
+  UPGRADES.forEach((u) => {
+    const what = up[u.id]!;
+    const remove = u.id.startsWith('remove');
+    u.name = remove ? `Remove ${what}` : `Add ${what}`;
+    u.desc = remove ? `Remove one ${what} from the bag` : u.id === 'addMoon' ? 'Add one Full Moon (all crops +1) to the bag. Costs more each time' : `Add one ${what} to the bag`;
+  });
+  Object.assign(CHARM_TIER_NAMES, { common: 'Common', uncommon: 'Uncommon', rare: 'Rare' });
+  const charm: Partial<Record<CharmId, [string, (n: number) => string, string?]>> = {
+    coinPurse: ['Coin Purse', (n) => `Coins +${2 * n}g`],
+    gentleRain: ['Gentle Rain', (n) => `Rain center +${n} more growth`],
+    crowToll: ['Crow Toll', (n) => `+${2 * n}g whenever a crow comes`],
+    aging: ['Aging', (n) => `Ripe crops gain +${3 * n} price per day`],
+    seedSack: ['Big Seed Sack', (n) => `Every seed plants +${n} more`],
+    sunBlessing: ['Sunny Spot', (n) => `Sun growth +${n}`],
+    goldenWell: ['Golden Well', () => 'Place a Golden Well (8 around +1 daily)'],
+    queenHive: ['Queen Hive', () => 'Place a Queen Hive (8 around price +6)'],
+    bargain: ['Haggler', (n) => `Shop prices −${Math.min(50, 10 * n)}%`],
+    scarecrow: ['Big Scarecrow', () => 'Place a Big Scarecrow (guards within 2)'],
+    bumper: ['Good Harvest', (n) => `Non-gold crops price +${2 * n}`],
+    goldLuck: ['Lucky Cat', (n) => `Golden corn price +${10 * n}`],
+    bugWard: ['Pest Ward', (n) => `Blocks ${Math.round((1 - Math.pow(0.5, n)) * 100)}% of bugs/weeds; free weeding`],
+    heater: ['Hot Water Bottle', () => 'Frost melts in 1 day'],
+    artisan: ['Clockmaker', (n) => `Reels +${n}`],
+    rancher: ['Rancher', (n) => `Henhouse/cowshed income +${n}`],
+    bigGame: ['Big Game', (n) => `Watermelon price +${30 * n}`],
+    wheelwright: ['Wheelwright', () => 'Waterwheel gold ×2'],
+    tillMaster: ['Master Tiller', () => 'Planting on tilled soil gives +2 growth'],
+    taxRelief: ['Tax Relief', (n) => `Taxes −${Math.min(50, 10 * n)}%`],
+    thunderstorm: ['Thunderstorm', () => 'Rain also reaches diagonals', 'Lots of rain…?'],
+    tomatoFest: ['Tomato Festival', () => 'Tomato-only lines ×1.5 more', 'Lots of tomato seeds…?'],
+    sunshower: ['Sunshower', () => 'Plots hit by both rain and sun the same day +1', 'Both rain and sun…?'],
+    moonFeast: ['Moon Feast', () => 'Full Moon gives +2 to all', 'Full moon and sun…?'],
+    bumperHarvest: ['Big Harvest', () => 'Sold a full field at once! (one-time jackpot)', 'Sell a full field at once…?'],
+    crowReturn: ['Crow Payback', () => '+3g whenever a crow comes', 'If crows eat a lot…?'],
+    lastStraw: ['By a Thread', () => 'Next tax is halved', 'Pay a tax with almost nothing left…?'],
+    exhibition: ['Fair Prize', () => 'Crop prices +20%', 'Sell every kind of crop…?'],
+  };
+  (Object.keys(charm) as CharmId[]).forEach((id) => {
+    const [name, desc, hint] = charm[id]!;
+    Object.assign(CHARMS[id], { name, desc });
+    if (hint && CHARMS[id].special) CHARMS[id].special!.hint = hint;
+  });
+  Object.assign(TOOL_EVOLVE.scarecrow!, { what: 'Guard' });
+  Object.assign(TOOL_EVOLVE.well!, { what: 'Grow' });
+  Object.assign(TOOL_EVOLVE.hive!, { what: 'Line sale' });
+  const diff = [['Normal', ''], ['Hard 1', 'Tax ×1.3'], ['Hard 2', '+Shop ×1.3'], ['Hard 3', '+Pests earlier and more'], ['Hard 4', '+Singles ×0.3']];
+  DIFFICULTIES.forEach((d, i) => Object.assign(d, { name: diff[i][0], desc: diff[i][1] }));
+  Object.assign(ACHIEVE_ADDS.addMelonSeed!, { hint: 'Clear the game once…?', done: 'First clear' });
+  Object.assign(ACHIEVE_ADDS.addThunder!, { hint: 'Sell lots of lines…?', done: 'Sell 100 lines in total' });
+}

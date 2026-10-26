@@ -2,6 +2,9 @@
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
+/** BGM だけの音量のつまみ（効果音とは別） */
+let bgmBus: GainNode | null = null;
+let bgmVolume = 0.5;
 let muted = false;
 /** 音量（設定。0〜1） */
 let volume = 0.7;
@@ -21,8 +24,29 @@ export function unlockAudio(): void {
     master = ctx.createGain();
     master.gain.value = muted ? 0 : volume;
     master.connect(ctx.destination);
+    bgmBus = ctx.createGain();
+    bgmBus.gain.value = muted ? 0 : bgmVolume;
+    bgmBus.connect(ctx.destination);
+    startBgm();
   }
   if (ctx.state === 'suspended') void ctx.resume();
+}
+
+/** BGM の音量を変える（0〜1。0 で止める） */
+export function setBgmVolume(v: number): void {
+  bgmVolume = Math.max(0, Math.min(1, v));
+  if (bgmBus) bgmBus.gain.value = muted ? 0 : bgmVolume;
+}
+
+/** 大きな演出の間だけ BGM を小さくする */
+export function duckBgm(ms: number): void {
+  if (!ctx || !bgmBus || muted) return;
+  const t = ctx.currentTime;
+  bgmBus.gain.cancelScheduledValues(t);
+  bgmBus.gain.setValueAtTime(bgmBus.gain.value, t);
+  bgmBus.gain.linearRampToValueAtTime(bgmVolume * 0.15, t + 0.15);
+  bgmBus.gain.setValueAtTime(bgmVolume * 0.15, t + ms / 1000);
+  bgmBus.gain.linearRampToValueAtTime(bgmVolume, t + ms / 1000 + 1.2);
 }
 
 /** 音量を変える（0〜1） */
@@ -44,6 +68,10 @@ export function isMuted(): boolean {
 export function toggleMute(): boolean {
   muted = !muted;
   if (master) master.gain.value = muted ? 0 : volume;
+  if (bgmBus) {
+    bgmBus.gain.cancelScheduledValues(0);
+    bgmBus.gain.value = muted ? 0 : bgmVolume;
+  }
   try {
     localStorage.setItem('hatake-slot:muted', muted ? '1' : '0');
   } catch {
@@ -194,6 +222,7 @@ export const sfx = {
     [0, 7, 12].forEach((n, i) => tone(NOTE(n), 0.3, { type: 'triangle', vol: 0.3, delay: 0.3 + i * 0.1 }));
   },
   gameOver() {
+    duckBgm(4000);
     [12, 11, 10, 9, 7, 4, 0].forEach((n, i) => tone(NOTE(n), 0.3, { type: 'triangle', vol: 0.25, delay: i * 0.12 }));
   },
   /** リーチ：最後のリールが回る間の緊張音（低い鼓動＋上がっていく音） */
@@ -270,3 +299,117 @@ export const sfx = {
     for (let i = 0; i < 6; i++) tone(NOTE(12 + i * 2), 0.1, { type: 'square', vol: 0.1, delay: i * 0.04 });
   },
 };
+
+// ---- BGM：のんびりした畑の曲（素材を使わず、その場で鳴らす） ----
+
+/** [音の高さ（C4=0。null は休み）, 拍の長さ] */
+type Phrase = [number | null, number][];
+const BPM = 100;
+/** 1小節ごとの和音（根音, 和音の構成音） */
+const CHORDS: [number, number[]][] = [
+  [0, [0, 4, 7]], [-3, [-3, 0, 4]], [-7, [-7, -3, 0]], [-5, [-5, -1, 2]],
+  [0, [0, 4, 7]], [-3, [-3, 0, 4]], [-10, [-10, -7, -3]], [-5, [-5, -1, 2]],
+  [-7, [-7, -3, 0]], [-5, [-5, -1, 2]], [-8, [-8, -5, -1]], [-3, [-3, 0, 4]],
+  [-7, [-7, -3, 0]], [-5, [-5, -1, 2]], [0, [0, 4, 7]], [0, [0, 4, 7]],
+];
+const MELODY: Phrase = [
+  [7, 1], [9, 0.5], [7, 0.5], [4, 1], [2, 1],
+  [0, 1], [2, 0.5], [4, 0.5], [9, 2],
+  [9, 1], [12, 0.5], [9, 0.5], [7, 1], [5, 1],
+  [7, 1.5], [4, 0.5], [2, 2],
+  [7, 1], [9, 0.5], [7, 0.5], [12, 1], [9, 1],
+  [7, 0.5], [4, 0.5], [2, 1], [4, 2],
+  [2, 1], [4, 0.5], [2, 0.5], [0, 1], [-3, 1],
+  [2, 2], [null, 2],
+  [9, 0.5], [12, 0.5], [14, 1], [12, 1], [9, 1],
+  [11, 0.5], [14, 0.5], [12, 1], [11, 1], [7, 1],
+  [7, 1.5], [11, 0.5], [12, 1], [11, 1],
+  [9, 2], [7, 1], [4, 1],
+  [5, 1], [9, 1], [12, 1], [14, 1],
+  [16, 1.5], [14, 0.5], [12, 1], [11, 1],
+  [12, 0.5], [7, 0.5], [4, 0.5], [7, 0.5], [12, 2],
+  [null, 4],
+];
+
+let bgmTimer = 0;
+/** 次に鳴らす拍（曲の頭からの拍数）と、その時刻 */
+let beat = 0;
+let beatTime = 0;
+/** 旋律の何番目の音まで鳴らしたか・その音の始まりの拍 */
+let melIdx = 0;
+let melBeat = 0;
+
+function startBgm(): void {
+  if (!ctx || bgmTimer) return;
+  beatTime = ctx.currentTime + 0.3;
+  // 先読みして少し先までの音を予約する（タイマーの遅れで音がずれないように）
+  bgmTimer = window.setInterval(scheduleBgm, 50);
+}
+
+function bgmVoice(freq: number, t: number, dur: number, type: OscillatorType, vol: number, attack = 0.01): void {
+  if (!ctx || !bgmBus) return;
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, t);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + attack);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  osc.connect(g).connect(bgmBus);
+  osc.start(t);
+  osc.stop(t + dur + 0.05);
+}
+
+function bgmTick(t: number, vol: number): void {
+  if (!ctx || !bgmBus) return;
+  const len = 0.04;
+  const buf = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * len), ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const f = ctx.createBiquadFilter();
+  f.type = 'highpass';
+  f.frequency.value = 6000;
+  const g = ctx.createGain();
+  g.gain.value = vol;
+  src.connect(f).connect(g).connect(bgmBus);
+  src.start(t);
+}
+
+function scheduleBgm(): void {
+  if (!ctx || ctx.state !== 'running') return;
+  const spb = 60 / BPM;
+  // 休んでいて時刻が過ぎていたら今から鳴らし直す
+  if (beatTime < ctx.currentTime - 0.2) beatTime = ctx.currentTime + 0.1;
+  while (beatTime < ctx.currentTime + 0.4) {
+    const total = CHORDS.length * 4;
+    const b = beat % total;
+    const [root, chord] = CHORDS[Math.floor(b / 4)];
+    const inBar = b % 4;
+    // ベース：1拍目と3拍目
+    if (inBar === 0 || inBar === 2) bgmVoice(NOTE(root - 12 + (inBar === 2 ? 7 : 0)), beatTime, spb * 0.9, 'triangle', 0.22);
+    // 和音：裏拍に軽く（ん・チャ）
+    chord.forEach((n) => bgmVoice(NOTE(n), beatTime + spb / 2, spb * 0.45, 'sine', 0.045));
+    // 刻み
+    bgmTick(beatTime, inBar === 0 ? 0.05 : 0.025);
+    bgmTick(beatTime + spb / 2, 0.018);
+    // 旋律：この拍の中で始まる音を鳴らす
+    if (b === 0) {
+      melIdx = 0;
+      melBeat = 0;
+    }
+    while (melIdx < MELODY.length && melBeat < b + 1) {
+      const [n, len] = MELODY[melIdx];
+      const t = beatTime + (melBeat - b) * spb;
+      if (n !== null) {
+        bgmVoice(NOTE(n + 12), t, len * spb * 0.95, 'triangle', 0.09);
+        bgmVoice(NOTE(n + 24), t, len * spb * 0.5, 'sine', 0.02);
+      }
+      melBeat += len;
+      melIdx++;
+    }
+    beat++;
+    beatTime += spb;
+  }
+}
