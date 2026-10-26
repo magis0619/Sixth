@@ -602,7 +602,10 @@ function renderFarmShop(): void {
   PLACE_ORDER.filter((id) => state.weeklyPlaces.includes(id)).forEach((id) =>
     items.push({ key: id, ico: art(PLACE_ART[id]), name: PLACES[id].name, effect: mustPlace(state) ? `先に${PLACES[state.stock[0]].name}を置く` : hasRoomFor(state, id) ? PLACES[id].desc : PLACES[id].kind === 'tool' ? '置ける空きマスがない' : '敷けるマスがない', price: placePrice(state, id), ok: canBuyPlace(state, id), pivot: isPivotPlace(state, id) }),
   );
-  if (el.farmShop.children.length !== items.length) {
+  // 週が替わって品が入れ替わったら作り直す（数が同じでも、ボタンが前の品のまま押されないように）
+  const key = items.map((it) => it.key).join(',');
+  if (el.farmShop.dataset.key !== key || el.farmShop.children.length !== items.length) {
+    el.farmShop.dataset.key = key;
     el.farmShop.innerHTML = '';
     items.forEach((it) => {
       const b = document.createElement('button');
@@ -1036,11 +1039,14 @@ async function resolveAutos(): Promise<void> {
     actingReel = i;
     reels[i].classList.add('acting');
     const from = center(reels[i]);
+    // 見せておく長さ（金貨はささっと回収するので短く）
+    let hold = EVENT_HOLD;
     if (ev.type === 'coin') {
       autoOutcome[i] = `+${ev.amount}金`;
-      await new Promise<void>((r) => flyTo(from, el.goldBox, '🪙', Math.min(8, 2 + Math.ceil(ev.amount / 3)), r));
+      hold = 120;
       sfx.coin();
-      floatText(center(el.goldBox).x, center(el.goldBox).y + 28, `+${ev.amount}`, { cls: 'gold', size: 0.9 });
+      floatText(from.x, from.y - 30, `+${ev.amount}`, { cls: 'gold', size: 0.9, dur: 700 });
+      await new Promise<void>((r) => flyTo(from, el.goldBox, '🪙', Math.min(5, 1 + Math.ceil(ev.amount / 4)), r, true));
       setGold(state.gold);
     } else if (ev.type === 'merchant') {
       autoOutcome[i] = `売値×${fmtMult(ev.mult)}`;
@@ -1213,10 +1219,10 @@ async function resolveAutos(): Promise<void> {
     }
     renderReelStates();
     // 1つずつ見せきってから、少し間を空けて次へ
-    await sleep(EVENT_HOLD);
+    await sleep(hold);
     actingReel = null;
     reels[i].classList.remove('acting');
-    await sleep(EVENT_GAP);
+    await sleep(ev.type === 'coin' ? EVENT_GAP / 2 : EVENT_GAP);
   }
 }
 

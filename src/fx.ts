@@ -93,7 +93,7 @@ export function burst(x: number, y: number, chars: string[], count = 10, spread 
 }
 
 /** 要素から要素へ絵文字を飛ばす。最後の1つが着いたら onArrive */
-export function flyTo(from: { x: number; y: number }, toEl: Element, char: string, count = 1, onArrive?: () => void): void {
+export function flyTo(from: { x: number; y: number }, toEl: Element, char: string, count = 1, onArrive?: () => void, fast = false): void {
   const to = center(toEl);
   for (let i = 0; i < count; i++) {
     const el = spawn(glyph(char), 'fx-fly', from.x, from.y);
@@ -105,7 +105,7 @@ export function flyTo(from: { x: number; y: number }, toEl: Element, char: strin
         { transform: 'translate(-50%, -50%) scale(1.3)', ...offset(from, { x: mx, y: my }), offset: 0.45 },
         { transform: 'translate(-50%, -50%) scale(0.6)', ...offset(from, to) },
       ],
-      { duration: 550 + i * 70, easing: 'cubic-bezier(.5,0,.5,1)', fill: 'forwards' },
+      { duration: fast ? 300 + i * 30 : 550 + i * 70, easing: 'cubic-bezier(.5,0,.5,1)', fill: 'forwards' },
     );
     anim.onfinish = () => {
       el.remove();
