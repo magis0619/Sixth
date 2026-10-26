@@ -5321,3 +5321,39 @@ body::before {
   box-shadow: inset 0 0 0 4px #fff, 0 0 0 3px var(--role), 0 0 16px 4px rgba(255, 255, 255, 0.8);
   transform: translateY(-6px);
 }
+
+/* ==== 書体：見出し・数字・ボタン・札は Mochiy Pop One（ポップで数字が読みやすい）。説明文は M PLUS Rounded 1c ==== */
+:root {
+  --font-pop: 'Mochiy Pop One', 'M PLUS Rounded 1c', 'Hiragino Maru Gothic ProN', sans-serif;
+}
+
+h1,
+h2,
+h3,
+.stat,
+.tax b,
+.hud b,
+.lcd b,
+.cost b,
+.price b,
+.fx-text,
+.fx-slam,
+.fx-roll,
+.mult-chip,
+.machine-top,
+.spin-go b,
+.reach-call,
+.pick-tag b,
+.stall-head,
+.tab,
+.order-tag,
+.tag,
+.count,
+.shop .item .name,
+.charm-card b,
+.coach p b,
+.primary,
+.title-start {
+  font-family: var(--font-pop);
+  font-weight: 400;
+}

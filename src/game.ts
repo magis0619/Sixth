@@ -1482,7 +1482,8 @@ export function placePrice(state: GameState, id: PlaceId): number | null {
 
 export function canBuyPlace(state: GameState, id: PlaceId): boolean {
   const p = placePrice(state, id);
-  return !state.over && p !== null && state.weeklyPlaces.includes(id) && state.gold >= p;
+  // 置ける場所がない物は買えない。手元に置き待ちがあるうちは次を買えない
+  return !state.over && p !== null && state.weeklyPlaces.includes(id) && state.gold >= p && hasRoomFor(state, id) && !mustPlace(state);
 }
 
 /** 買って手元に置く。畑に置くのは place で */
@@ -1495,13 +1496,32 @@ export function buyPlace(state: GameState, id: PlaceId): boolean {
 }
 
 /** 手元の先頭の物を cell に置けるか。道具は空いたマス（特別なマスの上でもよい）、特別なマスは道具・特別なマスのないマス */
+/** 手元の先頭の物を cell に置けるか */
 export function canPlace(state: GameState, cell: number): boolean {
   const id = state.stock[0];
-  if (!id || !inField(state, cell) || state.tools[cell] || isPond(state, cell)) return false;
-  // 道具は、特別なマスの上にも置ける（空きマスなら）。特別なマスは、すでに特別なマスがあるマスには置けない
+  return !!id && canPlaceAt(state, id, cell);
+}
+
+/**
+ * id を cell に置けるか。土地（水路・堆肥）と建物（道具）は別の層：
+ * 土地は作物が植わっていても敷ける（土地がまだないマスなら）。建物は何もない空きマスだけ
+ */
+export function canPlaceAt(state: GameState, id: PlaceId, cell: number): boolean {
+  if (!inField(state, cell) || state.tools[cell] || isPond(state, cell)) return false;
+  // 建物は、特別なマスの上にも置ける（空きマスなら）
   if (PLACES[id].kind === 'tool') return isOpen(state, cell);
-  // 特別なマスは大物の一部には置けない（本体と売値がずれるので）
+  // 土地は大物の一部には敷けない（本体と売値がずれるので）
   return !state.tiles[cell] && !(state.field[cell] && CROPS[state.field[cell]!.kind].big);
+}
+
+/** id を置ける場所が畑のどこかにあるか（ないなら買えない） */
+export function hasRoomFor(state: GameState, id: PlaceId): boolean {
+  return fieldCells(state).some((c) => canPlaceAt(state, id, c));
+}
+
+/** 手元の物を置ける場所があり、置くまでほかの操作はできない */
+export function mustPlace(state: GameState): boolean {
+  return state.stock.length > 0 && fieldCells(state).some((c) => canPlace(state, c));
 }
 
 export function place(state: GameState, cell: number): PlaceId | null {

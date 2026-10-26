@@ -3,7 +3,7 @@ import {
   CHARMS, CHARM_ORDER, DIFFICULTIES, TOOL_EVOLVE, CONFIG, CROPS, PLACES, PLACE_ORDER, SEEDS, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL, type AddUpgradeId, type PlaceId, type SymbolId, type UpgradeId,
 } from './config.ts';
 import {
-  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawDay, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult,
+  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawDay, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult, mustPlace, hasRoomFor,
 } from './game.ts';
 import { isMuted, sfx, toggleMute, unlockAudio } from './audio.ts';
 import { saveMeta, setupFrom } from './meta.ts';
@@ -197,6 +197,13 @@ function renderStatus(): void {
 /** いま選んでいる出目：畑の右上の札に、絵柄・名前・効く形（何を選んでいるか一目で分かるように） */
 function renderPick(): void {
   const box = $('pick');
+  if (state.stock.length && fieldCells().some((c) => canPlace(state, c))) {
+    // 買った建物・土地を置くところ
+    const id = state.stock[0];
+    box.hidden = false;
+    setHtml(box, `<span class="pick-label">置く</span><span class="pick-sym">${art(PLACE_ART[id])}</span><b>${PLACES[id].name}</b><span class="pick-what">${PLACES[id].kind === 'tool' ? '空きマスへ' : '植わっていてもOK'}</span>`);
+    return;
+  }
   const r = selected !== null ? state.results[selected] : null;
   box.hidden = !r;
   if (!r) return;
@@ -593,7 +600,7 @@ function renderFarmShop(): void {
     ok: canExpand(state),
   });
   PLACE_ORDER.filter((id) => state.weeklyPlaces.includes(id)).forEach((id) =>
-    items.push({ key: id, ico: art(PLACE_ART[id]), name: PLACES[id].name, effect: PLACES[id].desc, price: placePrice(state, id), ok: canBuyPlace(state, id), pivot: isPivotPlace(state, id) }),
+    items.push({ key: id, ico: art(PLACE_ART[id]), name: PLACES[id].name, effect: mustPlace(state) ? `先に${PLACES[state.stock[0]].name}を置く` : hasRoomFor(state, id) ? PLACES[id].desc : PLACES[id].kind === 'tool' ? '置ける空きマスがない' : '敷けるマスがない', price: placePrice(state, id), ok: canBuyPlace(state, id), pivot: isPivotPlace(state, id) }),
   );
   if (el.farmShop.children.length !== items.length) {
     el.farmShop.innerHTML = '';
@@ -630,7 +637,7 @@ function onBuyFarm(key: PlaceId | 'expand'): void {
     return;
   }
   if (!buyPlace(state, key)) {
-    reject(card, `あと${(placePrice(state, key) ?? 0) - state.gold}金`);
+    reject(card, mustPlace(state) ? `先に${PLACES[state.stock[0]].name}を置く` : !hasRoomFor(state, key) ? '置ける所がない' : `あと${(placePrice(state, key) ?? 0) - state.gold}金`);
     return;
   }
   accept(card);
@@ -666,6 +673,11 @@ async function onSpin(): Promise<void> {
   if (ui.busy || state.over) return;
   if (!tutAllowsSpin()) {
     sfx.error();
+    return;
+  }
+  // 買った建物・土地を置くまでは次の日へ進めない
+  if (mustPlace(state)) {
+    reject(el.field, `先に${PLACES[state.stock[0]].name}を置く`);
     return;
   }
   if (openSheetName) closeSheet();
@@ -1244,6 +1256,10 @@ function onReelTap(i: number): void {
     reject(el.reels.children[i], '光っている所へ');
     return;
   }
+  if (mustPlace(state)) {
+    reject(el.reels.children[i], `先に${PLACES[state.stock[0]].name}を置く`);
+    return;
+  }
   const r = state.results[i];
   // 1日目の前と、使える出目がない（使い切った・使えない・自動）リールのタップは「回す」
   if (!r || state.day === 0) {
@@ -1307,7 +1323,11 @@ function onPlotTap(cell: number): void {
     return;
   }
   const p = center(plot);
-  if (selected === null && state.stock.length && canPlace(state, cell)) {
+  if (mustPlace(state) && !canPlace(state, cell)) {
+    reject(plot, PLACES[state.stock[0]].kind === 'tool' ? '空きマスへ' : '置けるマスへ');
+    return;
+  }
+  if (state.stock.length && canPlace(state, cell)) {
     const id = place(state, cell)!;
     sfx.plant();
     sfx.charmGet();
@@ -1610,6 +1630,10 @@ function onBuy(id: UpgradeId): void {
   unlockAudio();
   if (ui.busy || state.over) return;
   const card = $('stall').querySelector(`[data-id="${id}"]`) as HTMLElement;
+  if (mustPlace(state)) {
+    reject(card, `先に${PLACES[state.stock[0]].name}を置く`);
+    return;
+  }
   if (!upgradeAvailable(state, id)) {
     const sym = UPGRADE_SYMBOL[id]!.symbol;
     reject(card, UPGRADE_SYMBOL[id]!.delta < 0 && state.bag[sym] === 0 ? 'もういない' : UPGRADE_SYMBOL[id]!.delta < 0 ? '来週また消せる' : '今週は並んでいない');

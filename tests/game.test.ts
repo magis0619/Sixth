@@ -6,7 +6,7 @@ import { CONFIG, CROPS, EVENT_CONDITIONS, THUNDER_LINES } from '../src/config.ts
 import {
   animalGold, buy, buyPlace, drawDay, hasRanch, hiveBonus, isColorful, canPlace, canUse, cellMultiplier, cropPrice, isPond, waterWheels, checkReady, chooseCharm, endDay, evolveTools, expand, expandPrice,
   fieldCells, isGolden, lv, multSteps, newCrop, newGame, nextTax, obstacleRule, place, pullWeed, resolveAuto, ripeGroup,
-  canBuy, isPivotAdd, isPivotPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult,
+  canBuy, canBuyPlace, canPlaceAt, isPivotAdd, isPivotPlace, mustPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult,
 } from '../src/game.ts';
 import { recordRun, type MetaState } from '../src/meta.ts';
 import type { CropKind, SymbolId } from '../src/config.ts';
@@ -625,5 +625,36 @@ describe('列の予告', () => {
     expect(plantLineMult(s, 2, 'tomato')).toBeCloseTo(CONFIG.lineMult * CONFIG.sameCropMult);
     expect(plantLineMult(s, 2, 'strawberry')).toBeCloseTo(CONFIG.lineMult);
     expect(plantLineMult(s, 2 * C + 2, 'tomato')).toBe(0);
+  });
+});
+
+describe('土地と建物', () => {
+  it('土地（水路・堆肥）は作物の上にも敷ける。建物は空きマスだけ', () => {
+    const s = newGame();
+    s.field[0] = newCrop('tomato');
+    expect(canPlaceAt(s, 'water', 0)).toBe(true);
+    expect(canPlaceAt(s, 'compost', 0)).toBe(true);
+    expect(canPlaceAt(s, 'henhouse', 0)).toBe(false);
+    expect(canPlaceAt(s, 'henhouse', 1)).toBe(true);
+  });
+
+  it('建物を置ける空きマスがなければ買えない。土地は敷けるマスが残っていれば買える', () => {
+    const s = newGame();
+    s.gold = 9999;
+    s.weeklyPlaces = ['henhouse', 'water'];
+    fieldCells(s).forEach((c) => (s.field[c] = newCrop('tomato')));
+    expect(canBuyPlace(s, 'henhouse')).toBe(false);
+    expect(canBuyPlace(s, 'water')).toBe(true);
+    fieldCells(s).forEach((c) => (s.tiles[c] = 'compost'));
+    expect(canBuyPlace(s, 'water')).toBe(false);
+  });
+
+  it('買った物を置くまでは次を買えない', () => {
+    const s = newGame();
+    s.gold = 9999;
+    s.weeklyPlaces = ['henhouse', 'water'];
+    expect(buyPlace(s, 'henhouse')).toBe(true);
+    expect(mustPlace(s)).toBe(true);
+    expect(canBuyPlace(s, 'water')).toBe(false);
   });
 });

@@ -108,7 +108,7 @@ export function costHtml(price: number | null, affordable: boolean, doneText = '
   if (price === null) return `<span class="cost done">${doneText}</span>`;
   return affordable
     ? `<span class="cost"><b>${price}金</b></span>`
-    : `<span class="cost"><b>${price}金</b><small>あと${price - state.gold}</small></span>`;
+    : `<span class="cost"><b>${price}金</b>${price > state.gold ? `<small>あと${price - state.gold}</small>` : ''}</span>`;
 }
 
 export function bagPct(bag: Record<SymbolId, number>, id: SymbolId): number {
