@@ -15,6 +15,7 @@ import { $, el, hooks, meta, state } from './store.ts';
 import { say, symHtml, upgradeArt } from './view.ts';
 import { clearRun, loadBest, loadRun, saveBest } from './save.ts';
 import { stopHeartbeat } from './scene.ts';
+import { showSettings } from './settings.ts';
 
 /** 結果画面。cleared=true はクリア後にここで終えたとき */
 export function showGameOver(endedAfterClear = false): void {
@@ -38,21 +39,59 @@ export function showGameOver(endedAfterClear = false): void {
         <span>${art('bale')}<b>${state.taxesPaid}</b>回</span>
         <span>${art('coin')}<b>${state.stats.totalEarned}</b>金</span>
       </div>
+      ${reviewHtml(endedAfterClear, t.amount)}
       <div class="points-earned">${art('sprout')} <b>+${earned}pt</b><small>計 ${meta.points}pt</small></div>
       ${newly.length ? `<div class="newly">${art('sparkle')} 解放：${newly.map((x) => `<b>${x}</b>`).join('')}</div>` : ''}
       <div class="share-row">
         <button class="secondary" id="share">${typeof navigator.share === 'function' ? '📤 シェア' : '📋 コピー'}</button>
         ${FEEDBACK_URL ? `<a class="secondary" href="${FEEDBACK_URL}" target="_blank" rel="noopener">✉️ 感想</a>` : ''}
       </div>
-      <button class="primary" id="restart" disabled>タイトルへ</button>
+      <div class="over-actions">
+        <button class="primary" id="retry" disabled>もう一度</button>
+        <button class="secondary" id="restart" disabled>タイトルへ</button>
+      </div>
     </div>`;
   el.overlay.classList.add('show');
   const btn = $<HTMLButtonElement>('restart');
+  const retry = $<HTMLButtonElement>('retry');
   // 直前の連打で即リトライが暴発しないよう少し待つ
-  window.setTimeout(() => (btn.disabled = false), 900);
+  window.setTimeout(() => {
+    btn.disabled = false;
+    retry.disabled = false;
+  }, 900);
   btn.addEventListener('click', restart);
+  // もう一度：準備画面を飛ばして、同じ組み合わせ・難しさですぐ始める
+  retry.addEventListener('click', () => {
+    sfx.select();
+    hooks.startGame();
+  });
   $('share').addEventListener('click', () => void shareResult(endedAfterClear));
   hooks.render();
+}
+
+/** 振り返り：どこまで届いたか・一番稼いだ日・列の数と、次に試すとよいことをひと言 */
+function reviewHtml(endedAfterClear: boolean, taxAmount: number): string {
+  const rows: string[] = [];
+  if (!state.cleared && !endedAfterClear) {
+    const short = Math.max(0, taxAmount - state.gold);
+    rows.push(`<li class="short">${art('bale')} 年貢まで <b>あと${short}金</b> 足りなかった</li>`);
+  }
+  const days = state.stats.earnedByDay;
+  let bestDay = 0;
+  days.forEach((v, d) => {
+    if ((v ?? 0) > (days[bestDay] ?? 0)) bestDay = d;
+  });
+  if (days[bestDay]) rows.push(`<li>${art('coin')} 一番稼いだ日：<b>${bestDay}日目 +${days[bestDay]}金</b></li>`);
+  rows.push(`<li>${art('tomato')} 列で売った：<b>${state.stats.lineHarvests}回</b>・取られた作物：<b>${state.stats.cropsEaten}個</b></li>`);
+  const tip =
+    state.stats.lineHarvests === 0
+      ? '作物を3つ並べて売ると ×1.3。並べずに売ると半値'
+      : state.stats.cropsEaten >= 5
+        ? 'カラス・タヌキには、かかし（周り8マスを守る）'
+        : state.stats.purchases.length < 3
+          ? 'ショップで絵柄を足すと、狙った作物を育てやすい'
+          : '同じ作物だけの列は、さらに ×1.3';
+  return `<ul class="review">${rows.join('')}</ul><p class="tip">${art('sparkle')} 次は：${tip}</p>`;
 }
 
 export function restart(): void {
@@ -219,6 +258,8 @@ export function showTitle(): void {
       <div class="title-sub">
         <button class="icon-pill" id="title-unlock">${art('lock')}<span>解放</span><b>${meta.points}pt</b></button>
         <button class="icon-pill" id="title-help">?<span>遊び方</span></button>
+        <button class="icon-pill" id="title-records">${art('calendar')}<span>記録</span></button>
+        <button class="icon-pill" id="title-settings">⚙<span>設定</span></button>
       </div>
     </div>`;
   el.overlay.classList.add('show', 'title');
@@ -240,6 +281,44 @@ export function showTitle(): void {
   $('title-help').addEventListener('click', () => {
     unlockAudio();
     showHelp('rules', showTitle);
+  });
+  $('title-records').addEventListener('click', () => {
+    unlockAudio();
+    sfx.select();
+    showRecords();
+  });
+  $('title-settings').addEventListener('click', () => {
+    unlockAudio();
+    sfx.select();
+    leaveTitle();
+    showSettings(showTitle);
+  });
+}
+
+/** 記録：これまでの成績 */
+export function showRecords(): void {
+  leaveTitle();
+  const best = loadBest();
+  const specials = CHARM_ORDER.filter((id) => CHARMS[id].special && !PAUSED_CHARMS.includes(id));
+  const row = (ico: string, label: string, value: string) => `<li><span class="rec-ico">${ico}</span><span>${label}</span><b>${value}</b></li>`;
+  el.overlay.innerHTML = `
+    <div class="modal records-modal" role="dialog" aria-label="記録">
+      <h2>${art('calendar')} 記録</h2>
+      <ul class="records">
+        ${row(art('sprout'), '遊んだ回数', `${meta.plays}回`)}
+        ${row('🏆', 'クリア', `${meta.clears}回`)}
+        ${row(art('calendar'), '最高到達', best.day ? `${best.day}日目（年貢${best.taxes}回）` : '—')}
+        ${row(art('skull'), '一番上の難しさ', meta.maxCleared >= 0 ? DIFFICULTIES[meta.maxCleared].name : 'まだクリアしていない')}
+        ${row(art('tomato'), '列で売った（累計）', `${meta.lines}回`)}
+        ${row(art('sparkle'), '特別なお守り', `${meta.discovered.filter((id) => specials.includes(id)).length} / ${specials.length}`)}
+        ${row(art('coin'), 'これまでの豊穣ポイント', `${meta.totalPoints}pt`)}
+      </ul>
+      <button class="primary" id="records-close">もどる</button>
+    </div>`;
+  el.overlay.classList.add('show');
+  $('records-close').addEventListener('click', () => {
+    sfx.cancel();
+    showTitle();
   });
 }
 

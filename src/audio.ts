@@ -3,6 +3,8 @@
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
 let muted = false;
+/** 音量（設定。0〜1） */
+let volume = 0.7;
 
 try {
   muted = localStorage.getItem('hatake-slot:muted') === '1';
@@ -17,10 +19,22 @@ export function unlockAudio(): void {
     if (!AC) return;
     ctx = new AC();
     master = ctx.createGain();
-    master.gain.value = muted ? 0 : 0.5;
+    master.gain.value = muted ? 0 : volume;
     master.connect(ctx.destination);
   }
   if (ctx.state === 'suspended') void ctx.resume();
+}
+
+/** 音量を変える（0〜1） */
+export function setVolume(v: number): void {
+  volume = Math.max(0, Math.min(1, v));
+  if (master) master.gain.value = muted ? 0 : volume;
+}
+
+/** 画面を離れている間は音を止める */
+export function suspendAudio(on: boolean): void {
+  if (!ctx) return;
+  void (on ? ctx.suspend() : ctx.resume());
 }
 
 export function isMuted(): boolean {
@@ -29,7 +43,7 @@ export function isMuted(): boolean {
 
 export function toggleMute(): boolean {
   muted = !muted;
-  if (master) master.gain.value = muted ? 0 : 0.5;
+  if (master) master.gain.value = muted ? 0 : volume;
   try {
     localStorage.setItem('hatake-slot:muted', muted ? '1' : '0');
   } catch {

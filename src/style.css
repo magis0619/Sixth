@@ -5370,3 +5370,216 @@ h3,
   font-family: var(--font-pop);
   font-weight: 400;
 }
+
+/* ==== 終わりの振り返り ==== */
+.review {
+  list-style: none;
+  margin: 8px 0 4px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+}
+
+.review li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #fffdf7;
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 0.85rem;
+}
+
+.review li .art {
+  font-size: 1.3rem;
+  flex: none;
+}
+
+.review li.short {
+  background: #ffe9e4;
+  color: #a1281f;
+}
+
+.review b {
+  font-family: var(--font-pop);
+  font-weight: 400;
+}
+
+.tip {
+  margin: 6px 0 2px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: #fff4d6;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #7a4a00;
+  text-align: left;
+}
+
+.over-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* ==== 設定・記録 ==== */
+/* 引っぱって再読み込み・画面の跳ね返りで、うっかりゲームが閉じないように */
+html,
+body {
+  overscroll-behavior: none;
+}
+
+.hud-menu button small {
+  display: block;
+  font-size: 0.66rem;
+  font-weight: 700;
+  opacity: 0.7;
+}
+
+.settings-modal,
+.records-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.set-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 12px;
+  background: #fffdf7;
+  box-shadow: 0 2px 0 #e2d2ad;
+  font: inherit;
+  font-weight: 800;
+  color: var(--ink);
+  text-align: left;
+}
+
+.set-row small {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #8a7a5c;
+}
+
+.set-row input[type='range'] {
+  width: 46%;
+  accent-color: #5aae35;
+}
+
+/* 切り替え（オン・オフ） */
+.set-row .sw {
+  flex: none;
+  position: relative;
+  width: 46px;
+  height: 26px;
+  border-radius: 999px;
+  background: #d8cdb8;
+  transition: background 0.15s;
+}
+
+.set-row .sw::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  transition: translate 0.15s;
+}
+
+.set-row.on .sw {
+  background: #5aae35;
+}
+
+.set-row.on .sw::after {
+  translate: 20px 0;
+}
+
+.set-row.danger {
+  color: #a1281f;
+}
+
+.set-row.danger.armed {
+  background: #ffe1db;
+  box-shadow: inset 0 0 0 2px #d64545;
+}
+
+.credits {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 4px;
+  font-size: 0.85rem;
+  color: #7a6a50;
+}
+
+.credits small {
+  font-size: 0.7rem;
+}
+
+.records {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.records li {
+  display: grid;
+  grid-template-columns: 30px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: #fffdf7;
+  box-shadow: 0 2px 0 #e2d2ad;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.records li b {
+  font-family: var(--font-pop);
+  font-weight: 400;
+  color: #5e3d22;
+}
+
+.rec-ico {
+  font-size: 1.4rem;
+  display: grid;
+  place-items: center;
+}
+
+/* タイトルの小さなボタンは2列×2段に（4つ並べると文字が折れる） */
+.title-sub {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: min(100%, 320px);
+}
+
+.title-sub .icon-pill {
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.review li {
+  flex-wrap: wrap;
+}
+
+.review b {
+  white-space: nowrap;
+}

@@ -5,7 +5,7 @@ import {
 import {
   isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawDay, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult, mustPlace, hasRoomFor,
 } from './game.ts';
-import { isMuted, sfx, toggleMute, unlockAudio } from './audio.ts';
+import { isMuted, sfx, suspendAudio, toggleMute, unlockAudio } from './audio.ts';
 import { saveMeta, setupFrom } from './meta.ts';
 import { art, type ArtId } from './art.ts';
 import { track } from './telemetry.ts';
@@ -19,6 +19,7 @@ import { applySkin, showClear, showGameOver, showHelp, showTitle } from './ui/sc
 import { clearRun, saveRun } from './ui/save.ts';
 import { $, el, hooks, meta, rng, setState, state, ui } from './ui/store.ts';
 import { pressable } from './ui/press.ts';
+import { applySettings, showSettings } from './ui/settings.ts';
 import { accept, reject } from './ui/states.ts';
 import { renderDanger, renderSky, setupScene } from './ui/scene.ts';
 import { blockLongPress, setupLongPress } from './ui/info.ts';
@@ -591,17 +592,20 @@ function renderFarmShop(): void {
   const ep = expandPrice(state);
   const nextCols = state.cols <= state.rows ? state.cols + 1 : state.cols;
   const nextRows = state.cols <= state.rows ? state.rows : state.rows + 1;
-  items.push({
+  const expandItem = {
     key: 'expand',
     ico: art('expand'),
     name: '畑を広げる',
-    effect: ep === null ? 'これ以上は広げられない（5×5）' : `${state.cols}×${state.rows} → ${nextCols}×${nextRows}`,
+    effect: ep === null ? `これ以上は広げられない（${CONFIG.fieldCols}×${CONFIG.fieldRows}）` : `${state.cols}×${state.rows} → ${nextCols}×${nextRows}`,
     price: ep,
     ok: canExpand(state),
-  });
+  };
+  // 広げきったら「完了」は一番下へ（今週の品を上に）
+  if (ep !== null) items.push(expandItem);
   PLACE_ORDER.filter((id) => state.weeklyPlaces.includes(id)).forEach((id) =>
     items.push({ key: id, ico: art(PLACE_ART[id]), name: PLACES[id].name, effect: mustPlace(state) ? `先に${PLACES[state.stock[0]].name}を置く` : hasRoomFor(state, id) ? PLACES[id].desc : PLACES[id].kind === 'tool' ? '置ける空きマスがない' : '敷けるマスがない', price: placePrice(state, id), ok: canBuyPlace(state, id), pivot: isPivotPlace(state, id) }),
   );
+  if (ep === null) items.push(expandItem);
   // 週が替わって品が入れ替わったら作り直す（数が同じでも、ボタンが前の品のまま押されないように）
   const key = items.map((it) => it.key).join(',');
   if (el.farmShop.dataset.key !== key || el.farmShop.children.length !== items.length) {
@@ -1950,6 +1954,16 @@ function renderTutorial(): void {
 // ---- 起動 ----
 
 $('build-label').textContent = __BUILD__;
+applySettings();
+// ホーム画面に置いたとき・電波がないときも遊べるように（公開版だけ）
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => void navigator.serviceWorker.register('./sw.js').catch(() => {}));
+}
+// 画面を離れている間は音を止める
+document.addEventListener('visibilitychange', () => suspendAudio(document.hidden));
+// 思わぬエラーが起きても、遊び続けられるようにひと言だけ出す（途中は保存されている）
+window.addEventListener('error', () => say('うまく動かない所がありました。おかしければ再読み込みしてください', 4000));
+window.addEventListener('unhandledrejection', () => say('うまく動かない所がありました。おかしければ再読み込みしてください', 4000));
 el.spin.addEventListener('click', () => void onSpin());
 $('spin-go').addEventListener('click', () => void onSpin());
 el.tax.addEventListener('click', () => {
@@ -2007,6 +2021,24 @@ $('calm-btn').addEventListener('click', (e) => {
   toggleCalm();
   menuLabels();
   sfx.select();
+});
+$('settings-btn').addEventListener('click', () => {
+  menu.hidden = true;
+  if (ui.busy || el.overlay.classList.contains('show')) return;
+  unlockAudio();
+  sfx.select();
+  showSettings(() => {
+    menuLabels();
+    render();
+  });
+});
+// タイトルへ：途中は自動で保存されているので、続きからで戻れる
+$('to-title').addEventListener('click', () => {
+  menu.hidden = true;
+  if (ui.busy || el.overlay.classList.contains('show')) return;
+  sfx.select();
+  saveRun();
+  showTitle();
 });
 el.help.addEventListener('click', () => {
   menu.hidden = true;

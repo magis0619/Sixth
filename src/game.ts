@@ -167,6 +167,8 @@ export interface GameState {
     soldKinds: CropKind[];
     purchases: Purchase[];
     charms: { day: number; id: CharmId }[];
+    /** 日ごとの稼ぎ（振り返り用。添え字は日） */
+    earnedByDay: number[];
   };
 }
 
@@ -242,7 +244,7 @@ export function newGame(setup: GameSetup = { shop: ALL_ADDS, charmPool: CHARM_OR
     cleared: false,
     stats: {
       spins: 0, totalEarned: 0, cropsSold: 0, cropsEaten: 0, crowEaten: 0, crowsMissed: 0, fevers: 0, lineHarvests: 0, ordersDone: 0,
-      soldKinds: [], purchases: [], charms: [],
+      soldKinds: [], purchases: [], charms: [], earnedByDay: [],
     },
   };
 }
@@ -875,6 +877,7 @@ export function crowEatChance(_state: GameState, power: number): number {
 function earn(state: GameState, amount: number): void {
   state.gold += amount;
   state.stats.totalEarned += amount;
+  state.stats.earnedByDay[state.day] = (state.stats.earnedByDay[state.day] ?? 0) + amount;
 }
 
 export function resolveAuto(state: GameState, reel: number, rng: Rng): AutoEvent | null {

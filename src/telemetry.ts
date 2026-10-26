@@ -3,6 +3,7 @@
 
 import { TELEMETRY_URL } from './config.ts';
 import type { GameState } from './game.ts';
+import { settings } from './ui/settings.ts';
 
 /** 端末ごとの匿名ID（名前などの個人情報は送らない） */
 function playerId(): string {
@@ -44,7 +45,7 @@ function summary(state: GameState): Record<string, unknown> {
 
 /** kind: progress＝年貢を納めたとき / result＝プレイが終わったとき */
 export function track(kind: 'progress' | 'result', state: GameState, extra: Record<string, unknown> = {}): void {
-  if (!TELEMETRY_URL) return;
+  if (!TELEMETRY_URL || !settings.telemetry) return;
   const body = JSON.stringify({ kind, pid: playerId(), build: __BUILD__, at: new Date().toISOString(), ...summary(state), ...extra });
   try {
     // 画面を閉じる直前でも届きやすいよう keepalive。Apps Script は CORS を返さないので no-cors で投げっぱなし

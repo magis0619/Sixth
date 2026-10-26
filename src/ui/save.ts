@@ -56,6 +56,7 @@ export function loadRun(): GameState | null {
     if (!CONFIG.marketOn || s.difficulty < CONFIG.marketFrom) s.market = null;
     s.nightIncome ??= null;
     s.stats.soldKinds ??= [];
+    s.stats.earnedByDay ??= [];
     CHARM_ORDER.forEach((id) => (s.charms[id] ??= 0));
     s.removed ??= {};
     s.removedThisWeek ??= 0;

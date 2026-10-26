@@ -27,6 +27,8 @@ export interface MetaState {
   difficulty: number;
   /** チュートリアルを終えた（スキップも含む） */
   tutorialDone: boolean;
+  /** クリアした回数 */
+  clears: number;
 }
 
 const KEY = 'hatake-slot:meta';
@@ -47,6 +49,7 @@ function fresh(): MetaState {
     skin: '',
     difficulty: 0,
     tutorialDone: false,
+    clears: 0,
   };
 }
 
@@ -151,6 +154,7 @@ export function recordRun(meta: MetaState, state: GameState, final: boolean): st
     if (CHARMS[id].special && state.charms[id] > 0 && !meta.discovered.includes(id)) meta.discovered.push(id);
   });
   if (final) meta.lines += state.stats.lineHarvests;
+  if (final && state.cleared) meta.clears++;
   const add = (id: AddUpgradeId, label: string) => {
     if (meta.unlockedAdds.includes(id)) return;
     meta.unlockedAdds.push(id);

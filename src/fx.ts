@@ -167,7 +167,14 @@ export function confetti(count = 40): void {
   }
 }
 
+let vibrateOn = true;
+/** 振動を使うか（設定） */
+export function setVibrate(on: boolean): void {
+  vibrateOn = on;
+}
+
 export function vibrate(pattern: number | number[]): void {
+  if (!vibrateOn) return;
   try {
     navigator.vibrate?.(pattern);
   } catch {
@@ -184,7 +191,12 @@ export function fmtMult(x: number): string {
 
 const HURRY_RATE = 4;
 /** 演出全体の速さ。1より小さいとゆっくり（何が起きたか見て分かるように） */
-const SPEED = 0.85;
+let SPEED = 0.85;
+
+/** 演出の速さ（設定）：ふつう 0.85、はやい 1.4 */
+export function setFastFx(fast: boolean): void {
+  SPEED = fast ? 1.4 : 0.85;
+}
 /** 演出の大げささ（文字・粒・跳ね・揺れの大きさにかける） */
 const BIG = 1.3;
 let hurry = false;

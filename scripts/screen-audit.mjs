@@ -49,6 +49,8 @@ function detect() {
     if (a.contains(c) || c.contains(a)) continue;
     // 下から開くパネルが畑に重なるのは作り通り
     if (!!a.closest('.sheet') !== !!c.closest('.sheet')) continue;
+    // 開いたメニュー（≡）が下の物に重なるのも作り通り（外を押すと閉じる）
+    if (!!a.closest('.hud-menu') !== !!c.closest('.hud-menu')) continue;
     // 下に固定した「もどる」の下を中身がスクロールするのも作り通り
     if (a.closest('.prep-actions') || c.closest('.prep-actions')) continue;
     if (a.id === 'sheet-close' || c.id === 'sheet-close' || a.id === 'spin-go' || c.id === 'spin-go') continue;
@@ -131,6 +133,10 @@ for (const size of Object.keys(SIZES)) {
     const tabs = await p.$$('#overlay [data-tab]');
     for (let i = 1; i < tabs.length; i++) { await p.locator('#overlay [data-tab]').nth(i).click(f); await snap(p, size, `03-help-${i}`); }
     await p.click('#help-close', f);
+    await p.click('#title-records', f); await snap(p, size, '03b-records');
+    await p.click('#records-close', f);
+    await p.click('#title-settings', f); await snap(p, size, '03c-settings');
+    await p.click('#set-close', f);
     await p.click('#title-start', f); await snap(p, size, '04-prep');
     await p.click('#prep-start', f); await snap(p, size, '05-day0');
     await p.locator('#reels .reel').first().click(f); await settle(p); await snap(p, size, '06-day1');
