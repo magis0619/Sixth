@@ -1,9 +1,9 @@
 import './style.css';
 import {
-  CHARMS, CHARM_ORDER, DIFFICULTIES, TOOL_EVOLVE, CONFIG, CROPS, PLACES, PLACE_ORDER, SEEDS, SHAPE_NAMES, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL, type AddUpgradeId, type PlaceId, type SymbolId, type UpgradeId,
+  CHARMS, CHARM_ORDER, DIFFICULTIES, TOOL_EVOLVE, CONFIG, CROPS, PLACES, PLACE_ORDER, SEEDS, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL, type AddUpgradeId, type PlaceId, type SymbolId, type UpgradeId,
 } from './config.ts';
 import {
-  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawDay, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, bestAim, type Aim, isPivotAdd, isPivotPlace, plantLineMult,
+  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawDay, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult,
 } from './game.ts';
 import { isMuted, sfx, toggleMute, unlockAudio } from './audio.ts';
 import { saveMeta, setupFrom } from './meta.ts';
@@ -72,19 +72,23 @@ function render(): void {
   renderMarket();
   renderGoal();
   renderStatus();
-  renderHint();
   renderReelStates();
   renderSpinButton();
   renderField();
   renderShop();
   renderFarmShop();
-  renderStall();
   renderBag();
   renderSky();
   renderDanger();
   renderCharms();
   saveRun();
-  fitLayout();
+  // 畑の広さが変わったときだけ測り直す（毎回測るとページ全体の配置計算が走って重い）
+  // 上の札（フィーバー・セット効果など）の行数が変わったときも、畑の上下の空きが変わるので測り直す
+  const size = `${state.cols}x${state.rows}|${el.status.childElementCount}`;
+  if (size !== fittedSize) {
+    fittedSize = size;
+    fitLayout();
+  }
   flushNotices();
   renderTutorial();
 }
@@ -139,6 +143,8 @@ function playNotice(n: Notice): void {
 
 // ---- 画面の高さに合わせて畑のマスの大きさを決める（まわすボタンが必ず画面内に入るように） ----
 
+/** 最後にマスの大きさを合わせた畑の広さ */
+let fittedSize = '';
 const WIDE = window.matchMedia('(min-width: 860px) and (orientation: landscape)');
 let fitRaf = 0;
 
@@ -226,9 +232,6 @@ function renderTax(): void {
 }
 
 /** 列（縦・横・斜めに3つ以上）にそろった実があるか */
-function hasRipeGroup(): boolean {
-  return state.field.some((_, i) => ripeGroup(state, i).length >= 3);
-}
 
 function renderGoal(): void {
   const available = UPGRADES.filter((u) => upgradeAvailable(state, u.id));
@@ -245,47 +248,6 @@ function renderGoal(): void {
 
 function usableReels(): number[] {
   return state.results.flatMap((_, i) => (canUse(state, i, null) ? [i] : []));
-}
-
-function renderHint(): void {
-  const t = nextTax(state);
-  el.hint.className = 'hint';
-  if (tut) {
-    el.hint.textContent = '';
-    return;
-  }
-  // 手元に置く物があっても、置ける空きマスがないときは案内しない（空いたら出す）
-  if (state.stock.length && selected === null && state.field.some((_, i) => canPlace(state, i))) {
-    const d = PLACES[state.stock[0]];
-    el.hint.className = 'hint place';
-    el.hint.textContent = `👆 ${d.name}を置く`;
-    return;
-  }
-  if (state.day > 0 && t.daysLeft <= CONFIG.taxWarnDays && state.gold < t.amount) {
-    // 不足は年貢の札が示すので、ここでは打てる手だけを言う
-    const ripe = state.field.some(isRipe);
-    el.hint.className = ripe ? 'hint danger' : 'hint';
-    el.hint.textContent = ripe ? '🍅 売って年貢へ' : '';
-    if (ripe) return;
-  }
-  if (state.day > CONFIG.hintUntilDay) {
-    el.hint.textContent = !done.line && hasRipeGroup() ? '✨ 列！ タップで売る' : '';
-    return;
-  }
-  const anyRipe = state.field.some(isRipe);
-  let text = '';
-  if (!done.spin) text = '👇 リールをタップで回す';
-  else if (selected !== null) {
-    const r = state.results[selected];
-    const shape = SYMBOLS[r.symbol].shape;
-    text = r.total > 1 ? `👆 植える ×${r.left}` : shape ? `👆 ${SHAPE_NAMES[shape]}に効く` : '👆 マスを選ぶ';
-  }
-  else if (!done.line && hasRipeGroup()) text = '✨ 列！ タップで売る';
-  else if (!done.use && usableReels().length > 0) text = '👆 光る出目 → マス';
-  else if (!done.sell && anyRipe) text = '🍅 3つ並べると高く売れる';
-  else if (!done.buy && UPGRADES.some((u) => canBuy(state, u.id))) text = '💰 ショップへ';
-  else if (!done.next && done.spin && usableReels().length === 0) text = '👇 リールをタップで次の日へ';
-  el.hint.textContent = text;
 }
 
 function reelTag(i: number): { text: string; cls: string } {
@@ -369,10 +331,9 @@ function renderSpinButton(): void {
   const go = $('spin-go');
   go.hidden = !ready;
   go.classList.toggle('tax', state.day > 0 && t.daysLeft === 0);
-  const aim = ready && state.day > 0 ? aimOf() : null;
   setHtml(go, state.day === 0
     ? '<span class="go-hand">👆</span><span class="go-text"><b>タップで回す</b></span>'
-    : `<span class="go-hand">👆</span><span class="go-text">${t.daysLeft === 0 ? `<small>年貢${t.amount}金を納めて</small>` : ''}<b>${state.day + 1}日目へ</b><small>リールをタップ</small>${aim ? `<span class="aim">狙い ${symHtml(aim.symbol)} で <b>${aim.ripen}</b>つ実る</span>` : ''}</span>`);
+    : `<span class="go-hand">👆</span><span class="go-text">${t.daysLeft === 0 ? `<small>年貢${t.amount}金を納めて</small>` : ''}<b>${state.day + 1}日目へ</b><small>リールをタップ</small></span>`);
   // 筐体の看板の文字を、回せるときだけ「タップで回す」に切り替える
   const cue = document.querySelector('.machine-top') as HTMLElement;
   cue.classList.toggle('cue', ready);
@@ -388,14 +349,6 @@ function renderSpinButton(): void {
 /** 売値の倍率の印：3つ並んだ点（列）と1つの点（単品） */
 const MARK_LINE = '<svg class="mk" viewBox="0 0 26 10" aria-hidden="true"><path d="M4 5H22" stroke="currentColor" stroke-width="2.4"/><circle cx="4" cy="5" r="3.4" fill="currentColor"/><circle cx="13" cy="5" r="3.4" fill="currentColor"/><circle cx="22" cy="5" r="3.4" fill="currentColor"/></svg>';
 const MARK_SINGLE = '<svg class="mk" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="3.4" fill="currentColor"/></svg>';
-
-/** 狙い（同じ畑なら計算し直さない） */
-let aimCache: { key: string; aim: Aim | null } | null = null;
-function aimOf(): Aim | null {
-  const key = `${state.day}|${JSON.stringify(state.field)}|${state.frost.join()}|${JSON.stringify(state.bag)}`;
-  if (aimCache?.key !== key) aimCache = { key, aim: bestAim(state) };
-  return aimCache.aim;
-}
 
 /** 道具・特別なマスの絵 */
 /** マスに最後に書いた中身（同じなら書き換えない：押している最中に中身が入れ替わるとクリックが消える） */
@@ -559,44 +512,38 @@ function shopItems(): typeof UPGRADES {
 
 function renderShop(): void {
   const items = shopItems();
+  renderUpgradeList(el.shop, items.filter((u) => !u.id.startsWith('remove')));
+  renderUpgradeList($('remove-shop'), items.filter((u) => u.id.startsWith('remove')));
+}
+
+/** 絵柄袋の品（足す・消す）を container に並べる */
+function renderUpgradeList(container: HTMLElement, items: typeof UPGRADES): void {
   const key = items.map((u) => u.id).join(',');
   // 新しいゲームで中身を空にした場合も作り直す
-  if (el.shop.dataset.key !== key || el.shop.children.length !== items.length) {
-    el.shop.dataset.key = key;
-    el.shop.innerHTML = '';
+  if (container.dataset.key !== key || container.children.length !== items.length) {
+    container.dataset.key = key;
+    container.innerHTML = '';
     items.forEach((u) => {
       const b = document.createElement('button');
       b.className = 'item';
       b.dataset.id = u.id;
       b.addEventListener('click', () => onBuy(u.id));
-      el.shop.appendChild(b);
+      container.appendChild(b);
     });
   }
   items.forEach((u, i) => {
-    const b = el.shop.children[i] as HTMLButtonElement;
+    const b = container.children[i] as HTMLButtonElement;
     const available = upgradeAvailable(state, u.id);
     const price = upgradePrice(state, u.id);
     const affordable = canBuy(state, u.id);
-    b.className = `item${affordable ? ' affordable' : ''}${available ? '' : ' soldout'} kind-${u.id.startsWith('remove') ? 'remove' : 'add'}`;
+    b.className = `item${affordable ? ' affordable' : ''}${available ? '' : ' soldout'}`;
     const ico = upgradeArt(u.id);
     const pivot = u.id.startsWith('add') && isPivotAdd(state, u.id as AddUpgradeId);
     b.classList.toggle('pivot', pivot);
     const html = `<span class="ico">${ico}</span><span class="text"><span class="name">${u.name}${pivot ? '<span class="pivot-tag">新しい作戦</span>' : ''}</span><span class="effect">${pivot ? CONFIG.pivotAdds[u.id]!.split('：')[1] : upgradeEffect(u.id)}</span></span>${costHtml(available ? price : null, affordable, u.id.startsWith('remove') && state.bag[UPGRADE_SYMBOL[u.id]!.symbol] > 0 ? '来週' : '完了')}`;
     if (b.innerHTML !== html) b.innerHTML = html;
   });
-}
-
-/** 屋台のタブ：買える品があるタブに印、消す品がないときはひと言 */
-function renderStall(): void {
-  const stall = $('stall');
-  const has = (sel: string) => !!stall.querySelector(sel);
-  const dots = { farm: has('#farm-shop .item.affordable'), add: has('#shop .item.kind-add.affordable'), remove: has('#shop .item.kind-remove.affordable') };
-  stall.querySelectorAll<HTMLElement>('.stall-tab').forEach((t) => {
-    const k = t.dataset.stall as keyof typeof dots;
-    t.classList.toggle('on', stall.dataset.tab === k);
-    t.classList.toggle('ready', dots[k]);
-  });
-  $('stall-empty').hidden = !(stall.dataset.tab === 'remove' && !has('#shop .item.kind-remove'));
+  if (container.id === 'remove-shop') $('stall-empty').hidden = items.length > 0;
 }
 
 /** 畑が広がった演出（お守り「開墾」） */
@@ -765,22 +712,6 @@ async function onSpin(): Promise<void> {
 /** 動物がマスからひょっこり出てくる（何の動物か分かる大きさで） */
 function critterPop(q: { x: number; y: number }, html: string): void {
   floatText(q.x, q.y - 6, html, { size: 2.8, rise: 16, dur: 1300 });
-}
-
-/** その日の出目を使い切った瞬間に、ひと言ほめる（1日1回） */
-let praisedDay = -1;
-function praiseAllUsed(): void {
-  if (praisedDay === state.day || state.day === 0 || tut) return;
-  const manual = state.results.filter((r) => SYMBOLS[r.symbol].kind === 'manual');
-  if (!manual.length || !manual.every((r) => r.used)) return;
-  praisedDay = state.day;
-  const c = center(el.reels);
-  later(() => {
-    sfx.pon();
-    floatText(c.x, c.y - 50, '全部使った！', { cls: 'good pill', size: 0.9, dur: 1100 });
-    burst(c.x, c.y - 20, ['✨', '⭐'], 8, 70);
-    // 育った・実った・列ができた、のあとに出す
-  }, 1500);
 }
 
 /** 演出が終わって操作を受け付ける（早送りも止める） */
@@ -968,7 +899,7 @@ function spinReels(show: SpinShow = { cutIn: null }): Promise<void> {
           // 何がそろいそうで、そろうと何が起きるか
           const call = document.createElement('div');
           call.className = 'reach-call';
-          call.innerHTML = `リーチ！ あと1つで ${symHtml(reachSym!)}<small>${SYMBOLS[reachSym!].feverDesc}</small>`;
+          call.innerHTML = `リーチ！ あと1つで ${symHtml(reachSym!)}`;
           el.machine.appendChild(call);
         }
       }, dur - hold);
@@ -1350,7 +1281,6 @@ function onPlotTap(cell: number): void {
     selected = left > 0 && canUse(state, reel, null) ? reel : null;
     autoSelected = false;
     if (selected === null) autoSelect();
-    praiseAllUsed();
     done.use = true;
     armedNextDay = false;
     render();
@@ -1628,7 +1558,7 @@ async function playLineHarvest(res: SellResult, centers: { x: number; y: number 
 function onBuy(id: UpgradeId): void {
   unlockAudio();
   if (ui.busy || state.over) return;
-  const card = el.shop.querySelector(`[data-id="${id}"]`) as HTMLElement;
+  const card = $('stall').querySelector(`[data-id="${id}"]`) as HTMLElement;
   if (!upgradeAvailable(state, id)) {
     const sym = UPGRADE_SYMBOL[id]!.symbol;
     reject(card, UPGRADE_SYMBOL[id]!.delta < 0 && state.bag[sym] === 0 ? 'もういない' : UPGRADE_SYMBOL[id]!.delta < 0 ? '来週また消せる' : '今週は並んでいない');
@@ -1688,6 +1618,7 @@ function startGame(resume: GameState | null = null): void {
   el.overlay.innerHTML = '';
   el.reels.innerHTML = '';
   el.shop.innerHTML = '';
+  $('remove-shop').innerHTML = '';
   render();
 }
 
@@ -1959,31 +1890,9 @@ document.addEventListener('pointerdown', () => {
 // 押した瞬間の手応え
 pressable(el.field, '.plot');
 pressable(el.reels, '.reel');
-pressable($('sheet'), '.item, .stall-tab');
+pressable($('sheet'), '.item');
 document.querySelectorAll<HTMLElement>('.tabs').forEach((t) => pressable(t, '.tab'));
 
-// 屋台のタブ（最後に開いたタブを覚えておく）
-{
-  const stall = $('stall');
-  try {
-    const saved = localStorage.getItem('hatake-slot:stall');
-    if (saved === 'farm' || saved === 'add' || saved === 'remove') stall.dataset.tab = saved;
-  } catch {
-    // 保存できない環境では毎回「畑」から
-  }
-  stall.querySelectorAll<HTMLElement>('.stall-tab').forEach((t) =>
-    t.addEventListener('click', () => {
-      sfx.select();
-      stall.dataset.tab = t.dataset.stall!;
-      try {
-        localStorage.setItem('hatake-slot:stall', t.dataset.stall!);
-      } catch {
-        // 覚えられなくても遊べる
-      }
-      renderStall();
-    }),
-  );
-}
 document.querySelectorAll<HTMLElement>('.tab-ico[data-art]').forEach((n) => (n.innerHTML = art(n.dataset.art as ArtId)));
 document.querySelectorAll<HTMLButtonElement>('.tab').forEach((t) =>
   t.addEventListener('click', () => {

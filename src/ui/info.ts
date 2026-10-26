@@ -6,7 +6,7 @@ import {
 import { animalGold, cropPrice, hasRanch, inField, isGolden, isPond, isRipe, multSteps, rootOf, waterWheels, weedCost } from '../game.ts';
 import { art } from '../art.ts';
 import { fmtMult, vibrate } from '../fx.ts';
-import { el, state } from './store.ts';
+import { $, el, state } from './store.ts';
 import { FRUIT, PLACE_ART, shapeIcon, symHtml, upgradeEffect } from './view.ts';
 
 // ---- 長押しで詳しく ----
@@ -152,7 +152,7 @@ export function setupLongPress(): void {
   });
   longPress(el.charms, '[data-charm]', (t) => charmInfo(t.dataset.charm as CharmId));
   longPress(el.bag, '[data-sym]', (t) => symbolInfo(t.dataset.sym as SymbolId, `<p class="sub">袋に${state.bag[t.dataset.sym as SymbolId]}枚</p>`));
-  longPress(el.shop, '[data-id]', (t) => {
+  longPress($('stall'), '#shop [data-id], #remove-shop [data-id]', (t) => {
     const u = UPGRADES.find((x) => x.id === t.dataset.id);
     if (!u) return null;
     return symbolInfo(UPGRADE_SYMBOL[u.id]!.symbol, `<p class="sub">${u.name}：${upgradeEffect(u.id)}</p>`);

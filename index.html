@@ -11,13 +11,6 @@
     <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&display=swap" rel="stylesheet" />
   </head>
   <body>
-    <!-- 手描き風の線：枠の線をわずかに揺らす（style.css の .sketch-line） -->
-    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
-      <filter id="wobble">
-        <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" seed="7" />
-        <feDisplacementMap in="SourceGraphic" scale="3.2" />
-      </filter>
-    </svg>
     <div id="app">
       <header class="hud">
         <div class="hud-bar">
@@ -33,7 +26,6 @@
       </header>
 
       <div class="status" id="status" aria-live="polite"></div>
-      <div class="hint" id="hint" aria-live="polite"></div>
 
       <section class="scene" id="scene" aria-hidden="true">
         <div class="scene-sky"><i class="cloud c1"></i><i class="cloud c2"></i></div>
@@ -76,22 +68,24 @@
         <button class="sheet-close" id="sheet-close" aria-label="閉じる">×</button>
       </div>
       <div class="sheet-pane" data-pane="shop">
-        <!-- 屋台：左のタブで「畑・足す・消す」を切り替え、右に品を大きく並べる -->
-        <div class="stall" id="stall" data-tab="farm">
-          <nav class="stall-tabs" aria-label="ショップの種類">
-            <button class="stall-tab" data-stall="farm"><span class="tab-ico" data-art="expand"></span>畑<span class="stall-dot"></span></button>
-            <button class="stall-tab" data-stall="add"><span class="tab-ico" data-art="seed"></span>足す<span class="stall-dot"></span></button>
-            <button class="stall-tab" data-stall="remove"><span class="tab-ico" data-art="crow"></span>消す<span class="stall-dot"></span></button>
-          </nav>
-          <div class="stall-pane">
+        <!-- 屋台：畑・絵柄を足す・お邪魔を消す を、1つの画面に見出しで分けて並べる -->
+        <div class="stall" id="stall">
+          <section class="stall-sec">
             <div class="awning"></div>
-            <p class="stall-lead" data-for="farm">今週の3品（年貢のあと入れ替わり）・置くマスは買ったあとタップ</p>
-            <p class="stall-lead" data-for="add">今週の3品。足すとその絵柄が出やすくなる</p>
-            <p class="stall-lead" data-for="remove">いつでも並ぶ。消せるのは週1回、消すたび高くなる</p>
+            <h3 class="stall-head"><span class="tab-ico" data-art="expand"></span>畑<small>今週の3品・広げるはいつでも</small></h3>
             <div class="shop" id="farm-shop"></div>
+          </section>
+          <section class="stall-sec">
+            <div class="awning"></div>
+            <h3 class="stall-head"><span class="tab-ico" data-art="seed"></span>絵柄を足す<small>今週の3品・出やすくなる</small></h3>
             <div class="shop" id="shop"></div>
+          </section>
+          <section class="stall-sec">
+            <div class="awning"></div>
+            <h3 class="stall-head"><span class="tab-ico" data-art="crow"></span>お邪魔を消す<small>週1回・消すたび高くなる</small></h3>
+            <div class="shop" id="remove-shop"></div>
             <p class="stall-empty" id="stall-empty">袋にお邪魔はいない！</p>
-          </div>
+          </section>
         </div>
       </div>
       <div class="sheet-pane" data-pane="bag">

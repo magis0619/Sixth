@@ -73,7 +73,7 @@ export function floatText(x: number, y: number, text: string, opts: { cls?: stri
 
 /** 中心から粒子を散らす */
 export function burst(x: number, y: number, chars: string[], count = 10, spread = 90): void {
-  const n = calm ? Math.min(count, 4) : Math.round(count * 1.5);
+  const n = calm ? Math.min(count, 4) : count;
   for (let i = 0; i < n; i++) {
     const el = spawn(glyph(chars[i % chars.length]), 'fx-particle', x, y);
     const angle = (Math.PI * 2 * i) / n + Math.random() * 0.6;
@@ -206,16 +206,14 @@ export function setHurry(on: boolean): void {
   document.getAnimations().forEach((a) => (a.playbackRate = rate()));
 }
 
-// 演出の速さは1か所で決める：Element.animate で作る演出も、CSS のアニメ・トランジションも同じ速さで流す
+// 演出の速さは1か所で決める：Element.animate で作る演出はすべてこの速さで流す
+// （CSS のアニメには掛けない。始まるたびに調べると重い。CSS 側は押す・光るなどの短い物だけ）
 const baseAnimate = Element.prototype.animate;
 Element.prototype.animate = function (this: Element, ...args: Parameters<Element['animate']>) {
   const a = baseAnimate.apply(this, args);
   a.playbackRate = rate();
   return a;
 };
-const slowCss = (e: Event) => (e.target as Element).getAnimations?.().forEach((a) => (a.playbackRate = rate()));
-document.addEventListener('animationstart', slowCss, true);
-document.addEventListener('transitionrun', slowCss, true);
 
 /** 演出の待ち（演出の速さに合わせて伸び縮みする） */
 export const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms / rate()));

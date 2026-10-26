@@ -18,7 +18,6 @@ export const el = {
   status: $('status'),
   charms: $('charms'),
   charmPanel: $('charm-panel'),
-  hint: $('hint'),
   machine: $('machine'),
   reels: $('reels'),
   spin: $<HTMLButtonElement>('spin'),

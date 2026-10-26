@@ -6,7 +6,7 @@ import { CONFIG, CROPS, EVENT_CONDITIONS, THUNDER_LINES } from '../src/config.ts
 import {
   animalGold, buy, buyPlace, drawDay, hasRanch, hiveBonus, isColorful, canPlace, canUse, cellMultiplier, cropPrice, isPond, waterWheels, checkReady, chooseCharm, endDay, evolveTools, expand, expandPrice,
   fieldCells, isGolden, lv, multSteps, newCrop, newGame, nextTax, obstacleRule, place, pullWeed, resolveAuto, ripeGroup,
-  bestAim, canBuy, isPivotAdd, isPivotPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult,
+  canBuy, isPivotAdd, isPivotPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult,
 } from '../src/game.ts';
 import { recordRun, type MetaState } from '../src/meta.ts';
 import type { CropKind, SymbolId } from '../src/config.ts';
@@ -602,23 +602,6 @@ describe('ショップは週替わり', () => {
       s.weekly.forEach((id) => seen.add(id));
     }
     expect(seen.size).toBeGreaterThan(CONFIG.weeklyCount);
-  });
-});
-
-describe('狙い', () => {
-  it('一番多く実らせられる育ての絵柄と、その数を出す', () => {
-    const s = newGame();
-    const C = CONFIG.fieldCols;
-    for (const k of Object.keys(s.bag) as SymbolId[]) s.bag[k] = 0;
-    s.bag.rain = 1;
-    s.bag.sun = 1;
-    // 左の縦一列に3つと右隣に1つ、あと1で実るトマト → 太陽（縦一列）は3つ、雨（縦横十字）は4つ
-    [0, C, 2 * C].forEach((c) => (s.field[c] = { ...newCrop('tomato'), growth: 2 }));
-    s.field[1] = { ...newCrop('tomato'), growth: 2 };
-    const aim = bestAim(s)!;
-    expect(aim).toMatchObject({ symbol: 'rain', ripen: 4 });
-    s.field = s.field.map(() => null);
-    expect(bestAim(s)).toBeNull();
   });
 });
 
