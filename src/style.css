@@ -1629,11 +1629,13 @@ button {
 }
 
 .fx-text {
-  font-weight: 800;
+  font-weight: 900;
   color: #fff;
-  -webkit-text-stroke: 1.5px var(--ink);
+  /* 畑の土の上でも読めるよう、太い縁取り（縁は文字の外側だけに出る） */
+  -webkit-text-stroke: 0.22em var(--ink);
   paint-order: stroke fill;
-  text-shadow: 0 3px 0 var(--ink);
+  text-shadow: 0 0.12em 0 var(--ink), 0 0 0.5em rgba(0, 0, 0, 0.35);
+  white-space: nowrap;
 }
 
 .fx-text.gold {
@@ -5213,4 +5215,27 @@ body::before {
   height: 0.6em;
   width: auto;
   vertical-align: 0.05em;
+}
+
+/* 大事な出来事の文字は、色つきの札に白抜き（どんな背景の上でも読める） */
+.fx-text.pill {
+  padding: 0.12em 0.6em 0.16em;
+  border-radius: 999px;
+  background: #5a4630;
+  color: #fff;
+  -webkit-text-stroke: 0;
+  text-shadow: none;
+  box-shadow: 0 0.12em 0 rgba(0, 0, 0, 0.35), 0 0 0 0.12em rgba(255, 255, 255, 0.85);
+}
+
+.fx-text.pill.gold {
+  background: #e8a33a;
+}
+
+.fx-text.pill.good {
+  background: #4f9e2a;
+}
+
+.fx-text.pill.combo {
+  background: #e0458f;
 }

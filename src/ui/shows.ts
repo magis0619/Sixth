@@ -4,7 +4,7 @@ import { CHARM_PLACE, CHARM_TIER_NAMES, type CharmId, CHARMS, CONFIG, PLACES, ty
 import { chooseCharm } from '../game.ts';
 import { art, type ArtId } from '../art.ts';
 import { sfx } from '../audio.ts';
-import { burst, center, coinRain, flash, floatText, isCalm, pop, shake, slamText, sleep, speedLines, vibrate } from '../fx.ts';
+import { burst, center, coinRain, flash, floatText, isCalm, later, pop, shake, slamText, sleep, speedLines, vibrate } from '../fx.ts';
 import { el, hooks, rng, state } from './store.ts';
 import { say, symHtml, visibleOr } from './view.ts';
 
@@ -28,7 +28,7 @@ export async function showTaxStamp(amount: number, ok: boolean): Promise<void> {
   official.animate([{ transform: 'translateX(120%)' }, { transform: 'translateX(0)' }], { duration: 420, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'forwards' });
   await sleep(isCalm() ? 450 : 900);
   official.querySelector('.official-body')!.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-14px) rotate(-8deg)' }, { transform: 'translateY(0)' }], { duration: 260 });
-  window.setTimeout(() => {
+  later(() => {
     official.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(130%)' }], { duration: 400, easing: 'ease-in', fill: 'forwards' }).onfinish = () => official.remove();
   }, 1500);
   sfx.tax();
@@ -77,7 +77,7 @@ export function showCharmOffer(): Promise<void> {
   const offer = state.charmOffer!;
   sfx.charmOffer();
   // レアが混ざっていたら当たりの合図
-  if (offer.some((id) => CHARMS[id].tier === 'rare')) window.setTimeout(() => sfx.rare(), 450);
+  if (offer.some((id) => CHARMS[id].tier === 'rare')) later(() => sfx.rare(), 450);
   el.overlay.innerHTML = `
     <div class="modal charm-modal" role="dialog" aria-label="お守りを選ぶ">
       <h2>🎁 お守りを1つ選ぼう</h2>
@@ -110,7 +110,7 @@ export function showCharmOffer(): Promise<void> {
     });
   });
   // 連打で意図しない選択をしないよう少し待ってから押せるようにする
-  window.setTimeout(() => cards.forEach((c) => (c.disabled = false)), 700);
+  later(() => cards.forEach((c) => (c.disabled = false)), 700);
   return new Promise((resolve) => {
     let picked = false;
     cards.forEach((card) =>
@@ -127,7 +127,7 @@ export function showCharmOffer(): Promise<void> {
         vibrate(40);
         cards.forEach((other) => other !== card && other.animate([{ opacity: 1 }, { opacity: 0.2 }], { duration: 200, fill: 'forwards' }));
         card.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.12)' }, { transform: 'scale(1)' }], { duration: 400 });
-        window.setTimeout(() => {
+        later(() => {
           el.overlay.classList.remove('show');
           el.overlay.innerHTML = '';
           hooks.render();

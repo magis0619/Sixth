@@ -99,7 +99,11 @@ let base;
   const { p, ctx } = await page('p430');
   await p.click('#title-start', f); await p.click('#prep-start', f);
   await p.locator('#reels .reel').first().click(f); await settle(p);
-  base = await p.evaluate(() => localStorage.getItem('hatake-slot:run'));
+  // 演出が終わって保存されるまで待つ
+  for (let k = 0; k < 100 && !base; k++) {
+    base = await p.evaluate(() => localStorage.getItem('hatake-slot:run'));
+    if (!base) await p.waitForTimeout(100);
+  }
   await ctx.close();
 }
 const mod = (fn) => { const s = JSON.parse(base); fn(s); return JSON.stringify(s); };

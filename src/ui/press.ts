@@ -1,6 +1,6 @@
 // 押した瞬間の手応え：指が触れた時点でへこみ、離すと跳ね返る（click は指を離してから来るので、それを待たない）
 
-import { isCalm, vibrate } from '../fx.ts';
+import { isCalm, later, vibrate } from '../fx.ts';
 
 /** root の中の selector に当たる要素に、押している間 .pressing、離したら .released を付ける */
 export function pressable(root: HTMLElement, selector: string): void {
@@ -14,7 +14,7 @@ export function pressable(root: HTMLElement, selector: string): void {
     // 付け直すと跳ね返りのアニメが最初から再生される
     void el.offsetWidth;
     el.classList.add('released');
-    window.setTimeout(() => el.classList.remove('released'), 260);
+    later(() => el.classList.remove('released'), 260);
   };
   root.addEventListener('pointerdown', (e) => {
     const el = (e.target as Element).closest<HTMLElement>(selector);

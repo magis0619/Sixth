@@ -10,7 +10,7 @@ import { saveMeta, setupFrom } from './meta.ts';
 import { art, type ArtId } from './art.ts';
 import { track } from './telemetry.ts';
 import {
-  burst, center, coinRain, confetti, flash, floatText, flyTo, hitStop, isCalm, pop, rollNumber, scanlines, shake, shakeFor, sleep, slamText, slowFactor, speedLines, stackMultipliers, toggleCalm, vibrate, rainShower, setHurry, fmtMult, travel, sunBeam, beeFlight,
+  burst, center, coinRain, confetti, flash, floatText, flyTo, hitStop, isCalm, pop, rollNumber, scanlines, shake, shakeFor, sleep, slamText, slowFactor, speedLines, stackMultipliers, toggleCalm, vibrate, rainShower, setHurry, later, fmtMult, travel, sunBeam, beeFlight,
 } from './fx.ts';
 import {
   FRUIT, PLACE_ART, setHtml, STAGE_NAMES, type SheetName, bagPct, closeSheet, costHtml, cropEmoji, openSheet, openSheetName, roleClass, say, shapeIcon, stageOf, symHtml, upgradeArt, upgradeEffect, visibleOr,
@@ -92,7 +92,7 @@ function render(): void {
 function flushNotices(): void {
   const list = state.notices.splice(0);
   // 直前の操作の演出（売った・買った）と重ならないよう少し遅らせる
-  list.forEach((n: Notice, k) => window.setTimeout(() => playNotice(n), 700 + k * 900));
+  list.forEach((n: Notice, k) => later(() => playNotice(n), 700 + k * 900));
 }
 
 function playNotice(n: Notice): void {
@@ -776,11 +776,12 @@ function praiseAllUsed(): void {
   if (!manual.length || !manual.every((r) => r.used)) return;
   praisedDay = state.day;
   const c = center(el.reels);
-  window.setTimeout(() => {
+  later(() => {
     sfx.pon();
-    floatText(c.x, c.y - 50, '全部使った！', { cls: 'good', size: 0.9, dur: 1100 });
+    floatText(c.x, c.y - 50, '全部使った！', { cls: 'good pill', size: 0.9, dur: 1100 });
     burst(c.x, c.y - 20, ['✨', '⭐'], 8, 70);
-  }, 350);
+    // 育った・実った・列ができた、のあとに出す
+  }, 1500);
 }
 
 /** 演出が終わって操作を受け付ける（早送りも止める） */
@@ -802,7 +803,7 @@ async function showNightIncome(): Promise<void> {
       const ripe = isRipe(state.field[c]);
       pop(plot, ripe ? 1.2 : 1.1);
       burst(q.x, q.y, ripe ? ['✨', '⭐'] : ['💧', '✨'], ripe ? 8 : 4, ripe ? 50 : 30);
-      floatText(q.x, q.y + 10, ripe ? '実った！' : '育った', { cls: ripe ? 'gold' : 'good', size: ripe ? 0.9 : 0.8, rise: 20, dur: 1000 });
+      floatText(q.x, q.y + 10, ripe ? '実った！' : '育った', { cls: ripe ? 'gold pill' : 'good pill', size: ripe ? 0.8 : 0.7, rise: 20, dur: 1000 });
     });
     sfx.grow();
     if (n.grown.some((c) => isRipe(state.field[c]))) sfx.pon();
@@ -944,7 +945,7 @@ function spinReels(show: SpinShow = { cutIn: null }): Promise<void> {
   // カットインが出る日は、出ている間リールを回し続ける
   const extra = show.cutIn !== null ? CUTIN_MS : 0;
   const hold = reach ? 1500 : 600;
-  if (show.cutIn !== null) window.setTimeout(() => void playCutIn(show.cutIn!), 150);
+  if (show.cutIn !== null) later(() => void playCutIn(show.cutIn!), 150);
   el.machine.classList.add('rumble');
   let tick = window.setInterval(() => sfx.tick(), 70);
   const promises = reels.map((reel, i) => {
@@ -958,7 +959,7 @@ function spinReels(show: SpinShow = { cutIn: null }): Promise<void> {
     reel.querySelector('.tag')!.textContent = '…';
     if (suspense && i === last) {
       // ひとつ前のリールが止まったところから溜める
-      window.setTimeout(() => {
+      later(() => {
         reel.classList.add('suspense');
         if (reach) {
           reel.classList.add('reach');
@@ -1079,7 +1080,7 @@ async function resolveAutos(): Promise<void> {
           sfx.shoo();
           if (ev.hen) critterPop(p, art('henhouse'));
           burst(p.x, p.y, ev.hen ? ['🪶', '✨'] : ['🌿', '✨'], 8, 50);
-          floatText(p.x, ev.hen ? p.y + 28 : p.y - 20, ev.hen ? '鶏がパクッ！' : '虫よけ成功！', { cls: 'good', size: 0.8 });
+          floatText(p.x, ev.hen ? p.y + 28 : p.y - 20, ev.hen ? '鶏がパクッ！' : '虫よけ成功！', { cls: 'good pill', size: 0.8 });
         } else {
           autoOutcome[i] = `成長−${ev.damage}`;
           sfx.bug();
@@ -1151,7 +1152,7 @@ async function resolveAutos(): Promise<void> {
         sfx.shoo();
         critterPop(q, art('henhouse'));
         burst(q.x, q.y, ['🪶', '💨'], 8, 50);
-        floatText(q.x, q.y + 28, '追い払った！', { cls: 'good', size: 0.8 });
+        floatText(q.x, q.y + 28, '追い払った！', { cls: 'good pill', size: 0.8 });
       }
       if (!ev.moves.length && !ev.chased.length) {
         floatText(from.x, from.y - 30, 'モグラは空振り', { size: 0.6 });
@@ -1370,7 +1371,7 @@ function onPlotTap(cell: number): void {
       sfx.poof();
       affected.forEach((c, k) => {
         const q = center(el.field.children[c]);
-        window.setTimeout(() => burst(q.x, q.y + 10, ['💨', '🌰'], 5, 34), k * 70);
+        later(() => burst(q.x, q.y + 10, ['💨', '🌰'], 5, 34), k * 70);
       });
       floatText(p.x, p.y - 20, '耕した！', { cls: 'good', size: 0.8 });
     } else if (sym === 'fertilizer' && left > 0) {
@@ -1385,7 +1386,7 @@ function onPlotTap(cell: number): void {
       sunBeam(shapeCells(state, 'column', cell).map((c) => el.field.children[c]));
       shapeCells(state, 'column', cell).forEach((c, k) => {
         const q = center(el.field.children[c]);
-        window.setTimeout(() => burst(q.x, q.y, ['✨'], 4, 36), 200 + k * 70);
+        later(() => burst(q.x, q.y, ['✨'], 4, 36), 200 + k * 70);
       });
       flash('#fff3a0', 300);
       afterGrowth(affected, `+${CONFIG.sunGrowth * power + state.charms.sunBlessing}`);
@@ -1394,7 +1395,7 @@ function onPlotTap(cell: number): void {
       beeFlight(shapeCells(state, 'x', cell).map((c) => el.field.children[c]), symHtml('bee'));
       shapeCells(state, 'x', cell).forEach((c, k) => {
         const q = center(el.field.children[c]);
-        window.setTimeout(() => burst(q.x, q.y, ['🌼'], 3, 30), k * 220);
+        later(() => burst(q.x, q.y, ['🌼'], 3, 30), k * 220);
       });
       afterGrowth(affected, `+${CONFIG.beeGrowth * power}`);
       if (left > 0 && selected === null) say('使える場所なし');
@@ -1403,7 +1404,7 @@ function onPlotTap(cell: number): void {
       flash('#fff6c0', 220);
       shapeCells(state, 'row', cell).forEach((c, k) => {
         const q = center(el.field.children[c]);
-        window.setTimeout(() => burst(q.x, q.y, ['⚡', '✨'], 4, 36), k * 60);
+        later(() => burst(q.x, q.y, ['⚡', '✨'], 4, 36), k * 60);
       });
       shake(el.field, 4);
       afterGrowth(affected, `+${2 * power}`);
@@ -1465,32 +1466,44 @@ function announceLines(cells: number[]): void {
   const formed = [...new Set(cells.flatMap((c) => (isRipe(state.field[c]) ? [ripeGroup(state, c)] : [])).filter((g) => g.length >= 3).map((g) => [...g].sort((a, b) => a - b).join()))];
   formed.forEach((key, k) => {
     const group = key.split(',').map(Number);
-    window.setTimeout(() => {
+    later(() => {
       sfx.bonus();
-      group.forEach((c, j) => window.setTimeout(() => pop(el.field.children[c], 1.12), j * 60));
+      group.forEach((c, j) => later(() => pop(el.field.children[c], 1.12), j * 60));
       const pts = group.map((c) => center(el.field.children[c]));
       const q = { x: pts.reduce((n, v) => n + v.x, 0) / pts.length, y: pts.reduce((n, v) => n + v.y, 0) / pts.length };
-      floatText(q.x, q.y - 10, `${MARK_LINE} 列ができた！`, { cls: 'combo', size: 0.95, dur: 1300 });
+      floatText(q.x, q.y - 10, `${MARK_LINE} 列ができた！`, { cls: 'combo pill', size: 0.95, dur: 1300 });
     }, 500 + k * 250);
   });
 }
 
 function afterGrowth(cells: number[], label: string): void {
   announceLines(cells);
+  // 一度にいくつも実ったら、文字は「実った！×N」を1つだけ（文字が重なると何が起きたか分からない）
+  const ripened = cells.filter((c) => isRipe(state.field[c]));
+  if (ripened.length >= 2) {
+    const pts = ripened.map((c) => center(el.field.children[c]));
+    const q = { x: pts.reduce((n, v) => n + v.x, 0) / pts.length, y: Math.min(...pts.map((v) => v.y)) };
+    later(() => floatText(q.x, q.y - 30, `実った！ ×${ripened.length}`, { cls: 'gold pill', size: 1 }), 150);
+  }
   cells.forEach((cell, k) => {
     const plot = el.field.children[cell] as HTMLElement;
     const p = center(plot);
     const crop = state.field[cell];
-    window.setTimeout(() => {
+    later(() => {
       pop(plot.querySelector('.crop') ?? plot, 1.35);
-      if (crop && isRipe(crop)) {
+      if (crop && isRipe(crop) && ripened.length >= 2) {
         sfx.pon();
         plot.classList.add('just-ripe');
-        window.setTimeout(() => plot.classList.remove('just-ripe'), 700);
+        later(() => plot.classList.remove('just-ripe'), 700);
+        burst(p.x, p.y, ['✨', '⭐'], 6, 50);
+      } else if (crop && isRipe(crop)) {
+        sfx.pon();
+        plot.classList.add('just-ripe');
+        later(() => plot.classList.remove('just-ripe'), 700);
         const big = CROPS[crop.kind].price >= 20;
         burst(p.x, p.y, ['✨', big ? '🌟' : '⭐'], 8, 50);
         floatText(p.x, p.y - 20, big ? `実った！ ${cropPrice(state, crop, cell)}金` : '実った！', {
-          cls: big ? 'gold' : 'good',
+          cls: big ? 'gold pill' : 'good pill',
           size: big ? 1 : 0.8,
         });
       } else {
@@ -1521,7 +1534,7 @@ function sellCrop(cell: number): void {
   render();
   if (res.orderReward) {
     // 注文達成：お客さんからまとめて代金
-    window.setTimeout(() => {
+    later(() => {
       sfx.bigBuy();
       const o = center(el.order);
       floatText(o.x, o.y + 30, `注文達成！ +${res.orderReward}金`, { cls: 'gold', size: 1.3, dur: 1600 });
@@ -1541,7 +1554,7 @@ function sellCrop(cell: number): void {
     sfx.sell(price, combo);
     const size = Math.min(2, 0.8 + price / 25);
     floatText(p.x, p.y - 10, `+${price}`, { cls: 'gold', size, rise: big ? 110 : 70 });
-    floatText(p.x, p.y + 18, `単品（半値）`, { size: 0.6, dur: 900 });
+    floatText(p.x, p.y + 18, `単品（半値）`, { cls: 'pill', size: 0.6, dur: 900 });
     burst(p.x, p.y, big ? ['🪙', '✨', '🌟', '💰'] : ['🪙', '✨'], big ? 22 : 8, big ? 140 : 60);
   }
   if (combo >= 2) floatText(p.x, p.y - 60, `COMBO ×${combo}`, { cls: 'combo', size: 0.7 + Math.min(combo, 6) * 0.08, dur: 900 });
@@ -1589,7 +1602,7 @@ async function playLineHarvest(res: SellResult, centers: { x: number; y: number 
   // 作物が1つずつ跳ねて財布に吸い込まれる
   const arrivals = res.cells.map(({ cell: c, price: each, kind }, k) =>
     new Promise<void>((resolve) => {
-      window.setTimeout(() => {
+      later(() => {
         const q = centers[c];
         sfx.sell(each, combo + k);
         ghosts[k].remove();

@@ -54,30 +54,33 @@ function spawn(html: string, cls: string, x: number, y: number): HTMLElement {
 /** 浮かび上がって消える文字。size は 1 が標準 */
 export function floatText(x: number, y: number, text: string, opts: { cls?: string; size?: number; rise?: number; dur?: number } = {}): void {
   const el = spawn(text, `fx-text ${opts.cls ?? ''}`, x, y);
-  const size = opts.size ?? 1;
+  const size = (opts.size ?? 1) * (calm ? 1 : BIG);
   el.style.fontSize = `${1.4 * size}rem`;
-  const rise = opts.rise ?? 70;
+  const rise = (opts.rise ?? 70) * (calm ? 1 : BIG);
+  // 時間の大半は止まって読める状態にする（全体に強い緩急をかけると、すぐ消え始めて読めない）。
+  // 緩急は区間ごとに：ポンと出る → ゆっくり浮かぶ → 最後に薄れて上へ
   el.animate(
     [
-      { transform: 'translate(-50%, -50%) scale(0.3)', opacity: 0 },
-      { transform: 'translate(-50%, -80%) scale(1.25)', opacity: 1, offset: 0.2 },
-      { transform: 'translate(-50%, -90%) scale(1)', opacity: 1, offset: 0.5 },
-      { transform: `translate(-50%, calc(-90% - ${rise}px)) scale(0.9)`, opacity: 0 },
+      { transform: 'translate(-50%, -50%) scale(0.3)', opacity: 0, easing: 'cubic-bezier(.2,1.6,.4,1)' },
+      { transform: 'translate(-50%, -80%) scale(1.2)', opacity: 1, offset: 0.1, easing: 'ease-out' },
+      { transform: 'translate(-50%, -85%) scale(1)', opacity: 1, offset: 0.18 },
+      { transform: `translate(-50%, calc(-85% - ${rise * 0.35}px)) scale(1)`, opacity: 1, offset: 0.78, easing: 'ease-in' },
+      { transform: `translate(-50%, calc(-85% - ${rise}px)) scale(0.9)`, opacity: 0 },
     ],
-    { duration: opts.dur ?? 1100, easing: 'cubic-bezier(.2,.8,.3,1)' },
+    { duration: (opts.dur ?? 1100) * 1.25, easing: 'linear' },
   ).onfinish = () => el.remove();
 }
 
 /** 中心から粒子を散らす */
 export function burst(x: number, y: number, chars: string[], count = 10, spread = 90): void {
-  const n = calm ? Math.min(count, 4) : count;
+  const n = calm ? Math.min(count, 4) : Math.round(count * 1.5);
   for (let i = 0; i < n; i++) {
     const el = spawn(glyph(chars[i % chars.length]), 'fx-particle', x, y);
     const angle = (Math.PI * 2 * i) / n + Math.random() * 0.6;
-    const dist = spread * (0.5 + Math.random() * 0.7);
+    const dist = spread * (calm ? 1 : BIG + 0.1) * (0.5 + Math.random() * 0.7);
     const dx = Math.cos(angle) * dist;
     const dy = Math.sin(angle) * dist - 20;
-    el.style.fontSize = `${0.8 + Math.random() * 0.8}rem`;
+    el.style.fontSize = `${(0.8 + Math.random() * 0.8) * (calm ? 1 : BIG)}rem`;
     el.animate(
       [
         { transform: 'translate(-50%, -50%) scale(0.4) rotate(0deg)', opacity: 1 },
@@ -113,7 +116,7 @@ export function flyTo(from: { x: number; y: number }, toEl: Element, char: strin
 
 export function shake(el: Element, strength = 6): void {
   if (calm) return;
-  const s = strength;
+  const s = strength * 1.5;
   el.animate(
     [
       { transform: 'translate(0,0)' },
@@ -128,8 +131,10 @@ export function shake(el: Element, strength = 6): void {
 }
 
 export function pop(el: Element, scale = 1.25): void {
-  el.animate([{ transform: 'scale(1)' }, { transform: `scale(${scale})` }, { transform: 'scale(1)' }], {
-    duration: 280,
+  // 大げさに：跳ねる大きさを伸ばし、少し戻り過ぎてから落ち着く
+  const s = calm ? scale : 1 + (scale - 1) * 1.6;
+  el.animate([{ transform: 'scale(1)' }, { transform: `scale(${s})`, offset: 0.4 }, { transform: `scale(${1 - (s - 1) * 0.25})`, offset: 0.75 }, { transform: 'scale(1)' }], {
+    duration: 360,
     easing: 'cubic-bezier(.3,1.6,.5,1)',
   });
 }
@@ -143,7 +148,7 @@ export function flash(color: string, dur = 350): void {
 /** 画面上部から紙吹雪 */
 export function confetti(count = 40): void {
   const chars = ['🎉', '✨', '💰', '🪙', '⭐'];
-  const n = calm ? 8 : count;
+  const n = calm ? 8 : Math.round(count * 1.4);
   // 画面の大きさは先に1回だけ読む（足すたびに読むと、そのたびに配置し直しになる）
   const W = window.innerWidth;
   const H = window.innerHeight;
@@ -178,7 +183,16 @@ export function fmtMult(x: number): string {
 // ---- 早送り：演出の最中に画面をタップすると、残りの演出を速く流す ----
 
 const HURRY_RATE = 4;
+/** 演出全体の速さ。1より小さいとゆっくり（何が起きたか見て分かるように） */
+const SPEED = 0.85;
+/** 演出の大げささ（文字・粒・跳ね・揺れの大きさにかける） */
+const BIG = 1.3;
 let hurry = false;
+
+/** 今の再生速度（ふだんは SPEED、早送り中はその4倍） */
+function rate(): number {
+  return SPEED * (hurry ? HURRY_RATE : 1);
+}
 
 export function isHurry(): boolean {
   return hurry;
@@ -189,18 +203,27 @@ export function setHurry(on: boolean): void {
   if (hurry === on) return;
   hurry = on;
   document.documentElement.classList.toggle('hurry', on);
-  document.getAnimations().forEach((a) => (a.playbackRate = on ? HURRY_RATE : 1));
+  document.getAnimations().forEach((a) => (a.playbackRate = rate()));
 }
 
-// 早送り中に始まる演出も速くする（演出はどれも Element.animate で作っている）
+// 演出の速さは1か所で決める：Element.animate で作る演出も、CSS のアニメ・トランジションも同じ速さで流す
 const baseAnimate = Element.prototype.animate;
 Element.prototype.animate = function (this: Element, ...args: Parameters<Element['animate']>) {
   const a = baseAnimate.apply(this, args);
-  if (hurry) a.playbackRate = HURRY_RATE;
+  a.playbackRate = rate();
   return a;
 };
+const slowCss = (e: Event) => (e.target as Element).getAnimations?.().forEach((a) => (a.playbackRate = rate()));
+document.addEventListener('animationstart', slowCss, true);
+document.addEventListener('transitionrun', slowCss, true);
 
-export const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, hurry ? ms / HURRY_RATE : ms));
+/** 演出の待ち（演出の速さに合わせて伸び縮みする） */
+export const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms / rate()));
+
+/** 演出のための遅らせ（setTimeout の代わり。演出の速さに合わせる） */
+export function later(fn: () => void, ms: number): number {
+  return window.setTimeout(fn, ms / rate());
+}
 
 /**
  * 金額を桁ごとに回して止める（スロットのリールのように右の桁から止まる）。
@@ -264,7 +287,7 @@ export async function stackMultipliers(x: number, y: number, steps: { label: str
     sum.animate([{ transform: 'scale(2.6)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { duration: 300, easing: 'cubic-bezier(.3,1.5,.5,1)' });
     await sleep(calm ? 150 : 350);
   }
-  window.setTimeout(() => {
+  later(() => {
     el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'forwards' }).onfinish = () => el.remove();
   }, 900);
 }
@@ -356,13 +379,13 @@ export function slamText(text: string, opts: { cls?: string; size?: number; dur?
   return el
     .animate(
       [
-        { transform: 'translate(-50%, -50%) scale(4) rotate(-10deg)', opacity: 0 },
-        { transform: 'translate(-50%, -50%) scale(0.9) rotate(-4deg)', opacity: 1, offset: 0.14 },
+        { transform: 'translate(-50%, -50%) scale(4) rotate(-10deg)', opacity: 0, easing: 'cubic-bezier(.2,.9,.3,1)' },
+        { transform: 'translate(-50%, -50%) scale(0.9) rotate(-4deg)', opacity: 1, offset: 0.14, easing: 'ease-out' },
         { transform: 'translate(-50%, -50%) scale(1.05) rotate(-4deg)', opacity: 1, offset: 0.22 },
-        { transform: 'translate(-50%, -50%) scale(1) rotate(-4deg)', opacity: 1, offset: 0.8 },
+        { transform: 'translate(-50%, -50%) scale(1) rotate(-4deg)', opacity: 1, offset: 0.8, easing: 'ease-in' },
         { transform: 'translate(-50%, -50%) scale(1.3) rotate(-4deg)', opacity: 0 },
       ],
-      { duration: dur, easing: 'ease-out' },
+      { duration: dur, easing: 'linear' },
     )
     .finished.then(() => el.remove());
 }
