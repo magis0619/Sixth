@@ -8,7 +8,7 @@ import {
 } from './game.ts';
 import { duckBgm, isMuted, sfx, suspendAudio, toggleMute, unlockAudio } from './audio.ts';
 import { saveMeta, setupFrom } from './meta.ts';
-import { art, type ArtId } from './art.ts';
+import { art, gradientDefs, type ArtId } from './art.ts';
 import { track } from './telemetry.ts';
 import {
   burst, center, coinRain, rays, dim, firework, confetti, flash, floatText, flyTo, hitStop, isCalm, pop, rollNumber, scanlines, shake, shakeFor, sleep, slamText, slowFactor, speedLines, stackMultipliers, toggleCalm, vibrate, rainShower, setHurry, later, fmtMult, travel, sunBeam, beeFlight,
@@ -2000,6 +2000,8 @@ function renderTutorial(): void {
 // ---- 起動 ----
 
 $('build-label').textContent = __BUILD__;
+// 絵の立体の塗り（グラデーション）の定義をページに1回だけ置く
+document.body.insertAdjacentHTML('afterbegin', gradientDefs());
 applyStaticLang();
 applySettings();
 // ホーム画面に置いたとき・電波がないときも遊べるように（公開版だけ）

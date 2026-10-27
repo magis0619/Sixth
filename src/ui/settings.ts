@@ -67,7 +67,6 @@ export function showSettings(onClose?: () => void): void {
         <div class="credits">
           <b>${L('畑スロット', 'Farm Slots')}</b>
           <small>${L('書体', 'Fonts')}：Mochiy Pop One、M PLUS Rounded 1c（SIL Open Font License）</small>
-          <small>${L('一部の絵', 'Some art')}：Fluent Emoji © Microsoft（MIT License）</small>
           <small>${L('版', 'Version')}：${__BUILD__}・${L(`年貢${CONFIG.winTaxes}回でクリア`, `Win by paying ${CONFIG.winTaxes} taxes`)}</small>
         </div>
         <button class="primary" id="set-close">${L('閉じる', 'Close')}</button>
