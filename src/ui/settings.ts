@@ -49,8 +49,8 @@ export function applySettings(): void {
 
 /** 設定の画面。onClose：閉じたあとに戻す画面 */
 export function showSettings(onClose?: () => void): void {
-  const toggle = (id: string, label: string, on: boolean, note = '') =>
-    `<button class="set-row toggle${on ? ' on' : ''}" id="${id}" role="switch" aria-checked="${on}"><span>${label}${note ? `<small>${note}</small>` : ''}</span><i class="sw"></i></button>`;
+  const toggle = (id: string, label: string, on: boolean) =>
+    `<button class="set-row toggle${on ? ' on' : ''}" id="${id}" role="switch" aria-checked="${on}"><span>${label}</span><i class="sw"></i></button>`;
   const paint = () => {
     el.overlay.innerHTML = `
       <div class="modal settings-modal" role="dialog" aria-label="${L('設定', 'Settings')}">
@@ -59,11 +59,11 @@ export function showSettings(onClose?: () => void): void {
         <label class="set-row"><span>${L('BGMの大きさ', 'Music volume')}</span><input type="range" id="set-bgm" min="0" max="100" step="10" value="${Math.round(settings.bgm * 100)}" /></label>
         <label class="set-row"><span>${L('効果音の大きさ', 'Sound volume')}</span><input type="range" id="set-volume" min="0" max="100" step="10" value="${Math.round(settings.volume * 100)}" /></label>
         ${toggle('set-mute', L('音を消す', 'Mute'), isMuted())}
-        ${toggle('set-vibrate', L('振動', 'Vibration'), settings.vibrate, L('対応している端末だけ', 'On supported devices'))}
-        ${toggle('set-fast', L('演出をはやく', 'Faster effects'), settings.fast, L('慣れてきた人向け', 'For experienced players'))}
-        ${toggle('set-calm', L('演出控えめ', 'Calm effects'), isCalm(), L('揺れ・点滅・フリーズを弱める', 'Less shaking, flashing and freezing'))}
-        ${TELEMETRY_URL ? toggle('set-telemetry', L('遊んだ記録を送る', 'Send play stats'), settings.telemetry, L('匿名。難しさの調整に使います', 'Anonymous; used to tune difficulty')) : ''}
-        <button class="set-row danger" id="set-reset"><span>${L('データを消す', 'Erase data')}<small>${L('解放・記録・途中のゲームがすべて消えます', 'Erases unlocks, records and any game in progress')}</small></span></button>
+        ${toggle('set-vibrate', L('振動', 'Vibration'), settings.vibrate)}
+        ${toggle('set-fast', L('演出をはやく', 'Faster effects'), settings.fast)}
+        ${toggle('set-calm', L('演出控えめ', 'Calm effects'), isCalm())}
+        ${TELEMETRY_URL ? toggle('set-telemetry', L('遊んだ記録を送る', 'Send play stats'), settings.telemetry) : ''}
+        <button class="set-row danger" id="set-reset"><span>${L('データを消す', 'Erase data')}</span></button>
         <div class="credits">
           <b>${L('畑スロット', 'Farm Slots')}</b>
           <small>${L('書体', 'Fonts')}：Mochiy Pop One、M PLUS Rounded 1c（SIL Open Font License）</small>

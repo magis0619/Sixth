@@ -17,6 +17,7 @@ import { say, symHtml, upgradeArt } from './view.ts';
 import { clearRun, loadBest, loadRun, saveBest } from './save.ts';
 import { stopHeartbeat } from './scene.ts';
 import { showSettings } from './settings.ts';
+import { FEVER_FX } from './shows.ts';
 
 /** 結果画面。cleared=true はクリア後にここで終えたとき */
 export function showGameOver(endedAfterClear = false): void {
@@ -41,7 +42,7 @@ export function showGameOver(endedAfterClear = false): void {
         <span>${art('coin')}<b>${state.stats.totalEarned}</b>${L('', 'g')}</span>
       </div>
       ${reviewHtml(endedAfterClear, t.amount)}
-      <div class="points-earned">${art('sprout')} <b>+${earned}pt</b><small>${L('計', 'Total')} ${meta.points}pt</small></div>
+      <div class="points-earned">${art('sprout')} <b>+${earned}pt</b><span>${L('計', 'Total')} ${meta.points}pt</span></div>
       ${newly.length ? `<div class="newly">${art('sparkle')} ${L('解放', 'Unlocked')}：${newly.map((x) => `<b>${x}</b>`).join('')}</div>` : ''}
       <div class="share-row">
         <button class="secondary" id="share">${typeof navigator.share === 'function' ? L('📤 シェア', '📤 Share') : L('📋 コピー', '📋 Copy')}</button>
@@ -151,8 +152,9 @@ export function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
     const d = SYMBOLS[id];
     return `<div class="dex-row${d.rarity === 'bad' ? ' bad' : ''}"><span class="e">${symHtml(id)}</span>
       <div><b>${d.name}</b> <span class="tag-k">${d.kind === 'manual' ? L('手動', 'Tap') : L('自動', 'Auto')}</span>
-      <small>${d.desc}</small><small class="fv">${L('フィーバー', 'Fever')}：${d.feverDesc}</small></div>
-      <span class="own">${L(`袋に${state.bag[id]}枚`, `${state.bag[id]} in bag`)}</span></div>`;
+      <span class="dex-desc">${d.desc}</span>
+      <span class="dex-fever">🔥${FEVER_FX[id].ico ? art(FEVER_FX[id].ico!) : ''}${FEVER_FX[id].text}</span></div>
+      <span class="own">${art('seed')}×${state.bag[id]}</span></div>`;
   }).join('');
   const charms = CHARM_ORDER.filter((id) => !PAUSED_CHARMS.includes(id)).map((id) => {
     const c = CHARMS[id];
@@ -170,8 +172,8 @@ export function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
     <div class="modal help-modal" role="dialog" aria-label="${L('遊び方と図鑑', 'How to play')}">
       <div class="help-tabs">${tabs.map(([k, label]) => `<button class="${k === tab ? 'on' : ''}" data-tab="${k}">${label}</button>`).join('')}</div>
       <div class="help-body">${tab === 'rules' ? rules : tab === 'symbols' ? symbols : charms}</div>
-      <button class="secondary" id="tutorial-again">${L('チュートリアルをもう一度', 'Replay the tutorial')}<small>${L('次に「はじめる」から', 'Starts with your next game')}</small></button>
-      <button class="secondary" id="calm-toggle">${L('演出控えめ', 'Calm effects')}：${isCalm() ? L('オン', 'On') : L('オフ', 'Off')}<small>${L('揺れ・点滅・フリーズを弱める', 'Less shaking, flashing and freezing')}</small></button>
+      <button class="secondary" id="tutorial-again">${L('チュートリアルをもう一度', 'Replay the tutorial')}</button>
+      <button class="secondary" id="calm-toggle">${L('演出控えめ', 'Calm effects')}：${isCalm() ? L('オン', 'On') : L('オフ', 'Off')}</button>
       <button class="primary" id="help-close">${L('閉じる', 'Close')}</button>
     </div>`;
   el.overlay.classList.add('show');
@@ -254,7 +256,7 @@ export function showTitle(): void {
       </div>
       <div class="title-actions">
         <button class="primary title-start" id="title-start">${L('スタート', 'Start')}</button>
-        ${saved ? `<button class="secondary" id="title-resume">${L('続きから', 'Continue')} <small>${L(`${saved.day}日目`, `Day ${saved.day}`)}</small></button>` : ''}
+        ${saved ? `<button class="secondary" id="title-resume">${L('続きから', 'Continue')} ${L(`（${saved.day}日目）`, `(day ${saved.day})`)}</button>` : ''}
       </div>
       <div class="title-sub">
         <button class="icon-pill" id="title-unlock">${art('lock')}<span>${L('解放', 'Unlocks')}</span><b>${meta.points}pt</b></button>
@@ -490,16 +492,14 @@ export function showPrep(): void {
         <div class="awning scallop"></div>
         <div class="prep-sign"><span class="rope l"></span><span class="rope r"></span>
           <b>${art('bargain')} ${L('開店準備', 'Opening the stall')}</b>
-          <small>${L('今回のショップに並べる絵柄を選ぼう', 'Choose the symbols your shop will sell this run')}</small>
         </div>
-        ${maxDifficulty(meta) > 0 ? `<div class="diff-row">${DIFFICULTIES.slice(0, maxDifficulty(meta) + 1).map((d, k) => `<button class="diff-chip${meta.difficulty === k ? ' on' : ''}" data-diff="${k}">${d.name}${d.desc ? `<small>${k > 1 ? '＋' : ''}${d.desc}</small>` : ''}</button>`).join('')}</div>${diffSummary(meta.difficulty)}` : ''}
+        ${maxDifficulty(meta) > 0 ? `<div class="diff-row">${DIFFICULTIES.slice(0, maxDifficulty(meta) + 1).map((d, k) => `<button class="diff-chip${meta.difficulty === k ? ' on' : ''}" data-diff="${k}">${d.name}</button>`).join('')}</div>${diffSummary(meta.difficulty)}` : ''}
         <div class="prep-cart${used > cap ? ' over' : ''}">
           <span class="cart-label">${L('荷台', 'Cart')}<b>${used} / ${cap}</b></span>
           <div class="cart-bed">${cart}</div>
           <span class="cart-wheel l"></span><span class="cart-wheel r"></span>
         </div>
         <div class="prep-shelf">${adds}</div>
-        <p class="prep-note">${art('moon')} ${L('満月とお邪魔を消す品は、いつでもショップに並ぶ', 'Full Moon and pest removal are always in the shop')}</p>
         <div class="prep-actions">
           <button class="primary prep-go" id="prep-start">${saved ? (confirmNew ? L('はじめる（続きは消えます）', 'Start (erases saved game)') : L('はじめる', 'Start')) : L('はじめる！', 'Start!')}</button>
           <button class="link-back" id="prep-back">← ${L('もどる', 'Back')}</button>

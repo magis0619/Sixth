@@ -6049,3 +6049,206 @@ html[lang='en'] .prep-item b {
 .setup-modal .cart-load {
   font-size: 2rem;
 }
+
+/* ==== 小さい文字をなくす：残す情報（値段・数・状態）は読める大きさに ==== */
+.stat small,
+.tag,
+.spin small,
+.tab-note,
+.item .effect,
+.chip .pct,
+.charm small,
+.points-earned span,
+.charm-card .lv,
+.charm-card .tier,
+.prep-item small,
+.dex-row small,
+.dex-row .tag-k,
+.dex-row .own,
+.order-reward,
+.order-tag .order-reward,
+.weekly-tag,
+.shop .weekly-tag,
+.shop .item .effect,
+.shop .item .cost small,
+.shop-title small,
+.prep-cap small,
+.over-stats em,
+.diff-tag,
+.hud-tax .tax-sub,
+.hud-tax .tax-sub em,
+.hud-tax .tax-mark,
+.lcd small,
+.info-head em,
+.machine > .reach-call small,
+.pivot-tag,
+.pick-label,
+.reel.selected::before,
+.credits small,
+.cart-label,
+.diff-summary,
+.modal .secondary small {
+  font-size: 0.8rem;
+}
+
+/* 畑のマスの上の小さな札は、マスに収まる範囲で大きく */
+.badge-fert,
+.badge-gold {
+  font-size: 0.74rem;
+}
+
+.prep-item .cost {
+  font-size: 0.8rem;
+}
+
+.tag-stamp {
+  font-size: 0.74rem;
+}
+
+.pick-shape .art,
+.pick-shape svg {
+  font-size: 1.2rem;
+}
+
+.points-earned span {
+  margin-left: 6px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+/* 荷台のカードは、枠をいくつ使う品でも同じ大きさ（使う数は札の■で分かる） */
+.setup-modal .cart-load,
+.setup-modal .cart-slot {
+  flex: 1 1 0;
+}
+
+/* ==== フィーバー：起きることを絵とひと言の札で ==== */
+.fever-banner {
+  padding: 12px 14px 14px;
+  width: min(92vw, 400px);
+}
+
+.fever-title {
+  font-family: var(--font-pop);
+  font-size: 2rem;
+  font-weight: 400;
+  line-height: 1.1;
+  margin-bottom: 8px;
+}
+
+.fever-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fever-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: #fff8e7;
+  color: var(--ink);
+  text-shadow: none;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.18);
+}
+
+.fever-banner.bad .fever-card {
+  background: #3a1424;
+  color: #ffe0e0;
+  box-shadow: inset 0 0 0 2px #ff6b6b;
+}
+
+.fc-sym {
+  font-size: 2.6rem;
+  line-height: 1;
+}
+
+.fc-arrow {
+  font-size: 1rem;
+  opacity: 0.55;
+}
+
+.fc-ico {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.fc-text {
+  flex: 1;
+  text-align: left;
+  font-family: var(--font-pop);
+  font-weight: 400;
+  font-size: 1.15rem;
+  line-height: 1.2;
+}
+
+.fc-jackpot {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffe680, #f5b818);
+  box-shadow: inset 0 0 0 2px #b8860b;
+  font-family: var(--font-pop);
+  font-size: 0.9rem;
+  color: #6b3d00;
+  white-space: nowrap;
+}
+
+.fc-jackpot .art {
+  font-size: 1.2rem;
+}
+
+.setup-modal .prep-item.tag b {
+  font-size: 0.86rem;
+}
+
+.status .st,
+.st {
+  font-size: 0.82rem;
+}
+
+/* 図鑑の行：説明は読める大きさ、フィーバーは絵とひと言 */
+.dex-desc {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.dex-fever {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 3px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #ffe9f2;
+  color: #a3245a;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.dex-row.bad .dex-fever {
+  background: #f3e3f7;
+  color: #5a2470;
+}
+
+.dex-fever .art {
+  font-size: 1.05rem;
+}
+
+.dex-row .own {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.info-pop .sub {
+  font-size: 0.82rem;
+}

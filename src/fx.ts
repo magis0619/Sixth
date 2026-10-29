@@ -282,7 +282,8 @@ export async function stackMultipliers(x: number, y: number, steps: { label: str
     total *= s.x;
     const chip = document.createElement('span');
     chip.className = 'mult-chip';
-    chip.innerHTML = `<small>${s.label}</small>×${fmtMult(s.x)}`;
+    chip.textContent = `×${fmtMult(s.x)}`;
+    chip.title = s.label;
     el.appendChild(chip);
     chip.animate([{ transform: 'scale(2.2)', opacity: 0 }, { transform: 'scale(0.9)', opacity: 1, offset: 0.6 }, { transform: 'scale(1)' }], {
       duration: 260,

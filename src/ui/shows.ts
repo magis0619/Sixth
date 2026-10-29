@@ -82,7 +82,6 @@ export function showCharmOffer(): Promise<void> {
   el.overlay.innerHTML = `
     <div class="modal charm-modal" role="dialog" aria-label="${L('お守りを選ぶ', 'Pick a charm')}">
       <h2>🎁 ${L('お守りを1つ選ぼう', 'Pick a charm')}</h2>
-      <p class="sub">${L('重ねると強くなる', 'Stacks get stronger')}</p>
       <div class="charm-choices">
         ${offer
           .map((id) => {
@@ -149,10 +148,50 @@ export function showCharmOffer(): Promise<void> {
   });
 }
 
+/** フィーバーで起きることを、絵とひと言で（長い説明は図鑑に） */
+export const FEVER_FX: Record<SymbolId, { ico: ArtId | null; text: string }> = {
+  seed: { ico: 'bud', text: L('育って植わる', 'Plant grown') },
+  berrySeed: { ico: 'bud', text: L('育って植わる', 'Plant grown') },
+  pumpkinSeed: { ico: 'bud', text: L('育って植わる', 'Plant grown') },
+  melonSeed: { ico: 'bud', text: L('育って植わる', 'Plant grown') },
+  watermelonSeed: { ico: 'bud', text: L('育って植わる', 'Plant grown') },
+  goldSeed: { ico: 'coin', text: L('大当たり×3', 'Jackpot ×3') },
+  rain: { ico: 'leaf', text: L('全部 +1', 'All +1') },
+  thunder: { ico: 'leaf', text: L('全部 +1', 'All +1') },
+  moon: { ico: 'leaf', text: L('全部 さらに+1', 'All +1 more') },
+  sun: { ico: 'coin', text: L('売値 ×2', 'Price ×2') },
+  fertilizer: { ico: 'fertilizer', text: L('全部に肥料', 'Fertilize all') },
+  bee: { ico: 'coin', text: L('作物ごと +4', '+4 per crop') },
+  merchant: { ico: 'coin', text: L('実りを ×2で売る', 'Sell ripe ×2') },
+  clover: { ico: 'star', text: L('お守りを選ぶ', 'Pick a charm') },
+  coin: { ico: 'coin', text: L('大当たり×3', 'Jackpot ×3') },
+  hoe: { ico: 'hoe', text: L('畑を全部耕す', 'Till everything') },
+  crow: { ico: null, text: L('食べる 1/2→3/4', 'Eats 1/2→3/4') },
+  bug: { ico: null, text: L('成長 −2', 'Growth −2') },
+  weed: { ico: null, text: L('2か所に生える', 'Sprouts ×2') },
+  tanuki: { ico: null, text: L('2つ盗む', 'Steals 2') },
+  frost: { ico: null, text: L('2マス凍る', 'Freezes 2') },
+  mole: { ico: null, text: L('2つ押し出す', 'Pushes 2') },
+  locust: { ico: null, text: L('2匹ずつ増える', 'Breeds ×2') },
+};
+
+/** フィーバーの札：絵柄ごとに1枚。良い絵柄には大当たりの金貨の印 */
+function feverCards(symbols: SymbolId[], bad: boolean): string {
+  return `<div class="fever-cards">${symbols
+    .map((s) => {
+      const fx = FEVER_FX[s];
+      return `<div class="fever-card">
+        <span class="fc-sym">${symHtml(s)}</span>
+        <span class="fc-arrow">▶</span>
+        ${fx.ico ? `<span class="fc-ico">${art(fx.ico)}</span>` : ''}
+        <b class="fc-text">${fx.text}</b>
+        ${bad ? '' : `<span class="fc-jackpot">${art('coin')}${L('大当たり', 'Jackpot')}</span>`}
+      </div>`;
+    })
+    .join('')}</div>`;
+}
+
 export async function feverBanner(symbols: SymbolId[], bad: boolean): Promise<void> {
-  const lines = symbols
-    .map((s) => `${symHtml(s)}${SYMBOLS[s].name}：${SYMBOLS[s].feverDesc}${SYMBOLS[s].rarity === 'bad' ? '' : L('＋大当たり', ' + jackpot')}`)
-    .join('<br>');
   const banner = document.createElement('div');
   if (bad) {
     sfx.danger();
@@ -164,7 +203,7 @@ export async function feverBanner(symbols: SymbolId[], bad: boolean): Promise<vo
     speedLines(1400, 'rgba(60,0,90,0.55)');
     await slamText(L('群れ!!', 'SWARM!!'), { cls: 'bad', dur: 1100 });
     banner.className = 'fever-banner bad';
-    banner.innerHTML = `⚠️ ${symbols.map((s) => L(`${SYMBOLS[s].name}の群れ`, `${SYMBOLS[s].name} swarm`)).join(L('・', ', '))}！<small>${lines}</small>`;
+    banner.innerHTML = `<div class="fever-title">⚠️ ${L('群れ', 'SWARM')}！</div>${feverCards(symbols, true)}`;
   } else {
     sfx.fever();
     flash('#ff9ad5', 600);
@@ -173,10 +212,10 @@ export async function feverBanner(symbols: SymbolId[], bad: boolean): Promise<vo
     el.machine.classList.add('burning');
     speedLines(2200, 'rgba(255,200,60,0.6)');
     shake(el.app, 10);
-    coinRain(45);
+    coinRain(120);
     await slamText('FEVER!!', { dur: 1200 });
     banner.className = 'fever-banner';
-    banner.innerHTML = `🔥 FEVER！ 🔥<small>${lines}</small>`;
+    banner.innerHTML = `<div class="fever-title">🔥 FEVER！ 🔥</div>${feverCards(symbols, false)}`;
   }
   document.body.appendChild(banner);
   banner.animate(
@@ -187,7 +226,8 @@ export async function feverBanner(symbols: SymbolId[], bad: boolean): Promise<vo
     ],
     { duration: 500, easing: 'cubic-bezier(.3,1.5,.5,1)', fill: 'forwards' },
   );
-  await sleep(1500);
+  // 何が起きるかを読めるだけ見せる（札が多いほど長く）
+  await sleep(1600 + symbols.length * 400);
   banner.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: 'forwards' }).onfinish = () => banner.remove();
 }
 

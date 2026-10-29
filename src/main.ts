@@ -246,15 +246,16 @@ function renderPick(): void {
     // 買った建物・土地を置くところ
     const id = state.stock[0];
     box.hidden = false;
-    setHtml(box, `<span class="pick-label">${L('置く', 'Place')}</span><span class="pick-sym">${art(PLACE_ART[id])}</span><b>${PLACES[id].name}</b><span class="pick-what">${PLACES[id].kind === 'tool' ? L('空きマスへ', 'on an empty plot') : L('植わっていてもOK', 'crops are OK')}</span>`);
+    setHtml(box, `<span class="pick-label">${L('置く', 'Place')}</span><span class="pick-sym">${art(PLACE_ART[id])}</span><b>${PLACES[id].name}</b>`);
     return;
   }
   const r = selected !== null ? state.results[selected] : null;
   box.hidden = !r;
   if (!r) return;
   const def = SYMBOLS[r.symbol];
-  const what = SEEDS[r.symbol] ? L(`植える${r.left > 1 ? ` あと${r.left}` : ''}`, `plant${r.left > 1 ? ` ×${r.left}` : ''}`) : def.shape ? shapeIcon(def.shape) : '';
-  setHtml(box, `<span class="pick-label">${L('選択中', 'Selected')}</span><span class="pick-sym">${symHtml(r.symbol)}</span><b>${def.name}</b><span class="pick-what">${what}</span>`);
+  // 効く形は小さな図で（文字は出さない）
+  const shape = def.shape ? `<span class="pick-shape">${shapeIcon(def.shape)}</span>` : '';
+  setHtml(box, `<span class="pick-label">${L('選択中', 'Selected')}</span><span class="pick-sym">${symHtml(r.symbol)}</span><b>${def.name}</b>${shape}`);
 }
 
 function renderMarket(): void {
@@ -290,7 +291,7 @@ function renderOrder(): void {
   el.order.hidden = !o;
   if (!o) return;
   el.order.className = `order-tag${o.done ? ' done' : ''}`;
-  setHtml(el.order, `<span class="sign-nail l"></span><span class="sign-nail r"></span><small>${L('ご注文', 'Order')}</small><span class="order-ico">${art(FRUIT[o.crop])}</span><b>${o.done ? L('達成！', 'Done!') : `${CROPS[o.crop].name} ${o.have}/${o.need}`}</b><span class="order-reward">${o.done ? '✓' : gold(o.reward)}</span>`);
+  setHtml(el.order, `<span class="sign-nail l"></span><span class="sign-nail r"></span><span class="order-ico">${art(FRUIT[o.crop])}</span><b>${o.done ? L('達成！', 'Done!') : `${CROPS[o.crop].name} ${o.have}/${o.need}`}</b><span class="order-reward">${o.done ? '✓' : gold(o.reward)}</span>`);
 }
 
 /** 年貢：「年貢 7 あと2日」を言葉で。払えるときは緑、足りないときは赤 */
@@ -336,14 +337,7 @@ function reelTag(i: number): { text: string; cls: string } {
   if (r.used) return { text: '', cls: 'used' };
   if (selected === i) return { text: '', cls: 'selected' };
   if (canUse(state, i, null)) return { text: '', cls: 'usable' };
-  return { text: deadReason(r.symbol), cls: 'dead' };
-}
-
-/** 使えずに残った手動の出目と、その理由（「次の日へ」の札に添える） */
-function deadNote(): string {
-  const dead = state.results.filter((r) => SYMBOLS[r.symbol].kind === 'manual' && !r.used);
-  if (!dead.length) return '';
-  return `<small class="go-dead">${dead.map((r) => `${symHtml(r.symbol)}${deadReason(r.symbol)}`).join(' ')}</small>`;
+  return { text: '', cls: 'dead' };
 }
 
 /** 手動の出目が今は使えない理由（札とタップしたときに出す） */
@@ -422,7 +416,7 @@ function renderSpinButton(): void {
   go.classList.toggle('tax', state.day > 0 && t.daysLeft === 0);
   setHtml(go, state.day === 0
     ? '<span class="go-hand">👆</span><span class="go-text"><b>' + L('タップで回す', 'Tap to spin') + '</b></span>'
-    : `<span class="go-hand">👆</span><span class="go-text">${t.daysLeft === 0 ? `<small>${L(`年貢${t.amount}を納めて`, `Pay ${t.amount}g tax`)}</small>` : ''}<b>${L(`${state.day + 1}日目へ`, `To day ${state.day + 1}`)}</b><small>${L('リールをタップ', 'Tap the reels')}</small>${deadNote()}</span>`);
+    : `<span class="go-hand">👆</span><span class="go-text">${t.daysLeft === 0 ? `<small>${L(`年貢${t.amount}を納めて`, `Pay ${t.amount}g tax`)}</small>` : ''}<b>${L(`${state.day + 1}日目へ`, `To day ${state.day + 1}`)}</b><small>${L('リールをタップ', 'Tap the reels')}</small></span>`);
   // 筐体の看板の文字を、回せるときだけ「タップで回す」に切り替える
   const cue = document.querySelector('.machine-top') as HTMLElement;
   cue.classList.toggle('cue', ready);
@@ -953,10 +947,12 @@ async function playFeverRoles(events: FeverEvent[]): Promise<void> {
     shake(el.app, shakeFor(ev.jackpot));
     scanlines(Math.min(1, ev.jackpot / 120));
     const roll = rollNumber(m.x, m.y - 10, ev.jackpot, { prefix: L('大当たり +', 'Jackpot +'), size: ev.role === 'jackpot' ? 1.2 : 0.95, hold: 400, rise: true });
-    flyTo(m, el.goldBox, '🪙', Math.min(12, 3 + Math.ceil(ev.jackpot / 8)), () => setGold(state.gold));
+    // フィーバーの大当たりは金貨をたっぷり降らせ、財布へもどっさり飛ばす
+    flyTo(m, el.goldBox, '🪙', Math.min(30, 8 + Math.ceil(ev.jackpot / 4)), () => setGold(state.gold));
+    coinRain(Math.min(160, 70 + ev.jackpot));
     if (ev.role === 'jackpot') {
-      confetti(50);
-      coinRain(40);
+      confetti(60);
+      coinRain(120);
     }
     await roll;
   }
