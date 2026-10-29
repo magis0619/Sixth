@@ -1,6 +1,6 @@
 // 画面演出（数字の飛び出し、粒子、揺れ、フラッシュ）。すべて fx レイヤー上に一時要素を出して消す。
 
-import { L } from './i18n.ts';
+import { EN } from './i18n.ts';
 import { glyph } from './art.ts';
 
 const layer = (): HTMLElement => document.getElementById('fx')!;
@@ -247,7 +247,7 @@ export function rollNumber(x: number, y: number, value: number, opts: { prefix?:
   el.innerHTML =
     (opts.prefix ? `<span class="roll-prefix">${opts.prefix}</span>` : '') +
     digits.map(() => `<span class="roll-digit"><span class="roll-strip">${'0123456789'.repeat(3).split('').map((d) => `<i>${d}</i>`).join('')}</span></span>`).join('') +
-    `<span class="roll-unit">${L('金', 'g')}</span>`;
+    (EN ? '<span class="roll-unit">g</span>' : '');
   // rise：下からせり上がって出る
   const from = opts.rise ? 'translate(-50%, calc(-50% + 70px)) scale(0.8)' : 'translate(-50%, -50%) scale(0.4)';
   el.animate([{ transform: from, opacity: 0 }, { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 }], {
@@ -340,6 +340,9 @@ export function shakeFor(amount: number): number {
  * from から to へ「やって来る」動き。hop＝跳ねながら走る（タヌキ）、そうでなければ羽ばたいて飛ぶ（カラス）。
  * 着いたら resolve
  */
+/** お邪魔（カラス・タヌキ・虫など）の動きの速さ */
+export const PEST_SPEED = 1.1;
+
 export function travel(from: { x: number; y: number }, toEl: Element, html: string, hop: boolean): Promise<void> {
   const to = center(toEl);
   const el = spawn(html, `fx-travel${hop ? ' hop' : ' fly'}`, from.x, from.y);
@@ -347,7 +350,8 @@ export function travel(from: { x: number; y: number }, toEl: Element, html: stri
   el.style.fontSize = '3rem';
   // 左から右へ進むときは向きを反転（絵は右向き）
   if (to.x < from.x) el.classList.add('flip');
-  const dur = calm ? 350 : hop ? 900 : 800;
+  // お邪魔の動きは少しきびきびと（1.1倍速）
+  const dur = (calm ? 350 : hop ? 900 : 800) / PEST_SPEED;
   const mid = { x: (from.x + to.x) / 2, y: hop ? Math.max(from.y, to.y) : Math.min(from.y, to.y) - 40 };
   return el
     .animate(

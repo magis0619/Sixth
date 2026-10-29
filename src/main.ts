@@ -11,7 +11,7 @@ import { saveMeta, setupFrom } from './meta.ts';
 import { art, gradientDefs, type ArtId } from './art.ts';
 import { track } from './telemetry.ts';
 import {
-  burst, center, coinRain, rays, dim, firework, confetti, flash, floatText, flyTo, hitStop, isCalm, pop, rollNumber, scanlines, shake, shakeFor, sleep, slamText, slowFactor, speedLines, stackMultipliers, toggleCalm, vibrate, rainShower, setHurry, later, fmtMult, travel, sunBeam, beeFlight,
+  burst, center, coinRain, PEST_SPEED, rays, dim, firework, confetti, flash, floatText, flyTo, hitStop, isCalm, pop, rollNumber, scanlines, shake, shakeFor, sleep, slamText, slowFactor, speedLines, stackMultipliers, toggleCalm, vibrate, rainShower, setHurry, later, fmtMult, travel, sunBeam, beeFlight,
 } from './fx.ts';
 import {
   FRUIT, PLACE_ART, setHtml, STAGE_NAMES, type SheetName, bagPct, closeSheet, costHtml, cropEmoji, openSheet, openSheetName, roleClass, say, shapeIcon, stageOf, symHtml, upgradeArt, upgradeEffect, visibleOr,
@@ -99,7 +99,7 @@ function render(): void {
 /** 先に置く物があるときの断りのひと言 */
 const placeFirst = () => L(`先に${PLACES[state.stock[0]].name}を置く`, `Place the ${PLACES[state.stock[0]].name} first`);
 /** お金が足りないときのひと言 */
-const needGold = (price: number) => L(`あと${price - state.gold}金`, `${price - state.gold}g short`);
+const needGold = (price: number) => L(`あと${price - state.gold}`, `${price - state.gold}g short`);
 
 /** 出来事と出来事の間の小さな間（同時に起こさず、順番に見せる） */
 const EVENT_GAP = 260;
@@ -293,7 +293,7 @@ function renderOrder(): void {
   setHtml(el.order, `<span class="sign-nail l"></span><span class="sign-nail r"></span><small>${L('ご注文', 'Order')}</small><span class="order-ico">${art(FRUIT[o.crop])}</span><b>${o.done ? L('達成！', 'Done!') : `${CROPS[o.crop].name} ${o.have}/${o.need}`}</b><span class="order-reward">${o.done ? '✓' : gold(o.reward)}</span>`);
 }
 
-/** 年貢：「年貢 7金 あと2日」を言葉で。払えるときは緑、足りないときは赤 */
+/** 年貢：「年貢 7 あと2日」を言葉で。払えるときは緑、足りないときは赤 */
 function renderTax(): void {
   const t = nextTax(state);
   const short = state.gold < t.amount;
@@ -317,7 +317,7 @@ function renderGoal(): void {
     return;
   }
   const next = available.sort((a, b) => upgradePrice(state, a.id) - upgradePrice(state, b.id))[0];
-  el.goal.textContent = next ? L(`あと${upgradePrice(state, next.id) - state.gold}金`, `${upgradePrice(state, next.id) - state.gold}g to go`) : '';
+  el.goal.textContent = next ? L(`あと${upgradePrice(state, next.id) - state.gold}`, `${upgradePrice(state, next.id) - state.gold}g to go`) : '';
 }
 
 function usableReels(): number[] {
@@ -407,7 +407,7 @@ function renderSpinButton(): void {
   go.classList.toggle('tax', state.day > 0 && t.daysLeft === 0);
   setHtml(go, state.day === 0
     ? '<span class="go-hand">👆</span><span class="go-text"><b>' + L('タップで回す', 'Tap to spin') + '</b></span>'
-    : `<span class="go-hand">👆</span><span class="go-text">${t.daysLeft === 0 ? `<small>${L(`年貢${t.amount}金を納めて`, `Pay ${t.amount}g tax`)}</small>` : ''}<b>${L(`${state.day + 1}日目へ`, `To day ${state.day + 1}`)}</b><small>${L('リールをタップ', 'Tap the reels')}</small></span>`);
+    : `<span class="go-hand">👆</span><span class="go-text">${t.daysLeft === 0 ? `<small>${L(`年貢${t.amount}を納めて`, `Pay ${t.amount}g tax`)}</small>` : ''}<b>${L(`${state.day + 1}日目へ`, `To day ${state.day + 1}`)}</b><small>${L('リールをタップ', 'Tap the reels')}</small></span>`);
   // 筐体の看板の文字を、回せるときだけ「タップで回す」に切り替える
   const cue = document.querySelector('.machine-top') as HTMLElement;
   cue.classList.toggle('cue', ready);
@@ -416,7 +416,7 @@ function renderSpinButton(): void {
     : state.day === 0
     ? L('▼ タップで回す ▼', '▼ TAP TO SPIN ▼')
     : t.daysLeft === 0
-      ? L(`▼ タップで年貢 ${t.amount}金を納めて回す ▼`, `▼ TAP: PAY ${t.amount}g TAX & SPIN ▼`)
+      ? L(`▼ タップで年貢 ${t.amount}を納めて回す ▼`, `▼ TAP: PAY ${t.amount}g TAX & SPIN ▼`)
       : L(`▼ タップで${state.day + 1}日目へ ▼`, `▼ TAP FOR DAY ${state.day + 1} ▼`));
 }
 
@@ -519,7 +519,7 @@ function renderField(): void {
         // 倍率は文字ではなく印と数字で：並んだ点＝列、1つの点＝単品
         if (def.big) html += `<span class="badge-line">${L('大物', 'Big')}</span>`;
         else html += inLine ? `<span class="badge-line">${MARK_LINE}×${fmtMult(mult)}</span>` : `<span class="badge-single">${MARK_SINGLE}×${fmtMult(singleMult(state))}</span>`;
-        label = L(`${def.name} 実、タップで${price}金で売る${def.big ? '' : inLine ? '（列ごと）' : '（単品は半値）'}`, `${def.name}, ripe: tap to sell for ${price}g${def.big ? '' : inLine ? ' (whole line)' : ' (single: half price)'}`);
+        label = L(`${def.name} 実、タップで${price}で売る${def.big ? '' : inLine ? '（列ごと）' : '（単品は半値）'}`, `${def.name}, ripe: tap to sell for ${price}g${def.big ? '' : inLine ? ' (whole line)' : ' (single: half price)'}`);
       } else {
         html += `<span class="pips">${Array.from({ length: def.ripe }, (_, k) => `<i class="pip${k < crop.growth ? ' on' : ''}"></i>`).join('')}</span>`;
         label = L(`${def.name} ${STAGE_NAMES[stageOf(crop)]}（あと${def.ripe - crop.growth}で実る）`, `${def.name}, ${STAGE_NAMES[stageOf(crop)]} (ripe in ${def.ripe - crop.growth})`);
@@ -528,12 +528,12 @@ function renderField(): void {
       if (def.big) html = `<span class="big-wrap">${html}</span>`;
     } else if (state.weeds[i]) {
       cls.push('weedy');
-      html += `<span class="crop">${art('weed')}</span><span class="pull">${weedCost(state) ? L(`抜く ${weedCost(state)}金`, `Pull ${weedCost(state)}g`) : L('抜く', 'Pull')}</span>`;
-      label = L(`雑草、タップで抜く（${weedCost(state)}金）`, `Weed: tap to pull (${weedCost(state)}g)`);
+      html += `<span class="crop">${art('weed')}</span><span class="pull">${weedCost(state) ? L(`抜く ${weedCost(state)}`, `Pull ${weedCost(state)}g`) : L('抜く', 'Pull')}</span>`;
+      label = L(`雑草、タップで抜く（${weedCost(state)}）`, `Weed: tap to pull (${weedCost(state)}g)`);
     } else if (isPond(state, i)) {
       cls.push('pond');
       html += `<span class="crop">${art('fish')}</span>`;
-      label = L(`釣り堀：毎晩+${CONFIG.fishGold}金、ときどき大物`, `Fishing pond: +${CONFIG.fishGold}g nightly, sometimes a big catch`);
+      label = L(`釣り堀：毎晩+${CONFIG.fishGold}、ときどき大物`, `Fishing pond: +${CONFIG.fishGold}g nightly, sometimes a big catch`);
     } else {
       if (state.tilled[i]) {
         cls.push('tilled');
@@ -797,7 +797,7 @@ async function onSpin(): Promise<void> {
 
 /** 動物がマスからひょっこり出てくる（何の動物か分かる大きさで） */
 function critterPop(q: { x: number; y: number }, html: string): void {
-  floatText(q.x, q.y - 6, html, { size: 2.8, rise: 16, dur: 1300 });
+  floatText(q.x, q.y - 6, html, { size: 2.8, rise: 16, dur: 1300 / PEST_SPEED });
 }
 
 /** 演出が終わって操作を受け付ける（早送りも止める） */
@@ -920,7 +920,7 @@ async function playFeverRoles(events: FeverEvent[]): Promise<void> {
         sfx.lineHarvest();
         const total = ev.sold.reduce((n, r) => n + r.total, 0);
         render();
-        floatText(mid.x, mid.y, ev.sold.length ? L(`${name}！ ${ev.sold.length}個を×2で +${total}金`, `${name}! Sold ${ev.sold.length} at ×2: +${total}g`) : L(`${name}！（実りなし→大当たり2倍）`, `${name}! (nothing ripe → jackpot ×2)`), { cls: 'gold', size: 1.1 });
+        floatText(mid.x, mid.y, ev.sold.length ? L(`${name}！ ${ev.sold.length}個を×2で +${total}`, `${name}! Sold ${ev.sold.length} at ×2: +${total}g`) : L(`${name}！（実りなし→大当たり2倍）`, `${name}! (nothing ripe → jackpot ×2)`), { cls: 'gold', size: 1.1 });
         if (ev.sold.length) flyTo(mid, el.goldBox, '🪙', 8);
         break;
       }
@@ -1177,7 +1177,7 @@ async function resolveAutos(): Promise<void> {
           sfx.poof();
           const q = center(plot);
           burst(q.x, q.y, ['💨', '🍂'], 8, 50);
-          floatText(q.x, q.y - 20, L(`持っていかれた！ ${t.price}金が…`, `Stolen! ${t.price}g gone…`), { cls: 'bad', size: 0.9 });
+          floatText(q.x, q.y - 20, L(`持っていかれた！ −${t.price}`, `Stolen! ${t.price}g gone…`), { cls: 'bad', size: 0.9 });
           shake(plot, 8);
           renderField();
         }
@@ -1251,7 +1251,7 @@ async function resolveAutos(): Promise<void> {
       sfx.poof();
       const p = center(plot);
       burst(p.x, p.y, ['🪶', '💨', '🍂'], 8, 50);
-      const lost = ev.crop ? (isRipe(ev.crop) ? L(`${cropPrice(state, ev.crop)}金が…`, `${cropPrice(state, ev.crop)}g gone…`) : CROPS[ev.crop.kind].name) : '';
+      const lost = ev.crop ? (isRipe(ev.crop) ? L(`−${cropPrice(state, ev.crop)}`, `${cropPrice(state, ev.crop)}g gone…`) : CROPS[ev.crop.kind].name) : '';
       floatText(p.x, p.y - 20, L(`パクッ！ ${lost}`, `Chomp! ${lost}`), { cls: 'bad', size: ev.crop && isRipe(ev.crop) ? 1 : 0.8 });
       shake(plot, 8);
       if (ev.crop && isRipe(ev.crop)) {
@@ -1477,7 +1477,7 @@ function onPlotTap(cell: number): void {
     }
     sfx.poof();
     burst(p.x, p.y, ['🍃', '💨'], 8, 50);
-    floatText(p.x, p.y - 20, weedCost(state) ? L(`草むしり −${weedCost(state)}金`, `Weeded −${weedCost(state)}g`) : L('草むしり！', 'Weeded!'), { size: 0.8 });
+    floatText(p.x, p.y - 20, weedCost(state) ? L(`草むしり −${weedCost(state)}`, `Weeded −${weedCost(state)}g`) : L('草むしり！', 'Weeded!'), { size: 0.8 });
     render();
     return;
   }
@@ -1490,7 +1490,7 @@ function onPlotTap(cell: number): void {
   }
   if (isPond(state, cell)) {
     pop(plot, 1.08);
-    say(L(`釣り堀：毎晩+${CONFIG.fishGold}金`, `Fishing pond: +${CONFIG.fishGold}g nightly`));
+    say(L(`釣り堀：毎晩+${CONFIG.fishGold}`, `Fishing pond: +${CONFIG.fishGold}g nightly`));
     return;
   }
   const root = rootOf(state, cell);
@@ -1550,7 +1550,7 @@ function afterGrowth(cells: number[], label: string): void {
         later(() => plot.classList.remove('just-ripe'), 700);
         const big = CROPS[crop.kind].price >= 20;
         burst(p.x, p.y, ['✨', big ? '🌟' : '⭐'], 8, 50);
-        floatText(p.x, p.y - 20, big ? L(`実った！ ${cropPrice(state, crop, cell)}金`, `Ripe! ${cropPrice(state, crop, cell)}g`) : L('実った！', 'Ripe!'), {
+        floatText(p.x, p.y - 20, big ? L(`実った！ ${cropPrice(state, crop, cell)}`, `Ripe! ${cropPrice(state, crop, cell)}g`) : L('実った！', 'Ripe!'), {
           cls: big ? 'gold pill' : 'good pill',
           size: big ? 1 : 0.8,
         });
@@ -1580,21 +1580,22 @@ function sellCrop(cell: number): void {
   const big = price >= CROPS.corn.price || res.line;
   if (res.line) goldHeld++;
   render();
-  if (res.orderReward) {
-    // 注文達成：お客さんからまとめて代金
-    later(() => {
-      sfx.bigBuy();
-      const o = center(el.order);
-      floatText(o.x, o.y + 30, L(`注文達成！ +${res.orderReward}金`, `Order done! +${res.orderReward}g`), { cls: 'gold', size: 1.3, dur: 1600 });
-      burst(o.x, o.y, ['🪙', '✨', '⭐'], 16, 90);
-      flyTo(o, el.goldBox, '🪙', 8, () => setGold(state.gold));
-      pop(el.order, 1.1);
-      vibrate([40, 30, 80]);
-    }, 500);
-  }
+  // 注文達成：お客さんからまとめて代金（列で売ったときは、列の演出が終わってから）
+  const orderDone = () => {
+    if (!res.orderReward) return;
+    sfx.bigBuy();
+    const o = center(el.order);
+    floatText(o.x, o.y + 30, L(`注文達成！ +${res.orderReward}`, `Order done! +${res.orderReward}g`), { cls: 'gold', size: 1.3, dur: 1600 });
+    burst(o.x, o.y, ['🪙', '✨', '⭐'], 16, 90);
+    flyTo(o, el.goldBox, '🪙', 8, () => setGold(state.gold));
+    pop(el.order, 1.1);
+    vibrate([40, 30, 80]);
+  };
+  if (!res.line) later(orderDone, 500);
   if (res.line) {
     done.line = true;
     void playLineHarvest(res, centers, p).finally(() => {
+      orderDone();
       goldHeld = Math.max(0, goldHeld - 1);
       if (!goldHeld) setGold(state.gold);
     });
@@ -1646,8 +1647,10 @@ async function playLineHarvest(res: SellResult, centers: { x: number; y: number 
   if (res.bumper) await bigHarvestIntro(ghosts);
   sfx.lineHarvest();
   const name = (EN ? ['', 'LINE!', 'DOUBLE LINE!!', 'GREAT HARVEST!!!', 'NEARLY ALL!!!!'] : ['', '一列そろい！', '二列そろい！！', '大収穫！！！', 'ほぼ全部！！！！'])[level];
-  if (!res.bumper) floatText(f.x, f.y - 90, name, { cls: 'combo', size: 1.1 + level * 0.2, rise: 60, dur: 1500 + level * 300 });
-  await stackMultipliers(f.x, Math.max(90, p.y - 60), res.steps);
+  // 列の名前は畑の上、倍率の札は畑の下に出す（畑の上の作物から出る「+10」と重ならないように）
+  const box = el.field.getBoundingClientRect();
+  if (!res.bumper) floatText(f.x, Math.max(70, box.top - 4), name, { cls: 'combo', size: 1.1 + level * 0.2, rise: 40, dur: 1500 + level * 300 });
+  await stackMultipliers(f.x, box.bottom + 26, res.steps);
   // 作物が1つずつ跳ねて財布に吸い込まれる
   const arrivals = res.cells.map(({ cell: c, price: each, kind }, k) =>
     new Promise<void>((resolve) => {
@@ -1656,7 +1659,8 @@ async function playLineHarvest(res: SellResult, centers: { x: number; y: number 
         sfx.sell(each, combo + k);
         ghosts[k].remove();
         pop(el.field.children[c], 1.2);
-        floatText(q.x, q.y - 10, `+${each}`, { cls: 'gold', size: Math.min(1.6, 0.8 + each / 30) });
+        // 1つずつの額は短めに見せて、合計が出る前に消す（真ん中の数字と重ならないように）
+        floatText(q.x, q.y - 10, `+${each}`, { cls: 'gold', size: Math.min(1.4, 0.75 + each / 30), dur: 650 });
         burst(q.x, q.y, ['✨', '🌟'], 6, 50);
         flyTo(q, el.goldBox, art(FRUIT[kind]), 1, () => {
           sfx.coin();
@@ -1668,6 +1672,7 @@ async function playLineHarvest(res: SellResult, centers: { x: number; y: number 
   );
   await Promise.all(arrivals);
   ghosts.forEach((g) => g.remove());
+  await sleep(250);
   setGold(state.gold);
   // 合計が桁ごとに回って止まる
   const amount = res.total;
@@ -2021,7 +2026,7 @@ el.tax.addEventListener('click', () => {
   say(
     `${state.difficulty ? `【${DIFFICULTIES[state.difficulty].name}】` : ''}` +
       L(
-        `年貢 ${t.amount}金・${t.daysLeft === 0 ? '今日の終わり' : `あと${t.daysLeft}日`}（${state.day}日目）${state.cleared ? '' : `・クリアまであと${CONFIG.winTaxes - state.taxesPaid}回`}`,
+        `年貢 ${t.amount}・${t.daysLeft === 0 ? '今日の終わり' : `あと${t.daysLeft}日`}（${state.day}日目）${state.cleared ? '' : `・クリアまであと${CONFIG.winTaxes - state.taxesPaid}回`}`,
         `Tax ${t.amount}g · ${t.daysLeft === 0 ? 'due today' : `${t.daysLeft} days left`} (day ${state.day})${state.cleared ? '' : ` · ${CONFIG.winTaxes - state.taxesPaid} more to win`}`,
       ),
     3000,
@@ -2033,8 +2038,8 @@ el.order.addEventListener('click', () => {
   const left = o.dueDay - state.day;
   say(
     o.done
-      ? L(`注文達成 +${o.reward}金`, `Order done +${o.reward}g`)
-      : L(`注文：${CROPS[o.crop].name}を${o.need}個 → +${o.reward}金（${left > 0 ? `あと${left}日` : '今日まで'}）`, `Order: ${o.need} ${CROPS[o.crop].name} → +${o.reward}g (${left > 0 ? `${left} days left` : 'due today'})`),
+      ? L(`注文達成 +${o.reward}`, `Order done +${o.reward}g`)
+      : L(`注文：${CROPS[o.crop].name}を${o.need}個 → +${o.reward}（${left > 0 ? `あと${left}日` : '今日まで'}）`, `Order: ${o.need} ${CROPS[o.crop].name} → +${o.reward}g (${left > 0 ? `${left} days left` : 'due today'})`),
     3000,
   );
 });

@@ -38,7 +38,7 @@ export function showGameOver(endedAfterClear = false): void {
       <div class="over-stats">
         <span>${art('calendar')}${L(`<b>${state.day}</b>日`, `Day <b>${state.day}</b>`)}${isNew ? `<em>${L('最高！', 'Best!')}</em>` : ''}</span>
         <span>${art('bale')}<b>${state.taxesPaid}</b>${L('回', ' paid')}</span>
-        <span>${art('coin')}<b>${state.stats.totalEarned}</b>${L('金', 'g')}</span>
+        <span>${art('coin')}<b>${state.stats.totalEarned}</b>${L('', 'g')}</span>
       </div>
       ${reviewHtml(endedAfterClear, t.amount)}
       <div class="points-earned">${art('sprout')} <b>+${earned}pt</b><small>${L('計', 'Total')} ${meta.points}pt</small></div>
@@ -75,14 +75,14 @@ function reviewHtml(endedAfterClear: boolean, taxAmount: number): string {
   const rows: string[] = [];
   if (!state.cleared && !endedAfterClear) {
     const short = Math.max(0, taxAmount - state.gold);
-    rows.push(`<li class="short">${art('bale')} ${L(`年貢まで <b>あと${short}金</b> 足りなかった`, `Tax short by <b>${short}g</b>`)}</li>`);
+    rows.push(`<li class="short">${art('bale')} ${L(`年貢まで <b>あと${short}</b> 足りなかった`, `Tax short by <b>${short}g</b>`)}</li>`);
   }
   const days = state.stats.earnedByDay;
   let bestDay = 0;
   days.forEach((v, d) => {
     if ((v ?? 0) > (days[bestDay] ?? 0)) bestDay = d;
   });
-  if (days[bestDay]) rows.push(`<li>${art('coin')} ${L(`一番稼いだ日：<b>${bestDay}日目 +${days[bestDay]}金</b>`, `Best day: <b>day ${bestDay}, +${days[bestDay]}g</b>`)}</li>`);
+  if (days[bestDay]) rows.push(`<li>${art('coin')} ${L(`一番稼いだ日：<b>${bestDay}日目 +${days[bestDay]}</b>`, `Best day: <b>day ${bestDay}, +${days[bestDay]}g</b>`)}</li>`);
   rows.push(`<li>${art('tomato')} ${L(`列で売った：<b>${state.stats.lineHarvests}回</b>・取られた作物：<b>${state.stats.cropsEaten}個</b>`, `Lines sold: <b>${state.stats.lineHarvests}</b> · crops lost: <b>${state.stats.cropsEaten}</b>`)}</li>`);
   const tip =
     state.stats.lineHarvests === 0
@@ -104,7 +104,7 @@ export function resultText(endedAfterClear: boolean): string {
   const charms = state.stats.charms.map((c) => CHARMS[c.id].emoji).join('');
   return [
     `🌾${L('畑スロット', 'Farm Slots')} ${head}`,
-    L(`年貢 ${state.taxesPaid}回納付 / 総収入 ${state.stats.totalEarned}金 / リール${state.reels}本`, `Taxes paid ${state.taxesPaid} / earned ${state.stats.totalEarned}g / ${state.reels} reels`),
+    L(`年貢 ${state.taxesPaid}回納付 / 総収入 ${state.stats.totalEarned} / リール${state.reels}本`, `Taxes paid ${state.taxesPaid} / earned ${state.stats.totalEarned}g / ${state.reels} reels`),
     charms ? `${L('お守り', 'Charms')} ${charms}` : '',
     L(`フィーバー${state.stats.fevers}回・列${state.stats.lineHarvests}回`, `Fevers ${state.stats.fevers} · lines ${state.stats.lineHarvests}`),
     SHARE_URL,
@@ -215,7 +215,7 @@ export function showClear(): Promise<boolean> {
     <div class="modal clear-modal" role="dialog" aria-label="${L('クリア', 'Win')}">
       <div class="big">🏆</div>
       <h2>${L('クリア！', 'You win!')}</h2>
-      <div class="record">${L(`${state.day}日目でクリア / 総収入 ${state.stats.totalEarned}金`, `Won on day ${state.day} / earned ${state.stats.totalEarned}g`)}</div>
+      <div class="record">${L(`${state.day}日目でクリア / 総収入 ${state.stats.totalEarned}`, `Won on day ${state.day} / earned ${state.stats.totalEarned}g`)}</div>
       <p class="sub">+${META.clearBonus}pt</p>
       <button class="primary" id="clear-continue" disabled>${L('エンドレスへ', 'Keep going (endless)')}</button>
       <button class="secondary" id="clear-end" disabled>${L('ここで終える', 'Finish here')}</button>
@@ -384,8 +384,7 @@ export function showUnlock(): void {
           <span class="e">${art(id as ArtId)}</span><b>${c.name}</b><small>${can ? '' : '🔒'}${price}pt</small></button>`;
       })
       .join('');
-    el.overlay.innerHTML = `
-      <div class="modal prep-modal" role="dialog" aria-label="${L('強化の解放', 'Unlocks')}">
+    setModal('unlock', 'prep-modal', L('強化の解放', 'Unlocks'), `
         <h2>${art('lock')} ${L('解放', 'Unlocks')}</h2>
         <div class="points"><b>${meta.points}pt</b></div>
         <h3>${art('seed')} ${L('絵柄', 'Symbols')}</h3>
@@ -397,8 +396,7 @@ export function showUnlock(): void {
         ${meta.skins.length ? `<h3>${art('artisan')} ${L('見た目', 'Looks')}</h3><div class="prep-grid">${skinItems()}</div>` : ''}
         <h3>${art('bargain')} ${L('並べられる数', 'Shop capacity')}</h3>
         ${capPrice !== null ? `<button class="secondary prep-cap" id="prep-cap" ${meta.points < capPrice ? 'disabled' : ''}>${L('コスト上限', 'Cost limit')} ${capacity(meta)} → ${capacity(meta) + META.capacityStep}<small>${capPrice}pt</small></button>` : `<p class="sub">${L('コスト上限', 'Cost limit')} ${capacity(meta)}${L('（最大）', ' (max)')}</p>`}
-        <div class="prep-actions"><button class="secondary" id="unlock-back">← ${L('もどる', 'Back')}</button></div>
-      </div>`;
+        <div class="prep-actions"><button class="secondary" id="unlock-back">← ${L('もどる', 'Back')}</button></div>`);
     el.overlay.classList.add('show');
     const unlocked = (b: HTMLElement) => {
       sfx.charmGet();
@@ -438,6 +436,24 @@ export function showUnlock(): void {
   paint();
 }
 
+/**
+ * 窓（.modal）を1回だけ出し、2回目からは中身だけ入れ替える。
+ * 毎回作り直すと、選ぶたびに窓の登場の動きが最初から流れてチカチカする（スクロールの位置も戻る）
+ */
+function setModal(screen: string, cls: string, label: string, inner: string): HTMLElement {
+  let m = el.overlay.querySelector<HTMLElement>(':scope > .modal');
+  if (!m || m.dataset.screen !== screen) {
+    el.overlay.innerHTML = `<div class="modal ${cls}" role="dialog"></div>`;
+    m = el.overlay.firstElementChild as HTMLElement;
+    m.dataset.screen = screen;
+  }
+  m.setAttribute('aria-label', label);
+  const top = m.scrollTop;
+  m.innerHTML = inner;
+  m.scrollTop = top;
+  return m;
+}
+
 /** 準備画面：今回ショップに並べる組み合わせを選んで始める（スタートとプレイの間） */
 export function showPrep(): void {
   leaveTitle();
@@ -445,28 +461,42 @@ export function showPrep(): void {
   let confirmNew = false;
   const paint = () => {
     const cap = capacity(meta);
-    const used = loadoutCost(meta.loadout.filter((id) => meta.unlockedAdds.includes(id)));
+    const picked = meta.loadout.filter((id) => meta.unlockedAdds.includes(id));
+    const used = loadoutCost(picked);
     const adds = (Object.keys(META.adds) as (keyof typeof META.adds)[])
       .filter((id) => id !== 'addMoon' && meta.unlockedAdds.includes(id))
-      .map((id) => {
+      .map((id, k) => {
         const def = META.adds[id];
         const on = meta.loadout.includes(id);
         const fits = on || used + def.cost <= cap;
-        return `<button class="prep-item${on ? ' on' : ''}${fits ? '' : ' full'}" data-toggle="${id}">
-          <span class="e">${ADD_EMOJI[id]}</span><b>${shortName(id)}</b><span class="cost">${'●'.repeat(def.cost)}</span></button>`;
+        return `<button class="prep-item tag${on ? ' on' : ''}${fits ? '' : ' full'}" data-toggle="${id}" style="--tilt:${[-2, 1.5, -1, 2, -1.5, 1][k % 6]}deg">
+          <span class="tag-hole"></span><span class="e">${ADD_EMOJI[id]}</span><b>${shortName(id)}</b>
+          <span class="cost" aria-label="${L(`枠${def.cost}`, `${def.cost} slot(s)`)}">${'<i></i>'.repeat(def.cost)}</span>
+          ${on ? `<span class="tag-stamp">${L('仕入れ', 'In stock')}</span>` : ''}</button>`;
       })
       .join('');
-    el.overlay.innerHTML = `
-      <div class="modal prep-modal" role="dialog" aria-label="${L('準備', 'Setup')}">
-        <h2>${art('bargain')} ${L('ショップに並べる', 'Stock your shop')}</h2>
-        ${maxDifficulty(meta) > 0 ? `<div class="diff-row">${DIFFICULTIES.slice(0, maxDifficulty(meta) + 1).map((d, k) => `<button class="diff-chip${meta.difficulty === k ? ' on' : ''}" data-diff="${k}">${d.name}${d.desc ? `<small>${d.desc}</small>` : ''}</button>`).join('')}</div>` : ''}
-        <div class="cap-meter${used > cap ? ' over' : ''}">${Array.from({ length: cap }, (_, k) => `<i class="${k < used ? 'on' : ''}"></i>`).join('')}<span>${used} / ${cap}</span></div>
-        <div class="prep-grid">${adds}</div>
-        <div class="prep-actions">
-          <button class="primary" id="prep-start">${saved ? (confirmNew ? L('はじめる（続きは消えます）', 'Start (erases saved game)') : L('はじめる', 'Start')) : L('はじめる！', 'Start!')}</button>
-          <button class="secondary" id="prep-back">← ${L('もどる', 'Back')}</button>
+    // 荷台：選んだ品が枠を使う数だけ並び、残りは空いた枠
+    const cart =
+      picked.map((id) => `<span class="cart-load" style="--w:${META.adds[id].cost}">${ADD_EMOJI[id]}</span>`).join('') +
+      Array.from({ length: Math.max(0, cap - used) }, () => '<span class="cart-slot"></span>').join('');
+    setModal('prep', 'prep-modal setup-modal', L('準備', 'Setup'), `
+        <div class="awning scallop"></div>
+        <div class="prep-sign"><span class="rope l"></span><span class="rope r"></span>
+          <b>${art('bargain')} ${L('開店準備', 'Opening the stall')}</b>
+          <small>${L('今回のショップに並べる絵柄を選ぼう', 'Choose the symbols your shop will sell this run')}</small>
         </div>
-      </div>`;
+        ${maxDifficulty(meta) > 0 ? `<div class="diff-row">${DIFFICULTIES.slice(0, maxDifficulty(meta) + 1).map((d, k) => `<button class="diff-chip${meta.difficulty === k ? ' on' : ''}" data-diff="${k}">${d.name}${d.desc ? `<small>${d.desc}</small>` : ''}</button>`).join('')}</div>` : ''}
+        <div class="prep-cart${used > cap ? ' over' : ''}">
+          <span class="cart-label">${L('荷台', 'Cart')}<b>${used} / ${cap}</b></span>
+          <div class="cart-bed">${cart}</div>
+          <span class="cart-wheel l"></span><span class="cart-wheel r"></span>
+        </div>
+        <div class="prep-shelf">${adds}</div>
+        <p class="prep-note">${art('moon')} ${L('満月とお邪魔を消す品は、いつでもショップに並ぶ', 'Full Moon and pest removal are always in the shop')}</p>
+        <div class="prep-actions">
+          <button class="primary prep-go" id="prep-start">${saved ? (confirmNew ? L('はじめる（続きは消えます）', 'Start (erases saved game)') : L('はじめる', 'Start')) : L('はじめる！', 'Start!')}</button>
+          <button class="link-back" id="prep-back">← ${L('もどる', 'Back')}</button>
+        </div>`);
     el.overlay.classList.add('show');
     el.overlay.querySelectorAll<HTMLButtonElement>('[data-toggle]').forEach((b) =>
       b.addEventListener('click', () => {

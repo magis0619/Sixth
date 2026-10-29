@@ -38,7 +38,7 @@ export async function showTaxStamp(amount: number, ok: boolean): Promise<void> {
   stamp.className = `stamp${ok ? ' ok' : ''}`;
   stamp.innerHTML = ok
     ? `${art('bale')} ${L('年貢 納付！', 'TAX PAID!')}<small>−${gold(amount)}</small>`
-    : `${art('bale')} ${L('年貢 未納…', 'UNPAID…')}<small>${L(`${amount}金 払えなかった`, `Couldn't pay ${amount}g`)}</small>`;
+    : `${art('bale')} ${L('年貢 未納…', 'UNPAID…')}<small>${L(`${amount} 払えなかった`, `Couldn't pay ${amount}g`)}</small>`;
   document.body.appendChild(stamp);
   stamp.animate(
     [

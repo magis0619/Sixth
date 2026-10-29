@@ -5657,3 +5657,315 @@ html[lang='en'] .prep-item b {
 .stall-head > span small {
   margin-left: 6px;
 }
+
+/* ==== 準備画面：屋台の開店準備（日よけ・吊り看板・荷台・棚の値札） ==== */
+.setup-modal {
+  position: relative;
+  padding: 0 16px 0;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(255, 255, 255, 0.7), transparent 45%),
+    var(--cloth);
+}
+
+/* 日よけ：赤白の縞の下を波形に切る */
+.setup-modal .awning.scallop {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: 30px;
+  margin: 0 -16px;
+  background: repeating-linear-gradient(90deg, #e0453a 0 26px, #fff6ea 26px 52px);
+  -webkit-mask: radial-gradient(13px at 13px 17px, #000 98%, transparent) 0 0 / 26px 30px repeat-x, linear-gradient(#000 0 0) 0 0 / 100% 17px no-repeat;
+  mask: radial-gradient(13px at 13px 17px, #000 98%, transparent) 0 0 / 26px 30px repeat-x, linear-gradient(#000 0 0) 0 0 / 100% 17px no-repeat;
+  border: none;
+}
+
+/* 吊り看板 */
+.prep-sign {
+  position: relative;
+  margin: 14px auto 12px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 10px 22px 9px;
+  text-align: center;
+  border-radius: 10px 12px 9px 13px;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 9px, rgba(0, 0, 0, 0.06) 9px 10px),
+    linear-gradient(180deg, var(--wood-light), var(--wood));
+  box-shadow: inset 0 0 0 3px var(--wood-dark), 0 4px 0 var(--wood-darker);
+  color: #fff8e7;
+  rotate: -1deg;
+}
+
+.prep-sign b {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-pop);
+  font-size: 1.45rem;
+  font-weight: 400;
+  text-shadow: 0 2px 0 var(--wood-darker);
+}
+
+.prep-sign b .art {
+  font-size: 1.5rem;
+}
+
+.prep-sign small {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  opacity: 0.92;
+}
+
+.prep-sign .rope {
+  position: absolute;
+  top: -16px;
+  width: 3px;
+  height: 18px;
+  background: #8a6a3c;
+  border-radius: 2px;
+}
+
+.prep-sign .rope.l { left: 22px; rotate: 8deg; }
+.prep-sign .rope.r { right: 22px; rotate: -8deg; }
+
+/* 荷台：選んだ品が枠の数だけ積まれる */
+.prep-cart {
+  position: relative;
+  margin: 4px 4px 22px;
+  padding: 26px 10px 10px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #d9a26a, #b9814c);
+  box-shadow: inset 0 0 0 3px var(--wood-dark), 0 3px 0 var(--wood-darker);
+}
+
+.prep-cart.over {
+  box-shadow: inset 0 0 0 3px #c0392b, 0 3px 0 var(--wood-darker);
+}
+
+.cart-label {
+  position: absolute;
+  top: 4px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #fff3dc;
+  text-shadow: 0 1px 0 var(--wood-darker);
+}
+
+.cart-label b {
+  font-family: var(--font-pop);
+  font-weight: 400;
+  font-size: 0.85rem;
+}
+
+.cart-bed {
+  display: flex;
+  gap: 4px;
+  min-height: 44px;
+}
+
+.cart-load,
+.cart-slot {
+  flex: var(--w, 1) 1 0;
+  display: grid;
+  place-items: center;
+  height: 44px;
+  border-radius: 8px;
+}
+
+.cart-load {
+  background: #fff8e7;
+  box-shadow: 0 2px 0 #8a5a32;
+  font-size: 2rem;
+  animation: cart-in 0.32s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+.cart-slot {
+  border: 2px dashed rgba(255, 243, 220, 0.75);
+  background: rgba(74, 44, 23, 0.18);
+}
+
+@keyframes cart-in {
+  from { transform: translateY(-14px) scale(0.6); opacity: 0; }
+}
+
+.cart-wheel {
+  position: absolute;
+  bottom: -14px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #8a5a32 0 4px, #c98c57 5px 8px, #6e4224 9px);
+  box-shadow: 0 0 0 3px var(--wood-darker);
+}
+
+.cart-wheel.l { left: 26px; }
+.cart-wheel.r { right: 26px; }
+
+/* 棚：段ごとに木の板。品は糸で下がった値札 */
+.prep-shelf {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: 124px;
+  column-gap: 8px;
+  padding: 4px 6px 0;
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, transparent 0 112px, var(--wood) 112px 120px, var(--wood-dark) 120px 124px) 0 0 / 100% 124px,
+    #f3e4c4;
+  box-shadow: inset 0 0 0 3px var(--wood-dark);
+}
+
+.setup-modal .prep-item.tag {
+  position: relative;
+  height: 104px;
+  min-height: 0;
+  margin-top: 4px;
+  padding: 14px 4px 6px;
+  border-radius: 10px 10px 14px 14px;
+  background: #fffdf7;
+  box-shadow: 0 3px 0 #d8c39a, inset 0 0 0 2px #ecdcb8;
+  rotate: var(--tilt);
+  transform-origin: 50% 0;
+  transition: rotate 0.2s, translate 0.2s;
+  gap: 1px;
+}
+
+.setup-modal .prep-item.tag .e {
+  font-size: 2.1rem;
+}
+
+.setup-modal .prep-item.tag b {
+  font-size: 0.76rem;
+}
+
+/* 値札の穴 */
+.tag-hole {
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  border-radius: 50%;
+  background: #f3e4c4;
+  box-shadow: inset 0 0 0 2px #c9b48a;
+}
+
+/* 使う枠の数：小さな木の札 */
+.setup-modal .prep-item .cost {
+  display: flex;
+  gap: 3px;
+}
+
+.setup-modal .prep-item .cost i {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  background: var(--wood-light);
+  box-shadow: inset 0 0 0 1.5px var(--wood-dark);
+}
+
+.setup-modal .prep-item.tag.on {
+  background: #eef8e2;
+  box-shadow: 0 3px 0 #8cc46a, inset 0 0 0 3px var(--role-manual);
+  rotate: 0deg;
+  translate: 0 -3px;
+}
+
+.setup-modal .prep-item.tag.full {
+  opacity: 0.55;
+}
+
+/* 選んだ品の判子 */
+.tag-stamp {
+  position: absolute;
+  top: 8px;
+  right: -4px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  border: 2px solid #c0392b;
+  color: #c0392b;
+  background: rgba(255, 255, 255, 0.85);
+  font-family: var(--font-pop);
+  font-size: 0.62rem;
+  rotate: 12deg;
+  animation: stamp-in 0.25s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+@keyframes stamp-in {
+  from { transform: scale(2); opacity: 0; }
+}
+
+.prep-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 10px 0 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.setup-modal .diff-chip {
+  background: linear-gradient(180deg, var(--wood-light), var(--wood));
+  color: #fff8e7;
+  box-shadow: inset 0 0 0 2px var(--wood-dark), 0 2px 0 var(--wood-darker);
+}
+
+.setup-modal .diff-chip small {
+  color: #fbe9c8;
+}
+
+.setup-modal .diff-chip.on {
+  background: #3d2a4a;
+  box-shadow: inset 0 0 0 2px #1e1226, 0 2px 0 #1e1226;
+}
+
+.setup-modal .prep-actions {
+  margin: 12px -16px 0;
+  padding: 12px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.setup-modal .prep-go {
+  width: 100%;
+  font-size: 1.3rem;
+  padding: 14px;
+}
+
+.link-back {
+  margin-top: 6px;
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: 800;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  padding: 6px 14px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cart-load,
+  .tag-stamp {
+    animation: none;
+  }
+}
+
+.setup-modal .prep-item.tag b {
+  color: var(--ink);
+}
+
+.setup-modal .prep-item.tag .tag-stamp {
+  right: 4px;
+}

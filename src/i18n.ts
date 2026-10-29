@@ -24,9 +24,9 @@ export function L(ja: string, en: string): string {
   return EN ? en : ja;
 }
 
-/** お金の表記（12金 / 12g） */
+/** お金の表記（日本語は数字だけ・英語は 12g） */
 export function gold(n: number | string): string {
-  return EN ? `${n}g` : `${n}金`;
+  return EN ? `${n}g` : `${n}`;
 }
 
 export function setLang(next: Lang): void {

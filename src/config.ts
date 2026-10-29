@@ -105,7 +105,7 @@ export const SYMBOLS: Record<SymbolId, SymbolDef> = {
   rain: { id: 'rain', name: '雨', emoji: '🌧️', kind: 'manual', shape: 'cross', desc: '縦横十字 成長+1', feverDesc: '虹：全作物の成長＋1', rarity: 'normal' },
   sun: { id: 'sun', name: '太陽', emoji: '☀️', kind: 'manual', shape: 'column', desc: '縦一列 成長+1', feverDesc: '夏祭り：今日の売値×2', rarity: 'normal' },
   fertilizer: { id: 'fertilizer', name: '肥料', emoji: '🧪', kind: 'manual', desc: '売値×2', feverDesc: '堆肥：畑の全作物に肥料', rarity: 'normal' },
-  bee: { id: 'bee', name: '蜂', emoji: '🐝', kind: 'manual', shape: 'x', desc: '斜め 成長+1', feverDesc: 'はちみつ：作物1つにつき＋4金', rarity: 'normal' },
+  bee: { id: 'bee', name: '蜂', emoji: '🐝', kind: 'manual', shape: 'x', desc: '斜め 成長+1', feverDesc: 'はちみつ：作物1つにつき＋4', rarity: 'normal' },
   crow: { id: 'crow', name: 'カラス', emoji: '🐦', kind: 'auto', desc: '作物を1/2で食べる（かぼちゃは平気）', feverDesc: '群れ：食べる確率 1/2 → 3/4', rarity: 'bad' },
   bug: { id: 'bug', name: '虫', emoji: '🐛', kind: 'auto', desc: '成長−1', feverDesc: '群れ：成長−2', rarity: 'bad' },
   coin: { id: 'coin', name: '金貨', emoji: '🪙', kind: 'auto', desc: '+金', feverDesc: '大当たり×3', rarity: 'normal' },
@@ -190,8 +190,8 @@ export const PLACES: Record<PlaceId, PlaceDef> = {
   goldenWell: { id: 'goldenWell', kind: 'tool', name: '黄金の井戸', desc: '周り8マス 毎日+1', price: null },
   hive: { id: 'hive', kind: 'tool', name: '巣箱', desc: '周り8マス 売値+2・苺が毎晩育つ', price: 30 },
   queenHive: { id: 'queenHive', kind: 'tool', name: '女王蜂の巣箱', desc: '周り8マス 売値+6・苺が毎晩育つ', price: null },
-  henhouse: { id: 'henhouse', kind: 'tool', name: '鶏小屋', desc: '毎日+2金・周り8マスの虫を食べ、モグラを追い払う', price: 60 },
-  cowshed: { id: 'cowshed', kind: 'tool', name: '牛小屋', desc: '毎日+4金・隣に水路で+2', price: 120 },
+  henhouse: { id: 'henhouse', kind: 'tool', name: '鶏小屋', desc: '毎日+2・周り8マスの虫を食べ、モグラを追い払う', price: 60 },
+  cowshed: { id: 'cowshed', kind: 'tool', name: '牛小屋', desc: '毎日+4・隣に水路で+2', price: 120 },
   compost: { id: 'compost', kind: 'tile', name: '堆肥のマス', desc: '売値×2', price: 35 },
   water: { id: 'water', kind: 'tile', name: '水路のマス', desc: '毎日+1・3つ並べると水車（隣も育つ）・4方を囲むと釣り堀', price: 30 },
 };
@@ -393,7 +393,8 @@ export const CONFIG = {
 
   /** 演出のタイミング（ミリ秒） */
   timing: {
-    spinBase: 480,
+    // 最初のリールが止まるまで（回っている間のわくわくを長めに）
+    spinBase: 980,
     spinStagger: 170,
     autoStep: 280,
     comboWindow: 1600,
@@ -484,7 +485,7 @@ export interface CharmDef {
 export const CHARMS: Record<CharmId, CharmDef> = {
   coinPurse: { id: 'coinPurse', tier: 'uncommon', name: '金貨袋', emoji: '👛', desc: (n) => `金貨の額＋${2 * n}`, max: Infinity },
   gentleRain: { id: 'gentleRain', tier: 'uncommon', name: '恵みの雨', emoji: '☔', desc: (n) => `雨の中心 さらに成長＋${n}`, max: Infinity },
-  crowToll: { id: 'crowToll', tier: 'common', name: 'カラスの通行料', emoji: '🪶', desc: (n) => `カラスが来るたびに＋${2 * n}金`, max: Infinity },
+  crowToll: { id: 'crowToll', tier: 'common', name: 'カラスの通行料', emoji: '🪶', desc: (n) => `カラスが来るたびに＋${2 * n}`, max: Infinity },
   aging: { id: 'aging', tier: 'common', name: '熟成', emoji: '🍷', desc: (n) => `実ったまま1日ごとに売値＋${3 * n}`, max: Infinity },
   seedSack: { id: 'seedSack', tier: 'rare', name: '大きな種袋', emoji: '🎒', desc: (n) => `全部の種で植えられる数＋${n}`, max: Infinity },
   sunBlessing: { id: 'sunBlessing', tier: 'rare', name: '日だまり', emoji: '🌻', desc: (n) => `太陽の成長＋${n}`, max: 2 },
@@ -507,7 +508,7 @@ export const CHARMS: Record<CharmId, CharmDef> = {
   sunshower: { id: 'sunshower', tier: 'rare', name: '天気雨', emoji: '🌦️', desc: () => '同じ日の雨と太陽が重なったマス +1', max: 1, special: { kind: 'bag', hint: '雨と太陽を両方…？' } },
   moonFeast: { id: 'moonFeast', tier: 'rare', name: '月の宴', emoji: '🎑', desc: () => '満月が全体+2', max: 1, special: { kind: 'bag', hint: '満月と太陽を…？' } },
   bumperHarvest: { id: 'bumperHarvest', tier: 'rare', name: '大豊作', emoji: '🌾', desc: () => '畑いっぱいの作物を一度に売った！（1回だけの大当たり）', max: 1, special: { kind: 'event', hint: '畑いっぱいを一度に売ると…？' } },
-  crowReturn: { id: 'crowReturn', tier: 'rare', name: 'カラス返し', emoji: '🪃', desc: () => 'カラスが来るたび +3金', max: 1, special: { kind: 'event', hint: 'カラスにたくさん食べられると…？' } },
+  crowReturn: { id: 'crowReturn', tier: 'rare', name: 'カラス返し', emoji: '🪃', desc: () => 'カラスが来るたび +3', max: 1, special: { kind: 'event', hint: 'カラスにたくさん食べられると…？' } },
   lastStraw: { id: 'lastStraw', tier: 'rare', name: '首の皮', emoji: '🧵', desc: () => '次の年貢が半分', max: 1, special: { kind: 'event', hint: '年貢をギリギリで…？' } },
   exhibition: { id: 'exhibition', tier: 'rare', name: '品評会', emoji: '🏅', desc: () => '作物の売値+20%', max: 1, special: { kind: 'event', hint: '作物を全種類売ると…？' } },
 };
