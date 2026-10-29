@@ -6252,3 +6252,68 @@ html[lang='en'] .prep-item b {
 .info-pop .sub {
   font-size: 0.82rem;
 }
+
+/* ==== 早送り中の印：画面の上に金色の札。三角が前へ走る ==== */
+.hurry-badge {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 70px);
+  left: 50%;
+  z-index: 60;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 14px 4px 8px;
+  border-radius: 999px;
+  translate: -50% 0;
+  background: linear-gradient(180deg, #5a2d0c, #3a1a06);
+  box-shadow: inset 0 0 0 3px #ffc928, 0 4px 0 rgba(0, 0, 0, 0.35);
+  color: #fff3a0;
+  pointer-events: none;
+}
+
+html.hurry .hurry-badge {
+  display: flex;
+  animation: hurry-in 0.18s ease-out;
+}
+
+.hurry-badge .art {
+  font-size: 2rem;
+  animation: hurry-run 0.35s linear infinite;
+}
+
+.hurry-badge b {
+  font-family: var(--font-pop);
+  font-weight: 400;
+  font-size: 1.1rem;
+}
+
+.hurry-badge span {
+  font-family: var(--font-pop);
+  font-size: 1rem;
+  color: #ffc928;
+}
+
+@keyframes hurry-in {
+  from { transform: scale(0.6); opacity: 0; }
+}
+
+@keyframes hurry-run {
+  0% { transform: translateX(-3px); }
+  50% { transform: translateX(3px); }
+  100% { transform: translateX(-3px); }
+}
+
+/* 早送り中は画面の両端にも風の筋（動くのは位置だけ） */
+.hurry-edge {
+  display: none;
+}
+
+html.hurry .hurry-edge {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 59;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(255, 201, 40, 0.28), transparent 12%, transparent 88%, rgba(255, 201, 40, 0.28));
+}

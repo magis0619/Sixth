@@ -2084,10 +2084,15 @@ el.order.addEventListener('click', () => {
   );
 });
 el.goldBox.querySelector('.stat-icon')!.innerHTML = art('coin');
+// 早送り中の印（自作の絵）
+$('hurry-badge').innerHTML = `${art('fastForward')}<b>${L('早送り', 'FAST')}</b><span>×4</span>`;
 document.querySelector('.machine-top')!.innerHTML = `${art('coin')} ${L('畑スロット', 'FARM SLOTS')} ${art('coin')}`;
 // 演出の最中に画面をタップすると早送り
-document.addEventListener('pointerdown', () => {
-  if (ui.busy) setHurry(true);
+// 窓（お守り選び・確認など）や案内の吹き出しを押したときは、選ぶための操作なので早送りにしない
+document.addEventListener('pointerdown', (e) => {
+  if (!ui.busy) return;
+  if ((e.target as Element | null)?.closest('#overlay.show, .coach, .sheet')) return;
+  setHurry(true);
 }, { capture: true });
 // 押した瞬間の手応え
 pressable(el.field, '.plot');

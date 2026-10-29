@@ -193,6 +193,9 @@ test('お守りの3択を連打しても1つしか取れず、最後（7回目�
   const card = page.locator('#overlay.show .charm-card:not([disabled])').first();
   await expect(card).toBeVisible({ timeout: 20_000 });
   // 3枚とも素早く押す
+  // お守りの札を指で押しても、早送りにはならない
+  await card.dispatchEvent('pointerdown');
+  expect(await page.evaluate(() => document.documentElement.classList.contains('hurry'))).toBe(false);
   await page.evaluate(() => document.querySelectorAll<HTMLButtonElement>('#overlay .charm-card').forEach((c) => { c.click(); c.click(); }));
   await expect(page.locator('#overlay.show #clear-continue')).toBeVisible({ timeout: 10_000 });
   await page.waitForTimeout(1500);

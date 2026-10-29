@@ -633,6 +633,12 @@ const SCENE_WHEEL = `
 
 /** 景色・画面・演出 */
 const SCENE_ART = {
+  // 早送り：金色の三角が2つ重なり、後ろに風を切る線
+  fastForward: `
+    <path d="M3 22H12M1 32H10M3 42H12" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" opacity="0.85"/>
+    ${ball('M14 14L36 32L14 50Q11 51 11 47V17Q11 13 14 14Z', 'ff-a', '#fff3a0', '#ffc928', '#e08a00', 0.3, 0.3)}
+    ${ball('M34 14L56 32L34 50Q31 51 31 47V17Q31 13 34 14Z', 'ff-b', '#fff3a0', '#ffc928', '#e08a00', 0.3, 0.3)}
+    ${hl(17, 24, 1.6, 5, -30, 0.8)}${hl(37, 24, 1.6, 5, -30, 0.8)}`,
   compost: `
     ${face('M8 34H56V54Q56 57 53 57H11Q8 57 8 54Z', C.tan, 24, 40, 0.9)}
     <path d="M8 45H56M24 34V57M40 34V57" fill="none" stroke="${C.tan[1]}" stroke-width="1.8"/>

@@ -57,6 +57,9 @@ export function floatText(x: number, y: number, text: string, opts: { cls?: stri
   const el = spawn(text, `fx-text ${opts.cls ?? ''}`, x, y);
   const size = (opts.size ?? 1) * (calm ? 1 : BIG);
   el.style.fontSize = `${1.4 * size}rem`;
+  // 画面の端からはみ出さないよう、横の位置を内側へ寄せる
+  const half = el.offsetWidth * 0.6 + 8;
+  el.style.left = `${Math.min(Math.max(x, half), window.innerWidth - half)}px`;
   const rise = (opts.rise ?? 70) * (calm ? 1 : BIG);
   // 時間の大半は止まって読める状態にする（全体に強い緩急をかけると、すぐ消え始めて読めない）。
   // 緩急は区間ごとに：ポンと出る → ゆっくり浮かぶ → 最後に薄れて上へ
