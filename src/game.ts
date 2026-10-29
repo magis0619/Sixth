@@ -211,7 +211,8 @@ export function newGame(setup: GameSetup = { shop: ALL_ADDS, charmPool: CHARM_OR
     day: 0,
     gold: CONFIG.initialGold,
     reels: CONFIG.initialReels,
-    bag: { ...CONFIG.initialBag },
+    // 難しい5：増えるイナゴが最初から袋にいる
+    bag: { ...CONFIG.initialBag, locust: (setup.difficulty ?? 0) >= 5 ? CONFIG.locustStart : 0 },
     cols: CONFIG.startCols,
     rows: CONFIG.startRows,
     field: Array.from({ length: CONFIG.fieldCols * CONFIG.fieldRows }, () => null),
@@ -574,7 +575,10 @@ export function obstacleRule(n: number, difficulty = 0): { count: number; pool: 
 }
 
 export function rollObstacles(n: number, rng: Rng, difficulty = 0): SymbolId[] {
-  const { count, pool } = obstacleRule(n, difficulty);
+  const rule = obstacleRule(n, difficulty);
+  const count = rule.count;
+  // 難しい5：年貢のたびに増えるお邪魔にイナゴも混ざる
+  const pool = difficulty >= 5 ? [...rule.pool, 'locust' as SymbolId] : rule.pool;
   return Array.from({ length: count }, () => pool[Math.floor(rng() * pool.length)]);
 }
 
@@ -868,6 +872,7 @@ export type AutoEvent =
   | { type: 'tanuki'; taken: { cell: number; crop: Crop; price: number }[]; escaped: boolean; stolen: number; guarded: number[] }
   | { type: 'frost'; cells: number[] }
   | { type: 'mole'; moves: { from: number; to: number; crop: Crop }[]; chased: number[] }
+  | { type: 'locust'; cell: number | null; damage: number; bred: number }
   | { type: 'clover'; boost: number };
 
 export function crowEatChance(_state: GameState, power: number): number {
@@ -908,6 +913,16 @@ export function resolveAuto(state: GameState, reel: number, rng: Rng): AutoEvent
       const damage = Math.min(crop.growth, CONFIG.bugDamage * r.power);
       crop.growth -= damage;
       return { type: 'bug', cell, warded: false, damage, hen: false };
+    }
+    case 'locust': {
+      // 出るたびに袋の中で増える（残しておくほど出やすくなる）。食べるのは育ち中の作物の成長1つ分
+      const bred = rng() < CONFIG.locustBreedChance ? CONFIG.locustBreed * r.power : 0;
+      state.bag.locust += bred;
+      const targets = state.field.flatMap((c, i) => (c && c.growth > 0 && !isRipe(c) ? [i] : []));
+      if (!targets.length) return { type: 'locust', cell: null, damage: 0, bred };
+      const cell = targets[Math.floor(rng() * targets.length)];
+      state.field[cell]!.growth -= 1;
+      return { type: 'locust', cell, damage: 1, bred };
     }
     case 'weed': {
       if (rng() < 1 - Math.pow(0.5, lv(state, 'bugWard'))) return { type: 'weed', cells: [], warded: true };
@@ -1377,7 +1392,8 @@ export function upgradePrice(state: GameState, id: UpgradeId): number {
   let base = CONFIG.upgradePrices[id];
   // お邪魔は消すたびに高くなる（全部消して楽になりすぎないように）
   const change = UPGRADE_SYMBOL[id]!;
-  if (change.delta < 0) base *= Math.pow(CONFIG.removeGrowth, state.removed[change.symbol] ?? 0);
+  // イナゴは増え続けるので、値上がりはゆるやか（払い続ければ抑えられる）
+  if (change.delta < 0) base *= Math.pow(change.symbol === 'locust' ? CONFIG.locustRemoveGrowth : CONFIG.removeGrowth, state.removed[change.symbol] ?? 0);
   if (id === 'addMoon') base *= Math.pow(CONFIG.moonGrowth, state.bag.moon);
   const discount = Math.min(0.5, 0.1 * lv(state, 'bargain'));
   return Math.max(1, Math.round(base * (1 - discount) * shopMult(state)));
@@ -1386,7 +1402,8 @@ export function upgradePrice(state: GameState, id: UpgradeId): number {
 export function upgradeAvailable(state: GameState, id: UpgradeId): boolean {
   const change = UPGRADE_SYMBOL[id]!;
   if (change.delta > 0) return state.weekly.includes(id as AddUpgradeId);
-  return state.bag[change.symbol] > 0 && !removeLimitReached(state);
+  // イナゴを消すのは週1回の数に入らない（増える速さに追いつけるように）
+  return state.bag[change.symbol] > 0 && (change.symbol === 'locust' || !removeLimitReached(state));
 }
 
 /** 今週はもうお邪魔を消せない */
@@ -1405,7 +1422,7 @@ export function buy(state: GameState, id: UpgradeId): boolean {
   state.bag[change.symbol] += change.delta;
   if (change.delta < 0) {
     state.removed[change.symbol] = (state.removed[change.symbol] ?? 0) + 1;
-    state.removedThisWeek++;
+    if (change.symbol !== 'locust') state.removedThisWeek++;
   }
   state.stats.purchases.push({ day: state.day, id });
   checkReady(state);

@@ -660,3 +660,30 @@ describe('土地と建物', () => {
     expect(canBuyPlace(s, 'water')).toBe(false);
   });
 });
+
+describe('増えるイナゴ（難しい5）', () => {
+  it('難しい5だけ、最初から袋にイナゴがいる', () => {
+    expect(newGame().bag.locust).toBe(0);
+    expect(newGame({ shop: [], charmPool: [], difficulty: 5 }).bag.locust).toBe(CONFIG.locustStart);
+  });
+
+  it('出るたびに袋で増え、育ち中の作物の成長を1つかじる', () => {
+    const s = game();
+    s.bag.locust = 1;
+    const crop = newCrop('tomato');
+    crop.growth = 2;
+    s.field[at(0, 0)] = crop;
+    s.results = [reel('locust')];
+    const ev = resolveAuto(s, 0, () => 0);
+    expect(ev).toEqual({ type: 'locust', cell: at(0, 0), damage: 1, bred: 1 });
+    expect(s.bag.locust).toBe(2);
+    expect(crop.growth).toBe(1);
+  });
+
+  it('大群なら2匹増える。かじる作物がなくても増える', () => {
+    const s = game();
+    s.results = [{ ...reel('locust'), power: 2 }];
+    expect(resolveAuto(s, 0, () => 0)).toEqual({ type: 'locust', cell: null, damage: 0, bred: 2 });
+    expect(s.bag.locust).toBe(2);
+  });
+});

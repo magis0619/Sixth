@@ -114,8 +114,9 @@ test('出目を残して回すと確認が出て、もどるで残る', async ({
   const errors = await boot(page);
   await start(page);
   await firstDay(page);
-  // 使える出目があるうちに、使えないリールを押す（なければ確認は出ない）
-  const unusable = page.locator('#reels .reel:not(.usable)').first();
+  // 使える出目があるうちに、使い終わった・自動のリールを押す（なければ確認は出ない）。
+  // 手動の出目が今は使えないリールは、理由を出すだけで次の日へは進まない
+  const unusable = page.locator('#reels .reel.used').first();
   if ((await page.locator('.reel.usable').count()) && (await unusable.count())) {
     await unusable.click({ force: true });
     await expect(page.locator('#overlay.show #skip-no')).toBeVisible();
@@ -263,5 +264,20 @@ test('種はなぞって続けて植えられ、出目はリールから畑へ�
   for (let k = 1; k <= 12; k++) await page.mouse.move(r.x + ((b.x - r.x) * k) / 12, r.y + ((b.y - r.y) * k) / 12);
   await page.mouse.up();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('hatake-slot:run')!).results[1].used)).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+test('手動の出目が今は使えないときは、タップしても次の日へ進まず理由が出る', async ({ page }) => {
+  const errors = await boot(page);
+  await start(page);
+  await firstDay(page);
+  const dead = page.locator('#reels .reel.dead').first();
+  if (await dead.count()) {
+    const day = await page.locator('#day').textContent();
+    await dead.click({ force: true });
+    await page.waitForTimeout(400);
+    await expect(page.locator('#day')).toHaveText(day!);
+    await expect(page.locator('#overlay.show #skip-no')).toHaveCount(0);
+  }
   expect(errors).toEqual([]);
 });

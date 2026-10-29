@@ -74,8 +74,19 @@ export function gradientDefs(): string {
  * id は絵ごとに一意にする（同じ id の定義が複数あっても中身は同じなので構わない）
  */
 function ball(d: string, id: string, light: string, base: string, dark: string, fx = 0.32, fy = 0.28, stroke = S): string {
-  return `<defs><radialGradient id="${id}" cx="${fx}" cy="${fy}" r="0.85"><stop offset="0" stop-color="${light}"/><stop offset="0.45" stop-color="${base}"/><stop offset="1" stop-color="${dark}"/></radialGradient></defs><path d="${d}" fill="url(#${id})"/><path d="${d}" fill="none" ${stroke}/>`;
+  defineGradient(id, `<radialGradient id="${id}" cx="${fx}" cy="${fy}" r="0.85"><stop offset="0" stop-color="${light}"/><stop offset="0.45" stop-color="${base}"/><stop offset="1" stop-color="${dark}"/></radialGradient>`);
+  return `<path d="${d}" fill="url(#${id})"/><path d="${d}" fill="none" ${stroke}/>`;
 }
+
+/**
+ * グラデーションの定義はページに1回だけ置く（gradientDefs）。
+ * 絵の中に定義を持たせると、非表示の場所にある絵の定義を参照したときに色が出ない
+ */
+function defineGradient(id: string, markup: string): void {
+  if (!GRADIENTS.has(id)) GRADIENTS.set(id, markup);
+}
+/** 絵の文字列の中でグラデーションを登録する（何も描かない） */
+const gradient = (id: string, markup: string) => (defineGradient(id, markup), '');
 /** 光沢：ぼかした白い楕円 */
 const gloss = (x: number, y: number, rx: number, ry: number, rot = -30, op = 0.75) =>
   `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" transform="rotate(${rot} ${x} ${y})" fill="#fff" opacity="${op}"/><ellipse cx="${x}" cy="${y}" rx="${rx * 1.8}" ry="${ry * 1.8}" transform="rotate(${rot} ${x} ${y})" fill="#fff" opacity="${op * 0.25}"/>`;
@@ -162,7 +173,7 @@ const pumpkin = `
   ${ball(E(39, 41, 10, 17), 'pk-mid', '#ffc070', '#f58a26', '#c05a12', 0.3, 0.28)}
   ${ball(E(32, 41, 9, 18), 'pk-front', '#ffd08a', '#ff9a33', '#cf6414', 0.35, 0.25)}
   ${gloss(28.5, 32, 2, 5.5, -10, 0.7)}${gloss(20, 34, 1.3, 3.5, -15, 0.45)}
-  <defs><linearGradient id="pk-stem" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9fbf4a"/><stop offset="1" stop-color="#5b7420"/></linearGradient></defs>
+  ${gradient('pk-stem', '<linearGradient id="pk-stem" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9fbf4a"/><stop offset="1" stop-color="#5b7420"/></linearGradient>')}
   <path d="M29 25Q28 15 34 9L38 12Q33 17 34 25Z" fill="url(#pk-stem)" ${S}/>
   ${ball('M37 15Q47 6 54 15Q46 22 37 15Z', 'pk-leaf', '#b5e57c', '#6cbf3f', '#3e8a24', 0.3, 0.3, S2)}
   <path d="M39 15Q45 12.5 51 15" fill="none" stroke="#3e8a24" stroke-width="1.4" stroke-linecap="round"/>`;
@@ -285,7 +296,7 @@ const crowBody = `
   ${ball(E(30, 40, 18, 13), 'cw-body', '#6a6584', '#3a3546', '#16141c', 0.35, 0.25)}
   ${ball(E(44, 26, 11, 11), 'cw-head', '#706b8c', '#3a3546', '#16141c', 0.32, 0.25)}
   ${gloss(39.5, 20.5, 3.2, 1.6, -30, 0.45)}${gloss(22, 33, 4, 1.6, -15, 0.25)}
-  <defs><linearGradient id="cw-beak" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd27a"/><stop offset="1" stop-color="#e9861f"/></linearGradient></defs>
+  ${gradient('cw-beak', '<linearGradient id="cw-beak" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd27a"/><stop offset="1" stop-color="#e9861f"/></linearGradient>')}
   <path d="M53 22L62 27L53 31Z" fill="url(#cw-beak)" ${S}/>
   <circle cx="46.5" cy="23" r="3.6" fill="#fff" ${S2}/><circle cx="47.3" cy="23" r="1.8" fill="${INK}"/><circle cx="46.6" cy="22.2" r="0.7" fill="#fff"/>
   ${ball('M17 37Q28 29 40 39Q30 49 17 37Z', 'cw-wing', '#7c7798', '#4b465a', '#262230', 0.3, 0.3, S2)}
@@ -413,6 +424,19 @@ const SYMBOL_ART = {
     ${blush(21, 37, 2.6, 1.6)}${blush(43, 37, 2.6, 1.6)}
     <path d="M22 41L15 40M22 43L16 45M42 41L49 40M42 43L48 45" fill="none" stroke="${INK}" stroke-width="1.2" stroke-linecap="round"/>
     ${hl(25, 25, 3, 1.6, -25, 0.5)}`,
+  // イナゴ：細長い緑の体と、大きく折れた後ろ脚
+  locust: `
+    ${line('M20 47L12 58M28 48L24 58', '#4e8a2a', 2.6)}
+    ${face('M40 40L54 26L58 30L46 46Z', ['#8cc84a', '#5f9a2c'], 50, 32, 0.84, S2)}
+    ${line('M46 46L52 58', '#4e8a2a', 3)}
+    ${face('M8 40C8 33 16 29 28 29H44C50 29 54 33 54 38C54 44 48 47 40 47H18C12 47 8 45 8 40Z', ['#a6d65a', '#6fa83a'], 24, 35, 0.86)}
+    <path d="M18 36Q30 33 46 35" fill="none" stroke="#6fa83a" stroke-width="1.6" stroke-linecap="round"/>
+    ${face('M22 30C26 23 40 22 46 30Q34 34 22 30Z', ['#7fbf3f', '#5a9228'], 32, 27, 0.84, S2)}
+    ${face(E(13, 37, 8, 8), ['#b5e26a', '#7cb440'], 11, 34, 0.86)}
+    <circle cx="11" cy="35" r="3.2" fill="#fff" ${S2}/><circle cx="10.4" cy="35.2" r="1.6" fill="${INK}"/><circle cx="10" cy="34.4" r="0.6" fill="#fff"/>
+    ${blush(14, 41, 2.2, 1.4)}
+    <path d="M12 30Q8 20 2 16M15 30Q14 19 10 12" fill="none" stroke="${INK}" stroke-width="1.8" stroke-linecap="round"/>
+    ${hl(30, 31, 4, 1.4, -5, 0.6)}`,
 };
 
 // ---- お守り ----

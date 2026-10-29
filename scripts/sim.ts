@@ -34,8 +34,8 @@ function wants(s: GameState, id: UpgradeId): boolean {
 }
 // FOCUS=1 は種をトマトに絞って買う（袋を薄めない買い方）
 const PRIORITY: UpgradeId[] = process.env.FOCUS
-  ? ['removeTanuki', 'removeFrost', 'removeWeed', 'removeMole', 'removeBug', 'removeCrow', 'addSeed', 'addRain', 'addSun', 'addMoon', 'addBee', 'addFertilizer']
-  : ['removeTanuki', 'removeFrost', 'removeWeed', 'removeMole', 'removeBug', 'removeCrow', 'addHoe', 'addSeed', 'addBerrySeed', 'addPumpkinSeed', 'addWatermelonSeed', 'addRain', 'addGoldSeed', 'addSun', 'addMoon', 'addBee', 'addFertilizer', 'addMerchant', 'addClover'];
+  ? ['removeLocust', 'removeTanuki', 'removeFrost', 'removeWeed', 'removeMole', 'removeBug', 'removeCrow', 'addSeed', 'addRain', 'addSun', 'addMoon', 'addBee', 'addFertilizer']
+  : ['removeLocust', 'removeTanuki', 'removeFrost', 'removeWeed', 'removeMole', 'removeBug', 'removeCrow', 'addHoe', 'addSeed', 'addBerrySeed', 'addPumpkinSeed', 'addWatermelonSeed', 'addRain', 'addGoldSeed', 'addSun', 'addMoon', 'addBee', 'addFertilizer', 'addMerchant', 'addClover'];
 
 /** 3マスの並び（縦・横・斜め）全部。列になり得る窓 */
 function windows(s: GameState): number[][] {

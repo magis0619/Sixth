@@ -261,7 +261,7 @@ export function rollNumber(x: number, y: number, value: number, opts: { prefix?:
     // 2周回してから目的の数字へ。右の桁ほど早く止まる
     const target = 20 + Number(digits[k]);
     const dur = calm ? 200 : 450 + (n - 1 - k) * 160;
-    return strip.animate([{ transform: 'translateY(0)' }, { transform: `translateY(${-target}em)` }], {
+    return strip.animate([{ transform: 'translateY(0)' }, { transform: `translateY(${-target * 1.3}em)` }], {
       duration: dur,
       easing: 'cubic-bezier(.2,.7,.3,1.08)',
       fill: 'forwards',
@@ -493,4 +493,33 @@ export function rays(ms = 2600): void {
 export function dim(ms = 2600, opacity = 0.55): void {
   const el = spawn('', 'fx-dim', 0, 0);
   el.animate([{ opacity: 0 }, { opacity, offset: 0.1 }, { opacity, offset: 0.85 }, { opacity: 0 }], { duration: ms }).onfinish = () => el.remove();
+}
+
+/** 波紋：押した所から輪が広がって消える（植えた・置いたの手応え） */
+export function ripple(x: number, y: number, color: string): void {
+  const n = calm ? 1 : 2;
+  for (let k = 0; k < n; k++) {
+    const el = spawn('', 'fx-ripple', x, y);
+    el.style.borderColor = color;
+    el.animate(
+      [
+        { transform: 'translate(-50%, -50%) scale(0.25)', opacity: 0.95 },
+        { transform: 'translate(-50%, -50%) scale(1.5)', opacity: 0 },
+      ],
+      { duration: 520, delay: k * 120, easing: 'cubic-bezier(.2,.7,.4,1)', fill: 'backwards' },
+    ).onfinish = () => el.remove();
+  }
+}
+
+/** 上から落ちてきて弾む（建物・土地を置いたとき） */
+export function dropIn(el: Element): void {
+  el.animate(
+    [
+      { transform: 'translateY(-26px) scale(1.08)', opacity: 0.4 },
+      { transform: 'translateY(0) scale(1.08, 0.9)', opacity: 1, offset: 0.45 },
+      { transform: 'translateY(-6px) scale(0.98, 1.04)', offset: 0.7 },
+      { transform: 'translateY(0) scale(1)' },
+    ],
+    { duration: 420, easing: 'ease-out' },
+  );
 }

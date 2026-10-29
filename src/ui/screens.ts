@@ -61,10 +61,10 @@ export function showGameOver(endedAfterClear = false): void {
     retry.disabled = false;
   }, 900);
   btn.addEventListener('click', restart);
-  // もう一度：準備画面を飛ばして、同じ組み合わせ・難しさですぐ始める
+  // もう一度：準備画面（開店準備）から。組み合わせ・難しさを見直してから始められる
   retry.addEventListener('click', () => {
     sfx.select();
-    hooks.startGame();
+    showPrep();
   });
   $('share').addEventListener('click', () => void shareResult(endedAfterClear));
   hooks.render();
@@ -436,6 +436,13 @@ export function showUnlock(): void {
   paint();
 }
 
+/** 難しさは積み重なる：選んだ段までの要素を全部並べて見せる（難しい3なら 1・2・3 の要素） */
+function diffSummary(level: number): string {
+  if (level === 0) return '';
+  const parts = DIFFICULTIES.slice(1, level + 1).map((d) => `<span>${d.desc}</span>`).join('');
+  return `<div class="diff-summary"><b>${DIFFICULTIES[level].name}</b>${parts}</div>`;
+}
+
 /**
  * 窓（.modal）を1回だけ出し、2回目からは中身だけ入れ替える。
  * 毎回作り直すと、選ぶたびに窓の登場の動きが最初から流れてチカチカする（スクロールの位置も戻る）
@@ -477,7 +484,7 @@ export function showPrep(): void {
       .join('');
     // 荷台：選んだ品が枠を使う数だけ並び、残りは空いた枠
     const cart =
-      picked.map((id) => `<span class="cart-load" style="--w:${META.adds[id].cost}">${ADD_EMOJI[id]}</span>`).join('') +
+      picked.map((id) => `<button class="cart-load" data-toggle="${id}" style="--w:${META.adds[id].cost}" aria-label="${L(`${shortName(id)}を外す`, `Remove ${shortName(id)}`)}">${ADD_EMOJI[id]}<i class="cart-x">×</i></button>`).join('') +
       Array.from({ length: Math.max(0, cap - used) }, () => '<span class="cart-slot"></span>').join('');
     setModal('prep', 'prep-modal setup-modal', L('準備', 'Setup'), `
         <div class="awning scallop"></div>
@@ -485,7 +492,7 @@ export function showPrep(): void {
           <b>${art('bargain')} ${L('開店準備', 'Opening the stall')}</b>
           <small>${L('今回のショップに並べる絵柄を選ぼう', 'Choose the symbols your shop will sell this run')}</small>
         </div>
-        ${maxDifficulty(meta) > 0 ? `<div class="diff-row">${DIFFICULTIES.slice(0, maxDifficulty(meta) + 1).map((d, k) => `<button class="diff-chip${meta.difficulty === k ? ' on' : ''}" data-diff="${k}">${d.name}${d.desc ? `<small>${d.desc}</small>` : ''}</button>`).join('')}</div>` : ''}
+        ${maxDifficulty(meta) > 0 ? `<div class="diff-row">${DIFFICULTIES.slice(0, maxDifficulty(meta) + 1).map((d, k) => `<button class="diff-chip${meta.difficulty === k ? ' on' : ''}" data-diff="${k}">${d.name}${d.desc ? `<small>${k > 1 ? '＋' : ''}${d.desc}</small>` : ''}</button>`).join('')}</div>${diffSummary(meta.difficulty)}` : ''}
         <div class="prep-cart${used > cap ? ' over' : ''}">
           <span class="cart-label">${L('荷台', 'Cart')}<b>${used} / ${cap}</b></span>
           <div class="cart-bed">${cart}</div>

@@ -23,7 +23,8 @@ export type SymbolId =
   | 'weed'
   | 'tanuki'
   | 'frost'
-  | 'mole';
+  | 'mole'
+  | 'locust';
 
 export type UpgradeId =
   | 'addSeed'
@@ -46,7 +47,8 @@ export type UpgradeId =
   | 'removeWeed'
   | 'removeTanuki'
   | 'removeFrost'
-  | 'removeMole';
+  | 'removeMole'
+  | 'removeLocust';
 
 export type CharmId =
   | 'coinPurse'
@@ -119,11 +121,12 @@ export const SYMBOLS: Record<SymbolId, SymbolDef> = {
   tanuki: { id: 'tanuki', name: 'タヌキ', emoji: '🦝', kind: 'auto', desc: '実りを盗む', feverDesc: '群れ：2つ持っていく', rarity: 'bad' },
   frost: { id: 'frost', name: '霜', emoji: '❄️', kind: 'auto', desc: '3日凍らせる', feverDesc: '群れ：2マスが凍る', rarity: 'bad' },
   mole: { id: 'mole', name: 'モグラ', emoji: '🐀', kind: 'auto', desc: '作物を隣の空きマスへ押し出す', feverDesc: '群れ：2つ押し出す', rarity: 'bad' },
+  locust: { id: 'locust', name: 'イナゴ', emoji: '🦗', kind: 'auto', desc: '出るたびに1/2で袋に1匹増える・成長−1', feverDesc: '大群：増えるときは2匹', rarity: 'bad' },
 };
 
 /** 絵柄袋・ショップでの表示順 */
 export const SYMBOL_ORDER: SymbolId[] = [
-  'seed', 'berrySeed', 'pumpkinSeed', 'melonSeed', 'watermelonSeed', 'goldSeed', 'rain', 'sun', 'thunder', 'hoe', 'fertilizer', 'bee', 'coin', 'merchant', 'clover', 'moon', 'crow', 'bug', 'weed', 'tanuki', 'frost', 'mole',
+  'seed', 'berrySeed', 'pumpkinSeed', 'melonSeed', 'watermelonSeed', 'goldSeed', 'rain', 'sun', 'thunder', 'hoe', 'fertilizer', 'bee', 'coin', 'merchant', 'clover', 'moon', 'crow', 'bug', 'weed', 'tanuki', 'frost', 'mole', 'locust',
 ];
 
 // ---- 作物 ----
@@ -227,7 +230,7 @@ export const CONFIG = {
   /** 初期の絵柄袋 */
   initialBag: {
     seed: 3, berrySeed: 0, pumpkinSeed: 0, melonSeed: 0, goldSeed: 0, rain: 2, sun: 1, thunder: 0, fertilizer: 0, bee: 0,
-    crow: 2, bug: 0, coin: 1, merchant: 0, clover: 0, moon: 0, weed: 0, tanuki: 0, frost: 0, watermelonSeed: 0, hoe: 0, mole: 0,
+    crow: 2, bug: 0, coin: 1, merchant: 0, clover: 0, moon: 0, weed: 0, tanuki: 0, frost: 0, watermelonSeed: 0, hoe: 0, mole: 0, locust: 0,
   } as Record<SymbolId, number>,
   initialGold: 0,
   /** 成長（実るまでの成長は作物ごとに CROPS で決める） */
@@ -244,6 +247,13 @@ export const CONFIG = {
   crowFeverMultiplier: 1.5,
   /** 虫が下げる成長 */
   bugDamage: 1,
+  /** 難しい5：最初から袋に入っているイナゴの数 */
+  locustStart: 1,
+  /** イナゴが出るたびに袋で増える数（大群なら2倍）と、増える確率 */
+  locustBreed: 1,
+  locustBreedChance: 0.5,
+  /** イナゴを消す価格は消すたびにこの倍率（ほかのお邪魔よりゆるやか）。週1回の数には入らない */
+  locustRemoveGrowth: 1.15,
   /**
    * 年貢を納めるたびに絵柄袋に増えるお邪魔。こちらが強くなるのに合わせて、回を追うごとに数も種類も増える。
    * from 回目の年貢から、pool の中から count 枚（表の最後の行より先はエンドレスでも同じ）
@@ -344,6 +354,7 @@ export const CONFIG = {
     removeTanuki: 15,
     removeFrost: 12,
     removeMole: 15,
+    removeLocust: 12,
   } as Record<UpgradeId, number>,
   /** 満月は足すたびに moonGrowth 倍になる */
   moonGrowth: 1.5,
@@ -426,6 +437,7 @@ export const UPGRADES: { id: UpgradeId; name: string; emoji: string; desc: strin
   { id: 'removeTanuki', name: 'タヌキを消す', emoji: '🦝', desc: '絵柄袋からタヌキを1枚削除' },
   { id: 'removeFrost', name: '霜を消す', emoji: '❄️', desc: '絵柄袋から霜を1枚削除' },
   { id: 'removeMole', name: 'モグラを消す', emoji: '🐀', desc: '絵柄袋からモグラを1枚削除' },
+  { id: 'removeLocust', name: 'イナゴを消す', emoji: '🦗', desc: '絵柄袋からイナゴを1枚削除' },
 ];
 
 /** 強化と、それが増減させる絵柄 */
@@ -451,6 +463,7 @@ export const UPGRADE_SYMBOL: Partial<Record<UpgradeId, { symbol: SymbolId; delta
   removeTanuki: { symbol: 'tanuki', delta: -1 },
   removeFrost: { symbol: 'frost', delta: -1 },
   removeMole: { symbol: 'mole', delta: -1 },
+  removeLocust: { symbol: 'locust', delta: -1 },
 };
 
 /** 道具をもらえるお守りと、もらえる道具 */
@@ -548,9 +561,10 @@ export const TOOL_EVOLVE: Partial<Record<PlaceId, { to: PlaceId; need: number; w
 export const DIFFICULTIES = [
   { name: 'ふつう', desc: '' },
   { name: '難しい1', desc: '年貢×1.3' },
-  { name: '難しい2', desc: '＋ショップ×1.3' },
-  { name: '難しい3', desc: '＋お邪魔が早く多い' },
-  { name: '難しい4', desc: '＋単品×0.3' },
+  { name: '難しい2', desc: 'ショップ×1.3' },
+  { name: '難しい3', desc: 'お邪魔が早く多い' },
+  { name: '難しい4', desc: '単品×0.3' },
+  { name: '難しい5', desc: '増えるイナゴ' },
 ];
 
 /** 「足す」強化（ゲーム開始時にショップへ並べるものを選ぶ対象） */
@@ -630,6 +644,7 @@ if (EN) {
     tanuki: ['Tanuki', 'Steals ripe crops', 'Pack: takes 2'],
     frost: ['Frost', 'Freezes a plot for 3 days', 'Cold snap: freezes 2 plots'],
     mole: ['Mole', 'Pushes a crop into a nearby empty plot', 'Pack: pushes 2'],
+    locust: ['Locust', 'Each time it appears, 1/2 chance another joins your bag; growth −1', 'Plague: 2 join instead of 1'],
   };
   (Object.keys(sym) as SymbolId[]).forEach((id) => {
     const [name, desc, feverDesc] = sym[id]!;
@@ -672,7 +687,7 @@ if (EN) {
     addSeed: 'Tomato Seed', addBerrySeed: 'Strawberry Seed', addPumpkinSeed: 'Pumpkin Seed', addRain: 'Rain', addSun: 'Sun', addFertilizer: 'Fertilizer',
     addGoldSeed: 'Golden Seed', addMelonSeed: 'Melon Seed', addThunder: 'Thunder', addWatermelonSeed: 'Watermelon Seed', addHoe: 'Hoe', addBee: 'Bee',
     addMerchant: 'Merchant', addClover: 'Clover', addMoon: 'Full Moon',
-    removeCrow: 'Crow', removeBug: 'Bug', removeWeed: 'Weed', removeTanuki: 'Tanuki', removeFrost: 'Frost', removeMole: 'Mole',
+    removeCrow: 'Crow', removeBug: 'Bug', removeWeed: 'Weed', removeTanuki: 'Tanuki', removeFrost: 'Frost', removeMole: 'Mole', removeLocust: 'Locust',
   };
   UPGRADES.forEach((u) => {
     const what = up[u.id]!;
@@ -719,7 +734,7 @@ if (EN) {
   Object.assign(TOOL_EVOLVE.scarecrow!, { what: 'Guard' });
   Object.assign(TOOL_EVOLVE.well!, { what: 'Grow' });
   Object.assign(TOOL_EVOLVE.hive!, { what: 'Line sale' });
-  const diff = [['Normal', ''], ['Hard 1', 'Tax ×1.3'], ['Hard 2', '+Shop ×1.3'], ['Hard 3', '+Pests earlier and more'], ['Hard 4', '+Singles ×0.3']];
+  const diff = [['Normal', ''], ['Hard 1', 'Tax ×1.3'], ['Hard 2', 'Shop ×1.3'], ['Hard 3', 'Pests earlier and more'], ['Hard 4', 'Singles ×0.3'], ['Hard 5', 'Multiplying locusts']];
   DIFFICULTIES.forEach((d, i) => Object.assign(d, { name: diff[i][0], desc: diff[i][1] }));
   Object.assign(ACHIEVE_ADDS.addMelonSeed!, { hint: 'Clear the game once…?', done: 'First clear' });
   Object.assign(ACHIEVE_ADDS.addThunder!, { hint: 'Sell lots of lines…?', done: 'Sell 100 lines in total' });

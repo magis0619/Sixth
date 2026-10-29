@@ -11,7 +11,7 @@ import { saveMeta, setupFrom } from './meta.ts';
 import { art, gradientDefs, type ArtId } from './art.ts';
 import { track } from './telemetry.ts';
 import {
-  burst, center, coinRain, PEST_SPEED, rays, dim, firework, confetti, flash, floatText, flyTo, hitStop, isCalm, pop, rollNumber, scanlines, shake, shakeFor, sleep, slamText, slowFactor, speedLines, stackMultipliers, toggleCalm, vibrate, rainShower, setHurry, later, fmtMult, travel, sunBeam, beeFlight,
+  burst, center, coinRain, dropIn, PEST_SPEED, rays, ripple, dim, firework, confetti, flash, floatText, flyTo, hitStop, isCalm, pop, rollNumber, scanlines, shake, shakeFor, sleep, slamText, slowFactor, speedLines, stackMultipliers, toggleCalm, vibrate, rainShower, setHurry, later, fmtMult, travel, sunBeam, beeFlight,
 } from './fx.ts';
 import {
   FRUIT, PLACE_ART, setHtml, STAGE_NAMES, type SheetName, bagPct, closeSheet, costHtml, cropEmoji, openSheet, openSheetName, roleClass, say, shapeIcon, stageOf, symHtml, upgradeArt, upgradeEffect, visibleOr,
@@ -336,7 +336,22 @@ function reelTag(i: number): { text: string; cls: string } {
   if (r.used) return { text: '', cls: 'used' };
   if (selected === i) return { text: '', cls: 'selected' };
   if (canUse(state, i, null)) return { text: '', cls: 'usable' };
-  return { text: '', cls: 'dead' };
+  return { text: deadReason(r.symbol), cls: 'dead' };
+}
+
+/** 使えずに残った手動の出目と、その理由（「次の日へ」の札に添える） */
+function deadNote(): string {
+  const dead = state.results.filter((r) => SYMBOLS[r.symbol].kind === 'manual' && !r.used);
+  if (!dead.length) return '';
+  return `<small class="go-dead">${dead.map((r) => `${symHtml(r.symbol)}${deadReason(r.symbol)}`).join(' ')}</small>`;
+}
+
+/** 手動の出目が今は使えない理由（札とタップしたときに出す） */
+function deadReason(sym: SymbolId): string {
+  if (SEEDS[sym]) return L('空きマスなし', 'No room');
+  if (sym === 'hoe') return L('耕す所なし', 'Nothing to till');
+  if (sym === 'fertilizer') return L('作物なし', 'No crop');
+  return L('育つ作物なし', 'Nothing to grow');
 }
 
 function buildReels(): void {
@@ -407,7 +422,7 @@ function renderSpinButton(): void {
   go.classList.toggle('tax', state.day > 0 && t.daysLeft === 0);
   setHtml(go, state.day === 0
     ? '<span class="go-hand">👆</span><span class="go-text"><b>' + L('タップで回す', 'Tap to spin') + '</b></span>'
-    : `<span class="go-hand">👆</span><span class="go-text">${t.daysLeft === 0 ? `<small>${L(`年貢${t.amount}を納めて`, `Pay ${t.amount}g tax`)}</small>` : ''}<b>${L(`${state.day + 1}日目へ`, `To day ${state.day + 1}`)}</b><small>${L('リールをタップ', 'Tap the reels')}</small></span>`);
+    : `<span class="go-hand">👆</span><span class="go-text">${t.daysLeft === 0 ? `<small>${L(`年貢${t.amount}を納めて`, `Pay ${t.amount}g tax`)}</small>` : ''}<b>${L(`${state.day + 1}日目へ`, `To day ${state.day + 1}`)}</b><small>${L('リールをタップ', 'Tap the reels')}</small>${deadNote()}</span>`);
   // 筐体の看板の文字を、回せるときだけ「タップで回す」に切り替える
   const cue = document.querySelector('.machine-top') as HTMLElement;
   cue.classList.toggle('cue', ready);
@@ -1228,6 +1243,23 @@ async function resolveAutos(): Promise<void> {
           floatText(q.x, q.y - 20, L('凍った！', 'Frozen!'), { cls: 'bad', size: 0.8 });
         });
       }
+    } else if (ev.type === 'locust') {
+      // イナゴ：袋の中で増える（袋の札が跳ねる）。育ち中の作物があれば成長を1つかじる
+      autoOutcome[i] = L(`袋+${ev.bred}`, `Bag +${ev.bred}`);
+      sfx.bug();
+      const chip = visibleOr(el.bag.querySelector('[data-sym="locust"]'), 'bag');
+      floatText(from.x, from.y - 40, L(`イナゴが増えた！ +${ev.bred}`, `Locusts multiplied! +${ev.bred}`), { cls: 'bad', size: 0.9 });
+      flyTo(from, chip, symHtml('locust'), ev.bred, () => pop(chip, 1.3));
+      if (ev.cell !== null) {
+        const plot = el.field.children[ev.cell] as HTMLElement;
+        await travel(from, plot, symHtml('locust'), true);
+        const p = center(plot);
+        burst(p.x, p.y, ['🍂', '🍃'], 6, 40);
+        floatText(p.x, p.y - 20, L('かじられた！ 成長−1', 'Nibbled! Growth −1'), { cls: 'bad', size: 0.8 });
+        shake(plot, 6);
+        renderField();
+      }
+      renderBag();
     } else if (ev.cell === null) {
       autoOutcome[i] = L('空振り', 'Miss');
       sfx.crow();
@@ -1321,7 +1353,16 @@ function onReelTap(i: number): void {
     return;
   }
   const def = SYMBOLS[r.symbol];
-  if (def.kind === 'auto' || r.used || !canUse(state, i, null)) {
+  // 手動の出目が残っているのに今は使えない：理由を出すだけで、次の日へは進めない（進むのはほかのリールか「次の日へ」の札で）
+  if (def.kind === 'manual' && !r.used && !canUse(state, i, null)) {
+    reject(el.reels.children[i], deadReason(r.symbol));
+    if (selected === i) {
+      selected = null;
+      render();
+    }
+    return;
+  }
+  if (def.kind === 'auto' || r.used) {
     if (selected !== null) {
       selected = null;
       render();
@@ -1382,13 +1423,17 @@ function onPlotTap(cell: number): void {
     return;
   }
   if (state.stock.length && canPlace(state, cell)) {
-    const id = place(state, cell)!;
+    place(state, cell);
     sfx.plant();
     sfx.charmGet();
     render();
-    burst(p.x, p.y, ['✨', '⭐', '🌱'], 12, 60);
-    pop(plot, 1.2);
-    floatText(p.x, p.y - 20, L(`${PLACES[id].name}を置いた！`, `Placed ${PLACES[id].name}!`), { cls: 'good', size: 0.8 });
+    // 置いた：上から落ちてきてドンと弾み、金の波紋と土ぼこり（文字は出さない）
+    dropIn(plot);
+    later(() => {
+      ripple(p.x, p.y, '#ffd84a');
+      burst(p.x, p.y + 14, ['💨', '✨'], 8, 46);
+      shake(el.field, 3);
+    }, 180);
     return;
   }
   if (selected !== null) {
@@ -1410,11 +1455,10 @@ function onPlotTap(cell: number): void {
     render();
     if (SEEDS[sym]) {
       sfx.plant();
-      burst(p.x, p.y, sym === 'goldSeed' ? ['✨', '🌟'] : ['🌱', '·'], 8, 40);
+      // 植えた：土が跳ねて緑の波紋（文字は出さない。残りの数はリールの ×N で分かる）
+      ripple(p.x, p.y, sym === 'goldSeed' ? '#ffd84a' : '#7fd35a');
+      burst(p.x, p.y + 10, sym === 'goldSeed' ? ['✨', '🌟'] : ['🌰', '🌱'], 7, 36);
       pop(plot, 1.15);
-      const more = left > 0 ? L(`（あと${left}）`, ` (${left} more)`) : '';
-      const name = CROPS[SEEDS[sym]!.crop].name;
-      floatText(p.x, p.y - 20, L(`${name}を植えた！${more}`, `Planted ${name}!${more}`), { size: 0.7, cls: sym === 'goldSeed' ? 'gold' : 'good' });
       if (left > 0 && selected === null) say(L('空きマスなし', 'No empty plots'));
     } else if (sym === 'hoe') {
       sfx.poof();
