@@ -82,7 +82,7 @@ export function setHtml(node: Element, html: string): void {
 let msgTimer = 0;
 
 export function say(text: string, ms = 2200): void {
-  el.msg.textContent = text;
+  el.msg.innerHTML = text;
   clearTimeout(msgTimer);
   msgTimer = window.setTimeout(() => (el.msg.textContent = ''), ms);
 }

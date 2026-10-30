@@ -34,7 +34,7 @@ export function showGameOver(endedAfterClear = false): void {
   const newly = recordRun(meta, state, true);
   el.overlay.innerHTML = `
     <div class="modal over-modal" role="dialog" aria-label="${L('ゲームオーバー', 'Game over')}">
-      <div class="big">${state.cleared ? '🏆' : '🏚️'}</div>
+      <div class="big">${art(state.cleared ? 'trophy' : 'hut')}</div>
       <h2>${endedAfterClear ? L('クリア！', 'You win!') : state.cleared ? L('エンドレス終了', 'Endless over') : L('年貢が払えなかった…', "Couldn't pay the tax…")}</h2>
       <div class="over-stats">
         <span>${art('calendar')}${L(`<b>${state.day}</b>日`, `Day <b>${state.day}</b>`)}${isNew ? `<em>${L('最高！', 'Best!')}</em>` : ''}</span>
@@ -45,8 +45,8 @@ export function showGameOver(endedAfterClear = false): void {
       <div class="points-earned">${art('sprout')} <b>+${earned}pt</b><span>${L('計', 'Total')} ${meta.points}pt</span></div>
       ${newly.length ? `<div class="newly">${art('sparkle')} ${L('解放', 'Unlocked')}：${newly.map((x) => `<b>${x}</b>`).join('')}</div>` : ''}
       <div class="share-row">
-        <button class="secondary" id="share">${typeof navigator.share === 'function' ? L('📤 シェア', '📤 Share') : L('📋 コピー', '📋 Copy')}</button>
-        ${FEEDBACK_URL ? `<a class="secondary" href="${FEEDBACK_URL}" target="_blank" rel="noopener">✉️ ${L('感想', 'Feedback')}</a>` : ''}
+        <button class="secondary" id="share">${typeof navigator.share === 'function' ? `${art('share')}${L('シェア', 'Share')}` : `${art('copy')}${L('コピー', 'Copy')}`}</button>
+        ${FEEDBACK_URL ? `<a class="secondary" href="${FEEDBACK_URL}" target="_blank" rel="noopener">${art('mail')}${L('感想', 'Feedback')}</a>` : ''}
       </div>
       <div class="over-actions">
         <button class="primary" id="retry" disabled>${L('もう一度', 'Play again')}</button>
@@ -144,7 +144,8 @@ export function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
       <li>${art('tomato')}${art('tomato')}${art('tomato')}<span>${L('縦・横・斜めに3つ＝高く売れる（単品は½）', '3 in a row (any direction) sell high; singles are ½')}</span></li>
       <li>${art('bale')}<span>${L(`${CONFIG.taxPeriod}日ごとに年貢。払えないと終わり／${CONFIG.winTaxes}回でクリア`, `Tax every ${CONFIG.taxPeriod} days. Can't pay = game over / pay ${CONFIG.winTaxes} to win`)}</span></li>
       <li>${art('coinPurse')}<span>${L('年貢のあと：お守り1つ＋お邪魔が増える', 'After each tax: pick a charm, and pests join your bag')}</span></li>
-      <li>${art('bargain')}<span>${L('ショップ：絵柄・道具・畑を広げる', 'Shop: symbols, tools, bigger field')}</span></li>
+      <li>${art('seed')}<span>${L('毎日の仕入れ：看板の絵柄を1つ選ぶとタダで袋へ', 'Daily pick: choose a symbol on the sign to add it free')}</span></li>
+      <li>${art('bargain')}<span>${L('ショップ：道具・畑を広げる・満月・お邪魔を消す', 'Shop: tools, bigger field, full moon, pest removal')}</span></li>
       <li>${art('waterwheel')}<span>${L('水路：3つ並べると水車・4方を囲むと釣り堀（毎晩お金）', 'Water: 3 in a row = waterwheel, enclose a plot = fishing pond (nightly gold)')}</span></li>
       <li>${art('sprout')}<span>${L('遊ぶほどポイント → 解放', 'Play to earn points → unlocks')}</span></li>
     </ul>`;
@@ -153,7 +154,7 @@ export function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
     return `<div class="dex-row${d.rarity === 'bad' ? ' bad' : ''}"><span class="e">${symHtml(id)}</span>
       <div><b>${d.name}</b> <span class="tag-k">${d.kind === 'manual' ? L('手動', 'Tap') : L('自動', 'Auto')}</span>
       <span class="dex-desc">${d.desc}</span>
-      <span class="dex-fever">🔥${FEVER_FX[id].ico ? art(FEVER_FX[id].ico!) : ''}${FEVER_FX[id].text}</span></div>
+      <span class="dex-fever">${art('flame')}${FEVER_FX[id].ico ? art(FEVER_FX[id].ico!) : ''}${FEVER_FX[id].text}</span></div>
       <span class="own">${art('seed')}×${state.bag[id]}</span></div>`;
   }).join('');
   const charms = CHARM_ORDER.filter((id) => !PAUSED_CHARMS.includes(id)).map((id) => {
@@ -165,7 +166,7 @@ export function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
     return `<div class="dex-row tier-${c.tier}${locked ? ' locked' : ''}"><span class="e">${art(id)}</span>
       <div><b>${c.name}</b> <span class="tag-k">${CHARM_TIER_NAMES[c.tier]}</span>
       <small>${c.desc(1)}${Number.isFinite(c.max) ? L(`（最大${c.max}個）`, ` (max ${c.max})`) : ''}</small>
-      ${locked ? `<small class="fv">🔒 ${L('解放', 'Unlock')} ${META.charmUnlock[id]}pt</small>` : ''}</div>
+      ${locked ? `<small class="fv">${art('lock')} ${L('解放', 'Unlock')} ${META.charmUnlock[id]}pt</small>` : ''}</div>
       <span class="own">${state.charms[id] ? L(`所持${state.charms[id]}`, `Own ${state.charms[id]}`) : ''}</span></div>`;
   }).join('');
   el.overlay.innerHTML = `
@@ -215,7 +216,7 @@ export function showClear(): Promise<boolean> {
   vibrate([60, 40, 60, 40, 200]);
   el.overlay.innerHTML = `
     <div class="modal clear-modal" role="dialog" aria-label="${L('クリア', 'Win')}">
-      <div class="big">🏆</div>
+      <div class="big">${art('trophy')}</div>
       <h2>${L('クリア！', 'You win!')}</h2>
       <div class="record">${L(`${state.day}日目でクリア / 総収入 ${state.stats.totalEarned}`, `Won on day ${state.day} / earned ${state.stats.totalEarned}g`)}</div>
       <p class="sub">+${META.clearBonus}pt</p>
@@ -249,10 +250,17 @@ export function shortName(id: keyof typeof META.adds): string {
 export function showTitle(): void {
   const saved = loadRun();
   el.overlay.innerHTML = `
+    <div class="title-scene" aria-hidden="true">
+      <span class="ts-sun">${art('sun')}</span>
+      <span class="ts-cloud a">${art('puff')}</span><span class="ts-cloud b">${art('puff')}</span>
+      <span class="ts-hill back"></span><span class="ts-hill front"></span>
+    </div>
     <div class="title-screen" role="dialog" aria-label="${L('畑スロット', 'Farm Slots')}">
-      <div class="title-logo">
-        <span class="title-art">${art('tomato')}${art('coin')}${art('corn')}</span>
+      <div class="title-logo title-board">
+        <span class="board-crops">${art('pumpkin')}${art('tomato')}${art('corn')}</span>
         <h1>${L('畑スロット', 'Farm Slots')}</h1>
+        <span class="board-post l"></span><span class="board-post r"></span>
+        <span class="board-crow">${art('crow')}</span>
       </div>
       <div class="title-actions">
         <button class="primary title-start" id="title-start">${L('スタート', 'Start')}</button>
@@ -260,9 +268,9 @@ export function showTitle(): void {
       </div>
       <div class="title-sub">
         <button class="icon-pill" id="title-unlock">${art('lock')}<span>${L('解放', 'Unlocks')}</span><b>${meta.points}pt</b></button>
-        <button class="icon-pill" id="title-help">?<span>${L('遊び方', 'How to play')}</span></button>
+        <button class="icon-pill" id="title-help">${art('question')}<span>${L('遊び方', 'How to play')}</span></button>
         <button class="icon-pill" id="title-records">${art('calendar')}<span>${L('記録', 'Records')}</span></button>
-        <button class="icon-pill" id="title-settings">⚙<span>${L('設定', 'Settings')}</span></button>
+        <button class="icon-pill" id="title-settings">${art('gear')}<span>${L('設定', 'Settings')}</span></button>
       </div>
     </div>`;
   el.overlay.classList.add('show', 'title');
@@ -309,7 +317,7 @@ export function showRecords(): void {
       <h2>${art('calendar')} ${L('記録', 'Records')}</h2>
       <ul class="records">
         ${row(art('sprout'), L('遊んだ回数', 'Games played'), `${meta.plays}`)}
-        ${row('🏆', L('クリア', 'Wins'), `${meta.clears}`)}
+        ${row(art('trophy'), L('クリア', 'Wins'), `${meta.clears}`)}
         ${row(art('calendar'), L('最高到達', 'Best run'), best.day ? L(`${best.day}日目（年貢${best.taxes}回）`, `Day ${best.day} (${best.taxes} taxes)`) : '—')}
         ${row(art('skull'), L('一番上の難しさ', 'Hardest cleared'), meta.maxCleared >= 0 ? DIFFICULTIES[meta.maxCleared].name : L('まだクリアしていない', 'Not yet'))}
         ${row(art('tomato'), L('列で売った（累計）', 'Lines sold (total)'), `${meta.lines}`)}
@@ -371,7 +379,7 @@ export function showUnlock(): void {
         }
         const can = meta.points >= def.unlock;
         return `<button class="prep-item locked${can ? ' unlockable' : ''}" data-unlock="${id}" ${can ? '' : 'disabled'}>
-          <span class="e">${ADD_EMOJI[id]}</span><b>${shortName(id)}</b><small>${can ? '' : '🔒'}${def.unlock}pt</small></button>`;
+          <span class="e">${ADD_EMOJI[id]}</span><b>${shortName(id)}</b><small>${can ? '' : art('lock')}${def.unlock}pt</small></button>`;
       })
       .join('');
     const charms = (Object.keys(META.charmUnlock) as (keyof typeof META.charmUnlock)[])
@@ -383,7 +391,7 @@ export function showUnlock(): void {
         }
         const can = meta.points >= price;
         return `<button class="prep-item locked${can ? ' unlockable' : ''}" data-charm="${id}" ${can ? '' : 'disabled'}>
-          <span class="e">${art(id as ArtId)}</span><b>${c.name}</b><small>${can ? '' : '🔒'}${price}pt</small></button>`;
+          <span class="e">${art(id as ArtId)}</span><b>${c.name}</b><small>${can ? '' : art('lock')}${price}pt</small></button>`;
       })
       .join('');
     setModal('unlock', 'prep-modal', L('強化の解放', 'Unlocks'), `

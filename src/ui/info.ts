@@ -131,7 +131,7 @@ export function plotInfo(cell: number): string | null {
   if (wheel) parts.push(`<p class="sub">${art('waterwheel')} ${L(`水車：水路${wheel.length}つ → 毎晩 +${wheel.length * CONFIG.wheelGold * (state.charms.wheelwright ? 2 : 1)}・隣のマスも毎晩+1`, `Waterwheel: ${wheel.length} water → +${wheel.length * CONFIG.wheelGold * (state.charms.wheelwright ? 2 : 1)}g nightly, neighbours +1 growth`)}</p>`);
   if (tool === 'henhouse' || tool === 'cowshed') parts.push(`<p class="sub">${L('今の収入 毎晩', 'Income now: nightly')} +${gold(animalGold(state, cell))}${hasRanch(state) ? L('（牧場 ×2）', ' (ranch ×2)') : ''}</p>`);
   if (tile) parts.push(`<p class="sub">${art(PLACE_ART[tile])} ${PLACES[tile].name}：${PLACES[tile].desc}</p>`);
-  if (state.frost[cell]) parts.push(`<p class="sub">❄️ ${L(`あと${state.frost[cell]}日凍っている`, `Frozen for ${state.frost[cell]} more day(s)`)}</p>`);
+  if (state.frost[cell]) parts.push(`<p class="sub">${art('frost')} ${L(`あと${state.frost[cell]}日凍っている`, `Frozen for ${state.frost[cell]} more day(s)`)}</p>`);
   return parts.join('');
 }
 

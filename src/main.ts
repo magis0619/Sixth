@@ -228,10 +228,10 @@ function renderStatus(): void {
   const chips: string[] = [];
   const good = state.fever.filter((s) => SYMBOLS[s].rarity !== 'bad');
   const bad = state.fever.filter((s) => SYMBOLS[s].rarity === 'bad');
-  if (good.length) chips.push(`<span class="st fever">🔥 ${L('フィーバー', 'Fever')}：${good.map((s) => SYMBOLS[s].name).join(L('・', ', '))}</span>`);
-  if (bad.length) chips.push(`<span class="st danger">⚠️ ${bad.map((s) => L(`${SYMBOLS[s].name}の群れ`, `${SYMBOLS[s].name} swarm`)).join(L('・', ', '))}</span>`);
-  if (state.priceMult > 1) chips.push(`<span class="st merchant">🧑‍🌾 ${L('今日の売値', "Today's prices")} ×${fmtMult(state.priceMult)}</span>`);
-  if (state.cloverBoost > 1) chips.push(`<span class="st clover">🍀 ${L('明日は金の種が出やすい', 'Golden seeds likelier tomorrow')}（×${fmtMult(state.cloverBoost)}）</span>`);
+  if (good.length) chips.push(`<span class="st fever">${art('flame')} ${L('フィーバー', 'Fever')}：${good.map((s) => SYMBOLS[s].name).join(L('・', ', '))}</span>`);
+  if (bad.length) chips.push(`<span class="st danger">${art('warn')} ${bad.map((s) => L(`${SYMBOLS[s].name}の群れ`, `${SYMBOLS[s].name} swarm`)).join(L('・', ', '))}</span>`);
+  if (state.priceMult > 1) chips.push(`<span class="st merchant">${art('merchant')} ${L('今日の売値', "Today's prices")} ×${fmtMult(state.priceMult)}</span>`);
+  if (state.cloverBoost > 1) chips.push(`<span class="st clover">${art('clover')} ${L('明日は金の種が出やすい', 'Golden seeds likelier tomorrow')}（×${fmtMult(state.cloverBoost)}）</span>`);
   // セット効果：そろっている間だけ
   if (hasRanch(state)) chips.push(`<span class="st set">${art('henhouse')}${art('cowshed')}${art('hive')} ${L('牧場', 'Ranch')} ×2</span>`);
   if (isColorful(state)) chips.push(`<span class="st set">${art('sunBlessing')} ${L('彩りの畑', 'Colorful field')} +${Math.round(CONFIG.colorfulBonus * 100)}%</span>`);
@@ -376,7 +376,7 @@ function renderReelStates(): void {
     // 札：自動の出目は結果を短く、手動の出目は効く形の絵（3×3のマス目）
     const shape = r ? SYMBOLS[r.symbol].shape : undefined;
     const tagEl = b.querySelector('.tag') as HTMLElement;
-    const html = tag.text ? `${fever ? (badFever ? '⚠️' : '🔥') : ''}${tag.text}` : shape && !r!.used ? shapeIcon(shape) : '';
+    const html = tag.text ? `${fever ? art(badFever ? 'warn' : 'flame') : ''}${tag.text}` : shape && !r!.used ? shapeIcon(shape) : '';
     if (tagEl.innerHTML !== html) tagEl.innerHTML = html;
     tagEl.classList.toggle('empty', !html);
     tagEl.classList.toggle('shape', !tag.text && !!shape);
@@ -424,8 +424,8 @@ function renderSpinButton(): void {
   go.hidden = !ready;
   go.classList.toggle('tax', state.day > 0 && t.daysLeft === 0);
   setHtml(go, state.day === 0
-    ? '<span class="go-hand">👆</span><span class="go-text"><b>' + L('タップで回す', 'Tap to spin') + '</b></span>'
-    : `<span class="go-hand">👆</span><span class="go-text">${t.daysLeft === 0 ? `<small>${L(`年貢${t.amount}を納めて`, `Pay ${t.amount}g tax`)}</small>` : ''}<b>${L(`${state.day + 1}日目へ`, `To day ${state.day + 1}`)}</b><small>${L('リールをタップ', 'Tap the reels')}</small></span>`);
+    ? `<span class="go-hand">${art('hand')}</span><span class="go-text"><b>${L('タップで回す', 'Tap to spin')}</b></span>`
+    : `<span class="go-hand">${art('hand')}</span><span class="go-text">${t.daysLeft === 0 ? `<small>${L(`年貢${t.amount}を納めて`, `Pay ${t.amount}g tax`)}</small>` : ''}<b>${L(`${state.day + 1}日目へ`, `To day ${state.day + 1}`)}</b><small>${L('リールをタップ', 'Tap the reels')}</small></span>`);
   // 筐体の看板：今日の仕入れがあれば、そこに3つの絵柄（押すと袋に入る）。なければ「タップで回す」など
   const cue = document.querySelector('.machine-top') as HTMLElement;
   const offering = state.offer.length > 0 && state.day > 0 && !state.over && !ui.busy && !tut;
@@ -440,7 +440,7 @@ function renderSpinButton(): void {
       } catch {
         // 保存できなくても遊べる
       }
-      say(L('👆 看板の絵柄を1つ選ぶと、タダで袋に入る', '👆 Pick one symbol on the sign to add it to your bag for free'), 3500);
+      say(`${art('hand')} ${L('看板の絵柄を1つ選ぶと、タダで袋に入る', 'Pick one symbol on the sign to add it to your bag for free')}`, 3500);
     }
     setHtml(cue, `<span class="offer-label">${L('仕入れ', 'Pick')}</span>${state.offer.map((id) => `<button class="offer" data-offer="${id}" aria-label="${UPGRADES.find((u) => u.id === id)!.name}">${symHtml(UPGRADE_SYMBOL[id]!.symbol)}</button>`).join('')}`);
     return;
@@ -731,7 +731,7 @@ function onBuyFarm(key: PlaceId | 'expand'): void {
   selected = null;
   closeSheet();
   render();
-  say(`👆 ${L(`${PLACES[key].name}を置く`, `Place the ${PLACES[key].name}`)}`);
+  say(`${art('hand')} ${L(`${PLACES[key].name}を置く`, `Place the ${PLACES[key].name}`)}`);
 }
 
 function fieldCells(): number[] {
@@ -746,7 +746,7 @@ function renderBag(): void {
       .map((id) => {
         const def = SYMBOLS[id];
         const cls = `chip${def.rarity === 'bad' ? ' bad' : ''}${state.bag[id] === 0 ? ' zero' : ''}`;
-        return `<span class="${cls}" data-sym="${id}" title="${def.desc}（${L('フィーバー', 'Fever')}：${def.feverDesc}）"><span class="e">${symHtml(id)}</span>${def.name}×${state.bag[id]} <span class="pct">${bagPct(state.bag, id)}%</span></span>`;
+        return `<span class="${cls}" data-sym="${id}" title="${def.desc}（${L('フィーバー', 'Fever')}：${def.feverDesc}）"><span class="e">${symHtml(id)}</span><b class="chip-name">${def.name}</b><span class="chip-num">×${state.bag[id]}<span class="pct">${bagPct(state.bag, id)}%</span></span></span>`;
       })
       .join(''),
   );
@@ -1533,7 +1533,7 @@ function onPlotTap(cell: number): void {
   }
   if (state.frost[cell]) {
     shake(plot, 3);
-    say(`❄️ ${state.frost[cell]}${L('日', 'd')}`);
+    say(`${art('frost')} ${state.frost[cell]}${L('日', 'd')}`);
     return;
   }
   if (state.weeds[cell]) {
@@ -2110,6 +2110,10 @@ el.order.addEventListener('click', () => {
   );
 });
 el.goldBox.querySelector('.stat-icon')!.innerHTML = art('coin');
+// メニューの印（絵文字の代わりに自作の絵）
+$('help').innerHTML = `${art('question')}${L('遊び方', 'How to play')}`;
+$('settings-btn').innerHTML = `${art('gear')}${L('設定', 'Settings')}`;
+$('to-title').innerHTML = `${art('home')}${L('タイトルへ', 'Title')}`;
 // 早送り中の印（自作の絵）
 $('hurry-badge').innerHTML = `${art('fastForward')}<b>${L('早送り', 'FAST')}</b><span>×4</span>`;
 document.querySelector('.machine-top')!.innerHTML = `${art('coin')} ${L('畑スロット', 'FARM SLOTS')} ${art('coin')}`;
@@ -2163,8 +2167,8 @@ $('sheet-close').addEventListener('click', closeSheet);
 // メニュー（遊び方・音・演出控えめ）
 const menu = $('hud-menu');
 const menuLabels = () => {
-  el.mute.textContent = isMuted() ? L('🔇 音オフ', '🔇 Sound off') : L('🔊 音オン', '🔊 Sound on');
-  $('calm-btn').textContent = isCalm() ? L('✨ 演出 控えめ', '✨ Effects: calm') : L('✨ 演出 ふつう', '✨ Effects: normal');
+  el.mute.innerHTML = isMuted() ? `${art('mute')}${L('音オフ', 'Sound off')}` : `${art('speaker')}${L('音オン', 'Sound on')}`;
+  $('calm-btn').innerHTML = `${art('sparkle')}${isCalm() ? L('演出 控えめ', 'Effects: calm') : L('演出 ふつう', 'Effects: normal')}`;
 };
 $('menu-btn').addEventListener('click', (e) => {
   unlockAudio();

@@ -5,6 +5,7 @@ import { CONFIG, TELEMETRY_URL } from '../config.ts';
 import { isMuted, setBgmVolume, setVolume, sfx, toggleMute } from '../audio.ts';
 import { isCalm, setFastFx, setVibrate, toggleCalm } from '../fx.ts';
 import { $, el } from './store.ts';
+import { art } from '../art.ts';
 
 export interface Settings {
   /** 効果音の大きさ（0〜1） */
@@ -54,7 +55,7 @@ export function showSettings(onClose?: () => void): void {
   const paint = () => {
     el.overlay.innerHTML = `
       <div class="modal settings-modal" role="dialog" aria-label="${L('設定', 'Settings')}">
-        <h2>⚙ ${L('設定', 'Settings')}</h2>
+        <h2>${art('gear')} ${L('設定', 'Settings')}</h2>
         <div class="set-row lang-row"><span>${L('言語', 'Language')}</span><span class="seg"><button id="set-lang-ja" class="${EN ? '' : 'on'}">日本語</button><button id="set-lang-en" class="${EN ? 'on' : ''}">English</button></span></div>
         <label class="set-row"><span>${L('BGMの大きさ', 'Music volume')}</span><input type="range" id="set-bgm" min="0" max="100" step="10" value="${Math.round(settings.bgm * 100)}" /></label>
         <label class="set-row"><span>${L('効果音の大きさ', 'Sound volume')}</span><input type="range" id="set-volume" min="0" max="100" step="10" value="${Math.round(settings.volume * 100)}" /></label>

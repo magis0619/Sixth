@@ -81,7 +81,7 @@ export function showCharmOffer(): Promise<void> {
   if (offer.some((id) => CHARMS[id].tier === 'rare')) later(() => sfx.rare(), 450);
   el.overlay.innerHTML = `
     <div class="modal charm-modal" role="dialog" aria-label="${L('お守りを選ぶ', 'Pick a charm')}">
-      <h2>🎁 ${L('お守りを1つ選ぼう', 'Pick a charm')}</h2>
+      <h2>${art('gift')} ${L('お守りを1つ選ぼう', 'Pick a charm')}</h2>
       <div class="charm-choices">
         ${offer
           .map((id) => {
@@ -140,7 +140,7 @@ export function showCharmOffer(): Promise<void> {
           }
           const got = visibleOr(el.charms.querySelector(`[data-charm="${id}"]`), 'charms');
           if (got) pop(got, 1.2);
-          if (CHARM_PLACE[id]) say(`👆 ${L(`${PLACES[CHARM_PLACE[id]!].name}を置く`, `Place the ${PLACES[CHARM_PLACE[id]!].name}`)}`, 3000);
+          if (CHARM_PLACE[id]) say(`${art('hand')} ${L(`${PLACES[CHARM_PLACE[id]!].name}を置く`, `Place the ${PLACES[CHARM_PLACE[id]!].name}`)}`, 3000);
           resolve();
         }, 650);
       }),
@@ -203,7 +203,7 @@ export async function feverBanner(symbols: SymbolId[], bad: boolean): Promise<vo
     speedLines(1400, 'rgba(60,0,90,0.55)');
     await slamText(L('群れ!!', 'SWARM!!'), { cls: 'bad', dur: 1100 });
     banner.className = 'fever-banner bad';
-    banner.innerHTML = `<div class="fever-title">⚠️ ${L('群れ', 'SWARM')}！</div>${feverCards(symbols, true)}`;
+    banner.innerHTML = `<div class="fever-title">${art('warn')} ${L('群れ', 'SWARM')}！</div>${feverCards(symbols, true)}`;
   } else {
     sfx.fever();
     flash('#ff9ad5', 600);
@@ -215,7 +215,7 @@ export async function feverBanner(symbols: SymbolId[], bad: boolean): Promise<vo
     coinRain(120);
     await slamText('FEVER!!', { dur: 1200 });
     banner.className = 'fever-banner';
-    banner.innerHTML = `<div class="fever-title">🔥 FEVER！ 🔥</div>${feverCards(symbols, false)}`;
+    banner.innerHTML = `<div class="fever-title">${art('flame')} FEVER！ ${art('flame')}</div>${feverCards(symbols, false)}`;
   }
   document.body.appendChild(banner);
   banner.animate(

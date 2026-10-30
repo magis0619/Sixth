@@ -6364,3 +6364,576 @@ html.hurry .hurry-edge {
 @keyframes offer-in {
   from { transform: translateY(-10px) scale(0.5); opacity: 0; }
 }
+
+/* ==================================================================
+   絵と同じ描き方にそろえる（AIっぽさをなくす）：
+   既製品の丸いボタン・白いカード・ぼかした影をやめ、
+   絵と同じ濃い茶の輪郭線・ベタ塗り・ずらしただけの影・ほんの少しの傾き
+   ================================================================== */
+:root {
+  --line: 3px solid var(--ink);
+  --line-thin: 2.5px solid var(--ink);
+  --drop: 0 4px 0 var(--ink);
+  --drop-big: 5px 6px 0 rgba(61, 51, 38, 0.9);
+}
+
+/* 窓：紙を1枚、少し斜めに置いたように */
+.modal {
+  border: var(--line);
+  border-radius: 16px 20px 14px 18px;
+  box-shadow: var(--drop-big);
+  outline: none;
+}
+
+.modal:not(.setup-modal) {
+  rotate: -0.4deg;
+}
+
+/* 大事なボタン：輪郭線つきのベタ塗りの札。押すと沈む */
+.modal .primary,
+.title-actions .primary,
+.title-start,
+.coach-actions .primary,
+.setup-modal .prep-go {
+  border: var(--line);
+  border-radius: 12px 16px 13px 15px;
+  background: #ffcc33;
+  color: var(--ink);
+  box-shadow: 0 5px 0 var(--ink);
+  text-shadow: none;
+}
+
+.title-start {
+  rotate: -1deg;
+}
+
+.modal .primary:active:not(:disabled),
+.title-start:active,
+.coach-actions .primary:active {
+  transform: translateY(4px);
+  box-shadow: 0 1px 0 var(--ink);
+}
+
+/* ふつうのボタン：紙の札 */
+.modal .secondary,
+.title-actions .secondary,
+.icon-pill,
+.hud-menu button,
+.coach-skip {
+  border: var(--line-thin);
+  border-radius: 10px 13px 11px 12px;
+  background: #fff8e7;
+  color: var(--ink);
+  box-shadow: 0 3px 0 var(--ink);
+}
+
+.icon-pill .art,
+.hud-menu button .art,
+.modal .secondary .art {
+  font-size: 1.15em;
+  margin-right: 4px;
+}
+
+.title-sub .icon-pill:nth-child(odd) { rotate: -0.8deg; }
+.title-sub .icon-pill:nth-child(even) { rotate: 0.6deg; }
+
+/* 下のタブ */
+.tab {
+  border: var(--line-thin);
+  box-shadow: 0 3px 0 var(--ink);
+}
+
+/* お守りの3択：白いカードではなく、色の付いた札に輪郭線 */
+.charm-card {
+  border: var(--line);
+  border-radius: 12px 16px 12px 14px;
+  box-shadow: 0 4px 0 var(--ink);
+}
+
+.charm-card.tier-common,
+.charm-card:not([class*='tier-']) { background: #fff8e7; }
+.charm-card.tier-uncommon { background: #e3f4f0; }
+.charm-card.tier-rare { background: #fff1c4; }
+
+/* 振り返り・設定の行：線だけで区切る（カードを重ねない） */
+.review li {
+  border-radius: 0;
+  background: transparent;
+  border-bottom: 2px dashed rgba(61, 51, 38, 0.35);
+  padding: 7px 4px;
+}
+
+.review li.short {
+  background: transparent;
+  border-bottom-color: rgba(161, 40, 31, 0.5);
+}
+
+.set-row {
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  border-bottom: 2px dashed rgba(61, 51, 38, 0.3);
+}
+
+/* 畑の上の札（フィーバー・相場など） */
+.st {
+  border: 2px solid var(--ink);
+  box-shadow: 0 2px 0 var(--ink);
+}
+
+.st .art {
+  font-size: 1.1em;
+  vertical-align: -0.15em;
+}
+
+/* ひと言の案内：黒い半透明の帯ではなく、紙の付箋 */
+.msg {
+  background: #fff8e7;
+  color: var(--ink);
+  border: var(--line-thin);
+  border-radius: 8px 10px 9px 11px;
+  box-shadow: 0 3px 0 var(--ink);
+  rotate: -0.6deg;
+}
+
+.msg:empty {
+  border: none;
+  box-shadow: none;
+  background: none;
+}
+
+.msg .art {
+  font-size: 1.2em;
+  vertical-align: -0.2em;
+}
+
+/* フィーバーの帯：グラデーションをやめ、ベタ塗りの板に輪郭線 */
+.fever-banner {
+  background: #ff7a3d;
+  border: var(--line);
+  border-radius: 16px 20px 15px 18px;
+  box-shadow: var(--drop-big);
+  text-shadow: 0 2px 0 var(--ink);
+}
+
+.fever-banner.bad {
+  background: #4a1830;
+  border: var(--line);
+}
+
+.fever-card {
+  border: var(--line-thin);
+  box-shadow: 0 3px 0 var(--ink);
+}
+
+.fever-title .art {
+  font-size: 1.1em;
+  vertical-align: -0.12em;
+}
+
+/* 終わりの画面の大きな絵 */
+.modal .big .art {
+  font-size: 4rem;
+}
+
+.go-hand .art {
+  font-size: 2.2rem;
+}
+
+/* ==== タイトル：畑に立てた木の看板（真ん中に文字とボタンを積むだけにしない） ==== */
+.title-board {
+  position: relative;
+  margin-top: 4dvh;
+  padding: 26px 26px 18px;
+  border: var(--line);
+  border-radius: 10px 14px 9px 12px;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 21px, rgba(61, 51, 38, 0.35) 21px 23px),
+    #c98c57;
+  box-shadow: var(--drop-big);
+  rotate: -2deg;
+}
+
+.title-board h1 {
+  margin: 0;
+  font-family: var(--font-pop);
+  font-weight: 400;
+  font-size: 2.9rem;
+  line-height: 1.1;
+  color: #fff8e7;
+  letter-spacing: 0.04em;
+  -webkit-text-stroke: 3px var(--ink);
+  paint-order: stroke fill;
+  text-shadow: 0 4px 0 var(--ink);
+}
+
+/* 看板の上に乗せた作物 */
+.board-crops {
+  position: absolute;
+  top: -34px;
+  left: 18px;
+  display: flex;
+  gap: 2px;
+  font-size: 2.6rem;
+  rotate: 2deg;
+}
+
+.board-crops .art:nth-child(2) { translate: 0 6px; }
+.board-crops .art:nth-child(3) { rotate: 12deg; }
+
+/* 看板の脚 */
+.board-post {
+  position: absolute;
+  bottom: -46px;
+  width: 16px;
+  height: 46px;
+  border: var(--line);
+  border-top: none;
+  background: #8a5a32;
+  z-index: -1;
+}
+
+.board-post.l { left: 34px; }
+.board-post.r { right: 34px; }
+
+/* 看板の角にとまったカラス */
+.board-crow {
+  position: absolute;
+  right: -14px;
+  top: -40px;
+  font-size: 2.8rem;
+  scale: -1 1;
+  rotate: -6deg;
+}
+
+.title-screen .title-actions {
+  margin-top: 30px;
+}
+
+/* ==== ショップ：縞の日よけは一番上だけ。品は紙の上に罫線で並べ、値段は輪郭線つきの値札 ==== */
+.stall-sec + .stall-sec .awning,
+.stall .stall-sec:not(:first-child) .awning {
+  display: none;
+}
+
+.stall-sec {
+  border: var(--line);
+  border-radius: 12px 14px 11px 13px;
+  box-shadow: 0 4px 0 var(--ink);
+}
+
+.stall-sec::after {
+  display: none;
+}
+
+.stall-head {
+  border-bottom: 2px solid rgba(61, 51, 38, 0.6);
+  padding-bottom: 4px;
+}
+
+.shop .item,
+.shop .item.weekly {
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  border-bottom: 2px dashed rgba(61, 51, 38, 0.3);
+}
+
+.shop .item:last-child {
+  border-bottom: none;
+}
+
+/* 値札：買えるときは黄色い札、買えないときは紙の札 */
+.shop .item .cost {
+  border: var(--line-thin);
+  border-radius: 8px 10px 9px 11px;
+  background: #fff8e7;
+  color: var(--ink);
+  box-shadow: 0 3px 0 var(--ink);
+}
+
+.shop .item.affordable .cost {
+  background: #ffcc33;
+  color: var(--ink);
+}
+
+.shop .item.affordable:active .cost {
+  translate: 0 2px;
+  box-shadow: 0 1px 0 var(--ink);
+}
+
+.shop .item .cost.done {
+  border-style: dashed;
+  box-shadow: none;
+  background: transparent;
+}
+
+/* 設定：既製のスイッチとスライダーをやめ、輪郭線の札と木の目盛りに */
+.set-row .sw {
+  width: 52px;
+  height: 28px;
+  border: var(--line-thin);
+  border-radius: 8px;
+  background: #e8dcc2;
+}
+
+.set-row .sw::after {
+  top: 2px;
+  left: 2px;
+  width: 22px;
+  height: 19px;
+  border-radius: 5px;
+  border: 2px solid var(--ink);
+  background: #fff8e7;
+  box-shadow: none;
+}
+
+.set-row.on .sw,
+.set-row.toggle.on .sw {
+  background: #8cc84a;
+}
+
+.set-row input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 12px;
+  border: var(--line-thin);
+  border-radius: 6px;
+  background: repeating-linear-gradient(90deg, #e8dcc2 0 10%, #d8c8a6 10% 10.6%);
+}
+
+.set-row input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 26px;
+  border: var(--line-thin);
+  border-radius: 6px;
+  background: #ffcc33;
+  box-shadow: 0 2px 0 var(--ink);
+}
+
+.set-row input[type='range']::-moz-range-thumb {
+  width: 22px;
+  height: 26px;
+  border: var(--line-thin);
+  border-radius: 6px;
+  background: #ffcc33;
+}
+
+.set-row .seg {
+  border: var(--line-thin);
+  border-radius: 9px;
+  background: #e8dcc2;
+}
+
+.set-row .seg button {
+  border-radius: 6px;
+}
+
+.set-row .seg button.on {
+  background: #8cc84a;
+  color: var(--ink);
+  box-shadow: none;
+}
+
+/* ==== 一覧の行は線で区切る（白いカードを積まない）・タブと札は輪郭線 ==== */
+.records li,
+.help-list.icons li,
+.help-list li,
+.dex-row {
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  border-bottom: 2px dashed rgba(61, 51, 38, 0.3);
+}
+
+.help-tabs {
+  gap: 6px;
+  background: transparent;
+  padding: 0;
+}
+
+.help-tabs button {
+  border: var(--line-thin);
+  border-radius: 10px 12px 9px 11px;
+  background: #fff8e7;
+  box-shadow: 0 3px 0 var(--ink);
+}
+
+.help-tabs button.on {
+  background: #c98c57;
+  color: #fff8e7;
+  text-shadow: 0 1px 0 var(--ink);
+}
+
+/* 解放・図鑑の札 */
+.prep-item {
+  border: var(--line-thin);
+  border-radius: 10px 12px 9px 11px;
+  box-shadow: 0 3px 0 var(--ink);
+}
+
+.prep-item.locked {
+  border-style: dashed;
+  box-shadow: none;
+}
+
+.prep-item.on {
+  background: #e6f5d6;
+}
+
+/* 終わりの画面のポイント */
+.points-earned {
+  border: var(--line-thin);
+  border-radius: 10px 12px 9px 11px;
+  background: #fff1c4;
+  box-shadow: 0 3px 0 var(--ink);
+}
+
+/* 解放画面のポイント表示 */
+.prep-modal .points {
+  border: var(--line-thin);
+  box-shadow: 0 3px 0 var(--ink);
+}
+
+/* ==== タイトルの景色：濃い空・自作の太陽と雲・輪郭線のある丘 ==== */
+#overlay.title {
+  background: linear-gradient(#8fd0f2, #cdeefb 62%);
+  overflow: hidden;
+}
+
+.title-scene {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ts-sun {
+  position: absolute;
+  top: 6dvh;
+  right: 8%;
+  font-size: 5.5rem;
+}
+
+.ts-cloud {
+  position: absolute;
+  font-size: 4.5rem;
+  opacity: 0.95;
+}
+
+.ts-cloud.a { top: 9dvh; left: 6%; }
+.ts-cloud.b { top: 22dvh; right: 30%; font-size: 3.2rem; }
+
+.ts-hill {
+  position: absolute;
+  left: -20%;
+  right: -20%;
+  border: var(--line);
+  border-radius: 50% 50% 0 0;
+}
+
+.ts-hill.back {
+  bottom: 0;
+  height: 52dvh;
+  background:
+    repeating-linear-gradient(100deg, transparent 0 34px, rgba(61, 51, 38, 0.12) 34px 37px),
+    #9fd36a;
+  left: -40%;
+  right: 10%;
+}
+
+.ts-hill.front {
+  bottom: -6dvh;
+  height: 40dvh;
+  background:
+    repeating-linear-gradient(80deg, transparent 0 28px, rgba(61, 51, 38, 0.14) 28px 31px),
+    #7fbf4a;
+  left: 0;
+  right: -40%;
+}
+
+.title-screen {
+  position: relative;
+  z-index: 1;
+}
+
+/* 丘は画面の幅の中で、角の丸みで形を作る（画面の外へ伸ばさない） */
+.ts-hill.back {
+  left: 0;
+  right: 0;
+  border-radius: 0 100% 0 0 / 0 100% 0 0;
+  border-left: none;
+  border-bottom: none;
+}
+
+.ts-hill.front {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 34dvh;
+  border-radius: 100% 0 0 0 / 100% 0 0 0;
+  border-right: none;
+  border-bottom: none;
+}
+
+.title-board h1 {
+  white-space: nowrap;
+  font-size: clamp(2rem, 11vw, 2.9rem);
+}
+
+/* ==== 絵柄袋：札は「絵・名前・枚数と確率」を縦に。輪郭線つき ==== */
+.bag {
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+}
+
+.chip {
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 4px 5px;
+  text-align: center;
+  background: #fff8e7;
+  border: var(--line-thin);
+  border-radius: 10px 12px 9px 11px;
+  box-shadow: 0 3px 0 var(--ink);
+}
+
+.chip.bad {
+  background: #f8e3ec;
+}
+
+.chip .e {
+  font-size: 2rem;
+}
+
+.chip-name {
+  font-size: 0.82rem;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.chip-num {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-family: var(--font-pop);
+  font-weight: 400;
+  font-size: 0.9rem;
+}
+
+.chip-num .pct {
+  font-family: inherit;
+  color: var(--ink-soft);
+}
+
+/* 長押しの説明：輪郭線の札 */
+.info-pop {
+  border: var(--line-thin);
+  border-radius: 10px 13px 11px 12px;
+  background: #fff8e7;
+  box-shadow: 4px 5px 0 rgba(61, 51, 38, 0.85);
+}
+
+/* 選んだリールの「選択中」は、右上の個数（×2）と重ならないよう左寄りに */
+.reel.selected::before {
+  left: 36%;
+}

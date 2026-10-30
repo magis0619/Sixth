@@ -633,6 +633,56 @@ const SCENE_WHEEL = `
 
 /** 景色・画面・演出 */
 const SCENE_ART = {
+  // ---- 画面の小さな印（絵文字の代わり） ----
+  flame: `
+    ${face('M32 58C18 58 12 48 14 38C16 30 22 26 22 18C28 22 30 28 30 32C33 26 34 16 40 8C42 18 52 26 52 40C52 50 44 58 32 58Z', ['#ff7a2a', '#e04a12', '#ffb36a'], 28, 40, 0.84)}
+    ${face('M32 56C25 56 22 50 23 45C24 40 28 38 29 33C32 37 33 40 33 43C35 40 37 37 38 34C41 40 42 44 41 48C40 53 37 56 32 56Z', ['#ffd84a', '#f2a91e'], 30, 46, 0.8, S2)}`,
+  warn: `
+    ${face('M32 6L60 54Q61 58 57 58H7Q3 58 4 54Z', ['#ffd23f', '#e8a412', '#fff0a2'], 32, 30, 0.86)}
+    ${line('M32 22V40', INK, 6)}<circle cx="32" cy="49" r="3.6" fill="${INK}"/>`,
+  hand: `
+    ${face('M24 30V10Q24 5 28.5 5Q33 5 33 10V26L35 26V22Q35 18 39 18Q43 18 43 22V27Q43 23 47 23Q51 23 51 27V32Q51 28 54.5 28Q58 28 58 32V44Q58 58 42 59H34Q24 59 18 50L8 38Q6 34 9.5 32Q13 30 16 33L24 41Z', C.skin, 28, 26, 0.88)}
+    <path d="M35 26V34M43 27V34M51 31V36" fill="none" stroke="${C.skin[1]}" stroke-width="2" stroke-linecap="round"/>`,
+  gift: `
+    ${face('M10 30H54V56Q54 59 51 59H13Q10 59 10 56Z', C.red, 22, 40, 0.88)}
+    ${face('M6 20H58V32H6Z', ['#ff7a6a', '#d94a3a', '#ffb0a6'], 22, 24, 0.86)}
+    <path d="M28 20H36V59H28Z" fill="${C.gold[0]}" ${S2}/>
+    <path d="M32 19C26 8 14 10 18 17C21 21 28 20 32 19ZM32 19C38 8 50 10 46 17C43 21 36 20 32 19Z" fill="${C.gold[0]}" ${S2}/>`,
+  gear: `
+    <path d="M${starPts(32, 32, 8, 27, 27, 0.78, -90)}Z" fill="${C.stone[0]}" ${S}/>
+    ${face(E(32, 32, 19), C.stone, 28, 28, 0.86, S2)}
+    <circle cx="32" cy="32" r="7.5" fill="#fff8e7" ${S}/>`,
+  trophy: `
+    <path d="M18 14Q6 14 8 26Q10 34 20 34M46 14Q58 14 56 26Q54 34 44 34" fill="none" stroke="${INK}" stroke-width="7" stroke-linecap="round"/>
+    <path d="M18 14Q6 14 8 26Q10 34 20 34M46 14Q58 14 56 26Q54 34 44 34" fill="none" stroke="${C.gold[0]}" stroke-width="3.4" stroke-linecap="round"/>
+    ${face('M16 8H48V24Q48 40 32 42Q16 40 16 24Z', C.gold, 26, 18, 0.86)}
+    <path d="M28 42H36V50H28Z" fill="${C.gold[1]}" ${S2}/>
+    ${face('M18 50H46V58H18Z', C.brown, 26, 52, 0.84, S2)}
+    ${hl(22, 18, 1.6, 5, -10, 0.8)}`,
+  copy: `
+    ${face('M20 6H46Q50 6 50 10V42Q50 46 46 46H20Q16 46 16 42V10Q16 6 20 6Z', C.white, 24, 14, 0.9, S2)}
+    ${face('M12 18H38Q42 18 42 22V54Q42 58 38 58H12Q8 58 8 54V22Q8 18 12 18Z', ['#fff8e7', '#e8dcc2', '#ffffff'], 16, 26, 0.9)}
+    <path d="M15 30H35M15 38H35M15 46H28" fill="none" stroke="${C.stone[1]}" stroke-width="2.4" stroke-linecap="round"/>`,
+  share: `
+    ${face('M8 34L54 10L44 56L30 42L50 18L24 38Z', C.blue, 30, 30, 0.86)}
+    <path d="M24 38L26 52L30 42" fill="${C.blue[1]}" ${S2}/>`,
+  speaker: `
+    ${face('M8 24H18L32 12V52L18 40H8Z', C.brown, 18, 30, 0.86)}
+    <path d="M40 22Q46 32 40 42M46 16Q56 32 46 48" fill="none" stroke="${INK}" stroke-width="4" stroke-linecap="round"/>`,
+  mute: `
+    ${face('M8 24H18L32 12V52L18 40H8Z', C.stone, 18, 30, 0.86)}
+    <path d="M40 24L56 40M56 24L40 40" fill="none" stroke="#c0392b" stroke-width="5" stroke-linecap="round"/>`,
+  home: `
+    ${face('M12 30L32 12L52 30V56H12Z', C.tan, 28, 34, 0.88)}
+    ${face('M4 32L32 6L60 32L54 36L32 16L10 36Z', C.red, 30, 18, 0.86, S2)}
+    ${face('M26 40H38V56H26Z', C.brown, 30, 46, 0.84, S2)}`,
+  question: `
+    ${face(E(32, 32, 26), C.blue, 26, 26, 0.88)}
+    <path d="M23 24Q23 14 32 14Q41 14 41 23Q41 29 34 31Q32 32 32 37" fill="none" stroke="#fff" stroke-width="5.5" stroke-linecap="round"/>
+    <circle cx="32" cy="47" r="3.6" fill="#fff"/>`,
+  mail: `
+    ${face('M6 16H58V50H6Z', C.white, 20, 26, 0.9)}
+    <path d="M6 16L32 38L58 16" fill="none" ${S}/>`,
   // 早送り：金色の三角が2つ重なり、後ろに風を切る線
   fastForward: `
     <path d="M3 22H12M1 32H10M3 42H12" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" opacity="0.85"/>
