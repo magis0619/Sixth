@@ -768,7 +768,7 @@ export function rollWeekly(state: GameState, rng: Rng): AddUpgradeId[] {
   return rollWithPivot(ids.map((id) => ({ id, w: state.shop.includes(id) ? 2 : 1 })), (id) => isPivotAdd(state, id), rng);
 }
 
-/** 今日の仕入れ：準備で選んだ品（出やすい）・解放済みの品から。満月はショップで買う物なので出さない */
+/** 今日の仕入れ：準備で選んだ品（出やすい）・解放済みの品から。レア（満月・金の種）はたまに1つだけ混ざる */
 export function rollOffer(state: GameState, rng: Rng): AddUpgradeId[] {
   const ids = [...new Set<AddUpgradeId>([...state.shop, ...state.pool])].filter((id) => !isRareOffer(id));
   const picks = pickWeighted(ids.map((id) => ({ id, w: state.shop.includes(id) ? 2 : 1 })), CONFIG.dailyOfferCount, rng);

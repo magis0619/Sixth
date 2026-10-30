@@ -371,7 +371,7 @@ export const CONFIG = {
   /** ショップに週ごとに並ぶ数（絵柄を足す品・畑の品それぞれ）。消す品と畑を広げるはいつも並ぶ */
   weeklyCount: 3,
   /**
-   * 毎日の仕入れ（試し中）：毎日3つの絵柄から1つをタダで袋に入れる。ショップの「絵柄を足す」は満月だけになる。
+   * 毎日の仕入れ（試し中）：毎日3つの絵柄から1つをタダで袋に入れる。ショップでは絵柄を足せなくなる。
    * false にすると、前の「週替わりの3品をショップで買う」に戻る
    */
   dailyPick: true,
@@ -550,8 +550,8 @@ export const CHARMS: Record<CharmId, CharmDef> = {
 };
 
 export const CHARM_ORDER = Object.keys(CHARMS) as CharmId[];
-/** 一時停止中のお守り（図鑑・解放の一覧に出さない） */
-export const PAUSED_CHARMS: CharmId[] = CONFIG.exhibitionOn ? [] : ['exhibition'];
+/** 一時停止中・廃止したお守り（図鑑・解放の一覧に出さない）。トマト祭りは廃止（古いセーブで持っていても効く） */
+export const PAUSED_CHARMS: CharmId[] = ['tomatoFest', ...(CONFIG.exhibitionOn ? [] : ['exhibition' as CharmId])];
 
 /** ふだんの抽選に出るお守り（特別なお守りは条件でしか出ない） */
 export const NORMAL_CHARMS = CHARM_ORDER.filter((id) => !CHARMS[id].special);
@@ -642,7 +642,7 @@ export const META = {
     addClover: { unlock: 60, cost: 3 },
     addHoe: { unlock: 25, cost: 1 },
     addWatermelonSeed: { unlock: 40, cost: 3 },
-    // 満月はいつもショップに並ぶ（組み合わせに入れなくてよい）
+    // 満月・金の種はレア仕入れ（準備では選べない。rareOffers）
     addMoon: { unlock: 0, cost: 0 },
   } as Record<AddUpgradeId, { unlock: number; cost: number }>,
   /** レアのお守りは解放するまで出ない */
