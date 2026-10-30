@@ -1,7 +1,7 @@
 // 1日の節目の演出：年貢の判子、お守りの3択、ゾロ目（フィーバー）、予告のカットイン、枯れる畑
 
 import { EN, gold, L } from '../i18n.ts';
-import { CHARM_PLACE, CHARM_TIER_NAMES, type CharmId, CHARMS, CONFIG, PLACES, type SymbolId, SYMBOLS } from '../config.ts';
+import { CHARM_PLACE, CHARM_TIER_NAMES, type CharmId, CHARMS, COMBOS, CONFIG, PLACES, type SymbolId, SYMBOLS } from '../config.ts';
 import { chooseCharm } from '../game.ts';
 import { art, type ArtId } from '../art.ts';
 import { sfx } from '../audio.ts';
@@ -189,6 +189,38 @@ function feverCards(symbols: SymbolId[], bad: boolean): string {
       </div>`;
     })
     .join('')}</div>`;
+}
+
+/** 組み合わせの札：そろった2つの絵柄 → 起きること */
+export async function comboBanner(ids: CharmId[]): Promise<void> {
+  sfx.rare();
+  flash('#fff2a0', 300);
+  vibrate([30, 30, 60]);
+  const banner = document.createElement('div');
+  banner.className = 'fever-banner combo-banner';
+  banner.innerHTML = `<div class="fever-title">${L('組み合わせ！', 'COMBO!')}</div><div class="fever-cards">${ids
+    .map((id) => {
+      const need = Object.entries(COMBOS[id]!) as [SymbolId, number][];
+      const pair = need.flatMap(([sym, n]) => Array.from({ length: n }, () => symHtml(sym))).join('<span class="fc-plus">＋</span>');
+      return `<div class="fever-card combo-card">
+        <span class="fc-pair">${pair}</span>
+        <span class="fc-arrow">▶</span>
+        <span class="fc-ico">${art(id)}</span>
+        <span class="fc-combo"><b class="fc-text">${CHARMS[id].name}</b><span class="fc-desc">${CHARMS[id].desc(1)}</span></span>
+      </div>`;
+    })
+    .join('')}</div>`;
+  document.body.appendChild(banner);
+  banner.animate(
+    [
+      { transform: 'translate(-50%, -50%) scale(0.3) rotate(-6deg)', opacity: 0 },
+      { transform: 'translate(-50%, -50%) scale(1.08) rotate(2deg)', opacity: 1, offset: 0.4 },
+      { transform: 'translate(-50%, -50%) scale(1) rotate(0deg)', opacity: 1 },
+    ],
+    { duration: 450, easing: 'cubic-bezier(.3,1.5,.5,1)', fill: 'forwards' },
+  );
+  await sleep(1700 + ids.length * 500);
+  banner.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: 'forwards' }).onfinish = () => banner.remove();
 }
 
 export async function feverBanner(symbols: SymbolId[], bad: boolean): Promise<void> {

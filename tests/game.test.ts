@@ -6,7 +6,7 @@ import { CONFIG, CROPS, EVENT_CONDITIONS, THUNDER_LINES, UPGRADE_SYMBOL } from '
 import {
   animalGold, buy, buyPlace, drawDay, hasRanch, hiveBonus, isColorful, canPlace, canUse, cellMultiplier, cropPrice, isPond, waterWheels, checkReady, chooseCharm, endDay, evolveTools, expand, expandPrice,
   fieldCells, isGolden, lv, multSteps, newCrop, newGame, nextTax, obstacleRule, place, pullWeed, resolveAuto, ripeGroup,
-  canBuy, canBuyPlace, takeOffer, canPlaceAt, isPivotAdd, isPivotPlace, mustPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult,
+  canBuy, canBuyPlace, takeOffer, refreshCombos, canPlaceAt, isPivotAdd, isPivotPlace, mustPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult,
 } from '../src/game.ts';
 import { recordRun, type MetaState } from '../src/meta.ts';
 import type { CropKind, SymbolId } from '../src/config.ts';
@@ -236,21 +236,12 @@ describe('道具・特別なマス', () => {
 });
 
 describe('お守り', () => {
-  it('袋の条件を満たすと、次の3択に1回必ず並ぶ', () => {
+  it('雷雨などの組み合わせは、お守りの3択には出ない', () => {
     const s = game();
-    s.bag.rain = CONFIG.initialBag.rain + 3;
-    checkReady(s);
-    expect(s.ready).toContain('thunderstorm');
-    expect(rollCharmOffer(s, Math.random)).toContain('thunderstorm');
-    expect(s.ready).not.toContain('thunderstorm');
-  });
-
-  it('仕入れで袋の条件を満たしても気づく', () => {
-    const s = game();
-    s.bag.rain = 4;
+    s.bag.rain = 9;
     s.offer = ['addRain'];
     takeOffer(s, 'addRain');
-    expect(s.ready).toContain('thunderstorm');
+    expect(s.ready).not.toContain('thunderstorm');
   });
 
   it('同じお守り3個で金色、効き目2倍', () => {
@@ -693,5 +684,28 @@ describe('増えるイナゴ（難しい5）', () => {
     s.results = [{ ...reel('locust'), power: 2 }];
     expect(resolveAuto(s, 0, () => 0)).toEqual({ type: 'locust', cell: null, damage: 0, bred: 2 });
     expect(s.bag.locust).toBe(2);
+  });
+});
+
+describe('組み合わせ（同じ日にそろうと自動で起きる）', () => {
+  it('雨と雷が一緒に出ると雷雨：その日は雨が斜めにも効く', () => {
+    const s = game();
+    s.results = [reel('rain'), reel('sun'), reel('coin')];
+    refreshCombos(s);
+    expect(s.combos).toEqual(['sunshower']);
+    expect(shapeCells(s, 'cross', at(1, 1))).not.toContain(at(0, 0));
+    s.results = [reel('rain'), reel('thunder'), reel('coin')];
+    refreshCombos(s);
+    expect(s.combos).toContain('thunderstorm');
+    expect(shapeCells(s, 'cross', at(1, 1))).toContain(at(0, 0));
+  });
+
+  it('トマトの種が2つでトマト祭り、日が変わると消える', () => {
+    const s = game();
+    s.results = [reel('seed', 3), reel('seed', 2), reel('crow')];
+    refreshCombos(s);
+    expect(s.combos).toEqual(['tomatoFest']);
+    endDay(s, () => 0.9);
+    expect(s.combos).toEqual([]);
   });
 });

@@ -2,7 +2,7 @@
 
 import { L } from './i18n.ts';
 import {
-  BAG_CONDITIONS, CHARMS, CHARM_ORDER, CHARM_PLACE, CONFIG, CROPS, EVENT_CONDITIONS, PLACE_ORDER, PLACES, SEEDS, SYMBOLS, SYMBOL_ORDER, TOOL_EVOLVE, UPGRADE_SYMBOL,
+  BAG_CONDITIONS, COMBOS, CHARMS, CHARM_ORDER, CHARM_PLACE, CONFIG, CROPS, EVENT_CONDITIONS, PLACE_ORDER, PLACES, SEEDS, SYMBOLS, SYMBOL_ORDER, TOOL_EVOLVE, UPGRADE_SYMBOL,
   type AddUpgradeId, type CharmId, type CropKind, type PlaceId, type ShapeId, type SymbolId, type UpgradeId,
 } from './config.ts';
 
@@ -140,6 +140,8 @@ export interface GameState {
   /** 週替わりで並ぶ候補（解放済みの「足す」強化） */
   pool: AddUpgradeId[];
   /** 今週の週替わり */
+  /** 今日そろった組み合わせ（雷雨など）。その日だけ効く */
+  combos: CharmId[];
   /** 今日の仕入れ（毎日の仕入れのとき）。1つ選ぶか、次の日になると消える */
   offer: AddUpgradeId[];
   /** 今週ショップに並ぶ「足す」品（weeklyCount 個。週ごとに入れ替わる） */
@@ -205,6 +207,7 @@ export function newGame(setup: GameSetup = { shop: ALL_ADDS, charmPool: CHARM_OR
     shop: [...setup.shop],
     pool: [...(setup.pool ?? setup.shop)],
     offer: [],
+    combos: [],
     weekly: [],
     weeklyPlaces: [],
     charmPool: [...setup.charmPool],
@@ -300,7 +303,7 @@ export function shapeCells(state: GameState, shape: ShapeId, cell: number): numb
   if (shape === 'all') return fieldCells(state);
   if (shape === 'cross') {
     // 雷雨：斜めにもいっぱいに効く
-    const diag = state.charms.thunderstorm > 0;
+    const diag = comboOn(state, 'thunderstorm');
     return fieldCells(state).filter((c) => {
       const dx = Math.abs(cellX(c) - cellX(cell));
       const dy = Math.abs(cellY(c) - cellY(cell));
@@ -541,6 +544,7 @@ export function endDay(state: GameState, rng: Rng): EndDayResult {
     });
   }
   state.results = [];
+  state.combos = [];
   state.today = { rain: [], sun: [], boosted: [] };
   // 「今日だけ」の効果はここで終わる
   state.fever = [];
@@ -604,6 +608,7 @@ export function drawDay(state: GameState, rng: Rng): void {
     const total = seed ? (seed.single ? 1 : rollSeedCount(rng) + seed.extra) + lv(state, 'seedSack') : 1;
     return { symbol, used: false, total, left: total, power };
   });
+  refreshCombos(state);
   // 毎日の仕入れ：その日の3択
   state.offer = CONFIG.dailyPick ? rollOffer(state, rng) : [];
   // 新しい週には新しい注文と週替わりの品が来る
@@ -686,6 +691,20 @@ function grant(state: GameState, id: CharmId, notice = true): void {
   state.charms[id]++;
   state.stats.charms.push({ day: state.day, id });
   if (notice) state.notices.push({ kind: 'got', id });
+}
+
+/** 組み合わせ：今日のスロットにそろった絵柄で、その日だけ自動で起きるものを決め直す */
+export function refreshCombos(state: GameState): void {
+  const counts = new Map<SymbolId, number>();
+  state.results.forEach((r) => counts.set(r.symbol, (counts.get(r.symbol) ?? 0) + 1));
+  state.combos = (Object.entries(COMBOS) as [CharmId, Partial<Record<SymbolId, number>>][])
+    .filter(([, need]) => (Object.entries(need) as [SymbolId, number][]).every(([sym, n]) => (counts.get(sym) ?? 0) >= n))
+    .map(([id]) => id);
+}
+
+/** 組み合わせ（雷雨など）が今日効いているか。昔のセーブで持っているお守りもそのまま効く */
+export function comboOn(state: GameState, id: CharmId): boolean {
+  return state.combos.includes(id) || state.charms[id] > 0;
 }
 
 /** 袋の中身の条件を満たした特別なお守りを、次の3択に並ぶようにする */
@@ -1124,7 +1143,7 @@ export function validTargets(state: GameState, reel: number): number[] {
 
 /** 天気雨：同じ日に雨と太陽が両方効いたマスは、さらに+1（1日1回） */
 function sunshower(state: GameState, affected: number[]): void {
-  if (!state.charms.sunshower) return;
+  if (!comboOn(state, 'sunshower')) return;
   // 大物は本体ごとに1回だけ
   const roots = [...new Set(state.today.rain.filter((c) => state.today.sun.includes(c)).map((c) => rootOf(state, c)))];
   roots
@@ -1188,7 +1207,7 @@ export function useSymbol(state: GameState, reel: number, cell: number | null): 
       shapeCells(state, 'row', cell!).forEach((i) => grow(state, i, 2 * r.power, affected));
       return affected;
     case 'moon':
-      fieldCells(state).forEach((i) => grow(state, i, r.power + state.charms.moonFeast, affected));
+      fieldCells(state).forEach((i) => grow(state, i, r.power + (comboOn(state, 'moonFeast') ? 1 : 0), affected));
       return affected;
     case 'sun': {
       // 霜を溶かしてから育てる（溶けたマスの作物もすぐ育つ）
@@ -1278,7 +1297,7 @@ export function multSteps(state: GameState, cell: number): { label: string; x: n
   if (inSameCropLine(state, cell)) {
     steps.push({ label: L('同じ作物', 'Same crop'), x: CONFIG.sameCropMult });
     // トマト祭り：トマトだけの列はさらに上乗せ
-    if (state.charms.tomatoFest && state.field[cell]!.kind === 'tomato') steps.push({ label: L('トマト祭り', 'Tomato Fest'), x: 1.5 });
+    if (comboOn(state, 'tomatoFest') && state.field[cell]!.kind === 'tomato') steps.push({ label: L('トマト祭り', 'Tomato Fest'), x: 1.5 });
   }
   if (runs.length > 1) steps.push({ label: L(`${runs.length}本が交差`, `${runs.length} lines cross`), x: 1 + CONFIG.crossBonus * (runs.length - 1) });
   return steps;

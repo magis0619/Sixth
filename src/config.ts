@@ -498,7 +498,7 @@ export interface CharmDef {
    * 条件で出る特別なお守り。bag＝袋の中身を満たすと次の年貢後の3択に必ず並ぶ（ふだんの抽選には出ない）、
    * event＝出来事を満たしたその場でもらえる。hint は図鑑で未達成のときに出す短いヒント
    */
-  special?: { kind: 'bag' | 'event'; hint: string };
+  special?: { kind: 'bag' | 'event' | 'combo'; hint: string };
 }
 
 /** お守り。年貢を納めるたびに charmChoices 個から1つ選ぶ。同じものは重ねて効果アップ */
@@ -523,10 +523,11 @@ export const CHARMS: Record<CharmId, CharmDef> = {
   wheelwright: { id: 'wheelwright', tier: 'uncommon', name: '水車職人', emoji: '🛞', desc: () => '水車のお金×2', max: 1 },
   tillMaster: { id: 'tillMaster', tier: 'common', name: '耕作上手', emoji: '⛏️', desc: () => '耕した土に植えると成長+2', max: 1 },
   taxRelief: { id: 'taxRelief', tier: 'common', name: '年貢の減免', emoji: '📜', desc: (n) => `年貢−${Math.min(50, 10 * n)}%`, max: 5 },
-  thunderstorm: { id: 'thunderstorm', tier: 'rare', name: '雷雨', emoji: '⛈️', desc: () => '雨が斜めにも効く', max: 1, special: { kind: 'bag', hint: '雨をたくさん…？' } },
-  tomatoFest: { id: 'tomatoFest', tier: 'rare', name: 'トマト祭り', emoji: '🍅', desc: () => 'トマトだけの列 さらに×1.5', max: 1, special: { kind: 'bag', hint: 'トマトの種をたくさん…？' } },
-  sunshower: { id: 'sunshower', tier: 'rare', name: '天気雨', emoji: '🌦️', desc: () => '同じ日の雨と太陽が重なったマス +1', max: 1, special: { kind: 'bag', hint: '雨と太陽を両方…？' } },
-  moonFeast: { id: 'moonFeast', tier: 'rare', name: '月の宴', emoji: '🎑', desc: () => '満月が全体+2', max: 1, special: { kind: 'bag', hint: '満月と太陽を…？' } },
+  // 組み合わせ（お守りではない）：同じ日のスロットに2つそろうと、その日だけ自動で起きる（COMBOS）
+  thunderstorm: { id: 'thunderstorm', tier: 'rare', name: '雷雨', emoji: '⛈️', desc: () => '今日は雨が斜めにも効く', max: 1, special: { kind: 'combo', hint: '雨と雷が一緒に出ると…？' } },
+  tomatoFest: { id: 'tomatoFest', tier: 'rare', name: 'トマト祭り', emoji: '🍅', desc: () => '今日はトマトだけの列 さらに×1.5', max: 1, special: { kind: 'combo', hint: 'トマトの種が2つ出ると…？' } },
+  sunshower: { id: 'sunshower', tier: 'rare', name: '天気雨', emoji: '🌦️', desc: () => '今日は雨と太陽が重なったマス +1', max: 1, special: { kind: 'combo', hint: '雨と太陽が一緒に出ると…？' } },
+  moonFeast: { id: 'moonFeast', tier: 'rare', name: '月の宴', emoji: '🎑', desc: () => '今日は満月がさらに+1', max: 1, special: { kind: 'combo', hint: '満月と太陽が一緒に出ると…？' } },
   bumperHarvest: { id: 'bumperHarvest', tier: 'rare', name: '大豊作', emoji: '🌾', desc: () => '畑いっぱいの作物を一度に売った！（1回だけの大当たり）', max: 1, special: { kind: 'event', hint: '畑いっぱいを一度に売ると…？' } },
   crowReturn: { id: 'crowReturn', tier: 'rare', name: 'カラス返し', emoji: '🪃', desc: () => 'カラスが来るたび +3', max: 1, special: { kind: 'event', hint: 'カラスにたくさん食べられると…？' } },
   lastStraw: { id: 'lastStraw', tier: 'rare', name: '首の皮', emoji: '🧵', desc: () => '次の年貢が半分', max: 1, special: { kind: 'event', hint: '年貢をギリギリで…？' } },
@@ -541,11 +542,14 @@ export const PAUSED_CHARMS: CharmId[] = CONFIG.exhibitionOn ? [] : ['exhibition'
 export const NORMAL_CHARMS = CHARM_ORDER.filter((id) => !CHARMS[id].special);
 
 /** 袋の中身で開く特別なお守りの条件（この枚数以上） */
-export const BAG_CONDITIONS: Partial<Record<CharmId, Partial<Record<SymbolId, number>>>> = {
-  thunderstorm: { rain: 5 },
-  tomatoFest: { seed: 6 },
-  sunshower: { rain: 3, sun: 3 },
-  moonFeast: { moon: 3, sun: 4 },
+export const BAG_CONDITIONS: Partial<Record<CharmId, Partial<Record<SymbolId, number>>>> = {};
+
+/** 組み合わせ：同じ日のスロットにこの絵柄がそろうと、その日だけ自動で起きる */
+export const COMBOS: Partial<Record<CharmId, Partial<Record<SymbolId, number>>>> = {
+  thunderstorm: { rain: 1, thunder: 1 },
+  tomatoFest: { seed: 2 },
+  sunshower: { rain: 1, sun: 1 },
+  moonFeast: { moon: 1, sun: 1 },
 };
 
 /** 出来事で開く特別なお守りの条件の数 */
@@ -724,10 +728,10 @@ if (EN) {
     wheelwright: ['Wheelwright', () => 'Waterwheel gold ×2'],
     tillMaster: ['Master Tiller', () => 'Planting on tilled soil gives +2 growth'],
     taxRelief: ['Tax Relief', (n) => `Taxes −${Math.min(50, 10 * n)}%`],
-    thunderstorm: ['Thunderstorm', () => 'Rain also reaches diagonals', 'Lots of rain…?'],
-    tomatoFest: ['Tomato Festival', () => 'Tomato-only lines ×1.5 more', 'Lots of tomato seeds…?'],
-    sunshower: ['Sunshower', () => 'Plots hit by both rain and sun the same day +1', 'Both rain and sun…?'],
-    moonFeast: ['Moon Feast', () => 'Full Moon gives +2 to all', 'Full moon and sun…?'],
+    thunderstorm: ['Thunderstorm', () => 'Today rain also reaches diagonals', 'Rain and thunder together…?'],
+    tomatoFest: ['Tomato Festival', () => 'Today tomato-only lines ×1.5 more', 'Two tomato seeds…?'],
+    sunshower: ['Sunshower', () => 'Today plots hit by both rain and sun +1', 'Rain and sun together…?'],
+    moonFeast: ['Moon Feast', () => 'Today the full moon gives +1 more', 'Full moon and sun together…?'],
     bumperHarvest: ['Big Harvest', () => 'Sold a full field at once! (one-time jackpot)', 'Sell a full field at once…?'],
     crowReturn: ['Crow Payback', () => '+3g whenever a crow comes', 'If crows eat a lot…?'],
     lastStraw: ['By a Thread', () => 'Next tax is halved', 'Pay a tax with almost nothing left…?'],

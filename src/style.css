@@ -6937,3 +6937,97 @@ html.hurry .hurry-edge {
 .reel.selected::before {
   left: 36%;
 }
+
+/* ==== 仕入れの窓・組み合わせの札 ==== */
+.machine-top.offer {
+  cursor: pointer;
+}
+
+.machine-top .offer {
+  pointer-events: none;
+}
+
+.offer-card {
+  grid-template-columns: auto 1fr;
+}
+
+.offer-card .e {
+  font-size: 2.6rem;
+}
+
+.oc-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.oc-text > b {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 1.05rem;
+}
+
+.oc-shape {
+  display: inline-grid;
+  place-items: center;
+  padding: 2px;
+  border-radius: 5px;
+  background: #5a2d0c;
+}
+
+.oc-shape .art,
+.oc-shape svg {
+  font-size: 1.2rem;
+}
+
+.oc-desc {
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.oc-odds {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.oc-odds b {
+  color: var(--ink);
+}
+
+.oc-odds .art {
+  vertical-align: -0.15em;
+}
+
+.combo-banner {
+  background: #6a9e3a;
+}
+
+.fc-pair {
+  display: flex;
+  align-items: center;
+  font-size: 2rem;
+}
+
+.fc-plus {
+  font-family: var(--font-pop);
+  font-size: 1rem;
+  margin: 0 1px;
+}
+
+.fc-combo {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  text-align: left;
+}
+
+.fc-desc {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.st.combo {
+  background: #e3f4d2;
+}

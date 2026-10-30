@@ -4,7 +4,7 @@ import {
   CHARMS, CHARM_ORDER, DIFFICULTIES, TOOL_EVOLVE, CONFIG, CROPS, PLACES, PLACE_ORDER, SEEDS, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL, type AddUpgradeId, type PlaceId, type SymbolId, type UpgradeId,
 } from './config.ts';
 import {
-  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawDay, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult, mustPlace, hasRoomFor, takeOffer,
+  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawDay, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult, mustPlace, hasRoomFor, takeOffer, refreshCombos,
 } from './game.ts';
 import { duckBgm, isMuted, sfx, suspendAudio, toggleMute, unlockAudio } from './audio.ts';
 import { saveMeta, setupFrom } from './meta.ts';
@@ -24,7 +24,7 @@ import { applySettings, showSettings } from './ui/settings.ts';
 import { accept, reject } from './ui/states.ts';
 import { renderDanger, renderSky, setupScene } from './ui/scene.ts';
 import { blockLongPress, setupLongPress } from './ui/info.ts';
-import { CUTIN_MS, feverBanner, playCutIn, showCharmOffer, showTaxStamp, witherField } from './ui/shows.ts';
+import { CUTIN_MS, comboBanner, feverBanner, playCutIn, showCharmOffer, showTaxStamp, witherField } from './ui/shows.ts';
 
 let selected: number | null = null;
 let armedNextDay = false;
@@ -230,6 +230,7 @@ function renderStatus(): void {
   const bad = state.fever.filter((s) => SYMBOLS[s].rarity === 'bad');
   if (good.length) chips.push(`<span class="st fever">${art('flame')} ${L('フィーバー', 'Fever')}：${good.map((s) => SYMBOLS[s].name).join(L('・', ', '))}</span>`);
   if (bad.length) chips.push(`<span class="st danger">${art('warn')} ${bad.map((s) => L(`${SYMBOLS[s].name}の群れ`, `${SYMBOLS[s].name} swarm`)).join(L('・', ', '))}</span>`);
+  state.combos.forEach((id) => chips.push(`<span class="st combo">${art(id)} ${CHARMS[id].name}</span>`));
   if (state.priceMult > 1) chips.push(`<span class="st merchant">${art('merchant')} ${L('今日の売値', "Today's prices")} ×${fmtMult(state.priceMult)}</span>`);
   if (state.cloverBoost > 1) chips.push(`<span class="st clover">${art('clover')} ${L('明日は金の種が出やすい', 'Golden seeds likelier tomorrow')}（×${fmtMult(state.cloverBoost)}）</span>`);
   // セット効果：そろっている間だけ
@@ -440,9 +441,9 @@ function renderSpinButton(): void {
       } catch {
         // 保存できなくても遊べる
       }
-      say(`${art('hand')} ${L('看板の絵柄を1つ選ぶと、タダで袋に入る', 'Pick one symbol on the sign to add it to your bag for free')}`, 3500);
+      say(`${art('hand')} ${L('看板を押すと、今日の仕入れを選べる（タダ）', 'Tap the sign to pick a free symbol for today')}`, 3500);
     }
-    setHtml(cue, `<span class="offer-label">${L('仕入れ', 'Pick')}</span>${state.offer.map((id) => `<button class="offer" data-offer="${id}" aria-label="${UPGRADES.find((u) => u.id === id)!.name}">${symHtml(UPGRADE_SYMBOL[id]!.symbol)}</button>`).join('')}`);
+    setHtml(cue, `<span class="offer-label">${L('仕入れ', 'Pick')}</span>${state.offer.map((id) => `<span class="offer" data-offer="${id}">${symHtml(UPGRADE_SYMBOL[id]!.symbol)}</span>`).join('')}`);
     return;
   }
   setHtml(cue, !ready
@@ -812,10 +813,13 @@ async function onSpin(): Promise<void> {
   }
   drawDay(state, rng);
   tutScript();
+  // チュートリアルで出目を差し替えたときも、組み合わせは出目に合わせる
+  refreshCombos(state);
   // フリーズ中に結果が見えないよう、描き直すのは演出のあと
   const show = planShow();
   render();
   await spinReels(show);
+  if (state.combos.length) await showCombos();
   if (state.fever.length) {
     await showFever();
     await playFeverRoles(resolveFever(state, rng));
@@ -912,6 +916,16 @@ async function showFever(): Promise<void> {
   renderStatus();
   if (good.length) await feverBanner(good, false);
   if (bad.length) await feverBanner(bad, true);
+}
+
+/** 組み合わせがそろった：2つの絵柄 ＋ が光って、その日だけ起きることを札で見せる */
+async function showCombos(): Promise<void> {
+  renderStatus();
+  state.combos.forEach((id) => {
+    if (!meta.discovered.includes(id)) meta.discovered.push(id);
+  });
+  saveMeta(meta);
+  await comboBanner(state.combos);
 }
 
 /** フィーバーの役と大当たりの演出 */
@@ -2117,25 +2131,65 @@ $('to-title').innerHTML = `${art('home')}${L('タイトルへ', 'Title')}`;
 // 早送り中の印（自作の絵）
 $('hurry-badge').innerHTML = `${art('fastForward')}<b>${L('早送り', 'FAST')}</b><span>×4</span>`;
 document.querySelector('.machine-top')!.innerHTML = `${art('coin')} ${L('畑スロット', 'FARM SLOTS')} ${art('coin')}`;
-// 毎日の仕入れ：看板の絵柄を押すと袋へ飛んでいく
-document.querySelector('.machine-top')!.addEventListener('click', (e) => {
-  const b = (e.target as Element).closest<HTMLElement>('[data-offer]');
-  if (!b || ui.busy || state.over) return;
+// 毎日の仕入れ：看板を押すと窓が開き、効果を見て選ぶ
+document.querySelector('.machine-top')!.addEventListener('click', () => {
+  if (!state.offer.length || ui.busy || state.over || tut) return;
   unlockAudio();
-  const id = b.dataset.offer as AddUpgradeId;
-  const from = center(b);
-  if (!takeOffer(state, id)) return;
-  const sym = UPGRADE_SYMBOL[id]!.symbol;
-  sfx.buy();
-  pop(b, 1.3);
-  ripple(from.x, from.y, '#ffd84a');
-  render();
-  const chip = visibleOr(el.bag.querySelector(`[data-sym="${sym}"]`), 'bag');
-  flyTo(from, chip, symHtml(sym), 1, () => {
-    pop(chip, 1.35);
-    burst(center(chip).x, center(chip).y, ['✨'], 6, 30);
-  });
+  sfx.select();
+  showOfferPick();
 });
+
+/** 仕入れの窓：3つの絵柄の効果と、袋に入れたときの出やすさの変化を見て1つ選ぶ */
+function showOfferPick(): void {
+  const cards = state.offer
+    .map((id) => {
+      const sym = UPGRADE_SYMBOL[id]!.symbol;
+      const def = SYMBOLS[sym];
+      const after = { ...state.bag, [sym]: state.bag[sym] + 1 };
+      return `<button class="charm-card offer-card" data-take="${id}">
+        <span class="e">${symHtml(sym)}</span>
+        <span class="oc-text"><b>${def.name}${def.shape ? `<span class="oc-shape">${shapeIcon(def.shape)}</span>` : ''}</b>
+        <span class="oc-desc">${def.desc}</span>
+        <span class="oc-odds">${art('seed')}×${state.bag[sym]} → <b>×${state.bag[sym] + 1}</b>　${bagPct(state.bag, sym)}% → <b>${bagPct(after, sym)}%</b></span></span>
+      </button>`;
+    })
+    .join('');
+  el.overlay.innerHTML = `
+    <div class="modal charm-modal offer-modal" role="dialog" aria-label="${L('今日の仕入れ', 'Daily pick')}">
+      <h2>${art('seed')} ${L('今日の仕入れ', 'Daily pick')}</h2>
+      <div class="charm-choices">${cards}</div>
+      <button class="secondary" id="offer-skip">${L('今日は見送る', 'Skip for now')}</button>
+    </div>`;
+  el.overlay.classList.add('show');
+  const close = () => {
+    el.overlay.classList.remove('show');
+    el.overlay.innerHTML = '';
+  };
+  $('offer-skip').addEventListener('click', () => {
+    sfx.cancel();
+    close();
+  });
+  el.overlay.querySelectorAll<HTMLButtonElement>('[data-take]').forEach((b) =>
+    b.addEventListener('click', () => {
+      const id = b.dataset.take as AddUpgradeId;
+      const from = center(b.querySelector('.e')!);
+      if (!takeOffer(state, id)) return;
+      const sym = UPGRADE_SYMBOL[id]!.symbol;
+      sfx.buy();
+      accept(b);
+      later(() => {
+        close();
+        render();
+        ripple(from.x, from.y, '#ffd84a');
+        const chip = visibleOr(el.bag.querySelector(`[data-sym="${sym}"]`), 'bag');
+        flyTo(from, chip, symHtml(sym), 1, () => {
+          pop(chip, 1.35);
+          burst(center(chip).x, center(chip).y, ['✨'], 6, 30);
+        });
+      }, 260);
+    }),
+  );
+}
 // 演出の最中に画面をタップすると早送り
 // 窓（お守り選び・確認など）や案内の吹き出しを押したときは、選ぶための操作なので早送りにしない
 document.addEventListener('pointerdown', (e) => {
