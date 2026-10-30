@@ -32,6 +32,7 @@ export function loadRun(): GameState | null {
     s.frost ??= s.field.map(() => 0);
     s.pool ??= [...s.shop];
     s.weekly ??= [];
+    s.offer ??= [];
     // 週替わり3品にする前の保存データ：今週の品を選び直す
     if (!s.weeklyPlaces || s.weekly.length < CONFIG.weeklyCount) {
       s.weekly = rollWeekly(s, Math.random);

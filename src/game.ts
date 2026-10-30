@@ -140,6 +140,8 @@ export interface GameState {
   /** 週替わりで並ぶ候補（解放済みの「足す」強化） */
   pool: AddUpgradeId[];
   /** 今週の週替わり */
+  /** 今日の仕入れ（毎日の仕入れのとき）。1つ選ぶか、次の日になると消える */
+  offer: AddUpgradeId[];
   /** 今週ショップに並ぶ「足す」品（weeklyCount 個。週ごとに入れ替わる） */
   weekly: AddUpgradeId[];
   /** 今週ショップに並ぶ畑の品（道具・特別なマス） */
@@ -202,6 +204,7 @@ export function newGame(setup: GameSetup = { shop: ALL_ADDS, charmPool: CHARM_OR
     difficulty: setup.difficulty ?? 0,
     shop: [...setup.shop],
     pool: [...(setup.pool ?? setup.shop)],
+    offer: [],
     weekly: [],
     weeklyPlaces: [],
     charmPool: [...setup.charmPool],
@@ -601,6 +604,8 @@ export function drawDay(state: GameState, rng: Rng): void {
     const total = seed ? (seed.single ? 1 : rollSeedCount(rng) + seed.extra) + lv(state, 'seedSack') : 1;
     return { symbol, used: false, total, left: total, power };
   });
+  // 毎日の仕入れ：その日の3択
+  state.offer = CONFIG.dailyPick ? rollOffer(state, rng) : [];
   // 新しい週には新しい注文と週替わりの品が来る
   if (!state.order || state.order.dueDay < state.day) {
     state.order = makeOrder(state, rng);
@@ -736,6 +741,22 @@ function rollWithPivot<T>(items: { id: T; w: number }[], pivot: (id: T) => boole
 export function rollWeekly(state: GameState, rng: Rng): AddUpgradeId[] {
   const ids = [...new Set<AddUpgradeId>([...state.shop, ...state.pool, 'addMoon'])];
   return rollWithPivot(ids.map((id) => ({ id, w: state.shop.includes(id) ? 2 : 1 })), (id) => isPivotAdd(state, id), rng);
+}
+
+/** 今日の仕入れ：準備で選んだ品（出やすい）・解放済みの品から。満月はショップで買う物なので出さない */
+export function rollOffer(state: GameState, rng: Rng): AddUpgradeId[] {
+  const ids = [...new Set<AddUpgradeId>([...state.shop, ...state.pool])].filter((id) => id !== 'addMoon');
+  return pickWeighted(ids.map((id) => ({ id, w: state.shop.includes(id) ? 2 : 1 })), CONFIG.dailyOfferCount, rng);
+}
+
+/** 仕入れから1つ選んで袋に入れる（タダ）。その日の仕入れは終わり */
+export function takeOffer(state: GameState, id: AddUpgradeId): boolean {
+  if (state.over || !state.offer.includes(id)) return false;
+  state.bag[UPGRADE_SYMBOL[id]!.symbol] += UPGRADE_SYMBOL[id]!.delta;
+  state.offer = [];
+  state.stats.purchases.push({ day: state.day, id });
+  checkReady(state);
+  return true;
 }
 
 /** 今週の畑の品：ショップで買える道具・特別なマスから weeklyCount 個。1つは作戦が変わる品 */
@@ -1401,7 +1422,8 @@ export function upgradePrice(state: GameState, id: UpgradeId): number {
 
 export function upgradeAvailable(state: GameState, id: UpgradeId): boolean {
   const change = UPGRADE_SYMBOL[id]!;
-  if (change.delta > 0) return state.weekly.includes(id as AddUpgradeId);
+  // 毎日の仕入れのときは、ショップで足せる絵柄は満月だけ（ほかは仕入れで）
+  if (change.delta > 0) return CONFIG.dailyPick ? id === 'addMoon' : state.weekly.includes(id as AddUpgradeId);
   // イナゴを消すのは週1回の数に入らない（増える速さに追いつけるように）
   return state.bag[change.symbol] > 0 && (change.symbol === 'locust' || !removeLimitReached(state));
 }

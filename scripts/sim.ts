@@ -4,6 +4,7 @@
 
 import { CHARMS, CHARM_ORDER, CONFIG, CROPS, META, PLACES, SEEDS, SYMBOLS, type CropKind, type PlaceId, type UpgradeId } from '../src/config.ts';
 import {
+  takeOffer,
   buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, expand, expandPrice, canUse, cellAt, cellX, cellY, chooseCharm, fieldCells,
   isOpen, isRipe, newGame, nextTax, place, placePrice, pullWeed, resolveAllAuto, resolveFever, ripeGroup, sell, shapeCells,
   startDay, upgradePrice, useSymbol, validTargets, type GameState,
@@ -156,7 +157,9 @@ const setup = mode === 'full'
       // DIFF=1〜4 で難しいモード
       difficulty: Number(process.env.DIFF ?? 0),
     };
-console.log(`mode=${mode} bot=${bot}`);
+// DAILY=0 で前の「週替わりの3品をショップで買う」と比べる
+if (process.env.DAILY === '0') (CONFIG as { dailyPick: boolean }).dailyPick = false;
+console.log(`mode=${mode} bot=${bot} daily=${CONFIG.dailyPick}`);
 const days: number[] = [];
 const taxes: number[] = [];
 const goldAtTax: number[][] = [];
@@ -169,6 +172,9 @@ for (let n = 0; n < runs; n++) {
     resolveFever(s, Math.random);
     if (s.charmOffer) chooseCharm(s, smart ? (s.charmOffer.find((id) => !CHARMS[id].special) ?? s.charmOffer[0]) : pick(s.charmOffer));
     resolveAllAuto(s, Math.random);
+    // 毎日の仕入れ：買い物の優先順で欲しい物があれば取る。なければ見送る（袋を薄めない）
+    const want = PRIORITY.find((id) => s.offer.includes(id as never) && wants(s, id));
+    if (want) takeOffer(s, want as never);
     playDay(s);
   }
   days.push(s.day);

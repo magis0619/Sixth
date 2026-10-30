@@ -2,7 +2,7 @@
 
 import { gold, L } from '../i18n.ts';
 import {
-  CHARM_TIER_NAMES, type CharmId, CHARMS, CONFIG, CROPS, type PlaceId, PLACES, SHAPE_NAMES, type SymbolId, SYMBOLS, TOOL_EVOLVE, UPGRADE_SYMBOL, UPGRADES,
+  CHARM_TIER_NAMES, type CharmId, CHARMS, CONFIG, CROPS, type PlaceId, PLACES, SHAPE_NAMES, type SymbolId, SYMBOLS, TOOL_EVOLVE, UPGRADE_SYMBOL, UPGRADES, type UpgradeId,
 } from '../config.ts';
 import { animalGold, cropPrice, hasRanch, inField, isGolden, isPond, isRipe, multSteps, rootOf, waterWheels, weedCost } from '../game.ts';
 import { art } from '../art.ts';
@@ -152,6 +152,8 @@ export function setupLongPress(): void {
     return r ? symbolInfo(r.symbol, r.total > 1 ? `<p class="sub">${L('残り', 'Left')} ${r.left}/${r.total}</p>` : '') : null;
   });
   longPress(el.charms, '[data-charm]', (t) => charmInfo(t.dataset.charm as CharmId));
+  // 毎日の仕入れの絵柄
+  longPress(document.querySelector('.machine-top') as HTMLElement, '[data-offer]', (t) => symbolInfo(UPGRADE_SYMBOL[t.dataset.offer as UpgradeId]!.symbol));
   longPress(el.bag, '[data-sym]', (t) => symbolInfo(t.dataset.sym as SymbolId, `<p class="sub">${L(`袋に${state.bag[t.dataset.sym as SymbolId]}枚`, `${state.bag[t.dataset.sym as SymbolId]} in the bag`)}</p>`));
   longPress($('stall'), '#shop [data-id], #remove-shop [data-id]', (t) => {
     const u = UPGRADES.find((x) => x.id === t.dataset.id);

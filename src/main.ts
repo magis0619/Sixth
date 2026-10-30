@@ -4,7 +4,7 @@ import {
   CHARMS, CHARM_ORDER, DIFFICULTIES, TOOL_EVOLVE, CONFIG, CROPS, PLACES, PLACE_ORDER, SEEDS, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL, type AddUpgradeId, type PlaceId, type SymbolId, type UpgradeId,
 } from './config.ts';
 import {
-  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawDay, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult, mustPlace, hasRoomFor,
+  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawDay, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult, mustPlace, hasRoomFor, takeOffer,
 } from './game.ts';
 import { duckBgm, isMuted, sfx, suspendAudio, toggleMute, unlockAudio } from './audio.ts';
 import { saveMeta, setupFrom } from './meta.ts';
@@ -403,6 +403,15 @@ function renderCount(reel: HTMLElement, i: number): void {
   badge.textContent = `×${r.left}`;
 }
 
+/** 毎日の仕入れの案内を出したか */
+let offerHinted = (() => {
+  try {
+    return localStorage.getItem('hatake-slot:offerHint') === '1';
+  } catch {
+    return false;
+  }
+})();
+
 /** 回せるとき（出目を使い切った・1日目）はリール窓が光り「タップで回す」の帯が出る */
 function renderSpinButton(): void {
   const t = nextTax(state);
@@ -417,9 +426,25 @@ function renderSpinButton(): void {
   setHtml(go, state.day === 0
     ? '<span class="go-hand">👆</span><span class="go-text"><b>' + L('タップで回す', 'Tap to spin') + '</b></span>'
     : `<span class="go-hand">👆</span><span class="go-text">${t.daysLeft === 0 ? `<small>${L(`年貢${t.amount}を納めて`, `Pay ${t.amount}g tax`)}</small>` : ''}<b>${L(`${state.day + 1}日目へ`, `To day ${state.day + 1}`)}</b><small>${L('リールをタップ', 'Tap the reels')}</small></span>`);
-  // 筐体の看板の文字を、回せるときだけ「タップで回す」に切り替える
+  // 筐体の看板：今日の仕入れがあれば、そこに3つの絵柄（押すと袋に入る）。なければ「タップで回す」など
   const cue = document.querySelector('.machine-top') as HTMLElement;
-  cue.classList.toggle('cue', ready);
+  const offering = state.offer.length > 0 && state.day > 0 && !state.over && !ui.busy && !tut;
+  cue.classList.toggle('offer', offering);
+  cue.classList.toggle('cue', ready && !offering);
+  if (offering) {
+    // 初めて仕入れが出たときだけ、ひと言で知らせる
+    if (!offerHinted) {
+      offerHinted = true;
+      try {
+        localStorage.setItem('hatake-slot:offerHint', '1');
+      } catch {
+        // 保存できなくても遊べる
+      }
+      say(L('👆 看板の絵柄を1つ選ぶと、タダで袋に入る', '👆 Pick one symbol on the sign to add it to your bag for free'), 3500);
+    }
+    setHtml(cue, `<span class="offer-label">${L('仕入れ', 'Pick')}</span>${state.offer.map((id) => `<button class="offer" data-offer="${id}" aria-label="${UPGRADES.find((u) => u.id === id)!.name}">${symHtml(UPGRADE_SYMBOL[id]!.symbol)}</button>`).join('')}`);
+    return;
+  }
   setHtml(cue, !ready
     ? `${art('coin')} ${L('畑スロット', 'FARM SLOTS')} ${art('coin')}`
     : state.day === 0
@@ -588,7 +613,8 @@ function renderField(): void {
 /** いつも並ぶ品・週替わり・袋に入っているお邪魔を消す品 */
 function shopItems(): typeof UPGRADES {
   return UPGRADES.filter((u) => {
-    if (u.id.startsWith('add')) return state.weekly.includes(u.id as never);
+    // 毎日の仕入れのときは、ショップで足せる絵柄は満月だけ
+    if (u.id.startsWith('add')) return CONFIG.dailyPick ? u.id === 'addMoon' : state.weekly.includes(u.id as never);
     return state.bag[UPGRADE_SYMBOL[u.id]!.symbol] > 0;
   });
 }
@@ -1948,7 +1974,7 @@ const TUT_STEPS: TutStep[] = [
   { text: L('3つそろって実った！<br><b>タップで列ごと売ろう</b>', 'All 3 are ripe!<br><b>Tap to sell the whole line</b>'), focus: () => plotEls(tutRow()), cells: tutRow(), done: () => state.stats.lineHarvests >= 1 && !ui.busy },
   { text: L(`${MARK_LINE} 列は<b>×1.3</b>、同じ作物だけの列は<b>さらに×1.3</b>。<br>${MARK_SINGLE} 並んでいない<b>単品は半値</b>！<br>種を選ぶと、列になるマスに倍率が出るよ`, `${MARK_LINE} Lines are <b>×1.3</b>; single-crop lines get <b>another ×1.3</b>.<br>${MARK_SINGLE} Crops not in a line sell at <b>half price</b>!<br>Pick a seed to see line multipliers on the plots`), focus: () => [], button: L('なるほど', 'Got it') },
   { text: `${art('official')} ${L('7日ごとに<b>年貢</b>。払えないと終わり。<br><b>7回納める（49日目）とクリア</b>！', "Every 7 days there's a <b>tax</b>. Can't pay = game over.<br><b>Pay 7 times (day 49) to win</b>!")}`, focus: () => [el.tax], button: L('次へ', 'Next') },
-  { text: `${art('bargain')} ${L('お金がたまったら<b>ショップ</b>へ。<br>絵柄を足したり、畑の道具を買える', 'Got gold? Visit the <b>shop</b>.<br>Add symbols or buy farm tools')}`, focus: () => [document.querySelector('.tab[data-sheet="shop"]')!], button: L('はじめる！', "Let's go!") },
+  { text: `${art('bargain')} ${L('毎日、看板に<b>仕入れ</b>が3つ並ぶ。<br>1つ選ぶとタダで袋に入る。<br>お金は<b>ショップ</b>で畑の道具に', 'Each day the sign offers <b>3 symbols</b>.<br>Pick one to add it for free.<br>Spend gold on farm tools in the <b>shop</b>')}`, focus: () => [document.querySelector('.tab[data-sheet="shop"]')!], button: L('はじめる！', "Let's go!") },
 ];
 
 let tut: { step: number } | null = null;
@@ -2087,6 +2113,25 @@ el.goldBox.querySelector('.stat-icon')!.innerHTML = art('coin');
 // 早送り中の印（自作の絵）
 $('hurry-badge').innerHTML = `${art('fastForward')}<b>${L('早送り', 'FAST')}</b><span>×4</span>`;
 document.querySelector('.machine-top')!.innerHTML = `${art('coin')} ${L('畑スロット', 'FARM SLOTS')} ${art('coin')}`;
+// 毎日の仕入れ：看板の絵柄を押すと袋へ飛んでいく
+document.querySelector('.machine-top')!.addEventListener('click', (e) => {
+  const b = (e.target as Element).closest<HTMLElement>('[data-offer]');
+  if (!b || ui.busy || state.over) return;
+  unlockAudio();
+  const id = b.dataset.offer as AddUpgradeId;
+  const from = center(b);
+  if (!takeOffer(state, id)) return;
+  const sym = UPGRADE_SYMBOL[id]!.symbol;
+  sfx.buy();
+  pop(b, 1.3);
+  ripple(from.x, from.y, '#ffd84a');
+  render();
+  const chip = visibleOr(el.bag.querySelector(`[data-sym="${sym}"]`), 'bag');
+  flyTo(from, chip, symHtml(sym), 1, () => {
+    pop(chip, 1.35);
+    burst(center(chip).x, center(chip).y, ['✨'], 6, 30);
+  });
+});
 // 演出の最中に画面をタップすると早送り
 // 窓（お守り選び・確認など）や案内の吹き出しを押したときは、選ぶための操作なので早送りにしない
 document.addEventListener('pointerdown', (e) => {

@@ -2,11 +2,11 @@
 // 画面に依存しない部分だけを確かめる。 npm test
 
 import { describe, expect, it } from 'vitest';
-import { CONFIG, CROPS, EVENT_CONDITIONS, THUNDER_LINES } from '../src/config.ts';
+import { CONFIG, CROPS, EVENT_CONDITIONS, THUNDER_LINES, UPGRADE_SYMBOL } from '../src/config.ts';
 import {
   animalGold, buy, buyPlace, drawDay, hasRanch, hiveBonus, isColorful, canPlace, canUse, cellMultiplier, cropPrice, isPond, waterWheels, checkReady, chooseCharm, endDay, evolveTools, expand, expandPrice,
   fieldCells, isGolden, lv, multSteps, newCrop, newGame, nextTax, obstacleRule, place, pullWeed, resolveAuto, ripeGroup,
-  canBuy, canBuyPlace, canPlaceAt, isPivotAdd, isPivotPlace, mustPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult,
+  canBuy, canBuyPlace, takeOffer, canPlaceAt, isPivotAdd, isPivotPlace, mustPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult,
 } from '../src/game.ts';
 import { recordRun, type MetaState } from '../src/meta.ts';
 import type { CropKind, SymbolId } from '../src/config.ts';
@@ -245,12 +245,11 @@ describe('お守り', () => {
     expect(s.ready).not.toContain('thunderstorm');
   });
 
-  it('買い物で袋の条件を満たしても気づく', () => {
+  it('仕入れで袋の条件を満たしても気づく', () => {
     const s = game();
     s.bag.rain = 4;
-    s.gold = 100;
-    s.weekly = ['addRain'];
-    buy(s, 'addRain');
+    s.offer = ['addRain'];
+    takeOffer(s, 'addRain');
     expect(s.ready).toContain('thunderstorm');
   });
 
@@ -580,15 +579,24 @@ describe('シナジーの手直し', () => {
 });
 
 describe('ショップは週替わり', () => {
-  it('足す品・畑の品は週ごとに3つずつ。並んでいない品は買えず、消す品はいつでも', () => {
+  it('絵柄は毎日の仕入れ（3択から1つタダ）。ショップで足せる絵柄は満月だけ。畑の品は週ごとに3つ、消す品はいつでも', () => {
     const s = newGame();
     drawDay(s, Math.random);
-    expect(s.weekly).toHaveLength(CONFIG.weeklyCount);
+    expect(s.offer).toHaveLength(CONFIG.dailyOfferCount);
+    expect(s.offer).not.toContain('addMoon');
     expect(s.weeklyPlaces).toHaveLength(CONFIG.weeklyCount);
     s.gold = 9999;
-    const notAdd = (['addSeed', 'addRain', 'addSun', 'addMoon'] as const).find((id) => !s.weekly.includes(id))!;
-    expect(canBuy(s, notAdd)).toBe(false);
-    expect(canBuy(s, s.weekly[0])).toBe(true);
+    expect(canBuy(s, 'addSeed')).toBe(false);
+    expect(canBuy(s, 'addMoon')).toBe(true);
+    // 仕入れはタダで1つだけ。選んだらその日は終わり
+    const id = s.offer[0];
+    const sym = UPGRADE_SYMBOL[id]!.symbol;
+    const before = s.bag[sym];
+    expect(takeOffer(s, id)).toBe(true);
+    expect(s.bag[sym]).toBe(before + 1);
+    expect(s.gold).toBe(9999);
+    expect(s.offer).toEqual([]);
+    expect(takeOffer(s, id)).toBe(false);
     const notPlace = (['scarecrow', 'well', 'hive', 'compost'] as const).find((id) => !s.weeklyPlaces.includes(id))!;
     expect(buyPlace(s, notPlace)).toBe(false);
     s.bag.crow = 2;
