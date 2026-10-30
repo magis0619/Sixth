@@ -7031,3 +7031,47 @@ html.hurry .hurry-edge {
 .st.combo {
   background: #e3f4d2;
 }
+
+/* 遊び方：組み合わせの一覧 */
+.combo-lead {
+  margin: 0 0 6px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.combo-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+.combo-pair {
+  display: flex;
+  align-items: center;
+  font-size: 1.7rem;
+}
+
+.combo-row b {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.combo-row b .art {
+  font-size: 1.4rem;
+}
+
+/* 遊び方のタブ：4つを1段に */
+.help-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.help-tabs button {
+  padding: 7px 2px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  min-width: 0;
+}

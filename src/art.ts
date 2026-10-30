@@ -481,7 +481,20 @@ const scarecrowD = (shirt: string[], hat: string[], extra = '') => `
   ${extra}`;
 
 /** お守り・畑に置くもの */
+/** 組み合わせの絵：2つ（3つ）の絵柄を重ねて置く */
+const pair = (back: string, front: string) =>
+  `<g transform="translate(0 0) scale(0.62)">${back}</g><g transform="translate(24 24) scale(0.62)">${front}</g>`;
+const trio = (a: string, b: string, c: string) =>
+  `<g transform="translate(0 2) scale(0.5)">${a}</g><g transform="translate(32 2) scale(0.5)">${b}</g><g transform="translate(16 30) scale(0.5)">${c}</g>`;
+
 const CHARM_ART = {
+  // ---- 組み合わせ ----
+  flowerField: pair(CROP_ART.strawberry, SYMBOL_ART.bee),
+  bolt: pair(SYMBOL_ART.sun, SYMBOL_ART.thunder),
+  sowing: pair(SYMBOL_ART.hoe, CROP_ART.sprout),
+  harvestMoon: pair(SYMBOL_ART.moon, CROP_ART.pumpkin),
+  prosperity: pair(SYMBOL_ART.merchant, SYMBOL_ART.coin),
+  festival: trio(SYMBOL_ART.rain, SYMBOL_ART.sun, SYMBOL_ART.moon),
   coinPurse: `
     ${coinSmall(40, 19, 8)}
     ${face('M14 28H50Q57 44 50 54Q46 58 32 58Q18 58 14 54Q7 44 14 28Z', C.pink, 24, 36, 0.88)}

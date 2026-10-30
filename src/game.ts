@@ -2,7 +2,7 @@
 
 import { L } from './i18n.ts';
 import {
-  BAG_CONDITIONS, COMBOS, CHARMS, CHARM_ORDER, CHARM_PLACE, CONFIG, CROPS, EVENT_CONDITIONS, PLACE_ORDER, PLACES, SEEDS, SYMBOLS, SYMBOL_ORDER, TOOL_EVOLVE, UPGRADE_SYMBOL,
+  BAG_CONDITIONS, COMBOS, COMBO_POWER, CHARMS, CHARM_ORDER, CHARM_PLACE, CONFIG, CROPS, EVENT_CONDITIONS, PLACE_ORDER, PLACES, SEEDS, SYMBOLS, SYMBOL_ORDER, TOOL_EVOLVE, UPGRADE_SYMBOL,
   type AddUpgradeId, type CharmId, type CropKind, type PlaceId, type ShapeId, type SymbolId, type UpgradeId,
 } from './config.ts';
 
@@ -693,6 +693,12 @@ function grant(state: GameState, id: CharmId, notice = true): void {
   if (notice) state.notices.push({ kind: 'got', id });
 }
 
+/** 出目の効く形（組み合わせで変わる：青天の霹靂の日は雷が十字） */
+export function symbolShape(state: GameState, sym: SymbolId): ShapeId | undefined {
+  if (sym === 'thunder' && comboOn(state, 'bolt')) return 'cross';
+  return SYMBOLS[sym].shape;
+}
+
 /** 組み合わせ：今日のスロットにそろった絵柄で、その日だけ自動で起きるものを決め直す */
 export function refreshCombos(state: GameState): void {
   const counts = new Map<SymbolId, number>();
@@ -932,7 +938,7 @@ export function resolveAuto(state: GameState, reel: number, rng: Rng): AutoEvent
   r.left = 0;
   switch (r.symbol) {
     case 'coin': {
-      const amount = (CONFIG.coinAmount + 2 * lv(state, 'coinPurse')) * r.power;
+      const amount = (CONFIG.coinAmount + 2 * lv(state, 'coinPurse')) * r.power * (comboOn(state, 'prosperity') ? COMBO_POWER.prosperity : 1);
       earn(state, amount);
       return { type: 'coin', amount };
     }
@@ -1129,7 +1135,7 @@ export function canUse(state: GameState, reel: number, cell: number | null): boo
   // 太陽は霜も溶かすので、縦一列に霜があっても使える
   if (r.symbol === 'sun' && shapeCells(state, 'column', cell).some((i) => state.frost[i] > 0)) return true;
   // 形で効く出目は、範囲に育てられる作物が1つでもあれば使える
-  if (def.shape) return shapeCells(state, def.shape, cell).some((i) => growableAt(state, i));
+  if (def.shape) return shapeCells(state, symbolShape(state, r.symbol)!, cell).some((i) => growableAt(state, i));
   if (frozenCrop(state, cell)) return false;
   if (r.symbol === 'fertilizer') return crop !== null && !crop.fertilized;
   return false;
@@ -1179,7 +1185,7 @@ export function useSymbol(state: GameState, reel: number, cell: number | null): 
     const crop = newCrop(seed.crop);
     const cells = CROPS[seed.crop].big ? bigCells(state, cell!) : [cell!];
     // 品種改良・耕した土は1段階育った状態から（実る手前まで）
-    const boost = (state.bred?.includes(r.symbol) ? 1 : 0) + (cells.some((i) => state.tilled[i]) ? (state.charms.tillMaster ? 2 : 1) : 0);
+    const boost = (state.bred?.includes(r.symbol) ? 1 : 0) + (cells.some((i) => state.tilled[i]) ? (state.charms.tillMaster ? 2 : 1) : 0) + (comboOn(state, 'sowing') ? 1 : 0);
     crop.growth = Math.min(CROPS[seed.crop].ripe - 1, boost);
     cells.forEach((i, k) => {
       state.field[i] = k === 0 ? crop : { ...newCrop(seed.crop), anchor: cell! };
@@ -1204,7 +1210,7 @@ export function useSymbol(state: GameState, reel: number, cell: number | null): 
       shapeCells(state, 'x', cell!).forEach((i) => grow(state, i, CONFIG.beeGrowth * r.power, affected));
       return affected;
     case 'thunder':
-      shapeCells(state, 'row', cell!).forEach((i) => grow(state, i, 2 * r.power, affected));
+      shapeCells(state, symbolShape(state, 'thunder')!, cell!).forEach((i) => grow(state, i, 2 * r.power, affected));
       return affected;
     case 'moon':
       fieldCells(state).forEach((i) => grow(state, i, r.power + (comboOn(state, 'moonFeast') ? 1 : 0), affected));
@@ -1244,7 +1250,9 @@ export function cropPrice(state: GameState, crop: Crop, cell?: number): number {
   const fert = crop.fertilized ? CONFIG.fertilizerMultiplier : 1;
   const tile = cell !== undefined && state.tiles[cell] === 'compost' ? 2 : 1;
   const fair = (1 + CONFIG.exhibitionBonus * state.charms.exhibition) * (isColorful(state) ? 1 + CONFIG.colorfulBonus : 1);
-  return Math.round((def.price + charm + crop.bonus + hive) * fert * tile * state.priceMult * marketMult(state, crop.kind) * fair);
+  // 組み合わせ：秋の月（かぼちゃ）・豊年祭（全部）
+  const combo = (crop.kind === 'pumpkin' && comboOn(state, 'harvestMoon') ? COMBO_POWER.harvestMoon : 1) * (comboOn(state, 'festival') ? COMBO_POWER.festival : 1);
+  return Math.round((def.price + charm + crop.bonus + hive) * fert * tile * state.priceMult * marketMult(state, crop.kind) * fair * combo);
 }
 
 export function isRipe(crop: Crop | null): boolean {
@@ -1297,7 +1305,8 @@ export function multSteps(state: GameState, cell: number): { label: string; x: n
   if (inSameCropLine(state, cell)) {
     steps.push({ label: L('同じ作物', 'Same crop'), x: CONFIG.sameCropMult });
     // トマト祭り：トマトだけの列はさらに上乗せ
-    if (comboOn(state, 'tomatoFest') && state.field[cell]!.kind === 'tomato') steps.push({ label: L('トマト祭り', 'Tomato Fest'), x: 1.5 });
+    if (comboOn(state, 'tomatoFest') && state.field[cell]!.kind === 'tomato') steps.push({ label: L('トマト祭り', 'Tomato Fest'), x: COMBO_POWER.cropLine });
+    if (comboOn(state, 'flowerField') && state.field[cell]!.kind === 'strawberry') steps.push({ label: L('花畑', 'Flower Field'), x: COMBO_POWER.cropLine });
   }
   if (runs.length > 1) steps.push({ label: L(`${runs.length}本が交差`, `${runs.length} lines cross`), x: 1 + CONFIG.crossBonus * (runs.length - 1) });
   return steps;

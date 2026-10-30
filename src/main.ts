@@ -4,7 +4,7 @@ import {
   CHARMS, CHARM_ORDER, DIFFICULTIES, TOOL_EVOLVE, CONFIG, CROPS, PLACES, PLACE_ORDER, SEEDS, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL, type AddUpgradeId, type PlaceId, type SymbolId, type UpgradeId,
 } from './config.ts';
 import {
-  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawDay, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult, mustPlace, hasRoomFor, takeOffer, refreshCombos,
+  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawDay, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult, mustPlace, hasRoomFor, takeOffer, refreshCombos, symbolShape,
 } from './game.ts';
 import { duckBgm, isMuted, sfx, suspendAudio, toggleMute, unlockAudio } from './audio.ts';
 import { saveMeta, setupFrom } from './meta.ts';
@@ -255,7 +255,8 @@ function renderPick(): void {
   if (!r) return;
   const def = SYMBOLS[r.symbol];
   // 効く形は小さな図で（文字は出さない）
-  const shape = def.shape ? `<span class="pick-shape">${shapeIcon(def.shape)}</span>` : '';
+  const shapeId = symbolShape(state, r.symbol);
+  const shape = shapeId ? `<span class="pick-shape">${shapeIcon(shapeId)}</span>` : '';
   setHtml(box, `<span class="pick-label">${L('選択中', 'Selected')}</span><span class="pick-sym">${symHtml(r.symbol)}</span><b>${def.name}</b>${shape}`);
 }
 
@@ -375,7 +376,7 @@ function renderReelStates(): void {
     const badFever = fever && SYMBOLS[r.symbol].rarity === 'bad';
     b.className = `reel ${r ? roleClass(r.symbol) : ''} ${tag.cls}${r?.symbol === 'goldSeed' ? ' rare' : ''}${fever ? (badFever ? ' fever-bad' : ' fever') : ''}${r && el.machine.classList.contains('rainbow') && state.fever.includes(r.symbol) ? ' rainbow-sym' : ''}${actingReel === i ? ' acting' : ''}`;
     // 札：自動の出目は結果を短く、手動の出目は効く形の絵（3×3のマス目）
-    const shape = r ? SYMBOLS[r.symbol].shape : undefined;
+    const shape = r ? symbolShape(state, r.symbol) : undefined;
     const tagEl = b.querySelector('.tag') as HTMLElement;
     const html = tag.text ? `${fever ? art(badFever ? 'warn' : 'flame') : ''}${tag.text}` : shape && !r!.used ? shapeIcon(shape) : '';
     if (tagEl.innerHTML !== html) tagEl.innerHTML = html;
@@ -471,7 +472,7 @@ function previewCells(): number[] {
   const sym = state.results[selected].symbol;
   // 大物の種は、植わる2×2を下見する
   if (SEEDS[sym] && CROPS[SEEDS[sym]!.crop].big) return bigCells(state, previewCell);
-  const shape = SYMBOLS[sym].shape;
+  const shape = symbolShape(state, sym);
   return shape ? shapeCells(state, shape, previewCell) : [];
 }
 
@@ -1531,7 +1532,7 @@ function onPlotTap(cell: number): void {
     } else if (sym === 'thunder') {
       sfx.crt();
       flash('#fff6c0', 220);
-      shapeCells(state, 'row', cell).forEach((c, k) => {
+      shapeCells(state, symbolShape(state, 'thunder')!, cell).forEach((c, k) => {
         const q = center(el.field.children[c]);
         later(() => burst(q.x, q.y, ['⚡', '✨'], 4, 36), k * 60);
       });

@@ -6,7 +6,7 @@ import { CONFIG, CROPS, EVENT_CONDITIONS, THUNDER_LINES, UPGRADE_SYMBOL } from '
 import {
   animalGold, buy, buyPlace, drawDay, hasRanch, hiveBonus, isColorful, canPlace, canUse, cellMultiplier, cropPrice, isPond, waterWheels, checkReady, chooseCharm, endDay, evolveTools, expand, expandPrice,
   fieldCells, isGolden, lv, multSteps, newCrop, newGame, nextTax, obstacleRule, place, pullWeed, resolveAuto, ripeGroup,
-  canBuy, canBuyPlace, takeOffer, refreshCombos, canPlaceAt, isPivotAdd, isPivotPlace, mustPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult,
+  canBuy, canBuyPlace, takeOffer, refreshCombos, symbolShape, canPlaceAt, isPivotAdd, isPivotPlace, mustPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult,
 } from '../src/game.ts';
 import { recordRun, type MetaState } from '../src/meta.ts';
 import type { CropKind, SymbolId } from '../src/config.ts';
@@ -708,4 +708,55 @@ describe('組み合わせ（同じ日にそろうと自動で起きる）', () =
     endDay(s, () => 0.9);
     expect(s.combos).toEqual([]);
   });
+
+  it('雷＋太陽＝青天の霹靂：雷が十字に効く', () => {
+    const s = game();
+    s.results = [reel('thunder'), reel('sun'), reel('crow')];
+    refreshCombos(s);
+    expect(s.combos).toContain('bolt');
+    expect(symbolShape(s, 'thunder')).toBe('cross');
+  });
+
+  it('商人＋金貨＝商売繁盛：金貨の額×2', () => {
+    const s = game();
+    s.results = [reel('merchant'), reel('coin'), reel('crow')];
+    refreshCombos(s);
+    const before = s.gold;
+    const ev = resolveAuto(s, 1, () => 0.9);
+    expect(ev).toEqual({ type: 'coin', amount: CONFIG.coinAmount * 2 });
+    expect(s.gold - before).toBe(CONFIG.coinAmount * 2);
+  });
+
+  it('雨＋太陽＋満月＝豊年祭：全部の売値×1.5、かぼちゃの種＋満月＝秋の月：かぼちゃ×2', () => {
+    const s = game();
+    const tomato = newCrop('tomato');
+    const pumpkin = newCrop('pumpkin');
+    const base = [cropPrice(s, tomato), cropPrice(s, pumpkin)];
+    s.results = [reel('rain'), reel('sun'), reel('moon')];
+    refreshCombos(s);
+    expect(s.combos).toContain('festival');
+    expect(cropPrice(s, tomato)).toBe(Math.round(base[0] * 1.5));
+    s.results = [reel('pumpkinSeed'), reel('moon'), reel('crow')];
+    refreshCombos(s);
+    expect(cropPrice(s, pumpkin)).toBe(base[1] * 2);
+    expect(cropPrice(s, tomato)).toBe(base[0]);
+  });
+
+  it('鍬＋トマトの種＝種まき日和：植えた作物は成長+1から', () => {
+    const s = game();
+    s.results = [reel('hoe'), reel('seed', 2), reel('crow')];
+    refreshCombos(s);
+    expect(s.combos).toContain('sowing');
+    useSymbol(s, 1, at(0, 0));
+    expect(s.field[at(0, 0)]!.growth).toBe(1);
+  });
+
+  it('蜂＋苺の種＝花畑：苺だけの列×1.5', () => {
+    const s = game();
+    ripe(s, 'strawberry', [at(0, 0), at(1, 0), at(2, 0)]);
+    s.results = [reel('bee'), reel('berrySeed', 3), reel('crow')];
+    refreshCombos(s);
+    expect(multSteps(s, at(0, 0)).map((x) => x.label)).toContain('花畑');
+  });
 });
+

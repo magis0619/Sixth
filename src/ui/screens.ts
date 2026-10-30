@@ -2,7 +2,7 @@
 
 import { L } from '../i18n.ts';
 import {
-  ACHIEVE_ADDS, CHARM_ORDER, PAUSED_CHARMS, CHARM_TIER_NAMES, CHARMS, CONFIG, DIFFICULTIES, FEEDBACK_URL, META, SHARE_URL, SYMBOL_ORDER, SYMBOLS, THUNDER_LINES, UPGRADES,
+  ACHIEVE_ADDS, CHARM_ORDER, COMBOS, type CharmId, type SymbolId, PAUSED_CHARMS, CHARM_TIER_NAMES, CHARMS, CONFIG, DIFFICULTIES, FEEDBACK_URL, META, SHARE_URL, SYMBOL_ORDER, SYMBOLS, THUNDER_LINES, UPGRADES,
 } from '../config.ts';
 import { nextTax } from '../game.ts';
 import {
@@ -131,11 +131,11 @@ export async function shareResult(endedAfterClear: boolean): Promise<void> {
 
 // ---- 遊び方・図鑑 ----
 
-export type HelpTab = 'rules' | 'symbols' | 'charms';
+export type HelpTab = 'rules' | 'symbols' | 'combos' | 'charms';
 
 /** onClose：閉じたあとに戻す画面（準備画面から開いたとき） */
 export function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
-  const tabs: [HelpTab, string][] = [['rules', L('遊び方', 'How to play')], ['symbols', L('絵柄', 'Symbols')], ['charms', L('お守り', 'Charms')]];
+  const tabs: [HelpTab, string][] = [['rules', L('遊び方', 'How to play')], ['symbols', L('絵柄', 'Symbols')], ['combos', L('組み合わせ', 'Combos')], ['charms', L('お守り', 'Charms')]];
   const rules = `
     <ul class="help-list icons">
       <li>${art('calendar')}<span>${L('1回転＝1日', 'One spin = one day')}</span></li>
@@ -157,7 +157,17 @@ export function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
       <span class="dex-fever">${art('flame')}${FEVER_FX[id].ico ? art(FEVER_FX[id].ico!) : ''}${FEVER_FX[id].text}</span></div>
       <span class="own">${art('seed')}×${state.bag[id]}</span></div>`;
   }).join('');
-  const charms = CHARM_ORDER.filter((id) => !PAUSED_CHARMS.includes(id)).map((id) => {
+  // 組み合わせ：同じ日のスロットにそろうと起きること（集め方の目当てにするので、最初から全部見せる）
+  const combos = (Object.keys(COMBOS) as CharmId[])
+    .map((id) => {
+      const need = Object.entries(COMBOS[id]!) as [SymbolId, number][];
+      const pair = need.flatMap(([sym, n]) => Array.from({ length: n }, () => symHtml(sym))).join('<span class="fc-plus">＋</span>');
+      return `<div class="dex-row combo-row${meta.discovered.includes(id) ? ' seen' : ''}"><span class="combo-pair">${pair}</span>
+        <div><b>${art(id)} ${CHARMS[id].name}</b><span class="dex-desc">${CHARMS[id].desc(1)}</span></div></div>`;
+    })
+    .join('');
+  // お守り（組み合わせは別の欄）
+  const charms = CHARM_ORDER.filter((id) => !PAUSED_CHARMS.includes(id) && CHARMS[id].special?.kind !== 'combo').map((id) => {
     const c = CHARMS[id];
     if (c.special && !meta.discovered.includes(id) && !state.charms[id]) {
       return `<div class="dex-row locked"><span class="e silhouette">${art(id)}</span><div><b>？？？</b><small>${c.special.hint}</small></div></div>`;
@@ -172,7 +182,7 @@ export function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
   el.overlay.innerHTML = `
     <div class="modal help-modal" role="dialog" aria-label="${L('遊び方と図鑑', 'How to play')}">
       <div class="help-tabs">${tabs.map(([k, label]) => `<button class="${k === tab ? 'on' : ''}" data-tab="${k}">${label}</button>`).join('')}</div>
-      <div class="help-body">${tab === 'rules' ? rules : tab === 'symbols' ? symbols : charms}</div>
+      <div class="help-body">${tab === 'rules' ? rules : tab === 'symbols' ? symbols : tab === 'combos' ? `<p class="combo-lead">${L('同じ日のスロットにそろうと、その日だけ起きる', 'When these appear together on the reels, they trigger for the day')}</p>${combos}` : charms}</div>
       <button class="secondary" id="tutorial-again">${L('チュートリアルをもう一度', 'Replay the tutorial')}</button>
       <button class="secondary" id="calm-toggle">${L('演出控えめ', 'Calm effects')}：${isCalm() ? L('オン', 'On') : L('オフ', 'Off')}</button>
       <button class="primary" id="help-close">${L('閉じる', 'Close')}</button>
