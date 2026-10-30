@@ -144,22 +144,30 @@ export function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
       <li>${art('tomato')}${art('tomato')}${art('tomato')}<span>${L('縦・横・斜めに3つ＝高く売れる（単品は½）', '3 in a row (any direction) sell high; singles are ½')}</span></li>
       <li>${art('bale')}<span>${L(`${CONFIG.taxPeriod}日ごとに年貢。払えないと終わり／${CONFIG.winTaxes}回でクリア`, `Tax every ${CONFIG.taxPeriod} days. Can't pay = game over / pay ${CONFIG.winTaxes} to win`)}</span></li>
       <li>${art('coinPurse')}<span>${L('年貢のあと：お守り1つ＋お邪魔が増える', 'After each tax: pick a charm, and pests join your bag')}</span></li>
-      <li>${art('seed')}<span>${L('毎日の仕入れ：看板の絵柄を1つ選ぶとタダで袋へ', 'Daily pick: choose a symbol on the sign to add it free')}</span></li>
-      <li>${art('bargain')}<span>${L('ショップ：道具・畑を広げる・満月・お邪魔を消す', 'Shop: tools, bigger field, full moon, pest removal')}</span></li>
+      <li>${art('seed')}<span>${L('毎日の仕入れ：看板を押して1つ選ぶとタダで袋へ（たまにレア）', 'Daily pick: tap the sign and choose one free (sometimes rare)')}</span></li>
+      <li>${art('bargain')}<span>${L('ショップ：道具・畑を広げる・お邪魔を消す', 'Shop: tools, bigger field, pest removal')}</span></li>
       <li>${art('waterwheel')}<span>${L('水路：3つ並べると水車・4方を囲むと釣り堀（毎晩お金）', 'Water: 3 in a row = waterwheel, enclose a plot = fishing pond (nightly gold)')}</span></li>
       <li>${art('sprout')}<span>${L('遊ぶほどポイント → 解放', 'Play to earn points → unlocks')}</span></li>
     </ul>`;
+  // まだ出会っていない絵柄・組み合わせ・お守りは秘密（影と「？？？」）
+  const secret = (ico: string) => `<div class="dex-row locked"><span class="e silhouette">${ico}</span><div><b>？？？</b></div></div>`;
   const symbols = SYMBOL_ORDER.map((id) => {
     const d = SYMBOLS[id];
+    if (!meta.seenSymbols.includes(id) && state.bag[id] === 0) return secret(symHtml(id));
     return `<div class="dex-row${d.rarity === 'bad' ? ' bad' : ''}"><span class="e">${symHtml(id)}</span>
       <div><b>${d.name}</b> <span class="tag-k">${d.kind === 'manual' ? L('手動', 'Tap') : L('自動', 'Auto')}</span>
       <span class="dex-desc">${d.desc}</span>
       <span class="dex-fever">${art('flame')}${FEVER_FX[id].ico ? art(FEVER_FX[id].ico!) : ''}${FEVER_FX[id].text}</span></div>
       <span class="own">${art('seed')}×${state.bag[id]}</span></div>`;
   }).join('');
-  // 組み合わせ：同じ日のスロットにそろうと起きること（集め方の目当てにするので、最初から全部見せる）
-  const combos = (Object.keys(COMBOS) as CharmId[])
+  // 組み合わせ：同じ日のスロットにそろうと起きること。たまたまそろったものから明かす
+  const comboIds = Object.keys(COMBOS) as CharmId[];
+  const found = comboIds.filter((id) => meta.discovered.includes(id));
+  const combos = comboIds
     .map((id) => {
+      if (!found.includes(id)) {
+        return `<div class="dex-row combo-row locked"><span class="combo-pair"><span class="q">？</span><span class="fc-plus">＋</span><span class="q">？</span></span><div><b>？？？</b></div></div>`;
+      }
       const need = Object.entries(COMBOS[id]!) as [SymbolId, number][];
       const pair = need.flatMap(([sym, n]) => Array.from({ length: n }, () => symHtml(sym))).join('<span class="fc-plus">＋</span>');
       return `<div class="dex-row combo-row${meta.discovered.includes(id) ? ' seen' : ''}"><span class="combo-pair">${pair}</span>
@@ -169,9 +177,7 @@ export function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
   // お守り（組み合わせは別の欄）
   const charms = CHARM_ORDER.filter((id) => !PAUSED_CHARMS.includes(id) && CHARMS[id].special?.kind !== 'combo').map((id) => {
     const c = CHARMS[id];
-    if (c.special && !meta.discovered.includes(id) && !state.charms[id]) {
-      return `<div class="dex-row locked"><span class="e silhouette">${art(id)}</span><div><b>？？？</b><small>${c.special.hint}</small></div></div>`;
-    }
+    if (!meta.discovered.includes(id) && !meta.seenCharms.includes(id) && !state.charms[id]) return secret(art(id));
     const locked = id in META.charmUnlock && !meta.unlockedCharms.includes(id);
     return `<div class="dex-row tier-${c.tier}${locked ? ' locked' : ''}"><span class="e">${art(id)}</span>
       <div><b>${c.name}</b> <span class="tag-k">${CHARM_TIER_NAMES[c.tier]}</span>
@@ -182,7 +188,7 @@ export function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
   el.overlay.innerHTML = `
     <div class="modal help-modal" role="dialog" aria-label="${L('遊び方と図鑑', 'How to play')}">
       <div class="help-tabs">${tabs.map(([k, label]) => `<button class="${k === tab ? 'on' : ''}" data-tab="${k}">${label}</button>`).join('')}</div>
-      <div class="help-body">${tab === 'rules' ? rules : tab === 'symbols' ? symbols : tab === 'combos' ? `<p class="combo-lead">${L('同じ日のスロットにそろうと、その日だけ起きる', 'When these appear together on the reels, they trigger for the day')}</p>${combos}` : charms}</div>
+      <div class="help-body">${tab === 'rules' ? rules : tab === 'symbols' ? symbols : tab === 'combos' ? `<p class="combo-lead">${L(`同じ日のスロットにそろうと、その日だけ起きる（見つけた ${found.length} / ${comboIds.length}）`, `When these appear together on the reels, they trigger for the day (found ${found.length} / ${comboIds.length})`)}</p>${combos}` : charms}</div>
       <button class="secondary" id="tutorial-again">${L('チュートリアルをもう一度', 'Replay the tutorial')}</button>
       <button class="secondary" id="calm-toggle">${L('演出控えめ', 'Calm effects')}：${isCalm() ? L('オン', 'On') : L('オフ', 'Off')}</button>
       <button class="primary" id="help-close">${L('閉じる', 'Close')}</button>
@@ -381,7 +387,7 @@ export function showUnlock(): void {
   const paint = () => {
     const capPrice = nextCapacityPrice(meta);
     const adds = (Object.keys(META.adds) as (keyof typeof META.adds)[])
-      .filter((id) => id !== 'addMoon' && !isAchieveAdd(id))
+      .filter((id) => !CONFIG.rareOffers.includes(id) && !isAchieveAdd(id))
       .map((id) => {
         const def = META.adds[id];
         if (meta.unlockedAdds.includes(id)) {
@@ -491,7 +497,7 @@ export function showPrep(): void {
     const picked = meta.loadout.filter((id) => meta.unlockedAdds.includes(id));
     const used = loadoutCost(picked);
     const adds = (Object.keys(META.adds) as (keyof typeof META.adds)[])
-      .filter((id) => id !== 'addMoon' && meta.unlockedAdds.includes(id))
+      .filter((id) => !CONFIG.rareOffers.includes(id) && meta.unlockedAdds.includes(id))
       .map((id, k) => {
         const def = META.adds[id];
         const on = meta.loadout.includes(id);

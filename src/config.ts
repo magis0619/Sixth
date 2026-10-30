@@ -377,6 +377,9 @@ export const CONFIG = {
   dailyPick: true,
   /** 毎日の仕入れに並ぶ数 */
   dailyOfferCount: 3,
+  /** レア仕入れ：準備では選べず、毎日の仕入れにたまに混ざる絵柄と、その確率 */
+  rareOffers: ['addMoon', 'addGoldSeed'] as UpgradeId[],
+  rareOfferChance: 0.08,
   /** 毎週1つは必ず並ぶ「作戦が変わる品」と、その作戦のひと言 */
   pivotAdds: {
     addBerrySeed: '苺：2日で実る。巣箱の周りで毎晩育つ',
@@ -399,7 +402,7 @@ export const CONFIG = {
   /** 年貢：taxPeriod 日ごとに、その日の終わり（次の回転前）に自動で徴収 */
   taxPeriod: 7,
   /** 1回目から順の年貢額。表を超えたら（エンドレス）直前の額 × taxGrowth */
-  taxSchedule: [5, 22, 62, 130, 190, 255, 320, 390],
+  taxSchedule: [5, 25, 80, 185, 280, 380, 475, 570],
   taxGrowth: 1.5,
   /** この回数の年貢を納めるとクリア（その後はエンドレス） */
   winTaxes: 7,
@@ -571,7 +574,6 @@ export const COMBO_POWER = {
 /** 組み合わせ：同じ日のスロットにこの絵柄がそろうと、その日だけ自動で起きる */
 export const COMBOS: Partial<Record<CharmId, Partial<Record<SymbolId, number>>>> = {
   thunderstorm: { rain: 1, thunder: 1 },
-  tomatoFest: { seed: 2 },
   sunshower: { rain: 1, sun: 1 },
   moonFeast: { moon: 1, sun: 1 },
   flowerField: { bee: 1, berrySeed: 1 },

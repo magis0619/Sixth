@@ -1,7 +1,7 @@
 // 遊ぶたびに増える要素（豊穣ポイント・解放・ショップの組み合わせ）。ブラウザに保存する。
 
 import { L } from './i18n.ts';
-import { ACHIEVE_ADDS, CHARMS, CHARM_ORDER, DIFFICULTIES, META, THUNDER_LINES, type AddUpgradeId, type CharmId } from './config.ts';
+import { ACHIEVE_ADDS, CHARMS, CHARM_ORDER, CONFIG, DIFFICULTIES, META, THUNDER_LINES, type AddUpgradeId, type CharmId, type SymbolId } from './config.ts';
 import { ALL_ADDS, type GameSetup, type GameState } from './game.ts';
 
 export interface MetaState {
@@ -19,8 +19,12 @@ export interface MetaState {
   maxCleared: number;
   /** 累計で売った列の数 */
   lines: number;
-  /** 一度でも手に入れた特別なお守り（図鑑） */
+  /** 一度でも手に入れた特別なお守り・そろった組み合わせ（図鑑） */
   discovered: CharmId[];
+  /** 出会った絵柄（リールに出た・袋に入った・仕入れに並んだ）。図鑑で見せる */
+  seenSymbols: SymbolId[];
+  /** 出会ったお守り（3択に出た・持っている）。図鑑で見せる */
+  seenCharms: CharmId[];
   /** 解放した見た目と、選んでいる見た目 */
   skins: string[];
   skin: string;
@@ -46,6 +50,8 @@ function fresh(): MetaState {
     maxCleared: -1,
     lines: 0,
     discovered: [],
+    seenSymbols: [],
+    seenCharms: [],
     skins: [],
     skin: '',
     difficulty: 0,
@@ -61,6 +67,8 @@ export function loadMeta(): MetaState {
     const m = { ...fresh(), ...(JSON.parse(raw) as Partial<MetaState>) };
     // チュートリアルを入れる前から遊んでいる人には出さない
     if ((JSON.parse(raw) as Partial<MetaState>).tutorialDone === undefined) m.tutorialDone = m.plays > 0;
+    // レア仕入れになった絵柄（満月・金の種）は、ショップに並べる組み合わせから外す
+    m.loadout = m.loadout.filter((id) => !CONFIG.rareOffers.includes(id));
     return m;
   } catch {
     return fresh();
@@ -185,9 +193,10 @@ export function isAchieveAdd(id: AddUpgradeId): boolean {
 export function setupFrom(meta: MetaState): GameSetup {
   return {
     difficulty: Math.min(meta.difficulty, maxDifficulty(meta)),
-    shop: ALL_ADDS.filter((id) => meta.loadout.includes(id) && meta.unlockedAdds.includes(id)),
+    // レア仕入れ（満月・金の種）は準備で選べない（前に選んでいても外す）
+    shop: ALL_ADDS.filter((id) => meta.loadout.includes(id) && meta.unlockedAdds.includes(id) && !CONFIG.rareOffers.includes(id)),
     charmPool: CHARM_ORDER.filter((id) => !(id in META.charmUnlock) || meta.unlockedCharms.includes(id)),
     // 週替わりは解放済みの「足す」強化から
-    pool: ALL_ADDS.filter((id) => meta.unlockedAdds.includes(id)),
+    pool: ALL_ADDS.filter((id) => meta.unlockedAdds.includes(id) && !CONFIG.rareOffers.includes(id)),
   };
 }

@@ -570,7 +570,7 @@ describe('シナジーの手直し', () => {
 });
 
 describe('ショップは週替わり', () => {
-  it('絵柄は毎日の仕入れ（3択から1つタダ）。ショップで足せる絵柄は満月だけ。畑の品は週ごとに3つ、消す品はいつでも', () => {
+  it('絵柄は毎日の仕入れ（3択から1つタダ）。ショップで絵柄は足せない。畑の品は週ごとに3つ、消す品はいつでも', () => {
     const s = newGame();
     drawDay(s, Math.random);
     expect(s.offer).toHaveLength(CONFIG.dailyOfferCount);
@@ -578,7 +578,7 @@ describe('ショップは週替わり', () => {
     expect(s.weeklyPlaces).toHaveLength(CONFIG.weeklyCount);
     s.gold = 9999;
     expect(canBuy(s, 'addSeed')).toBe(false);
-    expect(canBuy(s, 'addMoon')).toBe(true);
+    expect(canBuy(s, 'addMoon')).toBe(false);
     // 仕入れはタダで1つだけ。選んだらその日は終わり
     const id = s.offer[0];
     const sym = UPGRADE_SYMBOL[id]!.symbol;
@@ -700,13 +700,30 @@ describe('組み合わせ（同じ日にそろうと自動で起きる）', () =
     expect(shapeCells(s, 'cross', at(1, 1))).toContain(at(0, 0));
   });
 
-  it('トマトの種が2つでトマト祭り、日が変わると消える', () => {
+  it('トマトの種が2つ出ても組み合わせにはならない（トマト祭りはやめた）。組み合わせは日が変わると消える', () => {
     const s = game();
     s.results = [reel('seed', 3), reel('seed', 2), reel('crow')];
     refreshCombos(s);
-    expect(s.combos).toEqual(['tomatoFest']);
+    expect(s.combos).toEqual([]);
+    s.results = [reel('rain'), reel('sun'), reel('crow')];
+    refreshCombos(s);
+    expect(s.combos).toEqual(['sunshower']);
     endDay(s, () => 0.9);
     expect(s.combos).toEqual([]);
+  });
+
+  it('満月と金の種は仕入れにたまに混ざるレア。ふだんの3択には出ない', () => {
+    const s = game();
+    let seenRare = 0;
+    for (let k = 0; k < 400; k++) {
+      s.order = { crop: 'tomato', need: 3, have: 0, reward: 1, dueDay: 999, done: false };
+      drawDay(s, Math.random);
+      const rare = s.offer.filter((id) => id === 'addMoon' || id === 'addGoldSeed');
+      expect(rare.length).toBeLessThanOrEqual(1);
+      seenRare += rare.length;
+    }
+    expect(seenRare).toBeGreaterThan(20);
+    expect(seenRare).toBeLessThan(120);
   });
 
   it('雷＋太陽＝青天の霹靂：雷が十字に効く', () => {

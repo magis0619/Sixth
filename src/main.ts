@@ -1,10 +1,10 @@
 import { applyStaticLang, EN, gold, L } from './i18n.ts';
 import './style.css';
 import {
-  CHARMS, CHARM_ORDER, DIFFICULTIES, TOOL_EVOLVE, CONFIG, CROPS, PLACES, PLACE_ORDER, SEEDS, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL, type AddUpgradeId, type PlaceId, type SymbolId, type UpgradeId,
+  CHARMS, CHARM_ORDER, type CharmId, DIFFICULTIES, TOOL_EVOLVE, CONFIG, CROPS, PLACES, PLACE_ORDER, SEEDS, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL, type AddUpgradeId, type PlaceId, type SymbolId, type UpgradeId,
 } from './config.ts';
 import {
-  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawDay, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult, mustPlace, hasRoomFor, takeOffer, refreshCombos, symbolShape,
+  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawDay, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult, mustPlace, hasRoomFor, takeOffer, refreshCombos, symbolShape, isRareOffer,
 } from './game.ts';
 import { duckBgm, isMuted, sfx, suspendAudio, toggleMute, unlockAudio } from './audio.ts';
 import { saveMeta, setupFrom } from './meta.ts';
@@ -94,6 +94,31 @@ function render(): void {
   }
   flushNotices();
   renderTutorial();
+  noteSeen();
+}
+
+/** 出会った絵柄（袋・リール・仕入れ）とお守り（3択・持ち物）を図鑑に記録する。まだのものは図鑑で秘密 */
+function noteSeen(): void {
+  let changed = false;
+  const syms = new Set<SymbolId>([
+    ...SYMBOL_ORDER.filter((id) => state.bag[id] > 0),
+    ...state.results.map((r) => r.symbol),
+    ...state.offer.map((id) => UPGRADE_SYMBOL[id]!.symbol),
+  ]);
+  syms.forEach((id) => {
+    if (!meta.seenSymbols.includes(id)) {
+      meta.seenSymbols.push(id);
+      changed = true;
+    }
+  });
+  const charms = new Set<CharmId>([...(state.charmOffer ?? []), ...CHARM_ORDER.filter((id) => state.charms[id] > 0)]);
+  charms.forEach((id) => {
+    if (!meta.seenCharms.includes(id)) {
+      meta.seenCharms.push(id);
+      changed = true;
+    }
+  });
+  if (changed) saveMeta(meta);
 }
 
 /** 先に置く物があるときの断りのひと言 */
@@ -444,7 +469,8 @@ function renderSpinButton(): void {
       }
       say(`${art('hand')} ${L('看板を押すと、今日の仕入れを選べる（タダ）', 'Tap the sign to pick a free symbol for today')}`, 3500);
     }
-    setHtml(cue, `<span class="offer-label">${L('仕入れ', 'Pick')}</span>${state.offer.map((id) => `<span class="offer" data-offer="${id}">${symHtml(UPGRADE_SYMBOL[id]!.symbol)}</span>`).join('')}`);
+    // 看板の上の吹き出し「仕入れ！」で、押せることを知らせる
+    setHtml(cue, `<span class="offer-bubble">${L('仕入れ！', 'Pick!')}</span><span class="offer-label">${L('仕入れ', 'Pick')}</span>${state.offer.map((id) => `<span class="offer${isRareOffer(id) ? ' rare' : ''}" data-offer="${id}">${symHtml(UPGRADE_SYMBOL[id]!.symbol)}</span>`).join('')}`);
     return;
   }
   setHtml(cue, !ready
@@ -616,14 +642,17 @@ function renderField(): void {
 function shopItems(): typeof UPGRADES {
   return UPGRADES.filter((u) => {
     // 毎日の仕入れのときは、ショップで足せる絵柄は満月だけ
-    if (u.id.startsWith('add')) return CONFIG.dailyPick ? u.id === 'addMoon' : state.weekly.includes(u.id as never);
+    if (u.id.startsWith('add')) return !CONFIG.dailyPick && state.weekly.includes(u.id as never);
     return state.bag[UPGRADE_SYMBOL[u.id]!.symbol] > 0;
   });
 }
 
 function renderShop(): void {
   const items = shopItems();
-  renderUpgradeList(el.shop, items.filter((u) => !u.id.startsWith('remove')));
+  const adds = items.filter((u) => !u.id.startsWith('remove'));
+  renderUpgradeList(el.shop, adds);
+  // 毎日の仕入れのときは、ショップに絵柄の区画はいらない
+  (el.shop.closest('.stall-sec') as HTMLElement).hidden = adds.length === 0;
   renderUpgradeList($('remove-shop'), items.filter((u) => u.id.startsWith('remove')));
 }
 
@@ -2127,6 +2156,7 @@ el.order.addEventListener('click', () => {
 el.goldBox.querySelector('.stat-icon')!.innerHTML = art('coin');
 // メニューの印（絵文字の代わりに自作の絵）
 $('help').innerHTML = `${art('question')}${L('遊び方', 'How to play')}`;
+$('dex-btn').innerHTML = `${art('book')}${L('図鑑', 'Collection')}`;
 $('settings-btn').innerHTML = `${art('gear')}${L('設定', 'Settings')}`;
 $('to-title').innerHTML = `${art('home')}${L('タイトルへ', 'Title')}`;
 // 早送り中の印（自作の絵）
@@ -2147,7 +2177,7 @@ function showOfferPick(): void {
       const sym = UPGRADE_SYMBOL[id]!.symbol;
       const def = SYMBOLS[sym];
       const after = { ...state.bag, [sym]: state.bag[sym] + 1 };
-      return `<button class="charm-card offer-card" data-take="${id}">
+      return `<button class="charm-card offer-card${isRareOffer(id) ? ' rare-offer' : ''}" data-take="${id}">${isRareOffer(id) ? `<span class="tier">${L('レア', 'Rare')}</span>` : ''}
         <span class="e">${symHtml(sym)}</span>
         <span class="oc-text"><b>${def.name}${def.shape ? `<span class="oc-shape">${shapeIcon(def.shape)}</span>` : ''}</b>
         <span class="oc-desc">${def.desc}</span>
@@ -2263,6 +2293,14 @@ el.help.addEventListener('click', () => {
   unlockAudio();
   sfx.select();
   showHelp('rules');
+});
+// 図鑑：出会った絵柄・組み合わせ・お守りの一覧（まだのものは秘密）
+$('dex-btn').addEventListener('click', () => {
+  menu.hidden = true;
+  if (ui.busy || el.overlay.classList.contains('show')) return;
+  unlockAudio();
+  sfx.select();
+  showHelp('symbols');
 });
 el.mute.addEventListener('click', (e) => {
   e.stopPropagation();

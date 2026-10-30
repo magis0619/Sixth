@@ -770,8 +770,19 @@ export function rollWeekly(state: GameState, rng: Rng): AddUpgradeId[] {
 
 /** 今日の仕入れ：準備で選んだ品（出やすい）・解放済みの品から。満月はショップで買う物なので出さない */
 export function rollOffer(state: GameState, rng: Rng): AddUpgradeId[] {
-  const ids = [...new Set<AddUpgradeId>([...state.shop, ...state.pool])].filter((id) => id !== 'addMoon');
-  return pickWeighted(ids.map((id) => ({ id, w: state.shop.includes(id) ? 2 : 1 })), CONFIG.dailyOfferCount, rng);
+  const ids = [...new Set<AddUpgradeId>([...state.shop, ...state.pool])].filter((id) => !isRareOffer(id));
+  const picks = pickWeighted(ids.map((id) => ({ id, w: state.shop.includes(id) ? 2 : 1 })), CONFIG.dailyOfferCount, rng);
+  // たまにレア（満月・金の種）が1つ混ざる
+  if (rng() < CONFIG.rareOfferChance) {
+    const rare = CONFIG.rareOffers[Math.floor(rng() * CONFIG.rareOffers.length)] as AddUpgradeId;
+    picks.splice(Math.min(picks.length, CONFIG.dailyOfferCount - 1), 1, rare);
+  }
+  return picks;
+}
+
+/** レア仕入れ（準備では選べず、毎日の仕入れにたまに混ざる） */
+export function isRareOffer(id: UpgradeId): boolean {
+  return CONFIG.rareOffers.includes(id);
 }
 
 /** 仕入れから1つ選んで袋に入れる（タダ）。その日の仕入れは終わり */
@@ -1451,7 +1462,7 @@ export function upgradePrice(state: GameState, id: UpgradeId): number {
 export function upgradeAvailable(state: GameState, id: UpgradeId): boolean {
   const change = UPGRADE_SYMBOL[id]!;
   // 毎日の仕入れのときは、ショップで足せる絵柄は満月だけ（ほかは仕入れで）
-  if (change.delta > 0) return CONFIG.dailyPick ? id === 'addMoon' : state.weekly.includes(id as AddUpgradeId);
+  if (change.delta > 0) return !CONFIG.dailyPick && state.weekly.includes(id as AddUpgradeId);
   // イナゴを消すのは週1回の数に入らない（増える速さに追いつけるように）
   return state.bag[change.symbol] > 0 && (change.symbol === 'locust' || !removeLimitReached(state));
 }
