@@ -2,7 +2,7 @@
 // 画面に依存しない部分だけを確かめる。 npm test
 
 import { describe, expect, it } from 'vitest';
-import { CONFIG, CROPS, EVENT_CONDITIONS, THUNDER_LINES, UPGRADE_SYMBOL } from '../src/config.ts';
+import { CONFIG, CROPS, CUT, EVENT_CONDITIONS, THUNDER_LINES, UPGRADE_SYMBOL } from '../src/config.ts';
 import {
   animalGold, buy, buyPlace, drawDay, hasRanch, hiveBonus, isColorful, canPlace, canUse, cellMultiplier, cropPrice, isPond, waterWheels, checkReady, chooseCharm, endDay, evolveTools, expand, expandPrice,
   fieldCells, isGolden, lv, multSteps, newCrop, newGame, nextTax, obstacleRule, place, pullWeed, resolveAuto, ripeGroup,
@@ -253,7 +253,8 @@ describe('お守り', () => {
     expect(lv(s, 'coinPurse')).toBe(6);
   });
 
-  it('カラスに食べられ続けるとカラス返し', () => {
+  // 一旦減らした要素（CUT）の間は飛ばす
+  it.skipIf(CUT.charms.includes('crowReturn'))('カラスに食べられ続けるとカラス返し', () => {
     const s = game();
     s.stats.crowEaten = EVENT_CONDITIONS.crowReturn - 1;
     s.field[at(0, 0)] = newCrop('tomato');
@@ -269,7 +270,8 @@ describe('遊ぶたびに増える要素', () => {
     maxCleared: -1, lines: 0, discovered: [], skins: [], skin: '', difficulty: 0,
   });
 
-  it('初めてクリアでメロン・金色のスロット・難しい1が開く', () => {
+  // 一旦減らした要素（CUT）の間は飛ばす
+  it.skipIf(CUT.symbols.includes('melonSeed'))('初めてクリアでメロン・金色のスロット・難しい1が開く', () => {
     const m = meta();
     const s = game();
     s.cleared = true;
@@ -734,7 +736,8 @@ describe('組み合わせ（同じ日にそろうと自動で起きる）', () =
     expect(symbolShape(s, 'thunder')).toBe('cross');
   });
 
-  it('商人＋金貨＝商売繁盛：金貨の額×2', () => {
+  // 一旦減らした要素（CUT）の間は飛ばす
+  it.skipIf(CUT.charms.includes('prosperity'))('商人＋金貨＝商売繁盛：金貨の額×2', () => {
     const s = game();
     s.results = [reel('merchant'), reel('coin'), reel('crow')];
     refreshCombos(s);
@@ -759,7 +762,8 @@ describe('組み合わせ（同じ日にそろうと自動で起きる）', () =
     expect(cropPrice(s, tomato)).toBe(base[0]);
   });
 
-  it('鍬＋トマトの種＝種まき日和：植えた作物は成長+1から', () => {
+  // 一旦減らした要素（CUT）の間は飛ばす
+  it.skipIf(CUT.charms.includes('sowing'))('鍬＋トマトの種＝種まき日和：植えた作物は成長+1から', () => {
     const s = game();
     s.results = [reel('hoe'), reel('seed', 2), reel('crow')];
     refreshCombos(s);

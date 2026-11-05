@@ -2,7 +2,7 @@
 
 import { L } from './i18n.ts';
 import {
-  BAG_CONDITIONS, COMBOS, COMBO_POWER, CHARMS, CHARM_ORDER, CHARM_PLACE, CONFIG, CROPS, EVENT_CONDITIONS, PLACE_ORDER, PLACES, SEEDS, SYMBOLS, SYMBOL_ORDER, TOOL_EVOLVE, UPGRADE_SYMBOL,
+  BAG_CONDITIONS, COMBOS, CUT, PAUSED_CHARMS, isCutAdd, COMBO_POWER, CHARMS, CHARM_ORDER, CHARM_PLACE, CONFIG, CROPS, EVENT_CONDITIONS, PLACE_ORDER, PLACES, SEEDS, SYMBOLS, SYMBOL_ORDER, TOOL_EVOLVE, UPGRADE_SYMBOL,
   type AddUpgradeId, type CharmId, type CropKind, type PlaceId, type ShapeId, type SymbolId, type UpgradeId,
 } from './config.ts';
 
@@ -585,7 +585,7 @@ export function rollObstacles(n: number, rng: Rng, difficulty = 0): SymbolId[] {
   const rule = obstacleRule(n, difficulty);
   const count = rule.count;
   // 難しい5：年貢のたびに増えるお邪魔にイナゴも混ざる
-  const pool = difficulty >= 5 ? [...rule.pool, 'locust' as SymbolId] : rule.pool;
+  const pool = (difficulty >= 5 ? [...rule.pool, 'locust' as SymbolId] : rule.pool).filter((s) => !CUT.symbols.includes(s));
   return Array.from({ length: count }, () => pool[Math.floor(rng() * pool.length)]);
 }
 
@@ -770,11 +770,12 @@ export function rollWeekly(state: GameState, rng: Rng): AddUpgradeId[] {
 
 /** 今日の仕入れ：準備で選んだ品（出やすい）・解放済みの品から。レア（満月・金の種）はたまに1つだけ混ざる */
 export function rollOffer(state: GameState, rng: Rng): AddUpgradeId[] {
-  const ids = [...new Set<AddUpgradeId>([...state.shop, ...state.pool])].filter((id) => !isRareOffer(id));
+  const ids = [...new Set<AddUpgradeId>([...state.shop, ...state.pool])].filter((id) => !isRareOffer(id) && !isCutAdd(id));
   const picks = pickWeighted(ids.map((id) => ({ id, w: state.shop.includes(id) ? 2 : 1 })), CONFIG.dailyOfferCount, rng);
   // たまにレア（満月・金の種）が1つ混ざる
-  if (rng() < CONFIG.rareOfferChance) {
-    const rare = CONFIG.rareOffers[Math.floor(rng() * CONFIG.rareOffers.length)] as AddUpgradeId;
+  const rares = CONFIG.rareOffers.filter((id) => !isCutAdd(id));
+  if (rares.length && rng() < CONFIG.rareOfferChance) {
+    const rare = rares[Math.floor(rng() * rares.length)] as AddUpgradeId;
     picks.splice(Math.min(picks.length, CONFIG.dailyOfferCount - 1), 1, rare);
   }
   return picks;
@@ -797,7 +798,7 @@ export function takeOffer(state: GameState, id: AddUpgradeId): boolean {
 
 /** 今週の畑の品：ショップで買える道具・特別なマスから weeklyCount 個。1つは作戦が変わる品 */
 export function rollWeeklyPlaces(state: GameState, rng: Rng): PlaceId[] {
-  return rollWithPivot(PLACE_ORDER.filter((id) => PLACES[id].price !== null).map((id) => ({ id, w: 1 })), (id) => isPivotPlace(state, id), rng);
+  return rollWithPivot(PLACE_ORDER.filter((id) => PLACES[id].price !== null && !CUT.places.includes(id)).map((id) => ({ id, w: 1 })), (id) => isPivotPlace(state, id), rng);
 }
 
 /** 雑草を抜く（草よけのお守りがあれば無料） */
@@ -1082,7 +1083,7 @@ export function resolveAuto(state: GameState, reel: number, rng: Rng): AutoEvent
       state.stats.cropsEaten++;
       state.stats.crowEaten++;
       // カラス返し：たくさん食べられたらその場でもらえる
-      if (state.charms.crowReturn === 0 && state.stats.crowEaten >= EVENT_CONDITIONS.crowReturn) grant(state, 'crowReturn');
+      if (!CUT.charms.includes('crowReturn') && state.charms.crowReturn === 0 && state.stats.crowEaten >= EVENT_CONDITIONS.crowReturn) grant(state, 'crowReturn');
       return { type: 'crow', cell, crop, eaten: true, toll, guarded: false };
     }
     default:
@@ -1505,7 +1506,7 @@ export function rollCharmOffer(state: GameState, rng: Rng): CharmId[] {
   state.ready = state.ready.filter((id) => !offer.includes(id));
   offer.forEach((id) => state.specials.includes(id) || state.specials.push(id));
   const pool = state.charmPool
-    .filter((id) => (!CHARMS[id].special || state.specials.includes(id)) && !offer.includes(id) && state.charms[id] < CHARMS[id].max && charmUseful(state, id))
+    .filter((id) => !PAUSED_CHARMS.includes(id) && (!CHARMS[id].special || state.specials.includes(id)) && !offer.includes(id) && state.charms[id] < CHARMS[id].max && charmUseful(state, id))
     .map((id) => ({
     id,
     w: CONFIG.charmTierWeights[CHARMS[id].tier],

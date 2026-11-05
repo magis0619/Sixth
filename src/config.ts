@@ -87,6 +87,16 @@ export type CharmId =
   | 'lastStraw'
   | 'exhibition';
 
+/**
+ * 一旦減らした要素（試し中）。ここに並べたものはゲームに出ない（仕入れ・ショップ・お邪魔・お守り・組み合わせ・図鑑）。
+ * コードは残してあるので、この表から消せば元に戻る。古いセーブで袋や畑にあるものはそのまま効く
+ */
+export const CUT = {
+  symbols: ['melonSeed', 'goldSeed', 'clover', 'hoe', 'merchant', 'frost', 'mole'] as SymbolId[],
+  places: ['well', 'water'] as string[],
+  charms: ['coinPurse', 'crowToll', 'bargain', 'goldLuck', 'goldenWell', 'wheelwright', 'tillMaster', 'heater', 'crowReturn', 'sowing', 'prosperity'] as CharmId[],
+};
+
 export interface SymbolDef {
   id: SymbolId;
   name: string;
@@ -551,7 +561,7 @@ export const CHARMS: Record<CharmId, CharmDef> = {
 
 export const CHARM_ORDER = Object.keys(CHARMS) as CharmId[];
 /** 一時停止中・廃止したお守り（図鑑・解放の一覧に出さない）。トマト祭りは廃止（古いセーブで持っていても効く） */
-export const PAUSED_CHARMS: CharmId[] = ['tomatoFest', ...(CONFIG.exhibitionOn ? [] : ['exhibition' as CharmId])];
+export const PAUSED_CHARMS: CharmId[] = ['tomatoFest', ...CUT.charms, ...(CONFIG.exhibitionOn ? [] : ['exhibition' as CharmId])];
 
 /** ふだんの抽選に出るお守り（特別なお守りは条件でしか出ない） */
 export const NORMAL_CHARMS = CHARM_ORDER.filter((id) => !CHARMS[id].special);
@@ -572,7 +582,7 @@ export const COMBO_POWER = {
 };
 
 /** 組み合わせ：同じ日のスロットにこの絵柄がそろうと、その日だけ自動で起きる */
-export const COMBOS: Partial<Record<CharmId, Partial<Record<SymbolId, number>>>> = {
+const ALL_COMBOS: Partial<Record<CharmId, Partial<Record<SymbolId, number>>>> = {
   thunderstorm: { rain: 1, thunder: 1 },
   sunshower: { rain: 1, sun: 1 },
   moonFeast: { moon: 1, sun: 1 },
@@ -583,6 +593,13 @@ export const COMBOS: Partial<Record<CharmId, Partial<Record<SymbolId, number>>>>
   prosperity: { merchant: 1, coin: 1 },
   festival: { rain: 1, sun: 1, moon: 1 },
 };
+export const COMBOS = Object.fromEntries(Object.entries(ALL_COMBOS).filter(([id]) => !CUT.charms.includes(id as CharmId))) as typeof ALL_COMBOS;
+
+/** 減らした絵柄を足す品か */
+export function isCutAdd(id: string): boolean {
+  const sym = UPGRADE_SYMBOL[id as UpgradeId]?.symbol;
+  return !!sym && CUT.symbols.includes(sym);
+}
 
 /** 出来事で開く特別なお守りの条件の数 */
 export const EVENT_CONDITIONS = {

@@ -1,7 +1,7 @@
 // 遊ぶたびに増える要素（豊穣ポイント・解放・ショップの組み合わせ）。ブラウザに保存する。
 
 import { L } from './i18n.ts';
-import { ACHIEVE_ADDS, CHARMS, CHARM_ORDER, CONFIG, DIFFICULTIES, META, THUNDER_LINES, type AddUpgradeId, type CharmId, type SymbolId } from './config.ts';
+import { ACHIEVE_ADDS, CHARMS, CHARM_ORDER, CONFIG, isCutAdd, DIFFICULTIES, META, THUNDER_LINES, type AddUpgradeId, type CharmId, type SymbolId } from './config.ts';
 import { ALL_ADDS, type GameSetup, type GameState } from './game.ts';
 
 export interface MetaState {
@@ -165,7 +165,7 @@ export function recordRun(meta: MetaState, state: GameState, final: boolean): st
   if (final) meta.lines += state.stats.lineHarvests;
   if (final && state.cleared) meta.clears++;
   const add = (id: AddUpgradeId, label: string) => {
-    if (meta.unlockedAdds.includes(id)) return;
+    if (meta.unlockedAdds.includes(id) || isCutAdd(id)) return;
     meta.unlockedAdds.push(id);
     newly.push(label);
   };
@@ -194,9 +194,9 @@ export function setupFrom(meta: MetaState): GameSetup {
   return {
     difficulty: Math.min(meta.difficulty, maxDifficulty(meta)),
     // レア仕入れ（満月・金の種）は準備で選べない（前に選んでいても外す）
-    shop: ALL_ADDS.filter((id) => meta.loadout.includes(id) && meta.unlockedAdds.includes(id) && !CONFIG.rareOffers.includes(id)),
+    shop: ALL_ADDS.filter((id) => meta.loadout.includes(id) && meta.unlockedAdds.includes(id) && !CONFIG.rareOffers.includes(id) && !isCutAdd(id)),
     charmPool: CHARM_ORDER.filter((id) => !(id in META.charmUnlock) || meta.unlockedCharms.includes(id)),
     // 週替わりは解放済みの「足す」強化から
-    pool: ALL_ADDS.filter((id) => meta.unlockedAdds.includes(id) && !CONFIG.rareOffers.includes(id)),
+    pool: ALL_ADDS.filter((id) => meta.unlockedAdds.includes(id) && !CONFIG.rareOffers.includes(id) && !isCutAdd(id)),
   };
 }

@@ -2,7 +2,7 @@
 
 import { L } from '../i18n.ts';
 import {
-  ACHIEVE_ADDS, CHARM_ORDER, COMBOS, type CharmId, type SymbolId, PAUSED_CHARMS, CHARM_TIER_NAMES, CHARMS, CONFIG, DIFFICULTIES, FEEDBACK_URL, META, SHARE_URL, SYMBOL_ORDER, SYMBOLS, THUNDER_LINES, UPGRADES,
+  ACHIEVE_ADDS, CHARM_ORDER, COMBOS, CUT, isCutAdd, type CharmId, type SymbolId, PAUSED_CHARMS, CHARM_TIER_NAMES, CHARMS, CONFIG, DIFFICULTIES, FEEDBACK_URL, META, SHARE_URL, SYMBOL_ORDER, SYMBOLS, THUNDER_LINES, UPGRADES,
 } from '../config.ts';
 import { nextTax } from '../game.ts';
 import {
@@ -146,12 +146,12 @@ export function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
       <li>${art('coinPurse')}<span>${L('年貢のあと：お守り1つ＋お邪魔が増える', 'After each tax: pick a charm, and pests join your bag')}</span></li>
       <li>${art('seed')}<span>${L('毎日の仕入れ：看板を押して1つ選ぶとタダで袋へ（たまにレア）', 'Daily pick: tap the sign and choose one free (sometimes rare)')}</span></li>
       <li>${art('bargain')}<span>${L('ショップ：道具・畑を広げる・お邪魔を消す', 'Shop: tools, bigger field, pest removal')}</span></li>
-      <li>${art('waterwheel')}<span>${L('水路：3つ並べると水車・4方を囲むと釣り堀（毎晩お金）', 'Water: 3 in a row = waterwheel, enclose a plot = fishing pond (nightly gold)')}</span></li>
+      ${CUT.places.includes('water') ? `<li>${art('henhouse')}<span>${L('鶏小屋・牛小屋：毎晩お金', 'Henhouse / cowshed: nightly gold')}</span></li>` : `<li>${art('waterwheel')}<span>${L('水路：3つ並べると水車・4方を囲むと釣り堀（毎晩お金）', 'Water: 3 in a row = waterwheel, enclose a plot = fishing pond (nightly gold)')}</span></li>`}
       <li>${art('sprout')}<span>${L('遊ぶほどポイント → 解放', 'Play to earn points → unlocks')}</span></li>
     </ul>`;
   // まだ出会っていない絵柄・組み合わせ・お守りは秘密（影と「？？？」）
   const secret = (ico: string) => `<div class="dex-row locked"><span class="e silhouette">${ico}</span><div><b>？？？</b></div></div>`;
-  const symbols = SYMBOL_ORDER.map((id) => {
+  const symbols = SYMBOL_ORDER.filter((id) => !CUT.symbols.includes(id) || state.bag[id] > 0).map((id) => {
     const d = SYMBOLS[id];
     if (!meta.seenSymbols.includes(id) && state.bag[id] === 0) return secret(symHtml(id));
     return `<div class="dex-row${d.rarity === 'bad' ? ' bad' : ''}"><span class="e">${symHtml(id)}</span>
@@ -360,7 +360,7 @@ export function collection(): string {
   const specials = CHARM_ORDER.filter((id) => CHARMS[id].special && !PAUSED_CHARMS.includes(id)).map((id) =>
     item(meta.discovered.includes(id), art(id), CHARMS[id].name, CHARMS[id].special!.hint),
   );
-  const adds = (Object.keys(ACHIEVE_ADDS) as (keyof typeof ACHIEVE_ADDS)[]).map((id) => {
+  const adds = (Object.keys(ACHIEVE_ADDS) as (keyof typeof ACHIEVE_ADDS)[]).filter((id) => !isCutAdd(id)).map((id) => {
     const done = meta.unlockedAdds.includes(id);
     const hint = id === 'addThunder' ? `${L('列', 'Lines')} ${Math.min(meta.lines, THUNDER_LINES)}/${THUNDER_LINES}` : ACHIEVE_ADDS[id]!.hint;
     return item(done, ADD_EMOJI[id], shortName(id), hint);
@@ -387,7 +387,7 @@ export function showUnlock(): void {
   const paint = () => {
     const capPrice = nextCapacityPrice(meta);
     const adds = (Object.keys(META.adds) as (keyof typeof META.adds)[])
-      .filter((id) => !CONFIG.rareOffers.includes(id) && !isAchieveAdd(id))
+      .filter((id) => !CONFIG.rareOffers.includes(id) && !isAchieveAdd(id) && !isCutAdd(id))
       .map((id) => {
         const def = META.adds[id];
         if (meta.unlockedAdds.includes(id)) {
@@ -497,7 +497,7 @@ export function showPrep(): void {
     const picked = meta.loadout.filter((id) => meta.unlockedAdds.includes(id));
     const used = loadoutCost(picked);
     const adds = (Object.keys(META.adds) as (keyof typeof META.adds)[])
-      .filter((id) => !CONFIG.rareOffers.includes(id) && meta.unlockedAdds.includes(id))
+      .filter((id) => !CONFIG.rareOffers.includes(id) && meta.unlockedAdds.includes(id) && !isCutAdd(id))
       .map((id, k) => {
         const def = META.adds[id];
         const on = meta.loadout.includes(id);
