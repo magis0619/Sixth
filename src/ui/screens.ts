@@ -144,7 +144,7 @@ export function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
       <li>${art('tomato')}${art('tomato')}${art('tomato')}<span>${L('縦・横・斜めに3つ＝高く売れる（単品は½）', '3 in a row (any direction) sell high; singles are ½')}</span></li>
       <li>${art('bale')}<span>${L(`${CONFIG.taxPeriod}日ごとに年貢。払えないと終わり／${CONFIG.winTaxes}回でクリア`, `Tax every ${CONFIG.taxPeriod} days. Can't pay = game over / pay ${CONFIG.winTaxes} to win`)}</span></li>
       <li>${art('coinPurse')}<span>${L('年貢のあと：お守り1つ＋お邪魔が増える', 'After each tax: pick a charm, and pests join your bag')}</span></li>
-      <li>${art('seed')}<span>${L('毎日の仕入れ：看板を押して1つ選ぶとタダで袋へ（たまにレア）', 'Daily pick: tap the sign and choose one free (sometimes rare)')}</span></li>
+      <li>${art('seed')}<span>${L(`仕入れ：${CONFIG.offerEvery}日に1回、3つから1つ必ず袋へ（たまにレア）`, `Restock: every ${CONFIG.offerEvery} days, add 1 of 3 to your bag (sometimes rare)`)}</span></li>
       <li>${art('bargain')}<span>${L('ショップ：道具・畑を広げる・お邪魔を消す', 'Shop: tools, bigger field, pest removal')}</span></li>
       ${CUT.places.includes('water') ? `<li>${art('henhouse')}<span>${L('鶏小屋・牛小屋：毎晩お金', 'Henhouse / cowshed: nightly gold')}</span></li>` : `<li>${art('waterwheel')}<span>${L('水路：3つ並べると水車・4方を囲むと釣り堀（毎晩お金）', 'Water: 3 in a row = waterwheel, enclose a plot = fishing pond (nightly gold)')}</span></li>`}
       <li>${art('sprout')}<span>${L('遊ぶほどポイント → 解放', 'Play to earn points → unlocks')}</span></li>

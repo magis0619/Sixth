@@ -572,8 +572,13 @@ describe('シナジーの手直し', () => {
 });
 
 describe('ショップは週替わり', () => {
-  it('絵柄は毎日の仕入れ（3択から1つタダ）。ショップで絵柄は足せない。畑の品は週ごとに3つ、消す品はいつでも', () => {
+  it('絵柄は仕入れ（offerEvery 日ごとに3択から1つタダ）。ショップで絵柄は足せない。畑の品は週ごとに3つ、消す品はいつでも', () => {
     const s = newGame();
+    // 仕入れの来ない日は空、来る日は3択
+    for (let d = 1; d < CONFIG.offerEvery; d++) {
+      drawDay(s, Math.random);
+      expect(s.offer).toEqual([]);
+    }
     drawDay(s, Math.random);
     expect(s.offer).toHaveLength(CONFIG.dailyOfferCount);
     expect(s.offer).not.toContain('addMoon');

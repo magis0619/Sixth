@@ -609,8 +609,8 @@ export function drawDay(state: GameState, rng: Rng): void {
     return { symbol, used: false, total, left: total, power };
   });
   refreshCombos(state);
-  // 毎日の仕入れ：その日の3択
-  state.offer = CONFIG.dailyPick ? rollOffer(state, rng) : [];
+  // 仕入れ：offerEvery 日ごとに3択
+  state.offer = CONFIG.dailyPick && state.day % CONFIG.offerEvery === 0 ? rollOffer(state, rng) : [];
   // 新しい週には新しい注文と週替わりの品が来る
   if (!state.order || state.order.dueDay < state.day) {
     state.order = makeOrder(state, rng);

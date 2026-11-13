@@ -387,9 +387,13 @@ export const CONFIG = {
   dailyPick: true,
   /** 毎日の仕入れに並ぶ数 */
   dailyOfferCount: 3,
+  /** 仕入れが来る間隔（日）。この日数ごとに1回 */
+  offerEvery: 3,
+  /** 仕入れは見送れない（必ず1つ選ぶ）。false なら見送れる */
+  offerForced: true,
   /** レア仕入れ：準備では選べず、毎日の仕入れにたまに混ざる絵柄と、その確率 */
   rareOffers: ['addMoon', 'addGoldSeed'] as UpgradeId[],
-  rareOfferChance: 0.08,
+  rareOfferChance: 0.2,
   /** 毎週1つは必ず並ぶ「作戦が変わる品」と、その作戦のひと言 */
   pivotAdds: {
     addBerrySeed: '苺：2日で実る。巣箱の周りで毎晩育つ',
@@ -412,7 +416,7 @@ export const CONFIG = {
   /** 年貢：taxPeriod 日ごとに、その日の終わり（次の回転前）に自動で徴収 */
   taxPeriod: 7,
   /** 1回目から順の年貢額。表を超えたら（エンドレス）直前の額 × taxGrowth */
-  taxSchedule: [5, 25, 80, 185, 280, 380, 475, 570],
+  taxSchedule: [5, 25, 75, 165, 245, 325, 400, 480],
   taxGrowth: 1.5,
   /** この回数の年貢を納めるとクリア（その後はエンドレス） */
   winTaxes: 7,

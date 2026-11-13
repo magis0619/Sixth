@@ -175,6 +175,8 @@ for (let n = 0; n < runs; n++) {
     // 毎日の仕入れ：買い物の優先順で欲しい物があれば取る。なければ見送る（袋を薄めない）
     const want = PRIORITY.find((id) => s.offer.includes(id as never) && wants(s, id));
     if (want) takeOffer(s, want as never);
+    // 見送れない仕入れは、欲しい物がなくても1つ取る
+    else if (CONFIG.offerForced && s.offer.length) takeOffer(s, s.offer[0]);
     playDay(s);
   }
   days.push(s.day);

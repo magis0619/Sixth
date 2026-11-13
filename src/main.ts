@@ -467,7 +467,7 @@ function renderSpinButton(): void {
       } catch {
         // 保存できなくても遊べる
       }
-      say(`${art('hand')} ${L('看板を押すと、今日の仕入れを選べる（タダ）', 'Tap the sign to pick a free symbol for today')}`, 3500);
+      if (!CONFIG.offerForced) say(`${art('hand')} ${L('看板を押すと、今日の仕入れを選べる（タダ）', 'Tap the sign to pick a free symbol for today')}`, 3500);
     }
     // 看板の上の吹き出し「仕入れ！」で、押せることを知らせる
     setHtml(cue, `<span class="offer-bubble">${L('仕入れ！', 'Pick!')}</span><span class="offer-label">${L('仕入れ', 'Pick')}</span>${state.offer.map((id) => `<span class="offer${isRareOffer(id) ? ' rare' : ''}" data-offer="${id}">${symHtml(UPGRADE_SYMBOL[id]!.symbol)}</span>`).join('')}`);
@@ -798,6 +798,11 @@ async function onSpin(): Promise<void> {
     return;
   }
   if (openSheetName) closeSheet();
+  // 仕入れは見送れない：選ぶまで次の日へ進めない
+  if (forcedOffer()) {
+    showOfferPick();
+    return;
+  }
   // 出目が残っているときは確認を出す（はい→armedNextDay を立てて回す）
   const leftover = state.day > 0 ? usableReels().length : 0;
   if (leftover > 0 && !armedNextDay) {
@@ -862,6 +867,13 @@ async function onSpin(): Promise<void> {
   endBusy();
   autoSelect();
   render();
+  // 仕入れの日は、演出が終わったら窓を開く（見送れない）
+  if (forcedOffer()) showOfferPick();
+}
+
+/** 選ぶまで進めない仕入れが残っている */
+function forcedOffer(): boolean {
+  return CONFIG.offerForced && state.offer.length > 0 && state.day > 0 && !state.over && !tut;
 }
 
 /** 動物がマスからひょっこり出てくる（何の動物か分かる大きさで） */
@@ -2187,16 +2199,16 @@ function showOfferPick(): void {
     .join('');
   el.overlay.innerHTML = `
     <div class="modal charm-modal offer-modal" role="dialog" aria-label="${L('今日の仕入れ', 'Daily pick')}">
-      <h2>${art('seed')} ${L('今日の仕入れ', 'Daily pick')}</h2>
+      <h2>${art('seed')} ${L('仕入れ', 'Restock')}</h2>
       <div class="charm-choices">${cards}</div>
-      <button class="secondary" id="offer-skip">${L('今日は見送る', 'Skip for now')}</button>
+      ${CONFIG.offerForced ? '' : `<button class="secondary" id="offer-skip">${L('今日は見送る', 'Skip for now')}</button>`}
     </div>`;
   el.overlay.classList.add('show');
   const close = () => {
     el.overlay.classList.remove('show');
     el.overlay.innerHTML = '';
   };
-  $('offer-skip').addEventListener('click', () => {
+  document.getElementById('offer-skip')?.addEventListener('click', () => {
     sfx.cancel();
     close();
   });
