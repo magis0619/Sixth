@@ -113,7 +113,7 @@ let base;
 const mod = (fn) => { const s = JSON.parse(base); fn(s); return JSON.stringify(s); };
 const C = 5;
 const rich = mod((s) => {
-  s.cols = 5; s.rows = 5; s.gold = 1234; s.day = 26; s.taxesPaid = 3;
+  s.cols = 5; s.rows = 5; s.gold = 1234; s.day = 27; s.taxesPaid = 3;
   const kinds = ['tomato', 'corn', 'pumpkin', 'strawberry'];
   for (let i = 0; i < 25; i++) s.field[i] = i % 4 === 3 ? null : { kind: kinds[i % 3], growth: i % 2 ? 99 : 1, fertilized: false, bonus: 0 };
   s.tools[6] = 'scarecrow'; s.tools[18] = 'goldenWell'; s.tiles[12] = 'water'; s.tiles[8] = 'compost';
