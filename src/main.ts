@@ -4,7 +4,7 @@ import {
   CHARMS, CHARM_ORDER, type CharmId, DIFFICULTIES, TOOL_EVOLVE, CONFIG, CROPS, PLACES, PLACE_ORDER, SEEDS, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL, type AddUpgradeId, type PlaceId, type SymbolId, type UpgradeId,
 } from './config.ts';
 import {
-  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawDay, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult, mustPlace, hasRoomFor, takeOffer, refreshCombos, symbolShape, isRareOffer,
+  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawDay, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult, mustPlace, hasRoomFor, takeOffer, refreshCombos, symbolShape, isRareOffer, isMarketDay, shopOpen, nextMarketDay,
 } from './game.ts';
 import { duckBgm, isMuted, sfx, suspendAudio, toggleMute, unlockAudio } from './audio.ts';
 import { saveMeta, setupFrom } from './meta.ts';
@@ -338,6 +338,14 @@ function renderTax(): void {
 function renderGoal(): void {
   const available = UPGRADES.filter((u) => upgradeAvailable(state, u.id));
   const tab = document.querySelector('.tab[data-sheet="shop"]')!;
+  // 市の日だけ開く。それ以外の日は次の市までの日数
+  tab.classList.toggle('closed', !shopOpen(state));
+  if (!shopOpen(state)) {
+    tab.classList.remove('ready');
+    const d = nextMarketDay(state);
+    el.goal.textContent = d === null || state.day === 0 ? '' : L(`あと${d - state.day}日`, `in ${d - state.day}d`);
+    return;
+  }
   const ready = available.some((u) => canBuy(state, u.id));
   tab.classList.toggle('ready', ready);
   if (ready) {
@@ -648,12 +656,55 @@ function shopItems(): typeof UPGRADES {
 }
 
 function renderShop(): void {
+  renderOfferShop();
   const items = shopItems();
   const adds = items.filter((u) => !u.id.startsWith('remove'));
   renderUpgradeList(el.shop, adds);
   // 毎日の仕入れのときは、ショップに絵柄の区画はいらない
   (el.shop.closest('.stall-sec') as HTMLElement).hidden = adds.length === 0;
   renderUpgradeList($('remove-shop'), items.filter((u) => u.id.startsWith('remove')));
+}
+
+/** 市の仕入れ：3つから1つタダで袋へ（見送れない） */
+function renderOfferShop(): void {
+  const box = $('offer-shop');
+  (box.closest('.stall-sec') as HTMLElement).hidden = !state.offer.length;
+  const html = state.offer
+    .map((id) => {
+      const sym = UPGRADE_SYMBOL[id]!.symbol;
+      const def = SYMBOLS[sym];
+      const after = { ...state.bag, [sym]: state.bag[sym] + 1 };
+      return `<button class="item affordable offer-item${isRareOffer(id) ? ' rare-offer' : ''}" data-take="${id}"><span class="ico">${symHtml(sym)}</span>
+        <span class="text"><span class="name">${def.name}${def.shape ? `<span class="oc-shape">${shapeIcon(def.shape)}</span>` : ''}${isRareOffer(id) ? `<span class="pivot-tag">${L('レア', 'Rare')}</span>` : ''}</span>
+        <span class="effect">${def.desc}　${bagPct(state.bag, sym)}% → <b>${bagPct(after, sym)}%</b></span></span>
+        <span class="cost free"><b>${L('タダ', 'Free')}</b></span></button>`;
+    })
+    .join('');
+  if (box.dataset.key !== state.offer.join(',')) {
+    box.dataset.key = state.offer.join(',');
+    box.innerHTML = html;
+    box.querySelectorAll<HTMLButtonElement>('[data-take]').forEach((b) => b.addEventListener('click', () => onTakeOffer(b)));
+  }
+}
+
+function onTakeOffer(b: HTMLButtonElement): void {
+  unlockAudio();
+  if (ui.busy || state.over) return;
+  const id = b.dataset.take as AddUpgradeId;
+  const from = center(b.querySelector('.ico')!);
+  if (!takeOffer(state, id)) return;
+  const sym = UPGRADE_SYMBOL[id]!.symbol;
+  sfx.buy();
+  accept(b);
+  later(() => {
+    render();
+    ripple(from.x, from.y, '#ffd84a');
+    const chip = visibleOr(el.bag.querySelector(`[data-sym="${sym}"]`), 'bag');
+    flyTo(from, chip, symHtml(sym), 1, () => {
+      pop(chip, 1.35);
+      burst(center(chip).x, center(chip).y, ['✨'], 6, 30);
+    });
+  }, 260);
 }
 
 /** 絵柄袋の品（足す・消す）を container に並べる */
@@ -680,7 +731,7 @@ function renderUpgradeList(container: HTMLElement, items: typeof UPGRADES): void
     const ico = upgradeArt(u.id);
     const pivot = u.id.startsWith('add') && isPivotAdd(state, u.id as AddUpgradeId);
     b.classList.toggle('pivot', pivot);
-    const html = `<span class="ico">${ico}</span><span class="text"><span class="name">${u.name}${pivot ? `<span class="pivot-tag">${L('新しい作戦', 'New plan')}</span>` : ''}</span><span class="effect">${pivot ? CONFIG.pivotAdds[u.id]!.split(/：|: /)[1] : upgradeEffect(u.id)}</span></span>${costHtml(available ? price : null, affordable, u.id.startsWith('remove') && state.bag[UPGRADE_SYMBOL[u.id]!.symbol] > 0 ? L('来週', 'Next wk') : L('完了', 'Done'))}`;
+    const html = `<span class="ico">${ico}</span><span class="text"><span class="name">${u.name}${pivot ? `<span class="pivot-tag">${L('新しい作戦', 'New plan')}</span>` : ''}</span><span class="effect">${pivot ? CONFIG.pivotAdds[u.id]!.split(/：|: /)[1] : upgradeEffect(u.id)}</span></span>${costHtml(available ? price : null, affordable, u.id.startsWith('remove') && state.bag[UPGRADE_SYMBOL[u.id]!.symbol] > 0 ? CONFIG.marketDays.length ? L('次の市', 'Next') : L('来週', 'Next wk') : L('完了', 'Done'))}`;
     if (b.innerHTML !== html) b.innerHTML = html;
   });
   if (container.id === 'remove-shop') $('stall-empty').hidden = items.length > 0;
@@ -739,7 +790,7 @@ function renderFarmShop(): void {
 
 function onBuyFarm(key: PlaceId | 'expand'): void {
   unlockAudio();
-  if (ui.busy || state.over) return;
+  if (ui.busy || state.over || holdMarket()) return;
   const card = el.farmShop.querySelector(`[data-id="${key}"]`) as HTMLElement;
   if (key === 'expand') {
     const price = expandPrice(state);
@@ -797,12 +848,12 @@ async function onSpin(): Promise<void> {
     reject(el.field, placeFirst());
     return;
   }
-  if (openSheetName) closeSheet();
   // 仕入れは見送れない：選ぶまで次の日へ進めない
   if (forcedOffer()) {
-    showOfferPick();
+    openMarket();
     return;
   }
+  if (openSheetName) closeSheet();
   // 出目が残っているときは確認を出す（はい→armedNextDay を立てて回す）
   const leftover = state.day > 0 ? usableReels().length : 0;
   if (leftover > 0 && !armedNextDay) {
@@ -867,8 +918,22 @@ async function onSpin(): Promise<void> {
   endBusy();
   autoSelect();
   render();
-  // 仕入れの日は、演出が終わったら窓を開く（見送れない）
-  if (forcedOffer()) showOfferPick();
+  // 市の日は、演出が終わったら市を開く（仕入れは見送れない）
+  if (isMarketDay(state.day) && !tut) openMarket();
+}
+
+/** 市を開く（仕入れ・畑の品・お邪魔を消す・広げるが1つの画面） */
+function openMarket(): void {
+  renderShop();
+  renderFarmShop();
+  openSheet('shop');
+}
+
+/** 仕入れを選ばずに市を閉じようとしたら止める */
+function holdMarket(): boolean {
+  if (!forcedOffer()) return false;
+  reject($('offer-shop'), L('仕入れを1つ選んでから', 'Pick one first'));
+  return true;
 }
 
 /** 選ぶまで進めない仕入れが残っている */
@@ -2179,60 +2244,9 @@ document.querySelector('.machine-top')!.addEventListener('click', () => {
   if (!state.offer.length || ui.busy || state.over || tut) return;
   unlockAudio();
   sfx.select();
-  showOfferPick();
+  openMarket();
 });
 
-/** 仕入れの窓：3つの絵柄の効果と、袋に入れたときの出やすさの変化を見て1つ選ぶ */
-function showOfferPick(): void {
-  const cards = state.offer
-    .map((id) => {
-      const sym = UPGRADE_SYMBOL[id]!.symbol;
-      const def = SYMBOLS[sym];
-      const after = { ...state.bag, [sym]: state.bag[sym] + 1 };
-      return `<button class="charm-card offer-card${isRareOffer(id) ? ' rare-offer' : ''}" data-take="${id}">${isRareOffer(id) ? `<span class="tier">${L('レア', 'Rare')}</span>` : ''}
-        <span class="e">${symHtml(sym)}</span>
-        <span class="oc-text"><b>${def.name}${def.shape ? `<span class="oc-shape">${shapeIcon(def.shape)}</span>` : ''}</b>
-        <span class="oc-desc">${def.desc}</span>
-        <span class="oc-odds">${art('seed')}×${state.bag[sym]} → <b>×${state.bag[sym] + 1}</b>　${bagPct(state.bag, sym)}% → <b>${bagPct(after, sym)}%</b></span></span>
-      </button>`;
-    })
-    .join('');
-  el.overlay.innerHTML = `
-    <div class="modal charm-modal offer-modal" role="dialog" aria-label="${L('今日の仕入れ', 'Daily pick')}">
-      <h2>${art('seed')} ${L('仕入れ', 'Restock')}</h2>
-      <div class="charm-choices">${cards}</div>
-      ${CONFIG.offerForced ? '' : `<button class="secondary" id="offer-skip">${L('今日は見送る', 'Skip for now')}</button>`}
-    </div>`;
-  el.overlay.classList.add('show');
-  const close = () => {
-    el.overlay.classList.remove('show');
-    el.overlay.innerHTML = '';
-  };
-  document.getElementById('offer-skip')?.addEventListener('click', () => {
-    sfx.cancel();
-    close();
-  });
-  el.overlay.querySelectorAll<HTMLButtonElement>('[data-take]').forEach((b) =>
-    b.addEventListener('click', () => {
-      const id = b.dataset.take as AddUpgradeId;
-      const from = center(b.querySelector('.e')!);
-      if (!takeOffer(state, id)) return;
-      const sym = UPGRADE_SYMBOL[id]!.symbol;
-      sfx.buy();
-      accept(b);
-      later(() => {
-        close();
-        render();
-        ripple(from.x, from.y, '#ffd84a');
-        const chip = visibleOr(el.bag.querySelector(`[data-sym="${sym}"]`), 'bag');
-        flyTo(from, chip, symHtml(sym), 1, () => {
-          pop(chip, 1.35);
-          burst(center(chip).x, center(chip).y, ['✨'], 6, 30);
-        });
-      }, 260);
-    }),
-  );
-}
 // 演出の最中に画面をタップすると早送り
 // 窓（お守り選び・確認など）や案内の吹き出しを押したときは、選ぶための操作なので早送りにしない
 document.addEventListener('pointerdown', (e) => {
@@ -2252,15 +2266,21 @@ document.querySelectorAll<HTMLButtonElement>('.tab').forEach((t) =>
     unlockAudio();
     if (ui.busy) return;
     const name = t.dataset.sheet as SheetName;
-    if (openSheetName === name) closeSheet();
-    else {
+    if (openSheetName === name) {
+      if (!holdMarket()) closeSheet();
+    } else if (name === 'shop' && !shopOpen(state)) {
+      // 市の日でなければ開かない。次の市を知らせる
+      sfx.error();
+      const d = nextMarketDay(state);
+      say(`${art('bargain')} ${d === null ? '' : L(`次の市は${d}日目（あと${d - state.day}日）`, `Next market: day ${d} (${d - state.day} days)`)}`, 2500);
+    } else {
       sfx.select();
       openSheet(name);
     }
   }),
 );
-el.sheetBackdrop.addEventListener('click', closeSheet);
-$('sheet-close').addEventListener('click', closeSheet);
+el.sheetBackdrop.addEventListener('click', () => holdMarket() || closeSheet());
+$('sheet-close').addEventListener('click', () => holdMarket() || closeSheet());
 // メニュー（遊び方・音・演出控えめ）
 const menu = $('hud-menu');
 const menuLabels = () => {

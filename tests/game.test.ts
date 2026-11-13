@@ -6,7 +6,7 @@ import { CONFIG, CROPS, CUT, EVENT_CONDITIONS, THUNDER_LINES, UPGRADE_SYMBOL } f
 import {
   animalGold, buy, buyPlace, drawDay, hasRanch, hiveBonus, isColorful, canPlace, canUse, cellMultiplier, cropPrice, isPond, waterWheels, checkReady, chooseCharm, endDay, evolveTools, expand, expandPrice,
   fieldCells, isGolden, lv, multSteps, newCrop, newGame, nextTax, obstacleRule, place, pullWeed, resolveAuto, ripeGroup,
-  canBuy, canBuyPlace, takeOffer, refreshCombos, symbolShape, canPlaceAt, isPivotAdd, isPivotPlace, mustPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult,
+  canBuy, canBuyPlace, canExpand, isMarketDay, takeOffer, refreshCombos, symbolShape, canPlaceAt, isPivotAdd, isPivotPlace, mustPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult,
 } from '../src/game.ts';
 import { recordRun, type MetaState } from '../src/meta.ts';
 import type { CropKind, SymbolId } from '../src/config.ts';
@@ -59,6 +59,7 @@ describe('畑と形', () => {
 
   it('畑を広げると列→行の順に増え、最大5×5', () => {
     const s = game();
+    s.day = CONFIG.marketDays[0];
     s.gold = 10000;
     const sizes: string[] = [];
     while (expandPrice(s) !== null) {
@@ -210,6 +211,7 @@ describe('道具・特別なマス', () => {
 
   it('買った道具は手元に入り、同じ物は買うたびに高くなる', () => {
     const s = game();
+    s.day = CONFIG.marketDays[0];
     s.gold = 1000;
     s.weeklyPlaces = ['scarecrow'];
     expect(buyPlace(s, 'scarecrow')).toBe(true);
@@ -502,16 +504,16 @@ describe('シナジー', () => {
 });
 
 describe('お邪魔を消すのは週1回まで', () => {
-  it('同じ週に2回目は消せず、週が替わるとまた消せる', () => {
+  it('1回の市で2回目は消せず、次の市でまた消せる', () => {
     const s = newGame();
+    s.day = CONFIG.marketDays[0];
     s.bag.crow = 3;
     s.bag.bug = 2;
     s.gold = 9999;
     expect(buy(s, 'removeCrow')).toBe(true);
     expect(canBuy(s, 'removeBug')).toBe(false);
     expect(buy(s, 'removeCrow')).toBe(false);
-    s.order = null;
-    drawDay(s, Math.random);
+    while (s.day < CONFIG.marketDays[1]) drawDay(s, Math.random);
     expect(buy(s, 'removeBug')).toBe(true);
   });
 });
@@ -572,14 +574,20 @@ describe('シナジーの手直し', () => {
 });
 
 describe('ショップは週替わり', () => {
-  it('絵柄は仕入れ（offerEvery 日ごとに3択から1つタダ）。ショップで絵柄は足せない。畑の品は週ごとに3つ、消す品はいつでも', () => {
+  it('市の日だけ仕入れ（3択から1つタダ）と買い物ができる。ショップで絵柄は足せない。畑の品は週ごとに3つ', () => {
     const s = newGame();
-    // 仕入れの来ない日は空、来る日は3択
-    for (let d = 1; d < CONFIG.offerEvery; d++) {
+    // 市の日でない日は仕入れが空で、何も買えない
+    for (let d = 1; d < CONFIG.marketDays[0]; d++) {
       drawDay(s, Math.random);
       expect(s.offer).toEqual([]);
+      s.gold = 9999;
+      s.bag.crow = 2;
+      expect(canBuy(s, 'removeCrow')).toBe(false);
+      expect(canExpand(s)).toBe(false);
+      s.gold = 0;
     }
     drawDay(s, Math.random);
+    expect(isMarketDay(s.day)).toBe(true);
     expect(s.offer).toHaveLength(CONFIG.dailyOfferCount);
     expect(s.offer).not.toContain('addMoon');
     expect(s.weeklyPlaces).toHaveLength(CONFIG.weeklyCount);
@@ -648,6 +656,7 @@ describe('土地と建物', () => {
 
   it('建物を置ける空きマスがなければ買えない。土地は敷けるマスが残っていれば買える', () => {
     const s = newGame();
+    s.day = CONFIG.marketDays[0];
     s.gold = 9999;
     s.weeklyPlaces = ['henhouse', 'water'];
     fieldCells(s).forEach((c) => (s.field[c] = newCrop('tomato')));
@@ -659,6 +668,7 @@ describe('土地と建物', () => {
 
   it('買った物を置くまでは次を買えない', () => {
     const s = newGame();
+    s.day = CONFIG.marketDays[0];
     s.gold = 9999;
     s.weeklyPlaces = ['henhouse', 'water'];
     expect(buyPlace(s, 'henhouse')).toBe(true);
@@ -722,15 +732,17 @@ describe('組み合わせ（同じ日にそろうと自動で起きる）', () =
   it('満月と金の種は仕入れにたまに混ざるレア。ふだんの3択には出ない', () => {
     const s = game();
     let seenRare = 0;
-    for (let k = 0; k < 400; k++) {
+    for (let k = 0; k < 400; ) {
       s.order = { crop: 'tomato', need: 3, have: 0, reward: 1, dueDay: 999, done: false };
       drawDay(s, Math.random);
+      if (!s.offer.length) continue;
+      k++;
       const rare = s.offer.filter((id) => id === 'addMoon' || id === 'addGoldSeed');
       expect(rare.length).toBeLessThanOrEqual(1);
       seenRare += rare.length;
     }
-    expect(seenRare).toBeGreaterThan(20);
-    expect(seenRare).toBeLessThan(120);
+    expect(seenRare).toBeGreaterThan(10);
+    expect(seenRare).toBeLessThan(70);
   });
 
   it('雷＋太陽＝青天の霹靂：雷が十字に効く', () => {

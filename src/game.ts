@@ -609,8 +609,8 @@ export function drawDay(state: GameState, rng: Rng): void {
     return { symbol, used: false, total, left: total, power };
   });
   refreshCombos(state);
-  // 仕入れ：offerEvery 日ごとに3択
-  state.offer = CONFIG.dailyPick && state.day % CONFIG.offerEvery === 0 ? rollOffer(state, rng) : [];
+  // 仕入れ：市の日に3択（市の日がなければ毎日）
+  state.offer = CONFIG.dailyPick && (!CONFIG.marketDays.length || isMarketDay(state.day)) ? rollOffer(state, rng) : [];
   // 新しい週には新しい注文と週替わりの品が来る
   if (!state.order || state.order.dueDay < state.day) {
     state.order = makeOrder(state, rng);
@@ -620,6 +620,25 @@ export function drawDay(state: GameState, rng: Rng): void {
     // 相場は難しいモードから（marketFrom 以上）
     state.market = CONFIG.marketOn && state.difficulty >= CONFIG.marketFrom ? rollMarket(state, rng) : null;
   }
+  // お邪魔を消せる回数は市ごとに戻る
+  if (isMarketDay(state.day)) state.removedThisWeek = 0;
+}
+
+/** 市の日か（週の marketDays 日目） */
+export function isMarketDay(day: number): boolean {
+  return day > 0 && CONFIG.marketDays.includes(((day - 1) % CONFIG.taxPeriod) + 1);
+}
+
+/** 今、買い物ができるか（市の日がない設定ならいつでも） */
+export function shopOpen(state: GameState): boolean {
+  return !CONFIG.marketDays.length || isMarketDay(state.day);
+}
+
+/** 次の市の日（今日が市なら今日） */
+export function nextMarketDay(state: GameState): number | null {
+  if (!CONFIG.marketDays.length) return null;
+  for (let d = Math.max(1, state.day); d < state.day + CONFIG.taxPeriod + 1; d++) if (isMarketDay(d)) return d;
+  return null;
 }
 
 /** 空きマス（畑の中で、作物・道具・雑草・霜・池がない） */
@@ -1474,7 +1493,7 @@ export function removeLimitReached(state: GameState): boolean {
 }
 
 export function canBuy(state: GameState, id: UpgradeId): boolean {
-  return !state.over && upgradeAvailable(state, id) && state.gold >= upgradePrice(state, id);
+  return !state.over && shopOpen(state) && upgradeAvailable(state, id) && state.gold >= upgradePrice(state, id);
 }
 
 export function buy(state: GameState, id: UpgradeId): boolean {
@@ -1542,7 +1561,7 @@ export function expandPrice(state: GameState): number | null {
 
 export function canExpand(state: GameState): boolean {
   const p = expandPrice(state);
-  return !state.over && p !== null && state.gold >= p;
+  return !state.over && shopOpen(state) && p !== null && state.gold >= p;
 }
 
 /** 列→行の順に1つ広げる（3×3 → 4×3 → 4×4 → 5×4 → 5×5） */
@@ -1565,7 +1584,7 @@ export function placePrice(state: GameState, id: PlaceId): number | null {
 export function canBuyPlace(state: GameState, id: PlaceId): boolean {
   const p = placePrice(state, id);
   // 置ける場所がない物は買えない。手元に置き待ちがあるうちは次を買えない
-  return !state.over && p !== null && state.weeklyPlaces.includes(id) && state.gold >= p && hasRoomFor(state, id) && !mustPlace(state);
+  return !state.over && shopOpen(state) && p !== null && state.weeklyPlaces.includes(id) && state.gold >= p && hasRoomFor(state, id) && !mustPlace(state);
 }
 
 /** 買って手元に置く。畑に置くのは place で */

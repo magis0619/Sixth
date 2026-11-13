@@ -37,6 +37,10 @@ async function settle(page: Page): Promise<'play' | 'over' | 'clear'> {
     if (await page.locator('#overlay.show #clear-continue').count()) return 'clear';
     const card = page.locator('#overlay.show .charm-card:not([disabled])').first();
     if (await card.count()) { await card.click({ force: true, timeout: 1000 }).catch(() => {}); continue; }
+    // 市の日：仕入れを1つ選んでから市を閉じる
+    const take = page.locator('#sheet.open #offer-shop [data-take]').first();
+    if (await take.count()) { await take.click({ force: true, timeout: 1000 }).catch(() => {}); await page.waitForTimeout(400); continue; }
+    if (await page.locator('#sheet.open').count()) { await page.click('#sheet-close', { force: true }).catch(() => {}); await page.waitForTimeout(300); continue; }
     const spinReady = await page.locator('#spin').evaluate((n) => !(n as HTMLButtonElement).disabled);
     if (spinReady && !(await page.locator('#overlay.show').count())) return 'play';
     await page.waitForTimeout(100);

@@ -68,7 +68,7 @@
       </section>
 
       <nav class="tabs" aria-label="メニュー" data-en-label="Menu">
-        <button class="tab" data-sheet="shop"><span class="tab-ico" data-art="bargain"></span><span data-en="Shop">ショップ</span><span class="tab-note" id="goal"></span></button>
+        <button class="tab" data-sheet="shop"><span class="tab-ico" data-art="bargain"></span><span data-en="Market">市</span><span class="tab-note" id="goal"></span></button>
         <button class="tab" data-sheet="bag"><span class="tab-ico" data-art="seed"></span><span data-en="Bag">絵柄袋</span><span class="tab-note" id="bag-total"></span></button>
         <button class="tab" data-sheet="charms"><span class="tab-ico" data-art="coinPurse"></span><span data-en="Charms">お守り</span><span class="tab-note" id="charm-count"></span></button>
       </nav>
@@ -85,6 +85,11 @@
       <div class="sheet-pane" data-pane="shop">
         <!-- 屋台：畑・絵柄を足す・お邪魔を消す を、1つの画面に見出しで分けて並べる -->
         <div class="stall" id="stall">
+          <section class="stall-sec offer-sec" hidden>
+            <div class="awning"></div>
+            <h3 class="stall-head"><span class="tab-ico" data-art="gift"></span><span data-en="Pick one free (required)">タダで1つ（必ず選ぶ）</span></h3>
+            <div class="shop" id="offer-shop"></div>
+          </section>
           <section class="stall-sec">
             <div class="awning"></div>
             <h3 class="stall-head"><span class="tab-ico" data-art="expand"></span><span data-en="Farm">畑</span></h3>

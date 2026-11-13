@@ -376,7 +376,7 @@ export const CONFIG = {
   moonGrowth: 1.5,
   /** カラス・虫を消す価格は、消すたびに removeGrowth 倍になる */
   removeGrowth: 2,
-  /** お邪魔を消せるのは1週間（次の年貢まで）にこの回数まで。一気に全部消して楽になりすぎないように */
+  /** お邪魔を消せるのは1回の市（市の日がなければ1週間）にこの回数まで。一気に全部消して楽になりすぎないように */
   removesPerWeek: 1,
   /** ショップに週ごとに並ぶ数（絵柄を足す品・畑の品それぞれ）。消す品と畑を広げるはいつも並ぶ */
   weeklyCount: 3,
@@ -387,13 +387,16 @@ export const CONFIG = {
   dailyPick: true,
   /** 毎日の仕入れに並ぶ数 */
   dailyOfferCount: 3,
-  /** 仕入れが来る間隔（日）。この日数ごとに1回 */
-  offerEvery: 3,
+  /**
+   * 市の日（試し中）：週の何日目に市が立つか。市の日だけ、タダの仕入れ（3つから1つ必ず）と買い物（畑の品・お邪魔を消す・広げる）ができる。
+   * 空にすると、仕入れは毎日・ショップはいつでもに戻る
+   */
+  marketDays: [3, 6] as number[],
   /** 仕入れは見送れない（必ず1つ選ぶ）。false なら見送れる */
   offerForced: true,
   /** レア仕入れ：準備では選べず、毎日の仕入れにたまに混ざる絵柄と、その確率 */
   rareOffers: ['addMoon', 'addGoldSeed'] as UpgradeId[],
-  rareOfferChance: 0.2,
+  rareOfferChance: 0.08,
   /** 毎週1つは必ず並ぶ「作戦が変わる品」と、その作戦のひと言 */
   pivotAdds: {
     addBerrySeed: '苺：2日で実る。巣箱の周りで毎晩育つ',
@@ -416,7 +419,7 @@ export const CONFIG = {
   /** 年貢：taxPeriod 日ごとに、その日の終わり（次の回転前）に自動で徴収 */
   taxPeriod: 7,
   /** 1回目から順の年貢額。表を超えたら（エンドレス）直前の額 × taxGrowth */
-  taxSchedule: [5, 25, 75, 165, 245, 325, 400, 480],
+  taxSchedule: [5, 25, 80, 185, 280, 380, 475, 570],
   taxGrowth: 1.5,
   /** この回数の年貢を納めるとクリア（その後はエンドレス） */
   winTaxes: 7,

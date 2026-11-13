@@ -7162,3 +7162,10 @@ html.hurry .hurry-edge {
 .dex-row.locked b {
   color: rgba(61, 51, 38, 0.5);
 }
+
+/* 市：市の日でないときのタブは沈ませる。仕入れの品は「タダ」の札 */
+.tab.closed { opacity: 0.55; filter: saturate(0.4); }
+.cost.free b { color: #2f7d2a; }
+.item.offer-item { border-color: #e0b84a; }
+.item.offer-item.rare-offer { background: #fff3c4; }
+.calm .item.offer-item { animation: none; }
