@@ -349,7 +349,7 @@ function renderGoal(): void {
   const ready = available.some((u) => canBuy(state, u.id));
   tab.classList.toggle('ready', ready);
   if (ready) {
-    el.goal.textContent = L('買える！', 'Can buy!');
+    el.goal.textContent = L('買える', 'Can buy');
     return;
   }
   const next = available.sort((a, b) => upgradePrice(state, a.id) - upgradePrice(state, b.id))[0];
@@ -478,7 +478,7 @@ function renderSpinButton(): void {
       if (!CONFIG.offerForced) say(`${art('hand')} ${L('看板を押すと、今日の仕入れを選べる（タダ）', 'Tap the sign to pick a free symbol for today')}`, 3500);
     }
     // 看板の上の吹き出し「仕入れ！」で、押せることを知らせる
-    setHtml(cue, `<span class="offer-bubble">${L('仕入れ！', 'Pick!')}</span><span class="offer-label">${L('仕入れ', 'Pick')}</span>${state.offer.map((id) => `<span class="offer${isRareOffer(id) ? ' rare' : ''}" data-offer="${id}">${symHtml(UPGRADE_SYMBOL[id]!.symbol)}</span>`).join('')}`);
+    setHtml(cue, `<span class="offer-bubble">${L('仕入れ', 'Pick')}</span><span class="offer-label">${L('仕入れ', 'Pick')}</span>${state.offer.map((id) => `<span class="offer${isRareOffer(id) ? ' rare' : ''}" data-offer="${id}">${symHtml(UPGRADE_SYMBOL[id]!.symbol)}</span>`).join('')}`);
     return;
   }
   setHtml(cue, !ready
@@ -743,7 +743,7 @@ function showExpanded(): void {
   flash('#c8f0a0', 400);
   const f = center(el.field);
   burst(f.x, f.y, ['🌱', '✨', '⭐'], 18, 160);
-  floatText(f.x, f.y, L(`畑が広がった！ ${state.cols}×${state.rows}`, `Field expanded! ${state.cols}×${state.rows}`), { cls: 'good', size: 1.2, dur: 1500 });
+  floatText(f.x, f.y, L(`畑が広がった ${state.cols}×${state.rows}`, `Field expanded ${state.cols}×${state.rows}`), { cls: 'good', size: 1.2, dur: 1500 });
   fieldCells().forEach((c) => pop(el.field.children[c], 1.08));
 }
 
@@ -965,7 +965,7 @@ async function showNightIncome(): Promise<void> {
       const ripe = isRipe(state.field[c]);
       pop(plot, ripe ? 1.2 : 1.1);
       burst(q.x, q.y, ripe ? ['✨', '⭐'] : ['💧', '✨'], ripe ? 8 : 4, ripe ? 50 : 30);
-      floatText(q.x, q.y + 10, ripe ? L('実った！', 'Ripe!') : L('育った', 'Grew'), { cls: ripe ? 'gold pill' : 'good pill', size: ripe ? 0.8 : 0.7, rise: 20, dur: 1000 });
+      floatText(q.x, q.y + 10, ripe ? L('実った', 'Ripe') : L('育った', 'Grew'), { cls: ripe ? 'gold pill' : 'good pill', size: ripe ? 0.8 : 0.7, rise: 20, dur: 1000 });
     });
     sfx.grow();
     if (n.grown.some((c) => isRipe(state.field[c]))) sfx.pon();
@@ -1215,7 +1215,7 @@ function onReelLanded(i: number, reel: HTMLElement): void {
     if (total >= 3) {
       sfx.bonus();
       burst(c.x, c.y, ['🌰', '✨'], 12, 80);
-      floatText(c.x, c.y - 40, L(`種×${total}！`, `Seeds ×${total}!`), { cls: 'gold', size: 1 });
+      floatText(c.x, c.y - 40, L(`種×${total}`, `Seeds ×${total}`), { cls: 'gold', size: 1 });
       vibrate(40);
     } else {
       floatText(c.x, c.y - 40, `×${total}`, { cls: 'good', size: 0.8 });
@@ -1258,14 +1258,14 @@ async function resolveAutos(): Promise<void> {
       autoOutcome[i] = L(`売値×${fmtMult(ev.mult)}`, `Price ×${fmtMult(ev.mult)}`);
       sfx.merchant();
       burst(from.x, from.y, ['💰', '✨', '🪙'], 10, 70);
-      floatText(from.x, from.y - 40, L(`今日の売値 ×${fmtMult(ev.mult)}！`, `Prices ×${fmtMult(ev.mult)} today!`), { cls: 'gold', size: 0.9 });
+      floatText(from.x, from.y - 40, L(`今日の売値 ×${fmtMult(ev.mult)}`, `Prices ×${fmtMult(ev.mult)} today`), { cls: 'gold', size: 0.9 });
       render();
       el.field.querySelectorAll('.plot.ripe').forEach((p) => pop(p, 1.12));
     } else if (ev.type === 'clover') {
       autoOutcome[i] = L('明日 金の種↑', 'Gold seed↑');
       sfx.rare();
       burst(from.x, from.y, ['🍀', '✨', '🌟'], 12, 80);
-      floatText(from.x, from.y - 40, L('明日は金の種が出やすい！', 'Golden seeds likelier tomorrow!'), { cls: 'good', size: 0.8 });
+      floatText(from.x, from.y - 40, L('明日は金の種が出やすい', 'Golden seeds likelier tomorrow'), { cls: 'good', size: 0.8 });
       renderStatus();
     } else if (ev.type === 'bug') {
       if (ev.cell === null) {
@@ -1280,12 +1280,12 @@ async function resolveAutos(): Promise<void> {
           sfx.shoo();
           if (ev.hen) critterPop(p, art('henhouse'));
           burst(p.x, p.y, ev.hen ? ['🪶', '✨'] : ['🌿', '✨'], 8, 50);
-          floatText(p.x, ev.hen ? p.y + 28 : p.y - 20, ev.hen ? L('鶏がパクッ！', 'Hen gobbled it!') : L('虫よけ成功！', 'Bug blocked!'), { cls: 'good pill', size: 0.8 });
+          floatText(p.x, ev.hen ? p.y + 28 : p.y - 20, ev.hen ? L('鶏が食べた', 'Hen ate it') : L('虫よけ成功', 'Bug blocked'), { cls: 'good pill', size: 0.8 });
         } else {
           autoOutcome[i] = L(`成長−${ev.damage}`, `Growth −${ev.damage}`);
           sfx.bug();
           burst(p.x, p.y, ['🐛', '🍂'], 6, 40);
-          floatText(p.x, p.y - 20, L(`かじられた！ 成長−${ev.damage}`, `Nibbled! Growth −${ev.damage}`), { cls: 'bad', size: 0.8 });
+          floatText(p.x, p.y - 20, L(`かじられた 成長−${ev.damage}`, `Nibbled: growth −${ev.damage}`), { cls: 'bad', size: 0.8 });
           shake(plot, 6);
           renderField();
         }
@@ -1294,7 +1294,7 @@ async function resolveAutos(): Promise<void> {
       if (ev.warded) {
         autoOutcome[i] = L('よけた', 'Blocked');
         sfx.shoo();
-        floatText(from.x, from.y - 30, L('草よけ成功！', 'Weed blocked!'), { cls: 'good', size: 0.7 });
+        floatText(from.x, from.y - 30, L('草よけ成功', 'Weed blocked'), { cls: 'good', size: 0.7 });
       } else if (!ev.cells.length) {
         autoOutcome[i] = L('空振り', 'Miss');
         floatText(from.x, from.y - 30, L('生える場所がない', 'Nowhere to grow'), { size: 0.6 });
@@ -1314,7 +1314,7 @@ async function resolveAutos(): Promise<void> {
       if (ev.escaped) {
         autoOutcome[i] = L('逃げた', 'Fled');
         sfx.shoo();
-        floatText(from.x, from.y - 30, L('かかしがいてタヌキは近寄れない！', "The scarecrow kept the tanuki away!"), { cls: 'good', size: 0.7 });
+        floatText(from.x, from.y - 30, L('かかしがいてタヌキは近寄れない', 'The scarecrow kept the tanuki away'), { cls: 'good', size: 0.7 });
         ev.guarded.forEach((c) => pop(el.field.children[c], 1.12));
       } else if (!ev.taken.length) {
         autoOutcome[i] = ev.stolen ? `−${gold(ev.stolen)}` : L('空振り', 'Miss');
@@ -1335,7 +1335,7 @@ async function resolveAutos(): Promise<void> {
           sfx.poof();
           const q = center(plot);
           burst(q.x, q.y, ['💨', '🍂'], 8, 50);
-          floatText(q.x, q.y - 20, L(`持っていかれた！ −${t.price}`, `Stolen! ${t.price}g gone…`), { cls: 'bad', size: 0.9 });
+          floatText(q.x, q.y - 20, L(`持っていかれた −${t.price}`, `Stolen: ${t.price}g gone`), { cls: 'bad', size: 0.9 });
           shake(plot, 8);
           renderField();
         }
@@ -1352,7 +1352,7 @@ async function resolveAutos(): Promise<void> {
         sfx.shoo();
         critterPop(q, art('henhouse'));
         burst(q.x, q.y, ['🪶', '💨'], 8, 50);
-        floatText(q.x, q.y + 28, L('追い払った！', 'Chased off!'), { cls: 'good pill', size: 0.8 });
+        floatText(q.x, q.y + 28, L('追い払った', 'Chased off'), { cls: 'good pill', size: 0.8 });
       }
       if (!ev.moves.length && !ev.chased.length) {
         floatText(from.x, from.y - 30, L('モグラは空振り', 'The mole missed'), { size: 0.6 });
@@ -1371,7 +1371,7 @@ async function resolveAutos(): Promise<void> {
         ev.moves.forEach((m) => {
           const q = center(el.field.children[m.to]);
           pop(el.field.children[m.to], 1.15);
-          floatText(q.x, q.y - 20, L('押し出された！', 'Pushed out!'), { cls: 'bad', size: 0.7 });
+          floatText(q.x, q.y - 20, L('押し出された', 'Pushed out'), { cls: 'bad', size: 0.7 });
         });
       }
     } else if (ev.type === 'frost') {
@@ -1383,7 +1383,7 @@ async function resolveAutos(): Promise<void> {
         ev.cells.forEach((c) => {
           const q = center(el.field.children[c]);
           burst(q.x, q.y, ['❄️', '✨'], 8, 40);
-          floatText(q.x, q.y - 20, L('凍った！', 'Frozen!'), { cls: 'bad', size: 0.8 });
+          floatText(q.x, q.y - 20, L('凍った', 'Frozen'), { cls: 'bad', size: 0.8 });
         });
       }
     } else if (ev.type === 'locust') {
@@ -1391,14 +1391,14 @@ async function resolveAutos(): Promise<void> {
       autoOutcome[i] = L(`袋+${ev.bred}`, `Bag +${ev.bred}`);
       sfx.bug();
       const chip = visibleOr(el.bag.querySelector('[data-sym="locust"]'), 'bag');
-      floatText(from.x, from.y - 40, L(`イナゴが増えた！ +${ev.bred}`, `Locusts multiplied! +${ev.bred}`), { cls: 'bad', size: 0.9 });
+      floatText(from.x, from.y - 40, L(`イナゴが増えた +${ev.bred}`, `Locusts multiplied +${ev.bred}`), { cls: 'bad', size: 0.9 });
       flyTo(from, chip, symHtml('locust'), ev.bred, () => pop(chip, 1.3));
       if (ev.cell !== null) {
         const plot = el.field.children[ev.cell] as HTMLElement;
         await travel(from, plot, symHtml('locust'), true);
         const p = center(plot);
         burst(p.x, p.y, ['🍂', '🍃'], 6, 40);
-        floatText(p.x, p.y - 20, L('かじられた！ 成長−1', 'Nibbled! Growth −1'), { cls: 'bad', size: 0.8 });
+        floatText(p.x, p.y - 20, L('かじられた 成長−1', 'Nibbled: growth −1'), { cls: 'bad', size: 0.8 });
         shake(plot, 6);
         renderField();
       }
@@ -1415,7 +1415,7 @@ async function resolveAutos(): Promise<void> {
       sfx.shoo();
       const p = center(plot);
       burst(p.x, p.y, ['💨', '🪶', '✨'], 8, 60);
-      floatText(p.x, p.y - 20, ev.guarded ? L('かかしが追い払った！', 'Scarecrow chased it off!') : ev.crop && isRipe(ev.crop) ? L('セーフ！ 守った！', 'Safe! Protected!') : L('セーフ！', 'Safe!'), { cls: 'good', size: ev.crop && isRipe(ev.crop) ? 1 : 0.8 });
+      floatText(p.x, p.y - 20, ev.guarded ? L('かかしが追い払った', 'Scarecrow chased it off') : ev.crop && isRipe(ev.crop) ? L('セーフ 守った', 'Safe: protected') : L('セーフ', 'Safe'), { cls: 'good', size: ev.crop && isRipe(ev.crop) ? 1 : 0.8 });
       pop(plot, 1.12);
     } else {
       autoOutcome[i] = L('パクッ…', 'Chomp…');
@@ -1427,7 +1427,7 @@ async function resolveAutos(): Promise<void> {
       const p = center(plot);
       burst(p.x, p.y, ['🪶', '💨', '🍂'], 8, 50);
       const lost = ev.crop ? (isRipe(ev.crop) ? L(`−${cropPrice(state, ev.crop)}`, `${cropPrice(state, ev.crop)}g gone…`) : CROPS[ev.crop.kind].name) : '';
-      floatText(p.x, p.y - 20, L(`パクッ！ ${lost}`, `Chomp! ${lost}`), { cls: 'bad', size: ev.crop && isRipe(ev.crop) ? 1 : 0.8 });
+      floatText(p.x, p.y - 20, L(`食べられた ${lost}`, `Eaten ${lost}`), { cls: 'bad', size: ev.crop && isRipe(ev.crop) ? 1 : 0.8 });
       shake(plot, 8);
       if (ev.crop && isRipe(ev.crop)) {
         shake(el.app, 5);
@@ -1609,10 +1609,10 @@ function onPlotTap(cell: number): void {
         const q = center(el.field.children[c]);
         later(() => burst(q.x, q.y + 10, ['💨', '🌰'], 5, 34), k * 70);
       });
-      floatText(p.x, p.y - 20, L('耕した！', 'Tilled!'), { cls: 'good', size: 0.8 });
+      floatText(p.x, p.y - 20, L('耕した', 'Tilled'), { cls: 'good', size: 0.8 });
     } else if (sym === 'fertilizer' && left > 0) {
       sfx.fertilizer();
-      floatText(p.x, p.y - 20, L('売値×2！（あと1つ）', 'Price ×2! (1 more)'), { cls: 'combo', size: 0.9 });
+      floatText(p.x, p.y - 20, L('売値×2（あと1つ）', 'Price ×2 (1 more)'), { cls: 'combo', size: 0.9 });
     } else if (sym === 'rain') {
       sfx.rain();
       rainShower(shapeCells(state, 'cross', cell).map((c) => el.field.children[c]));
@@ -1648,7 +1648,7 @@ function onPlotTap(cell: number): void {
       sfx.fertilizer();
       burst(p.x, p.y, ['✨', '💜'], 10, 50);
       pop(plot, 1.15);
-      floatText(p.x, p.y - 20, L('売値×2！', 'Price ×2!'), { cls: 'combo', size: 0.9 });
+      floatText(p.x, p.y - 20, L('売値×2', 'Price ×2'), { cls: 'combo', size: 0.9 });
     }
     return;
   }
@@ -1664,7 +1664,7 @@ function onPlotTap(cell: number): void {
     }
     sfx.poof();
     burst(p.x, p.y, ['🍃', '💨'], 8, 50);
-    floatText(p.x, p.y - 20, weedCost(state) ? L(`草むしり −${weedCost(state)}`, `Weeded −${weedCost(state)}g`) : L('草むしり！', 'Weeded!'), { size: 0.8 });
+    floatText(p.x, p.y - 20, weedCost(state) ? L(`草むしり −${weedCost(state)}`, `Weeded −${weedCost(state)}g`) : L('草むしり', 'Weeded'), { size: 0.8 });
     render();
     return;
   }
@@ -1705,7 +1705,7 @@ function announceLines(cells: number[], delay = 500): number {
       group.forEach((c, j) => later(() => pop(el.field.children[c], 1.12), j * 60));
       const pts = group.map((c) => center(el.field.children[c]));
       const q = { x: pts.reduce((n, v) => n + v.x, 0) / pts.length, y: pts.reduce((n, v) => n + v.y, 0) / pts.length };
-      floatText(q.x, q.y - 10, `${MARK_LINE} ${L('列ができた！', 'Line formed!')}`, { cls: 'combo pill', size: 0.95, dur: 1300 });
+      floatText(q.x, q.y - 10, `${MARK_LINE} ${L('列ができた', 'Line formed')}`, { cls: 'combo pill', size: 0.95, dur: 1300 });
     }, delay + k * 250);
   });
   return formed.length;
@@ -1718,7 +1718,7 @@ function afterGrowth(cells: number[], label: string): void {
   if (ripened.length >= 2) {
     const pts = ripened.map((c) => center(el.field.children[c]));
     const q = { x: pts.reduce((n, v) => n + v.x, 0) / pts.length, y: Math.min(...pts.map((v) => v.y)) };
-    later(() => floatText(q.x, q.y - 30, L(`実った！ ×${ripened.length}`, `Ripe! ×${ripened.length}`), { cls: 'gold pill', size: 1 }), 150);
+    later(() => floatText(q.x, q.y - 30, L(`実った ×${ripened.length}`, `Ripe ×${ripened.length}`), { cls: 'gold pill', size: 1 }), 150);
   }
   cells.forEach((cell, k) => {
     const plot = el.field.children[cell] as HTMLElement;
@@ -1737,7 +1737,7 @@ function afterGrowth(cells: number[], label: string): void {
         later(() => plot.classList.remove('just-ripe'), 700);
         const big = CROPS[crop.kind].price >= 20;
         burst(p.x, p.y, ['✨', big ? '🌟' : '⭐'], 8, 50);
-        floatText(p.x, p.y - 20, big ? L(`実った！ ${cropPrice(state, crop, cell)}`, `Ripe! ${cropPrice(state, crop, cell)}g`) : L('実った！', 'Ripe!'), {
+        floatText(p.x, p.y - 20, big ? L(`実った ${cropPrice(state, crop, cell)}`, `Ripe ${cropPrice(state, crop, cell)}g`) : L('実った', 'Ripe'), {
           cls: big ? 'gold pill' : 'good pill',
           size: big ? 1 : 0.8,
         });
@@ -1905,7 +1905,7 @@ function onBuy(id: UpgradeId): void {
     const chip = visibleOr(el.bag.querySelector(`[data-sym="${sym}"]`), 'bag');
     const c = center(chip);
     burst(c.x, c.y, ['💨', sym === 'crow' ? '🪶' : '🍃', '✨'], 12, 60);
-    floatText(c.x, c.y - 20, `${SYMBOLS[sym].name} −1！`, { cls: 'good', size: 0.9 });
+    floatText(c.x, c.y - 20, `${SYMBOLS[sym].name} −1`, { cls: 'good', size: 0.9 });
     pop(chip, 1.3);
   } else {
     sfx.buy();
@@ -2095,7 +2095,7 @@ const TUT_STEPS: TutStep[] = [
   { text: L('3つそろって実った！<br><b>タップで列ごと売ろう</b>', 'All 3 are ripe!<br><b>Tap to sell the whole line</b>'), focus: () => plotEls(tutRow()), cells: tutRow(), done: () => state.stats.lineHarvests >= 1 && !ui.busy },
   { text: L(`${MARK_LINE} 列は<b>×1.3</b>、同じ作物だけの列は<b>さらに×1.3</b>。<br>${MARK_SINGLE} 並んでいない<b>単品は半値</b>！<br>種を選ぶと、列になるマスに倍率が出るよ`, `${MARK_LINE} Lines are <b>×1.3</b>; single-crop lines get <b>another ×1.3</b>.<br>${MARK_SINGLE} Crops not in a line sell at <b>half price</b>!<br>Pick a seed to see line multipliers on the plots`), focus: () => [], button: L('なるほど', 'Got it') },
   { text: `${art('official')} ${L('7日ごとに<b>年貢</b>。払えないと終わり。<br><b>7回納める（49日目）とクリア</b>！', "Every 7 days there's a <b>tax</b>. Can't pay = game over.<br><b>Pay 7 times (day 49) to win</b>!")}`, focus: () => [el.tax], button: L('次へ', 'Next') },
-  { text: `${art('bargain')} ${L('毎日、看板に<b>仕入れ</b>が3つ並ぶ。<br>1つ選ぶとタダで袋に入る。<br>お金は<b>ショップ</b>で畑の道具に', 'Each day the sign offers <b>3 symbols</b>.<br>Pick one to add it for free.<br>Spend gold on farm tools in the <b>shop</b>')}`, focus: () => [document.querySelector('.tab[data-sheet="shop"]')!], button: L('はじめる！', "Let's go!") },
+  { text: `${art('bargain')} ${L(`毎週${CONFIG.marketDays.join('・')}日目は<b>市</b>。<br>絵柄を3つから1つタダで袋へ。<br>お金は市で畑の道具に`, `Market on days <b>${CONFIG.marketDays.join(' & ')}</b> of each week.<br>Take 1 of 3 symbols free.<br>Spend gold on farm tools there`)}`, focus: () => [document.querySelector('.tab[data-sheet="shop"]')!], button: L('はじめる！', "Let's go!") },
 ];
 
 let tut: { step: number } | null = null;

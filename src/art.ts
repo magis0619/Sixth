@@ -907,6 +907,9 @@ const EMOJI_ART: Record<string, ArtId> = {
   '🦝': 'tanuki',
   '🎊': 'star',
   '🎉': 'star',
+  '⚡': 'thunder',
+  '🏆': 'trophy',
+  '🔥': 'flame',
 };
 
 export function glyph(ch: string): string {

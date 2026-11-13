@@ -101,7 +101,7 @@ export function restart(): void {
 }
 
 export function resultText(endedAfterClear: boolean): string {
-  const head = state.cleared ? (endedAfterClear ? L('🏆 クリア！', '🏆 Won!') : L(`🏆 クリア後エンドレスで${state.day}日目まで`, `🏆 Won, then reached day ${state.day} in endless`)) : L(`${state.day}日目まで`, `Reached day ${state.day}`);
+  const head = state.cleared ? (endedAfterClear ? `${art('trophy')} ${L('クリア', 'Won')}` : `${art('trophy')} ${L(`クリア後エンドレスで${state.day}日目まで`, `Won, then reached day ${state.day} in endless`)}`) : L(`${state.day}日目まで`, `Reached day ${state.day}`);
   const charms = state.stats.charms.map((c) => CHARMS[c.id].emoji).join('');
   return [
     `🌾${L('畑スロット', 'Farm Slots')} ${head}`,
@@ -123,7 +123,7 @@ export async function shareResult(endedAfterClear: boolean): Promise<void> {
     }
     await navigator.clipboard.writeText(text);
     say(L('コピーした', 'Copied'));
-    floatText(window.innerWidth / 2, window.innerHeight * 0.3, L('コピーした！', 'Copied!'), { cls: 'good', size: 1 });
+    floatText(window.innerWidth / 2, window.innerHeight * 0.3, L('コピーした', 'Copied'), { cls: 'good', size: 1 });
   } catch {
     // 共有を閉じた・権限がない場合は何もしない
   }

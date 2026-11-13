@@ -61,7 +61,7 @@ export async function showTaxStamp(amount: number, ok: boolean): Promise<void> {
   stamp.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: 'forwards' }).onfinish = () => stamp.remove();
   if (ok) {
     burst(window.innerWidth / 2, window.innerHeight * 0.4, ['🎊', '✨', '🌾'], 14, 140);
-    floatText(window.innerWidth / 2, window.innerHeight * 0.4, state.cleared ? L(`年貢${state.taxesPaid}回 納付！`, `Tax #${state.taxesPaid} paid!`) : L(`★${state.taxesPaid}/${CONFIG.winTaxes} あと${CONFIG.winTaxes - state.taxesPaid}回でクリア`, `★${state.taxesPaid}/${CONFIG.winTaxes} ${CONFIG.winTaxes - state.taxesPaid} more to win`), { cls: 'good', size: 1.1 });
+    floatText(window.innerWidth / 2, window.innerHeight * 0.4, state.cleared ? L(`年貢${state.taxesPaid}回 納付`, `Tax #${state.taxesPaid} paid`) : L(`★${state.taxesPaid}/${CONFIG.winTaxes} あと${CONFIG.winTaxes - state.taxesPaid}回でクリア`, `★${state.taxesPaid}/${CONFIG.winTaxes} ${CONFIG.winTaxes - state.taxesPaid} more to win`), { cls: 'good', size: 1.1 });
     await sleep(500);
     const added = state.lastObstacles;
     if (added.length) {
@@ -93,7 +93,7 @@ export function showCharmOffer(): Promise<void> {
               <span class="tier">${c.special ? L('特別', 'Special') : CHARM_TIER_NAMES[c.tier]}</span>
               <span class="e">${art(id)}</span>
               <b>${c.name}${n > 0 ? ` <span class="lv">${n}→${n + 1}</span>` : ''}</b>
-              <small>${toGold ? L('✦金色に！ ', '✦Goes golden! ') : ''}${c.desc(toGold ? (n + 1) * 2 : n + 1)}</small>
+              <small>${toGold ? L('✦金色に ', '✦Goes golden ') : ''}${c.desc(toGold ? (n + 1) * 2 : n + 1)}</small>
             </button>`;
           })
           .join('')}

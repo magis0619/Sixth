@@ -61,8 +61,46 @@ function detect() {
   return [...new Set(issues)];
 }
 
+// MEASURE=1：見えている文字の大きさ・太さ、角の丸み、動き続けている演出を数える（演出控えめはオフで撮る）
+const MEASURE = process.env.MEASURE === '1';
+const measured = { sizes: {}, weights: {}, radii: {}, loops: {}, grads: {} };
+function measure() {
+  const out = { sizes: {}, weights: {}, radii: {}, loops: [], grads: {} };
+  const vis = (e) => { const s = getComputedStyle(e); if (s.visibility === 'hidden' || s.display === 'none' || +s.opacity === 0) return false; const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight; };
+  const name = (e) => (e.id ? '#' + e.id : '') + (typeof e.className === 'string' && e.className ? '.' + e.className.trim().split(/\s+/).slice(0, 2).join('.') : '') || e.tagName;
+  for (const e of document.querySelectorAll('body *')) {
+    if (e.closest('svg') || !vis(e)) continue;
+    const s = getComputedStyle(e);
+    const own = [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
+    if (own) {
+      const k = Math.round(parseFloat(s.fontSize));
+      out.sizes[k] = (out.sizes[k] ?? 0) + 1;
+      const w = `${s.fontWeight} ${s.fontFamily.split(',')[0].replace(/['"]/g, '')}`;
+      out.weights[w] = (out.weights[w] ?? 0) + 1;
+    }
+    if (s.backgroundImage.includes('gradient')) { const k = name(e); out.grads[k] = (out.grads[k] ?? 0) + 1; }
+    const bg = s.backgroundColor !== 'rgba(0, 0, 0, 0)' || s.backgroundImage !== 'none' || parseFloat(s.borderTopWidth) > 0;
+    if (bg && s.borderTopLeftRadius !== '0px') {
+      const r = e.getBoundingClientRect();
+      const rad = parseFloat(s.borderTopLeftRadius);
+      const k = rad >= Math.min(r.width, r.height) / 2 - 0.5 ? 'pill/circle' : `${Math.round(rad)}`;
+      out.radii[k] = (out.radii[k] ?? 0) + 1;
+    }
+  }
+  for (const a of document.getAnimations()) {
+    const t = a.effect?.getTiming?.();
+    if (t && t.iterations === Infinity && a.playState === 'running' && a.effect.target && vis(a.effect.target)) out.loops.push(`${a.animationName ?? 'js'} @ ${name(a.effect.target)}`);
+  }
+  return out;
+}
+
 async function snap(p, size, key) {
   await p.waitForTimeout(450);
+  if (MEASURE) {
+    const m = await p.evaluate(measure);
+    for (const g of ['sizes', 'weights', 'radii', 'grads']) for (const [k, v] of Object.entries(m[g])) measured[g][k] = (measured[g][k] ?? 0) + v;
+    measured.loops[key] = [...new Set(m.loops)];
+  }
   const issues = await p.evaluate(detect);
   await p.screenshot({ path: `${OUT}/${size}-${key}.png` });
   report.push({ size, key, issues });
@@ -73,17 +111,17 @@ async function page(size, run) {
   const p = await ctx.newPage();
   const errs = [];
   p.on('pageerror', (e) => errs.push(e.message));
-  await p.addInitScript(([r, lang]) => {
+  await p.addInitScript(([r, lang, measure]) => {
     if (sessionStorage.getItem('a')) return;
     sessionStorage.setItem('a', '1');
     localStorage.clear();
-    localStorage.setItem('hatake-slot:calm', '1');
+    if (!measure) localStorage.setItem('hatake-slot:calm', '1');
     // 表示の言語（UI_LANG=en で英語の画面を確かめる）
     localStorage.setItem('hatake-slot:lang', lang);
     // チュートリアルは別に確かめる（ここでは済ませた状態から）
     localStorage.setItem('hatake-slot:meta', JSON.stringify({ tutorialDone: true }));
     if (r) localStorage.setItem('hatake-slot:run', r);
-  }, [run ?? null, process.env.UI_LANG ?? 'ja']);
+  }, [run ?? null, process.env.UI_LANG ?? 'ja', MEASURE]);
   await p.goto(process.env.BASE ?? 'http://localhost:4173/');
   await p.waitForTimeout(300);
   return { p, ctx, errs };
@@ -206,3 +244,4 @@ const by = new Map();
 for (const r of bad) for (const i of r.issues) { const k = i.replace(/\d+(x\d+)?(\.\.\d+)?(>\d+)?$/, '').trim(); (by.get(k) ?? by.set(k, []).get(k)).push(`${r.size}/${r.key}`); }
 for (const [k, v] of by) console.log(`${k}\n    ${v.length}: ${[...new Set(v)].slice(0, 8).join(' ')}`);
 console.log(`screens=${report.length} withIssues=${bad.length}`);
+if (MEASURE) await import('node:fs').then((fs) => fs.writeFileSync(`${OUT}/measure.json`, JSON.stringify(measured, null, 1)));

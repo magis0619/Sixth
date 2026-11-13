@@ -236,7 +236,7 @@ test('初めての人はチュートリアルで、横一列に植えて列で�
   await page.click('.coach-next');
   await expect(coach).toContainText('年貢');
   await page.click('.coach-next');
-  await expect(coach).toContainText('ショップ');
+  await expect(coach).toContainText('市');
   await page.click('.coach-next');
   await expect(coach).toHaveCount(0);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('hatake-slot:meta')!).tutorialDone)).toBe(true);
@@ -279,7 +279,8 @@ test('手動の出目が今は使えないときは、タップしても次の�
   await start(page);
   await firstDay(page);
   const dead = page.locator('#reels .reel.dead').first();
-  if (await dead.count()) {
+  // 使える出目がほかに1つもなければ、リールのタップは「次の日へ」（作り通り）なので確かめない
+  if ((await dead.count()) && (await page.locator('#reels .reel.usable').count())) {
     const day = await page.locator('#day').textContent();
     await dead.click({ force: true });
     await page.waitForTimeout(400);

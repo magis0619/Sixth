@@ -94,7 +94,7 @@ export const infoHead = (ico: string, name: string, tag = '') => `<div class="in
 export function symbolInfo(id: SymbolId, extra = ''): string {
   const d = SYMBOLS[id];
   const shape = d.shape ? `<p>${shapeIcon(d.shape)} ${SHAPE_NAMES[d.shape]}</p>` : '';
-  return `${infoHead(symHtml(id), d.name, d.kind === 'manual' ? L('手動', 'Tap') : L('自動', 'Auto'))}<p>${d.desc}</p>${shape}<p class="sub">🔥 ${d.feverDesc}</p>${extra}`;
+  return `${infoHead(symHtml(id), d.name, d.kind === 'manual' ? L('手動', 'Tap') : L('自動', 'Auto'))}<p>${d.desc}</p>${shape}<p class="sub">${art('flame')} ${d.feverDesc}</p>${extra}`;
 }
 
 export function plotInfo(cell: number): string | null {

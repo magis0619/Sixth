@@ -119,7 +119,7 @@ export function bagPct(bag: Record<SymbolId, number>, id: SymbolId): number {
 
 export function upgradeEffect(id: UpgradeId): string {
   const { symbol, delta } = UPGRADE_SYMBOL[id]!;
-  if (delta < 0 && state.bag[symbol] === 0) return L(`${SYMBOLS[symbol].name}はもういない！`, `No ${SYMBOLS[symbol].name} left!`);
+  if (delta < 0 && state.bag[symbol] === 0) return L(`${SYMBOLS[symbol].name}はもういない`, `No ${SYMBOLS[symbol].name} left`);
   if (delta < 0 && removeLimitReached(state)) return CONFIG.marketDays.length ? L('この市ではもう消した（次の市でまた消せる）', 'Already removed one at this market (again next market)') : L('今週はもう消した（来週また消せる）', 'Already removed one this week (again next week)');
   const after = { ...state.bag, [symbol]: state.bag[symbol] + delta };
   // 袋の絵と「今→買ったあと」の数字だけで、出やすさの変化を見せる
