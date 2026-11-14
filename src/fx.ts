@@ -143,6 +143,18 @@ export function pop(el: Element, scale = 1.25): void {
   });
 }
 
+/** 作物が育つ：土から伸びるように、下を支点に少し小さい所からなめらかに大きくなる（跳ねない） */
+export function growUp(el: Element): void {
+  el.animate(
+    [
+      { transform: 'translateY(6%) scale(0.78)', filter: 'brightness(1.25)' },
+      { transform: 'translateY(-2%) scale(1.06)', filter: 'brightness(1.12)', offset: 0.6 },
+      { transform: 'translateY(0) scale(1)', filter: 'brightness(1)' },
+    ],
+    { duration: calm ? 380 : 560, easing: 'cubic-bezier(.25,.8,.35,1)' },
+  );
+}
+
 export function flash(color: string, dur = 350): void {
   const el = spawn('', 'fx-flash', 0, 0);
   el.style.background = color;

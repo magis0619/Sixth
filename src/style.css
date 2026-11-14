@@ -7238,3 +7238,8 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 .calm .pip.drop {
   animation-duration: 0.35s;
 }
+
+/* 作物は土から伸びるように、足元を支点に大きくなる */
+.plot .crop {
+  transform-origin: 50% 90%;
+}

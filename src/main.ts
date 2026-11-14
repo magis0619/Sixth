@@ -11,7 +11,7 @@ import { saveMeta, setupFrom } from './meta.ts';
 import { art, gradientDefs, type ArtId } from './art.ts';
 import { track } from './telemetry.ts';
 import {
-  burst, center, coinRain, dropIn, PEST_SPEED, rays, ripple, dim, firework, confetti, flash, floatText, flyTo, hitStop, isCalm, pop, rollNumber, scanlines, shake, shakeFor, sleep, slamText, slowFactor, speedLines, stackMultipliers, toggleCalm, vibrate, rainShower, setHurry, later, fmtMult, travel, sunBeam, beeFlight,
+  burst, center, coinRain, dropIn, PEST_SPEED, rays, ripple, dim, firework, confetti, flash, floatText, flyTo, hitStop, isCalm, pop, rollNumber, scanlines, shake, shakeFor, sleep, slamText, slowFactor, speedLines, stackMultipliers, toggleCalm, vibrate, rainShower, setHurry, later, fmtMult, travel, sunBeam, beeFlight, growUp,
 } from './fx.ts';
 import {
   FRUIT, PLACE_ART, setHtml, STAGE_NAMES, type SheetName, bagPct, closeSheet, costHtml, cropEmoji, openSheet, openSheetName, roleClass, say, shapeIcon, stageOf, symHtml, upgradeArt, upgradeEffect, visibleOr,
@@ -962,7 +962,7 @@ async function showNightIncome(): Promise<void> {
       const plot = el.field.children[c] as HTMLElement;
       const q = at(c);
       const ripe = isRipe(state.field[c]);
-      pop(plot, ripe ? 1.2 : 1.1);
+      growUp(plot.querySelector('.crop') ?? plot);
       burst(q.x, q.y, ripe ? ['✨', '⭐'] : ['💧', '✨'], ripe ? 8 : 4, ripe ? 50 : 30);
       const g = state.field[c]?.growth ?? 0;
       if (!ripe) bumpPips(c, g - 1, g);
@@ -1716,7 +1716,7 @@ function afterGrowth(cells: number[], label: string): void {
     const p = center(plot);
     const crop = state.field[cell];
     later(() => {
-      pop(plot.querySelector('.crop') ?? plot, 1.35);
+      growUp(plot.querySelector('.crop') ?? plot);
       if (crop && isRipe(crop) && ripened.length >= 2) {
         sfx.pon();
         plot.classList.add('just-ripe');
