@@ -657,6 +657,11 @@ function shopItems(): typeof UPGRADES {
 
 function renderShop(): void {
   renderOfferShop();
+  // 市を出るボタン：仕入れを選ぶまでは押せない（選ぶと押せるようになる）
+  const next = $('market-next') as HTMLButtonElement;
+  const must = forcedOffer();
+  next.disabled = must;
+  setHtml(next, must ? L('↑ 仕入れを1つ選ぶ', '↑ Pick one first') : `${L('次へ', 'Next')} ▶`);
   const items = shopItems();
   const adds = items.filter((u) => !u.id.startsWith('remove'));
   renderUpgradeList(el.shop, adds);
@@ -2265,6 +2270,11 @@ document.querySelectorAll<HTMLButtonElement>('.tab').forEach((t) =>
   }),
 );
 el.sheetBackdrop.addEventListener('click', () => holdMarket() || closeSheet());
+$('market-next').addEventListener('click', () => {
+  if (holdMarket()) return;
+  sfx.select();
+  closeSheet();
+});
 $('sheet-close').addEventListener('click', () => holdMarket() || closeSheet());
 // メニュー（遊び方・音・演出控えめ）
 const menu = $('hud-menu');

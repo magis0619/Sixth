@@ -589,7 +589,8 @@ describe('ショップは週替わり', () => {
     drawDay(s, Math.random);
     expect(isMarketDay(s.day)).toBe(true);
     expect(s.offer).toHaveLength(CONFIG.dailyOfferCount);
-    expect(s.offer).not.toContain('addMoon');
+    // 満月はレアとしてたまに1つだけ混ざる
+    expect(s.offer.filter((id) => id === 'addMoon').length).toBeLessThanOrEqual(1);
     expect(s.weeklyPlaces).toHaveLength(CONFIG.weeklyCount);
     s.gold = 9999;
     expect(canBuy(s, 'addSeed')).toBe(false);

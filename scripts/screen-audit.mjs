@@ -53,6 +53,8 @@ function detect() {
     if (!!a.closest('.hud-menu') !== !!c.closest('.hud-menu')) continue;
     // 下に固定した「もどる」の下を中身がスクロールするのも作り通り
     if (a.closest('.prep-actions') || c.closest('.prep-actions')) continue;
+    // 市の「次へ」は下に固定して、中身がその下をスクロールする（作り通り）
+    if (a.closest('.market-foot') || c.closest('.market-foot')) continue;
     if (a.id === 'sheet-close' || c.id === 'sheet-close' || a.id === 'spin-go' || c.id === 'spin-go') continue;
     const r = a.getBoundingClientRect(), q = c.getBoundingClientRect();
     const ox = Math.min(r.right, q.right) - Math.max(r.left, q.left), oy = Math.min(r.bottom, q.bottom) - Math.max(r.top, q.top);
@@ -194,7 +196,7 @@ for (const size of Object.keys(SIZES)) {
     for (const t of ['shop', 'bag', 'charms']) {
       await p.click(`.tab[data-sheet="${t}"]`, f); await snap(p, size, `11-${t}`);
       await p.evaluate(() => { const s = document.querySelector('.sheet'); s?.scrollTo(0, 99999); }); await snap(p, size, `11-${t}-bottom`);
-      await p.click('#sheet-close', f); await p.waitForTimeout(300);
+      await p.click(t === 'shop' ? '#market-next' : '#sheet-close', f); await p.waitForTimeout(300);
     }
     await p.click('#menu-btn', f); await snap(p, size, '12-menu'); await p.click('#menu-btn', f);
     const ripe = await p.locator('.plot').nth(1).boundingBox();

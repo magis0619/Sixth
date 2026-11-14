@@ -87,7 +87,7 @@
         <div class="stall" id="stall">
           <section class="stall-sec offer-sec" hidden>
             <div class="awning"></div>
-            <h3 class="stall-head"><span class="tab-ico" data-art="gift"></span><span data-en="Pick one free (required)">タダで1つ（必ず選ぶ）</span></h3>
+            <h3 class="stall-head"><span class="tab-ico" data-art="gift"></span><span data-en="Free pick">タダで1つ</span><span class="must" data-en="Required">必ず選ぶ</span></h3>
             <div class="shop" id="offer-shop"></div>
           </section>
           <section class="stall-sec">
@@ -107,6 +107,8 @@
             <p class="stall-empty" id="stall-empty" data-en="No pests in your bag!">袋にお邪魔はいない！</p>
           </section>
         </div>
+        <!-- 市を出る：仕入れを選ぶまでは押せない -->
+        <div class="market-foot"><button class="primary" id="market-next" disabled></button></div>
       </div>
       <div class="sheet-pane" data-pane="bag">
         <p class="sheet-lead" data-en="Each reel draws one symbol from this bag. Odds shown">スロットはこの袋から1枚ずつ引く。出る確率つき</p>

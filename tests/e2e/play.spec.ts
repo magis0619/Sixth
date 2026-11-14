@@ -40,7 +40,11 @@ async function settle(page: Page): Promise<'play' | 'over' | 'clear'> {
     // 市の日：仕入れを1つ選んでから市を閉じる
     const take = page.locator('#sheet.open #offer-shop [data-take]').first();
     if (await take.count()) { await take.click({ force: true, timeout: 1000 }).catch(() => {}); await page.waitForTimeout(400); continue; }
-    if (await page.locator('#sheet.open').count()) { await page.click('#sheet-close', { force: true }).catch(() => {}); await page.waitForTimeout(300); continue; }
+    if (await page.locator('#sheet.open').count()) { await page.click((await page.locator('#sheet.open[data-pane="shop"]').count()) ? '#market-next' : '#sheet-close', { force: true }).catch(() => {}); await page.waitForTimeout(300); continue; }
+    // お守りでもらった道具（大かかしなど）は、畑に置くまで先へ進めない
+    const stock = await page.evaluate(() => JSON.parse(localStorage.getItem('hatake-slot:run') ?? 'null')?.stock?.length ?? 0);
+    const spot = page.locator('#field .plot.target').first();
+    if (stock && !(await page.locator('#overlay.show, #sheet.open').count()) && (await spot.count())) { await spot.click({ force: true }).catch(() => {}); await page.waitForTimeout(300); continue; }
     const spinReady = await page.locator('#spin').evaluate((n) => !(n as HTMLButtonElement).disabled);
     if (spinReady && !(await page.locator('#overlay.show').count())) return 'play';
     await page.waitForTimeout(100);

@@ -192,35 +192,80 @@ function feverCards(symbols: SymbolId[], bad: boolean): string {
 }
 
 /** 組み合わせの札：そろった2つの絵柄 → 起きること */
+/**
+ * 組み合わせのカットイン：画面が暗くなり帯が走る → そろった絵柄が左右から飛び込んでぶつかる →
+ * 組み合わせの絵が大きく現れて名前と効き目。1つずつ順に見せる
+ */
 export async function comboBanner(ids: CharmId[]): Promise<void> {
+  for (const id of ids) await comboCutIn(id);
+}
+
+async function comboCutIn(id: CharmId): Promise<void> {
+  const calm = isCalm();
+  const syms = (Object.entries(COMBOS[id]!) as [SymbolId, number][]).flatMap(([sym, n]) => Array.from({ length: n }, () => sym));
+  const root = document.createElement('div');
+  root.className = 'combo-cutin';
+  root.innerHTML = `
+    <div class="cc-band"></div>
+    <div class="cc-rays"></div>
+    ${syms.map((sym, k) => `<span class="cc-sym s${k}">${symHtml(sym)}</span>`).join('')}
+    <div class="cc-main">
+      <span class="cc-label">${L('組み合わせ', 'COMBO')}</span>
+      <span class="cc-art">${art(id)}</span>
+      <b class="cc-name">${CHARMS[id].name}</b>
+      <span class="cc-desc">${CHARMS[id].desc(1)}</span>
+    </div>`;
+  document.body.appendChild(root);
+  const q = (sel: string) => root.querySelector<HTMLElement>(sel)!;
   sfx.rare();
-  flash('#fff2a0', 300);
   vibrate([30, 30, 60]);
-  const banner = document.createElement('div');
-  banner.className = 'fever-banner combo-banner';
-  banner.innerHTML = `<div class="fever-title">${L('組み合わせ！', 'COMBO!')}</div><div class="fever-cards">${ids
-    .map((id) => {
-      const need = Object.entries(COMBOS[id]!) as [SymbolId, number][];
-      const pair = need.flatMap(([sym, n]) => Array.from({ length: n }, () => symHtml(sym))).join('<span class="fc-plus">＋</span>');
-      return `<div class="fever-card combo-card">
-        <span class="fc-pair">${pair}</span>
-        <span class="fc-arrow">▶</span>
-        <span class="fc-ico">${art(id)}</span>
-        <span class="fc-combo"><b class="fc-text">${CHARMS[id].name}</b><span class="fc-desc">${CHARMS[id].desc(1)}</span></span>
-      </div>`;
-    })
-    .join('')}</div>`;
-  document.body.appendChild(banner);
-  banner.animate(
-    [
-      { transform: 'translate(-50%, -50%) scale(0.3) rotate(-6deg)', opacity: 0 },
-      { transform: 'translate(-50%, -50%) scale(1.08) rotate(2deg)', opacity: 1, offset: 0.4 },
-      { transform: 'translate(-50%, -50%) scale(1) rotate(0deg)', opacity: 1 },
-    ],
-    { duration: 450, easing: 'cubic-bezier(.3,1.5,.5,1)', fill: 'forwards' },
+  root.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, fill: 'forwards' });
+  q('.cc-band').animate([{ transform: 'translateY(-50%) skewY(-6deg) translateX(-110%)' }, { transform: 'translateY(-50%) skewY(-6deg) translateX(0)' }], {
+    duration: 240,
+    easing: 'cubic-bezier(.2,.9,.3,1)',
+    fill: 'forwards',
+  });
+  // 絵柄が左右（3つなら下からも）から飛び込んで真ん中でぶつかる
+  const from = ['-60vw, 0', '60vw, 0', '0, 50vh'];
+  const to = syms.length === 3 ? ['-26vw, -2vh', '26vw, -2vh', '0, 10vh'] : ['-18vw, 0', '18vw, 0'];
+  syms.forEach((_, k) =>
+    q(`.cc-sym.s${k}`).animate(
+      [
+        { transform: `translate(-50%, -50%) translate(${from[k]}) scale(0.8)`, opacity: 0 },
+        { transform: `translate(-50%, -50%) translate(${to[k]}) scale(1.15)`, opacity: 1, offset: 0.7 },
+        { transform: `translate(-50%, -50%) translate(0, 0) scale(0.4)`, opacity: 0 },
+      ],
+      { duration: calm ? 420 : 620, delay: 120, easing: 'cubic-bezier(.3,.7,.4,1)', fill: 'forwards' },
+    ),
   );
-  await sleep(1700 + ids.length * 500);
-  banner.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: 'forwards' }).onfinish = () => banner.remove();
+  await sleep(calm ? 480 : 700);
+  sfx.bonus();
+  flash('#fff6c8', 260);
+  const c = { x: window.innerWidth / 2, y: window.innerHeight * 0.45 };
+  burst(c.x, c.y, ['✨', '⭐', '🌟'], calm ? 6 : 18, 150);
+  q('.cc-rays').animate([{ opacity: 0, transform: 'translate(-50%, -50%) scale(0.3) rotate(0deg)' }, { opacity: 1, transform: 'translate(-50%, -50%) scale(1) rotate(60deg)' }], {
+    duration: 500,
+    easing: 'ease-out',
+    fill: 'forwards',
+  });
+  q('.cc-art').animate(
+    [
+      { transform: 'scale(0.2) rotate(-10deg)', opacity: 0 },
+      { transform: 'scale(1.18) rotate(3deg)', opacity: 1, offset: 0.55 },
+      { transform: 'scale(1) rotate(0deg)', opacity: 1 },
+    ],
+    { duration: 520, easing: 'cubic-bezier(.3,1.4,.5,1)', fill: 'forwards' },
+  );
+  for (const [sel, d] of [['.cc-label', 80], ['.cc-name', 200], ['.cc-desc', 320]] as const) {
+    q(sel).animate([{ transform: 'translateY(16px)', opacity: 0 }, { transform: 'translateY(0)', opacity: 1 }], { duration: 300, delay: d, easing: 'ease-out', fill: 'forwards' });
+  }
+  await sleep(calm ? 1100 : 1700);
+  await new Promise<void>((done) => {
+    root.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 260, fill: 'forwards' }).onfinish = () => {
+      root.remove();
+      done();
+    };
+  });
 }
 
 export async function feverBanner(symbols: SymbolId[], bad: boolean): Promise<void> {
