@@ -7203,3 +7203,38 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 @media (max-height: 480px) {
   .title-screen { gap: 28px; }
 }
+
+/* お金の増減：コインの絵＋数字 */
+.money {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15em;
+  white-space: nowrap;
+}
+.money svg {
+  width: 1.05em;
+  height: 1.05em;
+}
+
+/* 成長の○：増えた○が一瞬大きくなって光る。減った○は赤く縮む */
+.pip.bump {
+  animation: pip-bump 0.6s cubic-bezier(.2, 1.6, .4, 1);
+  position: relative;
+  z-index: 2;
+}
+.pip.drop {
+  animation: pip-drop 0.6s ease-out;
+}
+@keyframes pip-bump {
+  0% { transform: scale(1); }
+  35% { transform: scale(2.1); background: #fff36a; box-shadow: inset 0 0 0 2px #fff, 0 0 0 2px var(--ink); }
+  100% { transform: scale(1); }
+}
+@keyframes pip-drop {
+  0% { transform: scale(1.6); background: var(--danger); box-shadow: inset 0 0 0 2px #fff, 0 0 0 2px var(--ink); }
+  100% { transform: scale(1); }
+}
+.calm .pip.bump,
+.calm .pip.drop {
+  animation-duration: 0.35s;
+}

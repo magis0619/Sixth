@@ -52,7 +52,7 @@ export async function showTaxStamp(amount: number, ok: boolean): Promise<void> {
   if (ok) {
     sfx.taxPaid();
     const c = center(el.goldBox);
-    floatText(c.x, c.y + 30, `−${amount}`, { cls: 'bad', size: 1.1 });
+    floatText(c.x, c.y + 30, `<span class="money">${art('coin')}−${amount}</span>`, { cls: 'bad', size: 1.1 });
     hooks.setGold(state.gold);
   } else {
     sfx.gameOver();
