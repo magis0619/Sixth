@@ -593,7 +593,7 @@ function renderField(): void {
       html += `<span class="crop"${ripe ? '' : ` style="--g:${(0.55 + 0.45 * (crop.growth / def.ripe)).toFixed(2)}"`}>${cropEmoji(crop)}</span>`;
       // 育っている間も何の作物か分かるように小さな札を出す
       if (!ripe) html += `<span class="badge-kind">${art(FRUIT[crop.kind])}</span>`;
-      if (crop.fertilized) html += `<span class="badge-fert">${L('肥×2', 'F×2')}</span>`;
+      if (crop.fertilized) html += `<span class="badge-fert" title="${L('肥料（売値×2）', 'Fertilized (price ×2)')}">${art('fertilizer')}</span>`;
       if (ripe) {
         // 列に入っていれば倍率、入っていなければ単品（半値）
         const mult = cellMultiplier(state, i);
@@ -688,8 +688,12 @@ function renderShop(): void {
   renderUpgradeList($('remove-shop'), items.filter((u) => u.id.startsWith('remove')));
 }
 
+/** 仕入れの段を畳んでいる最中（終わるまで描き直さない） */
+let offerFolding = false;
+
 /** 市の仕入れ：3つから1つタダで袋へ（見送れない） */
 function renderOfferShop(): void {
+  if (offerFolding) return;
   const box = $('offer-shop');
   (box.closest('.stall-sec') as HTMLElement).hidden = !state.offer.length;
   const html = state.offer
@@ -715,10 +719,33 @@ function onTakeOffer(b: HTMLButtonElement): void {
   if (ui.busy || state.over) return;
   const id = b.dataset.take as AddUpgradeId;
   const from = center(b.querySelector('.ico')!);
+  // 畳む前の段（render で hidden になる前に、高さを測っておく）
+  const sec = b.closest('.stall-sec') as HTMLElement;
+  const h = sec.offsetHeight;
   if (!takeOffer(state, id)) return;
+  offerFolding = true;
   const sym = UPGRADE_SYMBOL[id]!.symbol;
   sfx.buy();
   accept(b);
+  sec.querySelectorAll<HTMLElement>('.offer-item').forEach((it) => {
+    if (it !== b) it.animate([{ opacity: 1, transform: 'scale(1)' }, { opacity: 0.25, transform: 'scale(0.96)' }], { duration: 220, fill: 'forwards' });
+  });
+  later(() => {
+    // 段を畳んで消す（高さ→0・薄く）。終わってから描き直す
+    const fold = sec.animate(
+      [
+        { height: `${h}px`, opacity: 1, marginBottom: getComputedStyle(sec).marginBottom },
+        { height: '0px', opacity: 0, marginBottom: '0px', paddingTop: '0px', paddingBottom: '0px' },
+      ],
+      { duration: isCalm() ? 200 : 380, easing: 'cubic-bezier(.4,0,.2,1)' },
+    );
+    sec.style.overflow = 'hidden';
+    fold.onfinish = () => {
+      sec.style.overflow = '';
+      offerFolding = false;
+      renderShop();
+    };
+  }, 420);
   later(() => {
     render();
     ripple(from.x, from.y, '#ffd84a');
@@ -948,7 +975,21 @@ async function onSpin(): Promise<void> {
 function openMarket(): void {
   renderShop();
   renderFarmShop();
+  const wasOpen = openSheetName === 'shop';
   openSheet('shop');
+  if (wasOpen) return;
+  el.sheet.animate([{ transform: 'translateY(105%)' }, { transform: 'translateY(-2%)', offset: 0.75 }, { transform: 'translateY(0)' }], {
+    duration: isCalm() ? 260 : 520,
+    easing: 'cubic-bezier(.2,.8,.3,1)',
+  });
+  [...el.sheet.querySelectorAll<HTMLElement>('[data-pane="shop"] .stall-sec:not([hidden]), .market-foot')].forEach((sec, k) =>
+    sec.animate([{ transform: 'translateY(28px)', opacity: 0 }, { transform: 'translateY(0)', opacity: 1 }], {
+      duration: 320,
+      delay: 180 + k * 90,
+      easing: 'cubic-bezier(.2,.8,.3,1)',
+      fill: 'backwards',
+    }),
+  );
 }
 
 /** 仕入れを選ばずに市を閉じようとしたら止める */

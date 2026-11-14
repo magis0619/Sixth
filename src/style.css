@@ -7497,3 +7497,24 @@ body:has(#overlay.show) :is(.machine, .machine *) {
   .wd i { margin-top: 0; height: 12px; }
   .wd i svg { width: 12px; height: 12px; }
 }
+
+/* 肥料の印：文字の「肥×2」をやめて、左の真ん中に肥料の絵だけ（下の成長の○と重ならない） */
+.badge-fert {
+  bottom: auto;
+  top: 36%;
+  left: 4%;
+  width: max(18px, calc(var(--cell) * 0.24));
+  height: max(18px, calc(var(--cell) * 0.24));
+  padding: 2px;
+  display: flex;
+  background: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+}
+.badge-fert svg { width: 100%; height: 100%; }
+
+/* 実りのきらめきは、右上の値段の金貨と重ならないよう右の真ん中へ */
+.plot.ripe::after {
+  top: 44%;
+  right: 7%;
+}
