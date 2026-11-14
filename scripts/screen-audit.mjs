@@ -210,6 +210,9 @@ for (const size of Object.keys(SIZES)) {
     await p.click('#title-resume', f); await p.waitForTimeout(300);
     await p.evaluate(() => document.getElementById('spin').click()); await p.waitForTimeout(200);
     if (await p.$('#skip-yes')) await p.click('#skip-yes', f);
+    // 年貢のあと：お邪魔が袋に入る窓 → お守りの3択
+    for (let k = 0; k < 60; k++) { await p.waitForTimeout(150); if (await p.$('#pest-ok')) break; }
+    if (await p.$('#pest-ok')) { await p.waitForTimeout(600); await snap(p, size, '19-pests'); await p.click('#pest-ok', f); }
     for (let k = 0; k < 60; k++) { await p.waitForTimeout(150); if (await p.$('#overlay.show .charm-card:not([disabled])')) break; }
     await snap(p, size, '20-charm-offer');
     if (errs.length) report.push({ size, key: 'errors-c', issues: errs });
@@ -233,7 +236,7 @@ for (const size of Object.keys(SIZES)) {
     await p.click('#title-resume', f); await p.waitForTimeout(300);
     await p.evaluate(() => document.getElementById('spin').click()); await p.waitForTimeout(200);
     if (await p.$('#skip-yes')) await p.click('#skip-yes', f);
-    for (let k = 0; k < 120; k++) { await p.waitForTimeout(150); if (await p.$('#clear-continue')) break; if (await p.$('#overlay.show .charm-card:not([disabled])')) await p.locator('#overlay.show .charm-card:not([disabled])').first().click({ force: true, timeout: 500 }).catch(() => {}); }
+    for (let k = 0; k < 120; k++) { await p.waitForTimeout(150); if (await p.$('#clear-continue')) break; if (await p.$('#pest-ok')) await p.click('#pest-ok', f).catch(() => {}); if (await p.$('#overlay.show .charm-card:not([disabled])')) await p.locator('#overlay.show .charm-card:not([disabled])').first().click({ force: true, timeout: 500 }).catch(() => {}); }
     await p.waitForTimeout(1000);
     await snap(p, size, '22-clear');
     if (errs.length) report.push({ size, key: 'errors-e', issues: errs });

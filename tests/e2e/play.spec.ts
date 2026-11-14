@@ -35,6 +35,8 @@ async function settle(page: Page): Promise<'play' | 'over' | 'clear'> {
   for (let k = 0; k < 150; k++) {
     if (await page.locator('#overlay.show #restart').count()) return 'over';
     if (await page.locator('#overlay.show #clear-continue').count()) return 'clear';
+    // 年貢のあと：お邪魔が袋に入る窓
+    if (await page.locator('#overlay.show #pest-ok').count()) { await page.click('#pest-ok', { force: true }).catch(() => {}); await page.waitForTimeout(1000); continue; }
     const card = page.locator('#overlay.show .charm-card:not([disabled])').first();
     if (await card.count()) { await card.click({ force: true, timeout: 1000 }).catch(() => {}); continue; }
     // 市の日：仕入れを1つ選んでから市を閉じる
@@ -198,6 +200,10 @@ test('お守りの3択を連打しても1つしか取れず、最後（7回目�
   await page.evaluate(() => document.getElementById('spin')!.click());
   const skip = page.locator('#overlay.show #skip-yes');
   if (await skip.count()) await skip.click({ force: true });
+  // 年貢のあと、お邪魔が袋に入る窓を進める
+  const pest = page.locator('#overlay.show #pest-ok');
+  await expect(pest).toBeVisible({ timeout: 20_000 });
+  await pest.click({ force: true });
   const card = page.locator('#overlay.show .charm-card:not([disabled])').first();
   await expect(card).toBeVisible({ timeout: 20_000 });
   // 3枚とも素早く押す

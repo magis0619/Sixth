@@ -10,6 +10,7 @@ export const el = {
   app: $('app'),
   gold: $('gold'),
   goldBox: $('gold-box'),
+  week: $('week'),
   day: $('day'),
   tax: $('tax'),
   mute: $<HTMLButtonElement>('mute'),

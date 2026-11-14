@@ -5,7 +5,7 @@ import { CHARM_PLACE, CHARM_TIER_NAMES, type CharmId, CHARMS, COMBOS, CONFIG, PL
 import { chooseCharm } from '../game.ts';
 import { art, type ArtId } from '../art.ts';
 import { sfx } from '../audio.ts';
-import { burst, center, coinRain, flash, floatText, isCalm, later, pop, shake, slamText, sleep, speedLines, vibrate } from '../fx.ts';
+import { burst, center, coinRain, flash, floatText, flyTo, isCalm, later, pop, shake, slamText, sleep, speedLines, vibrate } from '../fx.ts';
 import { el, hooks, rng, state } from './store.ts';
 import { say, symHtml, visibleOr } from './view.ts';
 
@@ -63,14 +63,67 @@ export async function showTaxStamp(amount: number, ok: boolean): Promise<void> {
     burst(window.innerWidth / 2, window.innerHeight * 0.4, ['🎊', '✨', '🌾'], 14, 140);
     floatText(window.innerWidth / 2, window.innerHeight * 0.4, state.cleared ? L(`年貢${state.taxesPaid}回 納付`, `Tax #${state.taxesPaid} paid`) : L(`★${state.taxesPaid}/${CONFIG.winTaxes} あと${CONFIG.winTaxes - state.taxesPaid}回でクリア`, `★${state.taxesPaid}/${CONFIG.winTaxes} ${CONFIG.winTaxes - state.taxesPaid} more to win`), { cls: 'good', size: 1.1 });
     await sleep(500);
-    const added = state.lastObstacles;
-    if (added.length) {
-      hooks.render();
-      const c = center(visibleOr(el.bag.querySelector(`[data-sym="${added[0]}"]`), 'bag'));
-      const names = [...new Set(added)].map((s) => `${SYMBOLS[s].name}${added.filter((x) => x === s).length > 1 ? `×${added.filter((x) => x === s).length}` : ''}`).join('・');
-      floatText(c.x, c.y - 20, L(`${names}が袋に増えた…`, `${names} joined your bag…`), { cls: 'bad', size: 0.8 });
-    }
+    if (state.lastObstacles.length) await showPestsJoin(state.lastObstacles);
   }
+}
+
+/**
+ * 年貢のあと、袋にお邪魔が入る：窓に文字で知らせ、カード（カラスの絵など）を見せる。
+ * 「袋に入れる」を押すと、カードが絵柄袋へ飛んでいく
+ */
+function showPestsJoin(added: SymbolId[]): Promise<void> {
+  const kinds = [...new Set(added)];
+  sfx.danger();
+  el.overlay.innerHTML = `
+    <div class="modal pest-modal" role="dialog" aria-label="${L('お邪魔が袋に入る', 'Pests join your bag')}">
+      <h2>${art('warn')} ${L('お邪魔が袋に入る', 'Pests join your bag')}</h2>
+      <p class="pest-lead">${L(`年貢のあとは、袋にお邪魔が${added.length}枚増える`, `After each tax, ${added.length} pest${added.length > 1 ? 's join' : ' joins'} your bag`)}</p>
+      <div class="pest-cards">${kinds
+        .map((sym) => {
+          const n = added.filter((x) => x === sym).length;
+          return `<div class="pest-card" data-sym="${sym}"><span class="pc-art">${symHtml(sym)}</span><b>${SYMBOLS[sym].name}${n > 1 ? ` ×${n}` : ''}</b><span class="pc-desc">${SYMBOLS[sym].desc}</span></div>`;
+        })
+        .join('')}</div>
+      <button class="primary" id="pest-ok">${L('袋に入れる', 'Into the bag')}</button>
+    </div>`;
+  el.overlay.classList.add('show');
+  el.overlay.querySelectorAll<HTMLElement>('.pest-card').forEach((c, k) =>
+    c.animate([{ transform: 'translateY(-30px) scale(0.6)', opacity: 0 }, { transform: 'translateY(0) scale(1)', opacity: 1 }], {
+      duration: 320,
+      delay: 120 + k * 140,
+      easing: 'cubic-bezier(.3,1.4,.5,1)',
+      fill: 'backwards',
+    }),
+  );
+  return new Promise((done) => {
+    document.getElementById('pest-ok')!.addEventListener(
+      'click',
+      () => {
+        sfx.select();
+        hooks.render();
+        // カードの絵が絵柄袋へ飛び込む（袋が閉じていればタブへ）
+        el.overlay.querySelectorAll<HTMLElement>('.pest-card').forEach((c, k) => {
+          const sym = c.dataset.sym as SymbolId;
+          const from = center(c.querySelector('.pc-art')!);
+          const n = added.filter((x) => x === sym).length;
+          later(() => {
+            const chip = visibleOr(el.bag.querySelector(`[data-sym="${sym}"]`), 'bag');
+            flyTo(from, chip, symHtml(sym), n, () => {
+              sfx.bug();
+              pop(chip, 1.35);
+            });
+          }, k * 120);
+          c.animate([{ opacity: 1 }, { opacity: 0.2 }], { duration: 250, fill: 'forwards' });
+        });
+        later(() => {
+          el.overlay.classList.remove('show');
+          el.overlay.innerHTML = '';
+          done();
+        }, 900);
+      },
+      { once: true },
+    );
+  });
 }
 
 /** 年貢を納めたあとのお守り3択。選ぶまで待つ */

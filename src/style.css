@@ -7393,3 +7393,107 @@ body:has(#overlay.show) :is(.machine, .machine *) {
   box-shadow: 0 4px 0 #b3a891;
   cursor: default;
 }
+
+/* ==== 曜日：エレベーターの階数表示のように、今日の曜日が光る ==== */
+.week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin: 6px auto 0;
+  max-width: 480px;
+  padding: 4px 6px;
+  background: #2b2118;
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  box-shadow: 0 3px 0 var(--ink);
+}
+.week:empty { display: none; }
+.wd {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  border-radius: 8px;
+  color: #6f5c45;
+  background: #3a2c20;
+  transition: background-color 0.3s, color 0.3s, transform 0.3s;
+}
+.wd b {
+  font-family: var(--font-pop);
+  font-weight: 400;
+  font-size: 1rem;
+  line-height: 1;
+}
+.wd i {
+  display: flex;
+  height: 14px;
+  margin-top: 2px;
+}
+.wd i svg { width: 14px; height: 14px; }
+.wd:not(.now) i svg { opacity: 0.45; filter: grayscale(0.6); }
+.wd.past { color: #4f4032; background: #30241a; }
+.wd.tax b { color: #c99a5a; }
+.wd.market b { color: #b8a27a; }
+/* 今日：灯りがともる */
+.wd.now {
+  color: var(--ink);
+  background: #ffd84a;
+  box-shadow: inset 0 0 0 2px #fff6c8;
+  transform: scale(1.08);
+  z-index: 1;
+}
+.wd.now b { color: var(--ink); }
+/* 年貢の日：お金が足りなければ赤く */
+.wd.tax.short b { color: #ff6b5b; }
+.wd.tax.now.short { background: #ff8a7a; }
+
+/* 所持金が年貢に足りないときは赤字 */
+.hud-gold.short #gold { color: #ff6b5b; }
+
+/* ==== お邪魔が袋に入る ==== */
+.pest-modal h2 { color: var(--role-bad); }
+.pest-lead { margin: 4px 0 10px; font-size: 1rem; font-weight: 800; text-align: center; }
+.pest-cards {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+.pest-card {
+  width: 128px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 8px;
+  background: #fbe9ef;
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  box-shadow: 4px 4px 0 var(--ink);
+  text-align: center;
+}
+.pest-card .pc-art { width: 72px; height: 72px; display: flex; }
+.pest-card .pc-art svg { width: 100%; height: 100%; }
+.pest-card b { font-size: 1.125rem; }
+.pest-card .pc-desc { font-size: 0.875rem; font-weight: 800; color: var(--ink-soft); }
+
+/* 横持ち：曜日は上の帯の空いた真ん中に重ねる（高さを増やさない） */
+@media (max-height: 480px) and (orientation: landscape) {
+  .hud { position: relative; }
+  .week {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    margin: 0;
+    width: min(340px, 40vw);
+    padding: 3px 4px;
+    gap: 3px;
+    z-index: 2;
+  }
+  .wd { height: 30px; flex-direction: row; gap: 2px; }
+  .wd i { margin-top: 0; height: 12px; }
+  .wd i svg { width: 12px; height: 12px; }
+}

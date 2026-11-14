@@ -322,14 +322,33 @@ function renderOrder(): void {
 }
 
 /** 年貢：「年貢 7 あと2日」を言葉で。払えるときは緑、足りないときは赤 */
+/** 曜日の表示：月〜日のどこにいるか（今日が光る）。水・土は市、日は年貢の印 */
+const WEEKDAYS = EN ? ['M', 'T', 'W', 'T', 'F', 'S', 'S'] : ['月', '火', '水', '木', '金', '土', '日'];
+function renderWeek(): void {
+  const today = state.day > 0 ? ((state.day - 1) % CONFIG.taxPeriod) + 1 : 0;
+  const t = nextTax(state);
+  setHtml(
+    el.week,
+    WEEKDAYS.map((w, k) => {
+      const d = k + 1;
+      const mark = d === CONFIG.taxPeriod ? art('bale') : CONFIG.marketDays.includes(d) ? art('bargain') : '';
+      const cls = `wd${d === today ? ' now' : d < today ? ' past' : ''}${d === CONFIG.taxPeriod ? ' tax' : ''}${CONFIG.marketDays.includes(d) ? ' market' : ''}${d === CONFIG.taxPeriod && state.gold < t.amount ? ' short' : ''}`;
+      return `<span class="${cls}"><b>${w}</b><i>${mark}</i></span>`;
+    }).join(''),
+  );
+  el.week.setAttribute('aria-label', today ? L(`今日は${WEEKDAYS[today - 1]}曜日`, `Today: ${WEEKDAYS[today - 1]}`) : '');
+}
+
 function renderTax(): void {
   const t = nextTax(state);
+  // 今のお金が年貢に足りないときは、所持金を赤字で
+  el.goldBox.classList.toggle('short', state.day > 0 && state.gold < t.amount);
+  renderWeek();
   const short = state.gold < t.amount;
   const warn = short && t.daysLeft <= CONFIG.taxWarnDays;
   el.tax.className = `hud-tax${warn ? ' warn' : ''}${short ? ' short' : ' ok'}${state.difficulty ? ' hard' : ''}`;
   el.tax.innerHTML =
     `<span class="tax-label">${art('bale')}<span class="tax-word">${L('年貢', 'Tax')}</span></span><b>${gold(t.amount)}</b>` +
-    `<span class="tax-when">${t.daysLeft === 0 ? L('今日まで', 'today') : L(`あと${t.daysLeft}日`, `${t.daysLeft}d left`)}</span>` +
     `<span class="tax-mark">${short ? L('足りない', 'short') : L('払える', 'ready')}</span>`;
 }
 
@@ -342,8 +361,7 @@ function renderGoal(): void {
   tab.classList.toggle('closed', !shopOpen(state));
   if (!shopOpen(state)) {
     tab.classList.remove('ready');
-    const d = nextMarketDay(state);
-    el.goal.textContent = d === null || state.day === 0 ? '' : L(`あと${d - state.day}日`, `in ${d - state.day}d`);
+    el.goal.textContent = '';
     return;
   }
   const ready = available.some((u) => canBuy(state, u.id));
