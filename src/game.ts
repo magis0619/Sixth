@@ -123,6 +123,8 @@ export interface GameState {
   taxCut: number;
   /** この市でもう合体したか（1回の市で1種類まで） */
   mergedThisMarket: boolean;
+  /** 大きな買い物（後半の市）を買った数 */
+  premium: Partial<Record<PremiumId, number>>;
   /** 開発用のプレイログ（1行1出来事。設定の「ログを書き出す」で取り出す） */
   log: string[];
   /** 買った回数（畑を広げる・道具ごと。価格が上がる） */
@@ -282,6 +284,7 @@ function freshGame(setup: GameSetup): GameState {
     contractDone: null,
     taxCut: 0,
     mergedThisMarket: false,
+    premium: {},
     log: [],
     tilled: Array.from({ length: CONFIG.fieldCols * CONFIG.fieldRows }, () => false),
     market: null,
@@ -595,7 +598,11 @@ function endDayRaw(state: GameState, rng: Rng): EndDayResult {
   if (state.day > 0 && lv(state, 'aging') > 0) {
     state.field.forEach((c) => {
       // 1日ごとに+熟成の数、3日分まで（強すぎたので弱めた）
-      if (c && isRipe(c)) c.bonus = Math.min(9 * lv(state, 'aging'), c.bonus + 3 * lv(state, 'aging'));
+      // 1日ごとに元の売値の10%×熟成の数、3日分まで（元の売値に比例）
+      if (c && isRipe(c)) {
+        const per = CROPS[c.kind].price * 0.1 * lv(state, 'aging');
+        c.bonus = Math.min(3 * per, c.bonus + per);
+      }
     });
   }
   // 井戸・水路は夜のうちに作物を育てる。水車・釣り堀・鶏小屋・牛小屋のお金が入る
@@ -787,13 +794,22 @@ export function weekDay(day: number): number {
 
 /** 今の袋や畑で意味のある週契約か（縛りが空振りしない・見返りが受け取れる） */
 function contractFits(state: GameState, id: ContractId): boolean {
+  // 縛りが空振りしないものだけ（袋に少ししかない札の縛り・買い物しない週の物価高は、ただの見返りになる）
+  const seeds = (Object.keys(SEEDS) as SymbolId[]).reduce((n, s) => n + state.bag[s], 0);
   switch (id) {
     case 'cloudy':
-      return bagCount(state, 'sun') > 0;
+      return bagCount(state, 'sun') >= 2;
     case 'drought':
-      return bagCount(state, 'rain') > 0;
+      return bagCount(state, 'rain') >= 2;
     case 'crowFlock':
-      return state.bag.crow > 0;
+      return state.bag.crow >= 2;
+    case 'seedThrift':
+      return seeds >= 3;
+    case 'pricey':
+      // 買い物できるお金があるときだけ
+      return state.gold >= 60;
+    case 'bugBloom':
+      return fieldCells(state).some((i) => state.field[i]);
     case 'brokenReel':
       return state.reels > 2;
     case 'fog':
@@ -1647,16 +1663,18 @@ function useSymbolRaw(state: GameState, reel: number, cell: number | null): numb
 // ---- 売却 ----
 
 /** 周りの巣箱で上がる売値 */
+/** 周りの巣箱で上がる売値の割合（巣箱+20%・女王蜂の巣箱+50%、牧場なら2倍）。元の売値に掛ける */
 export function hiveBonus(state: GameState, cell: number): number {
   const ranch = hasRanch(state) ? 2 : 1;
-  return around(state, cell, 1).reduce((n, i) => n + (state.tools[i] === 'hive' ? 2 : state.tools[i] === 'queenHive' ? 6 : 0), 0) * ranch;
+  return around(state, cell, 1).reduce((n, i) => n + (state.tools[i] === 'hive' ? 0.2 : state.tools[i] === 'queenHive' ? 0.5 : 0), 0) * ranch;
 }
 
 /** 列の倍率をかける前の売値。cell を渡すと巣箱・堆肥のマスも効く */
 export function cropPrice(state: GameState, crop: Crop, cell?: number): number {
   const def = CROPS[crop.kind];
-  const charm = (def.gold ? 10 * lv(state, 'goldLuck') : 3 * lv(state, 'bumper')) + (def.big ? 50 * lv(state, 'bigGame') : 0);
-  const hive = cell === undefined ? 0 : hiveBonus(state, cell);
+  // 売値のおまけは元の売値に比例（安い作物ほど得をしないように）。金運・大物狙いはその作物だけなので足し算のまま
+  const charm = (def.gold ? 10 * lv(state, 'goldLuck') : def.price * 0.15 * lv(state, 'bumper')) + (def.big ? 50 * lv(state, 'bigGame') : 0);
+  const hive = cell === undefined ? 0 : def.price * hiveBonus(state, cell);
   const fert = crop.fertilized ? CONFIG.fertilizerMultiplier : 1;
   const tile = cell !== undefined && state.tiles[cell] === 'compost' ? 2 : 1;
   const fair = (1 + CONFIG.exhibitionBonus * state.charms.exhibition) * (isColorful(state) ? 1 + CONFIG.colorfulBonus : 1);
@@ -1665,7 +1683,9 @@ export function cropPrice(state: GameState, crop: Crop, cell?: number): number {
   // 市の日は高く売れる（市が閉まる週は除く）。牧場主の代償で作物が安くなる
   const marketDay = isMarketDay(state.day) && state.contract !== 'marketClosed' ? CONFIG.marketDaySell : 1;
   const rancher = Math.max(0.5, 1 - 0.1 * state.charms.rancher);
-  return Math.round((def.price + charm + crop.bonus + hive) * fert * tile * state.priceMult * marketMult(state, crop.kind) * fair * combo * marketDay * rancher);
+  // 大きな買い物：豊穣の像は1つにつき売値+10%
+  const statue = 1 + 0.1 * (state.premium?.statue ?? 0);
+  return Math.round((def.price + charm + crop.bonus + hive) * fert * tile * state.priceMult * marketMult(state, crop.kind) * fair * combo * marketDay * rancher * statue);
 }
 
 export function isRipe(crop: Crop | null): boolean {
@@ -2278,4 +2298,43 @@ export function rateRun(state: GameState): Rating {
   const score = Math.round(skill * (0.2 + 0.8 * progress));
   const rank = score >= 85 ? 'S' : score >= 70 ? 'A' : score >= 55 ? 'B' : score >= 40 ? 'C' : 'D';
   return { score, rank, parts, progress: Math.round(progress * 100) };
+}
+
+// ---- 大きな買い物（後半の市だけ。お金の使い道） ----
+
+export type PremiumId = 'statue' | 'reel';
+export const PREMIUM: Record<PremiumId, { name: string; desc: string; price: number; growth: number; max: number; art: string }> = {
+  statue: { name: L('豊穣の像', 'Harvest Statue'), desc: L('作物の売値+10%（ずっと・重ねられる）', 'Crop prices +10% (permanent, stacks)'), price: 200, growth: 1.6, max: 3, art: 'trophy' },
+  reel: { name: L('からくりリール', 'Clockwork Reel'), desc: L('リール+1（ずっと）', 'Reel +1 (permanent)'), price: 420, growth: 1, max: 1, art: 'artisan' },
+};
+export const PREMIUM_ORDER: PremiumId[] = ['statue', 'reel'];
+/** 大きな買い物が並ぶのは、この回数の年貢を納めたあと（4週目）から */
+export const PREMIUM_FROM = 3;
+
+export function premiumShown(state: GameState): boolean {
+  return state.taxesPaid >= PREMIUM_FROM;
+}
+
+/** 値段（売り切れ・並ばないなら null） */
+export function premiumPrice(state: GameState, id: PremiumId): number | null {
+  const p = PREMIUM[id];
+  const n = state.premium?.[id] ?? 0;
+  if (n >= p.max) return null;
+  if (id === 'reel' && state.reels >= CONFIG.maxReels) return null;
+  return Math.round(p.price * Math.pow(p.growth, n) * shopMult(state));
+}
+
+export function canBuyPremium(state: GameState, id: PremiumId): boolean {
+  const price = premiumPrice(state, id);
+  return !state.over && shopOpen(state) && premiumShown(state) && price !== null && state.gold >= price;
+}
+
+export function buyPremium(state: GameState, id: PremiumId): boolean {
+  if (!canBuyPremium(state, id)) return false;
+  const price = premiumPrice(state, id)!;
+  state.gold -= price;
+  state.premium = { ...state.premium, [id]: (state.premium?.[id] ?? 0) + 1 };
+  if (id === 'reel') state.reels = Math.min(CONFIG.maxReels, state.reels + 1);
+  glog(state, `大きな買い物 ${PREMIUM[id].name} -${price}`);
+  return true;
 }

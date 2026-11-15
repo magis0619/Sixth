@@ -4,7 +4,7 @@ import {
   CHARMS, CHARM_ORDER, curseText, symbolBase, cropBase, MERGES, type ShapeId, type CharmId, DIFFICULTIES, FARMERS, TOOL_EVOLVE, CONFIG, CROPS, PLACES, PLACE_ORDER, SEEDS, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL, type AddUpgradeId, type PlaceId, type SymbolId, type UpgradeId,
 } from './config.ts';
 import {
-  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult, mustPlace, hasRoomFor, takeOffer, roomLeft, refreshCombos, symbolShape, isRareOffer, isMarketDay, shopOpen, nextMarketDay, beginDay, spinDay, sellBlock, isFlooded, mergeable, mergeSymbol, mergeCost,
+  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult, mustPlace, hasRoomFor, takeOffer, roomLeft, refreshCombos, symbolShape, isRareOffer, isMarketDay, shopOpen, nextMarketDay, beginDay, spinDay, sellBlock, isFlooded, mergeable, mergeSymbol, mergeCost, PREMIUM, PREMIUM_ORDER, type PremiumId, premiumShown, premiumPrice, canBuyPremium, buyPremium,
 } from './game.ts';
 import { duckBgm, isMuted, sfx, suspendAudio, toggleMute, unlockAudio } from './audio.ts';
 import { saveMeta, setupFrom } from './meta.ts';
@@ -765,6 +765,49 @@ function renderShop(): void {
   (el.shop.closest('.stall-sec') as HTMLElement).hidden = adds.length === 0;
   renderUpgradeList($('remove-shop'), items.filter((u) => u.id.startsWith('remove')));
   renderMergeShop();
+  renderPremiumShop();
+}
+
+/** 大きな買い物（4週目から）：お金の使い道。売値+10%の像・リール+1 */
+function renderPremiumShop(): void {
+  const box = $('premium-shop');
+  const shown = premiumShown(state) && shopOpen(state);
+  (box.closest('.stall-sec') as HTMLElement).hidden = !shown;
+  if (!shown) return;
+  const html = PREMIUM_ORDER.map((id) => {
+    const p = PREMIUM[id];
+    const price = premiumPrice(state, id);
+    const ok = canBuyPremium(state, id);
+    const n = state.premium?.[id] ?? 0;
+    return `<button class="item premium-item${ok ? ' affordable' : ''}${price === null ? ' soldout' : ''}" data-premium="${id}"><span class="ico">${art(p.art as ArtId)}</span>
+      <span class="text"><span class="name">${p.name}${n ? ` <span class="lv">${n}/${p.max}</span>` : ''}</span><span class="effect">${p.desc}</span></span>${costHtml(price, ok)}</button>`;
+  }).join('');
+  if (box.innerHTML !== html) {
+    box.innerHTML = html;
+    box.querySelectorAll<HTMLButtonElement>('[data-premium]').forEach((b) => b.addEventListener('click', () => onBuyPremium(b)));
+  }
+}
+
+function onBuyPremium(b: HTMLButtonElement): void {
+  unlockAudio();
+  if (ui.busy || state.over) return;
+  const id = b.dataset.premium as PremiumId;
+  const price = premiumPrice(state, id);
+  if (price === null) return;
+  if (!buyPremium(state, id)) {
+    reject(b, needGold(price));
+    return;
+  }
+  sfx.bigBuy();
+  accept(b);
+  const q = center(b);
+  burst(q.x, q.y, ['✨', '⭐', '🌟'], 14, 80);
+  if (id === 'reel') {
+    sfx.newReel();
+    floatText(q.x, q.y - 30, L('リール+1！', 'Reel +1!'), { cls: 'good', size: 1 });
+  }
+  render();
+  renderShop();
 }
 
 /** 合体：同じ札が5枚そろった絵柄を、1枚の上位の札にできる（市で1回に1種類まで） */

@@ -6,7 +6,7 @@ import { CONFIG, CROPS, CUT, EVENT_CONDITIONS, FARMERS, THUNDER_LINES, UPGRADE_S
 import {
   animalGold, buy, buyPlace, drawDay, hasRanch, hiveBonus, isColorful, canPlace, canUse, cellMultiplier, cropPrice, isPond, waterWheels, checkReady, chooseCharm, endDay, evolveTools, expand, expandPrice,
   fieldCells, isGolden, lv, multSteps, newCrop, newGame, nextTax, obstacleRule, place, pullWeed, resolveAuto, ripeGroup,
-  canBuy, canBuyPlace, canExpand, isMarketDay, rollObstacles, takeOffer, refreshCombos, symbolShape, canPlaceAt, isPivotAdd, isPivotPlace, mustPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult, beginDay, takeContract, mergeable, mergeSymbol, mergeCost, bagCount, skipCharm, singleMult, rollOffer, resolveAuto as autoOf,
+  canBuy, canBuyPlace, canExpand, isMarketDay, rollObstacles, takeOffer, refreshCombos, symbolShape, canPlaceAt, isPivotAdd, isPivotPlace, mustPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult, beginDay, takeContract, mergeable, mergeSymbol, mergeCost, bagCount, skipCharm, singleMult, rollOffer, buyPremium, canBuyPremium, premiumPrice, resolveAuto as autoOf,
 } from '../src/game.ts';
 import { CONTRACTS, contractGold } from '../src/contracts.ts';
 import { farmerUnlocked, recordRun, type MetaState } from '../src/meta.ts';
@@ -484,7 +484,7 @@ describe('シナジー', () => {
     s.tools[at(2, 0)] = 'hive';
     expect(hasRanch(s)).toBe(true);
     expect(animalGold(s, at(0, 0))).toBe(CONFIG.henhouseGold * 2);
-    expect(hiveBonus(s, at(2, 1))).toBe(4);
+    expect(hiveBonus(s, at(2, 1))).toBeCloseTo(0.4);
   });
 
   it('彩りの畑：実った作物が4種類以上あると売値+10%', () => {
@@ -1171,5 +1171,30 @@ describe('かかし・余った種・仕入れ', () => {
     const seen = new Set<string>();
     for (let k = 0; k < 50; k++) rollOffer(s, Math.random).forEach((id) => seen.add(id));
     expect(seen.has('addSeed')).toBe(true);
+  });
+});
+
+describe('大きな買い物・売値のおまけ', () => {
+  it('4週目から市に並び、豊穣の像は売値+10%、からくりリールはリール+1', () => {
+    const s = newGame({ shop: [], charmPool: [] });
+    s.day = 24;
+    s.gold = 2000;
+    s.taxesPaid = 2;
+    expect(canBuyPremium(s, 'statue')).toBe(false);
+    s.taxesPaid = 3;
+    const before = cropPrice(s, newCrop('melon'));
+    expect(buyPremium(s, 'statue')).toBe(true);
+    expect(cropPrice(s, newCrop('melon'))).toBe(Math.round(before * 1.1));
+    const reels = s.reels;
+    expect(buyPremium(s, 'reel')).toBe(true);
+    expect(s.reels).toBe(reels + 1);
+    expect(premiumPrice(s, 'reel')).toBe(null);
+  });
+  it('巣箱は元の売値の+20%（安い作物ほど得しない）', () => {
+    const s = newGame({ shop: [], charmPool: [] });
+    s.day = 2;
+    s.tools[at(1, 1)] = 'hive';
+    const c = newCrop('melon');
+    expect(cropPrice(s, c, at(0, 0))).toBe(Math.round(CROPS.melon.price * 1.2));
   });
 });
