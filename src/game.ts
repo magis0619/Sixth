@@ -580,7 +580,8 @@ export function endDay(state: GameState, rng: Rng): EndDayResult {
   // 熟成：実ったまま日をまたいだ作物の売値が上がる
   if (state.day > 0 && lv(state, 'aging') > 0) {
     state.field.forEach((c) => {
-      if (c && isRipe(c)) c.bonus += 3 * lv(state, 'aging');
+      // 1日ごとに+熟成の数、3日分まで（強すぎたので弱めた）
+      if (c && isRipe(c)) c.bonus = Math.min(3 * lv(state, 'aging'), c.bonus + lv(state, 'aging'));
     });
   }
   // 井戸・水路は夜のうちに作物を育てる。水車・釣り堀・鶏小屋・牛小屋のお金が入る

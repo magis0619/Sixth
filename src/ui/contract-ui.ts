@@ -77,14 +77,14 @@ export function contractSay(): string {
   return `${L('今週だけ', 'This week')}：${c.rule}<br>${L('見返り', 'Reward')}：${rewardText(id)}`;
 }
 
-/** 月曜の朝：今週の週契約を3つから1つ受けるか、受けない */
+/** 月曜の朝：今週の週契約を3つから1つ選ぶ（受けない選択はない） */
 export function showContractOffer(): Promise<void> {
   const offer = state.contractOffer;
   sfx.charmOffer();
   el.overlay.innerHTML = `
     <div class="modal contract-modal" role="dialog" aria-label="${L('今週の週契約', 'This week’s contract')}">
       <h2>${art('calendar')} ${L('今週の週契約', 'This Week’s Contract')}</h2>
-      <p class="ct-sub">${L('<b>月〜日の今週だけ</b>の縛り。日曜の年貢を納めたら見返り', 'A rule for <b>this week only</b> (Mon–Sun). Pay Sunday’s tax to get the reward')}</p>
+      <p class="ct-sub">${L('<b>月〜日の今週だけ</b>の縛りを<b>1つ必ず選ぶ</b>。日曜の年貢を納めたら見返り', '<b>Pick one</b> rule for <b>this week only</b> (Mon–Sun). Pay Sunday’s tax to get the reward')}</p>
       <div class="ct-week" aria-hidden="true">${(L('月火水木金土日', 'MTWTFSS')).split('').map((d) => `<i>${d}</i>`).join('')}</div>
       <div class="ct-choices">
         ${offer
@@ -100,7 +100,6 @@ export function showContractOffer(): Promise<void> {
           })
           .join('')}
       </div>
-      <button class="ct-skip" data-contract="" disabled>${L('今週は受けない', 'No contract this week')}</button>
     </div>`;
   el.overlay.classList.add('show');
   const cards = [...el.overlay.querySelectorAll<HTMLButtonElement>('[data-contract]')];

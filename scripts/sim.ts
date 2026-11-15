@@ -164,6 +164,7 @@ const setup = mode === 'full'
 if (process.env.DAILY === '0') (CONFIG as { dailyPick: boolean }).dailyPick = false;
 console.log(`mode=${mode} bot=${bot} daily=${CONFIG.dailyPick}`);
 const days: number[] = [];
+const dump: unknown[] = [];
 const taxes: number[] = [];
 const goldAtTax: number[][] = [];
 for (let n = 0; n < runs; n++) {
@@ -173,10 +174,11 @@ for (let n = 0; n < runs; n++) {
     const r = startDay(s, Math.random);
     if (!r.ok) break;
     resolveFever(s, Math.random);
-    // 週契約：CONTRACT=1 なら並んだ中から1つ受ける（受けないときは見送る）
-    if (s.contractOffer.length) takeContract(s, process.env.CONTRACT === '1' ? pick(s.contractOffer) : null);
+    // 週契約：必ず1つ受ける（並んだ中からでたらめに）
+    if (s.contractOffer.length) takeContract(s, pick(s.contractOffer));
     if (s.contractDone) s.contractDone = null;
-    if (s.charmOffer) chooseCharm(s, smart ? (s.charmOffer.find((id) => !CHARMS[id].special) ?? s.charmOffer[0]) : pick(s.charmOffer));
+    // RANDCHARM=1 はお守りをでたらめに選ぶ（どのお守りが強いかを比べる用）
+    if (s.charmOffer) chooseCharm(s, smart && !process.env.RANDCHARM ? (s.charmOffer.find((id) => !CHARMS[id].special) ?? s.charmOffer[0]) : pick(s.charmOffer));
     resolveAllAuto(s, Math.random);
     // 毎日の仕入れ：買い物の優先順で欲しい物があれば取る。なければ見送る（袋を薄めない）
     const want = PRIORITY.find((id) => s.offer.includes(id as never) && wants(s, id));
@@ -189,7 +191,10 @@ for (let n = 0; n < runs; n++) {
   }
   days.push(s.day);
   taxes.push(s.taxesPaid);
+  // DUMP=ファイル で1プレイごとの記録（持っていたお守り・置いた畑の品・袋）を書き出す
+  if (process.env.DUMP) dump.push({ taxes: s.taxesPaid, got: s.stats.charms, buys: s.stats.purchases, charms: Object.fromEntries(Object.entries(s.charms).filter(([, v]) => v > 0)), bought: s.bought, bag: Object.fromEntries(Object.entries(s.bag).filter(([, v]) => v > 0)), cols: s.cols, rows: s.rows });
 }
+if (process.env.DUMP) (await import('node:fs')).writeFileSync(process.env.DUMP, JSON.stringify(dump));
 
 const pct = (a: number[], p: number) => [...a].sort((x, y) => x - y)[Math.floor(a.length * p)];
 const passed = (k: number) => ((taxes.filter((t) => t >= k).length / runs) * 100).toFixed(0);
