@@ -1697,7 +1697,7 @@ export function multSteps(state: GameState, cell: number): { label: string; x: n
     if (comboOn(state, 'tomatoFest') && state.field[cell]!.kind === 'tomato') steps.push({ label: L('トマト祭り', 'Tomato Fest'), x: COMBO_POWER.cropLine });
     if (comboOn(state, 'flowerField') && cropBase(state.field[cell]!.kind) === 'strawberry') steps.push({ label: L('花畑', 'Flower Field'), x: COMBO_POWER.cropLine });
   }
-  if (runs.length > 1) steps.push({ label: L(`${runs.length}本が交差`, `${runs.length} lines cross`), x: 1 + CONFIG.crossBonus * (runs.length - 1) });
+  if (runs.length > 1 && CONFIG.crossBonus > 0) steps.push({ label: L(`${runs.length}本が交差`, `${runs.length} lines cross`), x: 1 + CONFIG.crossBonus * (runs.length - 1) });
   return steps;
 }
 

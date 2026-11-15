@@ -84,7 +84,7 @@ describe('列の収穫', () => {
     expect(ripeGroup(s, at(0, 1)).length).toBe(1);
   });
 
-  it('同じ作物の列は2段の倍率、交差は上乗せ', () => {
+  it('同じ作物の列は2段の倍率（交差のおまけは今はなし）', () => {
     const s = game();
     ripe(s, 'tomato', [at(0, 0), at(1, 0), at(2, 0)]);
     expect(multSteps(s, at(1, 0)).map((x) => x.label)).toEqual(['列', '同じ作物']);

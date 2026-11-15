@@ -401,7 +401,8 @@ export const CONFIG = {
   singleMult: 0.5,
   lineMult: 1.3,
   sameCropMult: 1.3,
-  crossBonus: 0.08,
+  // 交差のおまけは一旦なし（3×3に全部植えるだけで最大になっていた）
+  crossBonus: 0,
 
   /** 強化の価格 */
   upgradePrices: {
