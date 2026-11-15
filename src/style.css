@@ -1801,41 +1801,7 @@ button {
   background: #8b7a62;
 }
 
-/* 背の低い画面：筐体の飾りを削って畑を大きく保つ */
-@media (max-height: 700px) and (orientation: portrait) {
-  #app {
-    gap: 6px;
-  }
-  .machine-top {
-    display: none;
-  }
-  .machine {
-    padding: 8px 10px 10px;
-    gap: 6px;
-    --reel-h: 64px;
-  }
-  .reels-frame {
-    padding: 6px;
-  }
-  .spin {
-    font-size: 1.125rem;
-    padding: 7px 10px 6px;
-  }
-  .stat {
-    font-size: 1.375rem;
-  }
-  .icon-btn {
-    width: 36px;
-    height: 36px;
-  }
-  .hint {
-    font-size: 0.75rem;
-    padding: 5px 10px;
-  }
-  .farm {
-    padding: 10px;
-  }
-}
+/* 背の低い画面（ブラウザの帯が大きいときなど）も、並びは同じ。収まらない分は畑のマスを小さくする（fitLayout） */
 
 /* ---- 注文の札 ---- */
 .order {
@@ -7794,3 +7760,8 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 }
 /* チュートリアル中は、指はチュートリアルの1本だけ（「次の日へ」の札の指は隠す） */
 .in-tutorial .go-hand { display: none; }
+
+/* 畑の上の札（注文・選んだ出目）が上の曜日に重ならないよう、景色の場所は最低限残す */
+.scene {
+  min-height: 24px;
+}
