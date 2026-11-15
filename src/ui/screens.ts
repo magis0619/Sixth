@@ -149,6 +149,7 @@ export function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
       <li>${art('seed')}<span>${L('光る出目 → マスをタップ', 'Tap a glowing reel → tap a plot')}</span></li>
       <li>${art('rain')}<span>${L('雨＝縦横十字', 'Rain = cross')}　${art('sun')}${L('太陽＝縦一列', 'Sun = column')}　${art('bee')}${L('蜂＝斜め', 'Bee = diagonals')}　${art('moon')}${L('満月＝全体', 'Moon = all')}</span></li>
       <li>${art('tomato')}${art('tomato')}${art('tomato')}<span>${L('縦・横・斜めに3つ＝高く売れる（単品は½）', '3 in a row (any direction) sell high; singles are ½')}</span></li>
+      <li>${art('flame')}<span>${L('同じ絵柄が3つそろうとフィーバー：良い絵柄は特別な効果と大当たり、お邪魔は効果2倍', 'Match 3 of a symbol for a FEVER: good ones give a bonus and jackpot, pests hit twice as hard')}</span></li>
       <li>${art('bale')}<span>${L(`${CONFIG.taxPeriod}日ごとに年貢。払えないと終わり／${CONFIG.winTaxes}回でクリア`, `Tax every ${CONFIG.taxPeriod} days. Can't pay = game over / pay ${CONFIG.winTaxes} to win`)}</span></li>
       <li>${art('coinPurse')}<span>${L('年貢のあと：お守り1つ＋お邪魔が増える', 'After each tax: pick a charm, and pests join your bag')}</span></li>
       <li>${art('seed')}<span>${L(`市：毎週${CONFIG.marketDays.join('・')}日目。絵柄を3つから1つタダで（必ず）＋畑の品・お邪魔を消す・広げる`, `Market: days ${CONFIG.marketDays.join(' & ')} of each week. Take 1 of 3 symbols free (required), plus tools, pest removal, expansion`)}</span></li>

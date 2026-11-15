@@ -7729,3 +7729,68 @@ body:has(#overlay.show) :is(.machine, .machine *) {
   background: var(--cloth);
   color: var(--ink-soft);
 }
+/* チュートリアル：フィーバーの見本（同じ絵柄が3つ） */
+.tut-fever { display: flex; justify-content: center; gap: 6px; margin-bottom: 6px; }
+.tut-fever .art, .tut-fever svg { width: 40px !important; height: 40px !important; }
+
+/* ==== チュートリアル：暗幕と穴・指・案内役・進み具合 ==== */
+.tut-dim {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  pointer-events: none;
+  background: rgba(30, 20, 10, 0.55);
+}
+.tut-hand {
+  position: fixed;
+  z-index: 41;
+  width: 58px;
+  height: 58px;
+  margin: 0 0 0 -12px;
+  pointer-events: none;
+  transition: left 0.25s, top 0.25s;
+  animation: tut-tap 0.9s ease-in-out infinite;
+  filter: drop-shadow(3px 3px 0 var(--ink));
+}
+.tut-hand svg { width: 100%; height: 100%; }
+@keyframes tut-tap {
+  0%, 100% { transform: translate(0, 8px) scale(1); }
+  45% { transform: translate(0, 0) scale(0.9); }
+}
+/* 光らせる物は枠だけ（動くのは指だけ） */
+.coach-focus { animation: none; }
+.coach {
+  z-index: 42;
+  padding: 12px 14px 10px;
+  border: 4px solid var(--ink);
+  box-shadow: 5px 5px 0 var(--ink);
+}
+.coach-body { display: flex; align-items: center; gap: 10px; text-align: left; }
+.coach-guide { flex: none; width: 56px; height: 56px; display: flex; }
+.coach .coach-guide .art, .coach .coach-guide svg { width: 100%; height: 100%; }
+.coach p { margin: 0; font-size: 1.25rem; font-weight: 800; line-height: 1.45; word-break: keep-all; overflow-wrap: anywhere; }
+.coach p b { color: #c93c2b; }
+.coach p .art, .coach p svg { width: 1.3em; height: 1.3em; vertical-align: -0.3em; }
+.coach-dots { display: flex; justify-content: center; gap: 5px; margin: 8px 0 2px; }
+.coach-dots i { width: 8px; height: 8px; border-radius: 50%; background: #e3d9c4; }
+.coach-dots i.done { background: #8fcf5c; }
+.coach-dots i.now { background: var(--gold); box-shadow: 0 0 0 2px var(--ink); }
+.coach-actions { gap: 12px; }
+.coach .coach-next { font-size: 1.125rem; min-height: 44px; padding: 8px 22px; }
+.coach .coach-skip { font-size: 1rem; min-height: 40px; padding: 4px 14px; }
+.coach .tut-fever { justify-content: flex-start; }
+.coach-good {
+  position: absolute;
+  left: 6px;
+  top: -14px;
+  padding: 2px 10px;
+  font-family: var(--font-pop);
+  font-size: 1rem;
+  color: #fff;
+  background: #e8743b;
+  border: 3px solid var(--ink);
+  border-radius: 8px;
+  pointer-events: none;
+}
+/* チュートリアル中は、指はチュートリアルの1本だけ（「次の日へ」の札の指は隠す） */
+.in-tutorial .go-hand { display: none; }
