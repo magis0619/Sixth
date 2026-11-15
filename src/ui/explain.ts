@@ -128,6 +128,10 @@ export function symbolCard(sym: SymbolId): string {
     const n = seed.single ? '×1' : `×${Math.min(...counts) + seed.extra}〜${Math.max(...counts) + seed.extra}`;
     pic = `<div class="ex-row">${big(sym)}<span class="ex-arrow">▶</span>${big(FRUIT[seed.crop])}<b class="ex-num">${n}</b></div>
       <div class="ex-facts"><span>${art('sprout')}<b>${crop.ripe}</b>${L('回で実る', ' to ripen')}</span><span>${art('coin')}<b>${crop.price}</b>${crop.big ? L('（2×2）', ' (2×2)') : ''}</span></div>`;
+  } else if (sym === 'moon') {
+    // 月：出るたびに満ちて、満月のときだけ畑全体+1
+    pic = `<div class="ex-row ex-moon">${(['moonNew', 'moonCrescent', 'moonHalf'] as ArtId[]).map((a) => big(a, 'small')).join('<span class="ex-arrow">▶</span>')}<span class="ex-arrow">▶</span>${big('moon')}</div>
+      <div class="ex-row">${shapeGrid('all', '+1')}</div>`;
   } else if (d.kind === 'manual' && (symbolShape(state, sym) || sym === 'fertilizer')) {
     const shape = sym === 'fertilizer' ? 'one' : symbolShape(state, sym)!;
     const [amt, mid] = sym === 'fertilizer' ? ['×2'] : (AMOUNT[sym] ?? ['+1']);

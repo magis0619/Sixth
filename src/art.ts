@@ -918,7 +918,19 @@ const packetGold = (bag: string[], inner: string) => `
   ${face(`M${starPts(50, 52, 5, 9, 9, 0.45, -90)}Z`, C.gold, 50, 52, 0.8, S2)}
   ${hl(15.5, 30, 1.2, 7, 0, 0.45)}`;
 
+/** 月の満ち欠け（新月・三日月・半月）。満月はふだんの月の絵 */
+const moonDisk = (lit: string) => `
+  ${face(E(32, 32, 23), ['#5a5f78', '#3f4358', '#7a80a0'], 26, 26, 0.86)}
+  ${lit}
+  <circle cx="32" cy="32" r="23" fill="none" ${S}/>`;
+const PHASE_ART = {
+  moonNew: `${moonDisk('')}<circle cx="24" cy="24" r="3" fill="#6d7290"/><circle cx="40" cy="40" r="4" fill="#6d7290"/>${sparkle(9, 11, 4, '#fff')}`,
+  moonCrescent: `${moonDisk(`<path d="M32 9A23 23 0 0 1 32 55A15 23 0 0 0 32 9Z" fill="#ffe98a"/><path d="M38 14Q48 24 46 36" fill="none" stroke="#fff6c8" stroke-width="2.4" stroke-linecap="round"/>`)}${sparkle(10, 12, 4, '#fff')}`,
+  moonHalf: `${moonDisk(`<path d="M32 9A23 23 0 0 1 32 55Z" fill="#ffe98a"/><path d="M32 9V55" fill="none" stroke="#e9c556" stroke-width="2"/><circle cx="43" cy="22" r="2.5" fill="#f0d272"/><circle cx="41" cy="40" r="3.5" fill="#f0d272"/>`)}${sparkle(10, 12, 4, '#fff')}`,
+};
+
 const MERGE_ART = {
+  ...PHASE_ART,
   oniTomato,
   heartBerry,
   lanternPumpkin,

@@ -436,9 +436,19 @@ function usableReels(): number[] {
   return state.results.flatMap((_, i) => (canUse(state, i, null) ? [i] : []));
 }
 
+/** 出目の絵（月は満ち欠けの形で） */
+const MOON_PHASE_ART: ArtId[] = ['moonNew', 'moonCrescent', 'moonHalf', 'moon'];
+function resultArt(i: number): string {
+  const r = state.results[i];
+  if (r?.symbol === 'moon' && r.moon !== undefined) return art(MOON_PHASE_ART[r.moon]);
+  return symHtml(r.symbol);
+}
+
 function reelTag(i: number): { text: string; cls: string } {
   const r = state.results[i];
   if (!r) return { text: '—', cls: '' };
+  // 満ちていく途中の月：あと何回で満月か
+  if (r.symbol === 'moon' && r.moon !== undefined && r.moon < 3) return { text: L(`満ちる ${r.moon}/3`, `Waxing ${r.moon}/3`), cls: 'used moon-wax' };
   const def = SYMBOLS[r.symbol];
   if (def.kind === 'auto') {
     // 絵柄はイラストで分かるので、札には結果だけを短く書く
@@ -466,8 +476,8 @@ function buildReels(): void {
     const b = document.createElement('button');
     b.className = 'reel';
     b.dataset.i = String(i);
-    const prev = state.results[i]?.symbol ?? drawSymbol(state.bag, rng);
-    b.innerHTML = `<div class="window"><div class="strip"><div class="cell-sym">${symHtml(prev)}</div></div></div><div class="tag">—</div>`;
+    const prev = state.results[i] ? resultArt(i) : symHtml(drawSymbol(state.bag, rng));
+    b.innerHTML = `<div class="window"><div class="strip"><div class="cell-sym">${prev}</div></div></div><div class="tag">—</div>`;
     b.addEventListener('click', () => clickAllowed('reel') && onReelTap(i));
     el.reels.appendChild(b);
     if (state.day > 0) b.classList.add('enter');
@@ -1468,7 +1478,7 @@ function spinReels(show: SpinShow = { cutIn: null }): Promise<void> {
     const prevSym = reel.querySelector('.cell-sym')!.innerHTML;
     const dur = CONFIG.timing.spinBase + i * CONFIG.timing.spinStagger + extra + (suspense && i === last ? hold : 0);
     const fillers = Math.max(8, Math.round(dur / 40));
-    const items = [prevSym, ...Array.from({ length: fillers }, () => symHtml(drawSymbol(state.bag, rng))), symHtml(state.results[i].symbol)];
+    const items = [prevSym, ...Array.from({ length: fillers }, () => symHtml(drawSymbol(state.bag, rng))), resultArt(i)];
     strip.innerHTML = items.map((s) => `<div class="cell-sym">${s}</div>`).join('');
     reel.className = 'reel spinning';
     reel.querySelector('.tag')!.textContent = '…';
@@ -1496,7 +1506,7 @@ function spinReels(show: SpinShow = { cutIn: null }): Promise<void> {
     });
     return anim.finished.then(() => {
       anim.cancel();
-      strip.innerHTML = `<div class="cell-sym">${symHtml(state.results[i].symbol)}</div>`;
+      strip.innerHTML = `<div class="cell-sym">${resultArt(i)}</div>`;
       reel.classList.remove('spinning', 'suspense', 'reach');
       sfx.reelStop(i);
       // 行き過ぎて戻る「ガコッ」

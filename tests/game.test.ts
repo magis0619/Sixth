@@ -1198,3 +1198,26 @@ describe('大きな買い物・売値のおまけ', () => {
     expect(cropPrice(s, c, at(0, 0))).toBe(Math.round(CROPS.melon.price * 1.2));
   });
 });
+
+describe('月の満ち欠け', () => {
+  it('出るたびに満ちて、満月のときだけ使える。使うと新月に戻る', () => {
+    const s = newGame({ shop: [], charmPool: [] });
+    s.bag = Object.fromEntries(Object.keys(s.bag).map((k) => [k, 0])) as typeof s.bag;
+    s.bag.moon = 1;
+    s.reels = 1;
+    s.field[at(0, 0)] = newCrop('tomato');
+    const phases: number[] = [];
+    for (let k = 0; k < 3; k++) {
+      drawDay(s, Math.random);
+      phases.push(s.results[0].moon!);
+    }
+    expect(phases).toEqual([1, 2, 3]);
+    expect(canUse(s, 0, null)).toBe(true);
+    useSymbol(s, 0, null);
+    expect(s.field[at(0, 0)]!.growth).toBe(1);
+    expect(s.moonPhase).toBe(0);
+    drawDay(s, Math.random);
+    expect(s.results[0].moon).toBe(1);
+    expect(canUse(s, 0, null)).toBe(false);
+  });
+});

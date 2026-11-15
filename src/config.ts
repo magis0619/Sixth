@@ -144,7 +144,7 @@ export const SYMBOLS: Record<SymbolId, SymbolDef> = {
   clover: { id: 'clover', name: '四つ葉', emoji: '🍀', kind: 'auto', desc: '明日 金の種↑', feverDesc: '幸運：お守りを1つ選べる', rarity: 'rare' },
   thunder: { id: 'thunder', name: '雷', emoji: '⚡', kind: 'manual', shape: 'row', desc: '横一列 成長+2', feverDesc: '大雷：全作物の成長＋1', rarity: 'rare' },
   hoe: { id: 'hoe', name: '鍬', emoji: '⛏️', kind: 'manual', shape: 'row', desc: '横一列の雑草・霜を消して耕す（次に植えると成長+1）', feverDesc: '大耕し：畑全体を耕す', rarity: 'normal' },
-  moon: { id: 'moon', name: '満月', emoji: '🌕', kind: 'manual', shape: 'all', desc: '全作物 成長+1', feverDesc: '月の宴：全作物の成長さらに＋1', rarity: 'rare' },
+  moon: { id: 'moon', name: '月', emoji: '🌕', kind: 'manual', shape: 'all', desc: '出るたびに満ちる（新月→三日月→半月→満月）。満月のときだけ全作物 成長+1、使うと新月に戻る', feverDesc: '月の宴：全作物の成長さらに＋1', rarity: 'rare' },
   // ---- お邪魔系（年貢を納めるたびにどれかが袋に増える） ----
   weed: { id: 'weed', name: '雑草', emoji: '🌾', kind: 'auto', desc: '作物の隣の空きマスを塞ぐ・広がる', feverDesc: '群れ：2か所に生える', rarity: 'bad' },
   tanuki: { id: 'tanuki', name: 'タヌキ', emoji: '🦝', kind: 'auto', desc: '実りを盗む', feverDesc: '群れ：2つ持っていく', rarity: 'bad' },
@@ -532,7 +532,7 @@ export const UPGRADES: { id: UpgradeId; name: string; emoji: string; desc: strin
   { id: 'addBee', name: '蜂を足す', emoji: '🐝', desc: '絵柄袋に蜂を1枚追加' },
   { id: 'addMerchant', name: '商人を足す', emoji: '🧑‍🌾', desc: '絵柄袋に商人を1枚追加' },
   { id: 'addClover', name: '四つ葉を足す', emoji: '🍀', desc: '絵柄袋に四つ葉を1枚追加' },
-  { id: 'addMoon', name: '満月を足す', emoji: '🌕', desc: '絵柄袋に満月（全作物＋1）を1枚追加。足すたびに高くなる' },
+  { id: 'addMoon', name: '月を足す', emoji: '🌕', desc: '絵柄袋に月（満ち欠けして、満月で全作物＋1）を1枚追加。足すたびに高くなる' },
   { id: 'removeCrow', name: 'カラスを消す', emoji: '🐦', desc: '絵柄袋からカラスを1枚削除' },
   { id: 'removeBug', name: '虫を消す', emoji: '🐛', desc: '絵柄袋から虫を1枚削除' },
   { id: 'removeWeed', name: '雑草を消す', emoji: '🌾', desc: '絵柄袋から雑草を1枚削除' },
@@ -828,7 +828,7 @@ if (EN) {
     clover: ['Clover', 'Golden seed more likely tomorrow', 'Luck: pick a charm'],
     thunder: ['Thunder', 'Row: growth +2', 'Great thunder: all crops +1'],
     hoe: ['Hoe', 'Clears weeds/frost in a row and tills (next crop +1)', 'Great tilling: till the whole field'],
-    moon: ['Full Moon', 'All crops +1', 'Moon feast: all crops +1 more'],
+    moon: ['Moon', 'Waxes each time it appears (new → crescent → half → full). Only a full moon works: all crops +1, then back to new', 'Moon feast: all crops +1 more'],
     weed: ['Weed', 'Blocks empty plots next to crops and spreads', 'Overgrowth: sprouts in 2 places'],
     tanuki: ['Tanuki', 'Steals ripe crops', 'Pack: takes 2'],
     frost: ['Frost', 'Freezes a plot for 3 days', 'Cold snap: freezes 2 plots'],
@@ -885,7 +885,7 @@ if (EN) {
   const up: Partial<Record<UpgradeId, string>> = {
     addSeed: 'Tomato Seed', addBerrySeed: 'Strawberry Seed', addPumpkinSeed: 'Pumpkin Seed', addRain: 'Rain', addSun: 'Sun', addFertilizer: 'Fertilizer',
     addGoldSeed: 'Golden Seed', addMelonSeed: 'Melon Seed', addThunder: 'Thunder', addWatermelonSeed: 'Watermelon Seed', addHoe: 'Hoe', addBee: 'Bee',
-    addMerchant: 'Merchant', addClover: 'Clover', addMoon: 'Full Moon',
+    addMerchant: 'Merchant', addClover: 'Clover', addMoon: 'Moon',
     removeCrow: 'Crow', removeBug: 'Bug', removeWeed: 'Weed', removeTanuki: 'Tanuki', removeFrost: 'Frost', removeMole: 'Mole', removeLocust: 'Locust',
   };
   UPGRADES.forEach((u) => {

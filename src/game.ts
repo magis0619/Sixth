@@ -31,6 +31,8 @@ export interface ReelResult {
   power: number;
   /** 霧の週：霧に隠れたリール（lost なら今日は使えない） */
   fog?: 'seen' | 'lost';
+  /** 月の満ち欠け（0新月・1三日月・2半月・3満月）。満月のときだけ使える */
+  moon?: number;
 }
 
 /** お客さんの注文。年貢の週ごとに1件 */
@@ -125,6 +127,8 @@ export interface GameState {
   mergedThisMarket: boolean;
   /** 大きな買い物（後半の市）を買った数 */
   premium: Partial<Record<PremiumId, number>>;
+  /** 月の満ち欠け（袋の月の札すべてで共通）。0新月 → 1三日月 → 2半月 → 3満月。満月を使うと新月に戻る */
+  moonPhase: number;
   /** 開発用のプレイログ（1行1出来事。設定の「ログを書き出す」で取り出す） */
   log: string[];
   /** 買った回数（畑を広げる・道具ごと。価格が上がる） */
@@ -285,6 +289,7 @@ function freshGame(setup: GameSetup): GameState {
     taxCut: 0,
     mergedThisMarket: false,
     premium: {},
+    moonPhase: 0,
     log: [],
     tilled: Array.from({ length: CONFIG.fieldCols * CONFIG.fieldRows }, () => false),
     market: null,
@@ -729,6 +734,16 @@ function spinDayRaw(state: GameState, rng: Rng): void {
     // 種の節約：1枚で2個まで
     if (seed && state.contract === 'seedThrift') total = Math.min(2, total);
     return { symbol, used: false, total, left: total, power } as ReelResult;
+  });
+  // 月の満ち欠け：月が出るたびに1つ満ちる。満月になった月だけ使える（使うと新月に戻る）
+  state.results.forEach((r) => {
+    if (r.symbol !== 'moon') return;
+    state.moonPhase = Math.min(3, (state.moonPhase ?? 0) + 1);
+    r.moon = state.moonPhase;
+    if (r.moon < 3) {
+      r.used = true;
+      r.left = 0;
+    }
   });
   // 霧の週：毎日リールが1つ霧に隠れ、半分の日はその出目が使えない
   if (state.contract === 'fog' && state.results.length) {
@@ -1639,6 +1654,8 @@ function useSymbolRaw(state: GameState, reel: number, cell: number | null): numb
       return affected;
     case 'moon':
       fieldCells(state).forEach((i) => grow(state, i, r.power + (comboOn(state, 'moonFeast') ? 1 : 0), affected));
+      // 満月を使うと新月に戻る
+      state.moonPhase = 0;
       return affected;
     case 'sun': {
       // 霜を溶かしてから育てる（溶けたマスの作物もすぐ育つ）
