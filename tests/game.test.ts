@@ -682,14 +682,31 @@ describe('土地と建物', () => {
     expect(canBuyPlace(s, 'water')).toBe(false);
   });
 
-  it('買った物を置くまでは次を買えない', () => {
+  it('市ではいくつも買えて置き待ちにたまり、置ける場所の数までしか買えない', () => {
     const s = newGame();
     s.day = CONFIG.marketDays[0];
-    s.gold = 9999;
+    s.gold = 99999;
     s.weeklyPlaces = ['henhouse', 'water'];
     expect(buyPlace(s, 'henhouse')).toBe(true);
     expect(mustPlace(s)).toBe(true);
-    expect(canBuyPlace(s, 'water')).toBe(false);
+    expect(canBuyPlace(s, 'water')).toBe(true);
+    expect(buyPlace(s, 'water')).toBe(true);
+    expect(s.stock).toEqual(['henhouse', 'water']);
+    // 3×3の空き9マスに建物は9つまで（1つ目と合わせて）
+    let n = 1;
+    while (buyPlace(s, 'henhouse')) n++;
+    expect(n).toBe(9);
+    expect(canBuyPlace(s, 'henhouse')).toBe(false);
+  });
+
+  it('年貢の減免は1つで5%、上限25%', () => {
+    const s = newGame();
+    const base = nextTax(s).amount;
+    s.charms.taxRelief = 1;
+    expect(nextTax(s).amount).toBe(Math.round(base * 0.95));
+    s.charms.taxRelief = 3;
+    // 3つで金色（効果2倍）でも上限は25%
+    expect(nextTax(s).amount).toBe(Math.round(base * 0.75));
   });
 });
 

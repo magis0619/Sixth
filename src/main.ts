@@ -4,7 +4,7 @@ import {
   CHARMS, CHARM_ORDER, type CharmId, DIFFICULTIES, FARMERS, TOOL_EVOLVE, CONFIG, CROPS, PLACES, PLACE_ORDER, SEEDS, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL, type AddUpgradeId, type PlaceId, type SymbolId, type UpgradeId,
 } from './config.ts';
 import {
-  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult, mustPlace, hasRoomFor, takeOffer, refreshCombos, symbolShape, isRareOffer, isMarketDay, shopOpen, nextMarketDay, beginDay, spinDay,
+  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult, mustPlace, hasRoomFor, takeOffer, roomLeft, refreshCombos, symbolShape, isRareOffer, isMarketDay, shopOpen, nextMarketDay, beginDay, spinDay,
 } from './game.ts';
 import { duckBgm, isMuted, sfx, suspendAudio, toggleMute, unlockAudio } from './audio.ts';
 import { saveMeta, setupFrom } from './meta.ts';
@@ -534,7 +534,7 @@ function renderSpinButton(): void {
   }
   setHtml(cue, !ready
     ? `${art('coin')} ${L('畑スロット', 'FARM SLOTS')} ${art('coin')}`
-    : state.day === 0
+    : state.day === 0 || state.morning
     ? L('▼ タップで回す ▼', '▼ TAP TO SPIN ▼')
     : t.daysLeft === 0
       ? L(`▼ タップで年貢 ${t.amount}を納めて回す ▼`, `▼ TAP: PAY ${t.amount}g TAX & SPIN ▼`)
@@ -846,7 +846,7 @@ function renderFarmShop(): void {
   // 広げきったら「完了」は一番下へ（今週の品を上に）
   if (ep !== null) items.push(expandItem);
   PLACE_ORDER.filter((id) => state.weeklyPlaces.includes(id)).forEach((id) =>
-    items.push({ key: id, ico: art(PLACE_ART[id]), name: PLACES[id].name, effect: mustPlace(state) ? placeFirst() : hasRoomFor(state, id) ? PLACES[id].desc : PLACES[id].kind === 'tool' ? L('置ける空きマスがない', 'No empty plot to place it') : L('敷けるマスがない', 'No plot to lay it on'), price: placePrice(state, id), ok: canBuyPlace(state, id), pivot: isPivotPlace(state, id) }),
+    items.push({ key: id, ico: art(PLACE_ART[id]), name: PLACES[id].name, effect: roomLeft(state, id) > 0 ? PLACES[id].desc : PLACES[id].kind === 'tool' ? L('置ける空きマスがない', 'No empty plot to place it') : L('敷けるマスがない', 'No plot to lay it on'), price: placePrice(state, id), ok: canBuyPlace(state, id), pivot: isPivotPlace(state, id) }),
   );
   if (ep === null) items.push(expandItem);
   // 週が替わって品が入れ替わったら作り直す（数が同じでも、ボタンが前の品のまま押されないように）
@@ -885,21 +885,23 @@ function onBuyFarm(key: PlaceId | 'expand'): void {
       return;
     }
     accept(card);
-    closeSheet();
+    // 市は閉じない（続けて買える）
     render();
+    renderFarmShop();
     showExpanded();
     return;
   }
   if (!buyPlace(state, key)) {
-    reject(card, mustPlace(state) ? placeFirst() : !hasRoomFor(state, key) ? L('置ける所がない', 'No room') : needGold(placePrice(state, key) ?? 0));
+    reject(card, roomLeft(state, key) <= 0 ? L('置ける所がない', 'No room') : needGold(placePrice(state, key) ?? 0));
     return;
   }
   accept(card);
   sfx.buy();
   selected = null;
-  closeSheet();
+  // 市は閉じずに続けて買える。買った物は置き待ちにたまり、市を出たら置く
   render();
-  say(`${art('hand')} ${L(`${PLACES[key].name}を置く`, `Place the ${PLACES[key].name}`)}`);
+  renderFarmShop();
+  say(`${art(PLACE_ART[key])} ${L(`置き待ち ${state.stock.length}（市を出たら置く）`, `To place: ${state.stock.length} (after the market)`)}`);
 }
 
 function fieldCells(): number[] {

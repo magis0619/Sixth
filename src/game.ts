@@ -530,7 +530,8 @@ export function nextTax(state: GameState): TaxInfo {
   // 納めた回数から次の期日を決める（納付直後に同じ年貢を指さないように）
   const index = state.taxesPaid;
   const dueDay = (index + 1) * CONFIG.taxPeriod;
-  const relief = Math.min(0.5, 0.1 * lv(state, 'taxRelief'));
+  // 年貢の減免：1つで5%、上限25%（強すぎたので弱めた）
+  const relief = Math.min(0.25, 0.05 * lv(state, 'taxRelief'));
   const half = (state.halfTax ? 0.5 : 1) * (state.difficulty >= 1 ? 1.3 : 1);
   return { dueDay, daysLeft: dueDay - state.day, amount: Math.round(taxAmount(index) * (1 - relief) * half), index };
 }
@@ -1632,8 +1633,15 @@ export function placePrice(state: GameState, id: PlaceId): number | null {
 
 export function canBuyPlace(state: GameState, id: PlaceId): boolean {
   const p = placePrice(state, id);
-  // 置ける場所がない物は買えない。手元に置き待ちがあるうちは次を買えない
-  return !state.over && shopOpen(state) && p !== null && state.weeklyPlaces.includes(id) && state.gold >= p && hasRoomFor(state, id) && !mustPlace(state);
+  // 市ではいくつでも買える（置き待ちにたまる）。置ける場所が残っていない物は買えない
+  return !state.over && shopOpen(state) && p !== null && state.weeklyPlaces.includes(id) && state.gold >= p && roomLeft(state, id) > 0;
+}
+
+/** id を置ける場所の残り（置ける場所の数から、手元で置き待ちの同じ層の物を引く） */
+export function roomLeft(state: GameState, id: PlaceId): number {
+  const kind = PLACES[id].kind;
+  const spots = fieldCells(state).filter((c) => canPlaceAt(state, id, c)).length;
+  return spots - state.stock.filter((s) => PLACES[s].kind === kind).length;
 }
 
 /** 買って手元に置く。畑に置くのは place で */

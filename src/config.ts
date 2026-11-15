@@ -555,7 +555,7 @@ export const CHARMS: Record<CharmId, CharmDef> = {
   bigGame: { id: 'bigGame', tier: 'uncommon', name: '大物狙い', emoji: '🍉', desc: (n) => `スイカの売値＋${30 * n}`, max: Infinity },
   wheelwright: { id: 'wheelwright', tier: 'uncommon', name: '水車職人', emoji: '🛞', desc: () => '水車のお金×2', max: 1 },
   tillMaster: { id: 'tillMaster', tier: 'common', name: '耕作上手', emoji: '⛏️', desc: () => '耕した土に植えると成長+2', max: 1 },
-  taxRelief: { id: 'taxRelief', tier: 'common', name: '年貢の減免', emoji: '📜', desc: (n) => `年貢−${Math.min(50, 10 * n)}%`, max: 5 },
+  taxRelief: { id: 'taxRelief', tier: 'uncommon', name: '年貢の減免', emoji: '📜', desc: (n) => `年貢−${Math.min(25, 5 * n)}%`, max: 3 },
   // 組み合わせ（お守りではない）：同じ日のスロットに2つそろうと、その日だけ自動で起きる（COMBOS）
   thunderstorm: { id: 'thunderstorm', tier: 'rare', name: '雷雨', emoji: '⛈️', desc: () => '今日は雨が斜めにも効く', max: 1, special: { kind: 'combo', hint: '雨と雷が一緒に出ると…？' } },
   tomatoFest: { id: 'tomatoFest', tier: 'rare', name: 'トマト祭り', emoji: '🍅', desc: () => '今日はトマトだけの列 さらに×1.5', max: 1, special: { kind: 'combo', hint: 'トマトの種が2つ出ると…？' } },
@@ -818,7 +818,7 @@ if (EN) {
     bigGame: ['Big Game', (n) => `Watermelon price +${30 * n}`],
     wheelwright: ['Wheelwright', () => 'Waterwheel gold ×2'],
     tillMaster: ['Master Tiller', () => 'Planting on tilled soil gives +2 growth'],
-    taxRelief: ['Tax Relief', (n) => `Taxes −${Math.min(50, 10 * n)}%`],
+    taxRelief: ['Tax Relief', (n) => `Taxes −${Math.min(25, 5 * n)}%`],
     thunderstorm: ['Thunderstorm', () => 'Today rain also reaches diagonals', 'Rain and thunder together…?'],
     tomatoFest: ['Tomato Festival', () => 'Today tomato-only lines ×1.5 more', 'Two tomato seeds…?'],
     sunshower: ['Sunshower', () => 'Today plots hit by both rain and sun +1', 'Rain and sun together…?'],
