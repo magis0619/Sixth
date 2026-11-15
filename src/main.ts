@@ -24,7 +24,7 @@ import { applySettings, showSettings } from './ui/settings.ts';
 import { accept, reject } from './ui/states.ts';
 import { renderDanger, renderSky, setupScene } from './ui/scene.ts';
 import { blockLongPress, setupLongPress } from './ui/info.ts';
-import { comboCard, explainOnce, markTutorialSymbols, symbolCard } from './ui/explain.ts';
+import { comboCard, contractCard, explainOnce, markTutorialSymbols, marketCard, mergeCard, symbolCard, taxCard } from './ui/explain.ts';
 import { contractRibbon, contractSay, showContractDone, showContractOffer } from './ui/contract-ui.ts';
 import { CUTIN_MS, comboBanner, feverBanner, playCutIn, showCharmOffer, showTaxStamp, witherField } from './ui/shows.ts';
 
@@ -376,6 +376,22 @@ function renderWeek(): void {
   el.week.classList.toggle('has-contract', !!state.contract);
   // 道のりの進み具合（月＝0、日＝1）。済んだ区間は金色に塗る
   el.week.style.setProperty('--wk-p', String(today ? (today - 1) / (CONFIG.taxPeriod - 1) : 0));
+  // 溝は札の真ん中を通す（最初と最後の札の中心を測る。今日の札は大きくなるので、ほかの札で測る）
+  requestAnimationFrame(() => {
+    const plates = [...el.week.querySelectorAll<HTMLElement>('.wd:not(.now) .wd-plate')];
+    if (plates.length < 2) return;
+    const box = el.week.getBoundingClientRect();
+    const first = el.week.querySelector<HTMLElement>('.wd:first-child .wd-plate')!.getBoundingClientRect();
+    const last = el.week.querySelector<HTMLElement>('.wd:nth-child(7) .wd-plate')!.getBoundingClientRect();
+    const ref = plates[0].getBoundingClientRect();
+    const border = el.week.clientLeft;
+    const cy = ref.top + ref.height / 2 - box.top - el.week.clientTop;
+    const x0 = first.left + first.width / 2 - box.left - border;
+    const x1 = last.left + last.width / 2 - box.left - border;
+    el.week.style.setProperty('--wk-y', `${cy.toFixed(1)}px`);
+    el.week.style.setProperty('--wk-x0', `${x0.toFixed(1)}px`);
+    el.week.style.setProperty('--wk-w', `${(x1 - x0).toFixed(1)}px`);
+  });
   el.week.setAttribute('aria-label', today ? L(`今日は${WEEKDAYS[today - 1]}曜日`, `Today: ${WEEKDAYS[today - 1]}`) : '');
 }
 
@@ -754,7 +770,7 @@ function renderMergeShop(): void {
   const box = $('merge-shop');
   const list = mergeable(state);
   (box.closest('.stall-sec') as HTMLElement).hidden = !list.length;
-  if (list.length) hintOnce('merge', `${art('sparkle')} ${L(`同じ札が<b>${CONFIG.mergeNeed}枚</b>そろうと、市で<b>1枚の強い札に合体</b>できる（市で1回）`, `With <b>${CONFIG.mergeNeed} of the same</b>, you can <b>merge them into 1 strong card</b> at the market (once per market)`)}`, 6000);
+  if (list.length) void explainOnce('ex:merge', mergeCard(list[0], MERGES[list[0]]!, mergeCost(state)), !!tut);
   const cost = mergeCost(state);
   const key = `${list.join(',')}|${state.mergedThisMarket}|${cost}|${state.gold >= cost}`;
   if (box.dataset.key === key) return;
@@ -1034,6 +1050,7 @@ async function onSpin(): Promise<void> {
   }
   // 月曜の朝：週契約を決めるまで回さない（続きから始めたときなど）
   if (state.morning && state.contractOffer.length) {
+    await explainOnce('ex:contract', contractCard(), !!tut);
     await showContractOffer();
     return;
   }
@@ -1095,6 +1112,7 @@ async function onSpin(): Promise<void> {
   // 月曜の朝：今週の週契約（回す前に選ぶ）
   if (state.contractOffer.length) {
     render();
+    await explainOnce('ex:contract', contractCard(), !!tut);
     await showContractOffer();
   }
   // チュートリアルの水曜の市は、決まった3つ
@@ -1143,7 +1161,8 @@ async function spinMorning(): Promise<void> {
   endBusy();
   autoSelect();
   render();
-  if (nextTax(state).daysLeft === 0) hintOnce('tax-day', `${art('bale')} ${L(`今日の終わりに<b>年貢 ${nextTax(state).amount}</b>。足りないと終わり`, `<b>Tax ${nextTax(state).amount}g</b> is due at the end of today. Can't pay = game over`)}`);
+  // 初めての年貢の日：一枚絵で（日曜の終わりに払う・足りないと終わり）
+  if (nextTax(state).daysLeft === 0) await explainOnce('ex:tax', taxCard(nextTax(state).amount), !!tut);
 }
 
 /** 市を閉じた：朝なら（置く物がなければ）そのままリールを回す */
@@ -1159,6 +1178,8 @@ function openMarket(): void {
   const wasOpen = openSheetName === 'shop';
   openSheet('shop');
   if (wasOpen) return;
+  // 初めての市の日：一枚絵で（3つから1つ必ず・買い物）
+  if (state.offer.length && isMarketDay(state.day)) void explainOnce('ex:market', marketCard(), !!tut);
   el.sheet.animate([{ transform: 'translateY(105%)' }, { transform: 'translateY(-2%)', offset: 0.75 }, { transform: 'translateY(0)' }], {
     duration: isCalm() ? 260 : 520,
     easing: 'cubic-bezier(.2,.8,.3,1)',
@@ -1940,9 +1961,9 @@ function onPlotTap(cell: number): void {
 
 /** 初めて出会ったお邪魔のひと言 */
 const PEST_HINTS: Partial<Record<SymbolId, string>> = {
-  crow: L('作物を1/2で食べる。かぼちゃ・スイカは平気。かかしの周りは守られる', 'Eats a crop half the time. Pumpkins and watermelons are safe. Scarecrows guard nearby plots'),
-  bug: L('育ち中の作物の成長−1。鶏小屋の周りでは食べてくれる', 'Growth −1 on a growing crop. Henhouses eat nearby bugs'),
-  weed: L('空きマスをふさいで広がる。タップで抜ける', 'Blocks empty plots and spreads. Tap to pull'),
+  crow: L('<b>一番大事な作物</b>を狙い、1/2で食べる。かかしの周りは守られる', 'Goes for your <b>most valuable crop</b> and eats it half the time. Scarecrows guard nearby plots'),
+  bug: L('<b>もうすぐ実る作物</b>の成長−1。鶏小屋の周りでは食べてくれる', 'Growth −1 on the crop <b>closest to ripe</b>. Henhouses eat nearby bugs'),
+  weed: L('<b>作物に囲まれた空きマス</b>をふさいで広がる。タップで抜ける', 'Blocks <b>empty plots between crops</b> and spreads. Tap to pull'),
   tanuki: L('実った一番高い作物を盗む。かかしの周りには来ない', 'Steals your priciest ripe crop. Stays away from scarecrows'),
   frost: L('マスが3日凍る。太陽で溶かせる', 'Freezes a plot for 3 days. Sun melts it'),
   mole: L('作物を隣の空きマスへ押し出す。列が崩れることも', 'Pushes a crop into a nearby empty plot, which can break a line'),
@@ -2259,7 +2280,7 @@ function startGame(resume: GameState | null = null): void {
   render();
   // 市の朝に閉じていたら、続きは市から
   if (resume && state.morning && state.offer.length && isMarketDay(state.day)) openMarket();
-  if (resume && state.morning && state.contractOffer.length) void showContractOffer();
+  if (resume && state.morning && state.contractOffer.length) void explainOnce('ex:contract', contractCard(), !!tut).then(() => showContractOffer());
 }
 
 // ---- 押す回数を減らす：なぞって植える・リールから畑へ引っぱる・使える出目が1つなら選んでおく ----

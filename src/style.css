@@ -8324,11 +8324,12 @@ body:has(#overlay.show) :is(.machine, .machine *) {
   .ex-tap { margin-top: 4px; }
 }
 
-/* ==== 道のり（点線をやめて、木の溝と金の進み具合に） ==== */
+/* ==== 道のり（点線をやめて、木の溝と金の進み具合に）。位置は main.ts が札の中心を測って入れる ==== */
 .week::before {
-  left: 7%;
-  right: 7%;
-  top: 23px;
+  left: var(--wk-x0, 7%);
+  right: auto;
+  width: var(--wk-w, 86%);
+  top: var(--wk-y, 23px);
   height: 10px;
   border: none;
   border-radius: 5px;
@@ -8339,9 +8340,9 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 .week::after {
   content: '';
   position: absolute;
-  left: 7%;
-  top: 23px;
-  width: calc(86% * var(--wk-p, 0));
+  left: var(--wk-x0, 7%);
+  top: var(--wk-y, 23px);
+  width: calc(var(--wk-w, 86%) * var(--wk-p, 0));
   height: 10px;
   border-radius: 5px;
   background: linear-gradient(#ffe27a, #f2b91a 60%, #d99b06);
@@ -8360,3 +8361,57 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 }
 .tp-line.done { background: linear-gradient(#ffe27a, #f2b91a 60%, #d99b06); box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.15); }
 .tp-step, .tp-goal { position: relative; z-index: 1; }
+
+/* ==== 評価（クリア・終わりの画面） ==== */
+.rating {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 12px;
+  margin: 10px 0;
+  padding: 10px 12px;
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  text-align: left;
+}
+.rt-stamp {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  border: 4px solid var(--rt, #8a7a62);
+  color: var(--rt, #8a7a62);
+  rotate: -8deg;
+  animation: rt-stamp 0.5s cubic-bezier(.3, 1.6, .5, 1) 0.4s backwards;
+}
+.rt-stamp b { font-family: var(--font-pop); font-weight: 400; font-size: 2.4rem; line-height: 1; }
+.rt-stamp span { font-size: 0.8125rem; font-weight: 800; }
+.rank-S { --rt: #d9a400; }
+.rank-S .rt-stamp { background: #fff5c8; }
+.rank-A { --rt: #c93c2b; }
+.rank-B { --rt: #3a86c8; }
+.rank-C { --rt: #4e9230; }
+.rank-D { --rt: #8a7a62; }
+@keyframes rt-stamp { from { transform: scale(2.2); opacity: 0; } }
+.rt-parts { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.rt-parts li { display: grid; grid-template-columns: 7.5em 1fr 2em; grid-template-rows: auto auto; column-gap: 6px; align-items: center; }
+.rt-label { font-size: 0.8125rem; font-weight: 800; }
+.rt-bar { height: 10px; border-radius: 5px; background: #e6dccb; overflow: hidden; }
+.rt-bar i { display: block; height: 100%; background: var(--rt, #8a7a62); border-radius: 5px; }
+.rt-parts b { font-size: 0.875rem; text-align: right; }
+.rt-parts small { grid-column: 1 / -1; font-size: 0.8125rem; color: var(--ink-soft); margin-top: -2px; }
+.ex-trio { display: flex; }
+.ex-trio .ex-art { margin: 0 -6px; }
+.ex-art.bag { filter: drop-shadow(0 0 8px rgba(242, 185, 26, 0.6)); }
+.ex-icons { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin: 6px 0; }
+.ex-icons span { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: #fff; border: 2px solid var(--ink); border-radius: 999px; font-size: 0.875rem; }
+.ex-icons .art { width: 1.5em; height: 1.5em; }
+.ex-ribbon { display: flex; align-items: center; gap: 6px; margin: 4px auto 8px; padding: 3px 10px; width: 80%; background: #c93c2b; color: #fff; border: 3px solid var(--ink); border-radius: 999px; font-family: var(--font-pop); }
+.ex-ribbon i { flex: 1; height: 0; border-top: 3px solid #fff; }
+.ex-stack { display: flex; }
+.ex-stack .art { width: 40px; height: 40px; margin-left: -16px; }
+.ex-stack .art:first-child { margin-left: 0; }

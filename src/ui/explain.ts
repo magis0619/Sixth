@@ -172,3 +172,43 @@ export function overviewCard(): string {
     <div class="ov-legend"><span>${art('bargain')} ${L('水・土は市（袋に絵柄を足す）', 'Wed/Sat: market (add symbols)')}</span><span>${art('bale')} ${L('日曜の終わりに年貢', 'Tax at the end of Sunday')}</span></div>
     <div class="ov-goal">${art('trophy')}<b>${L(`年貢を${CONFIG.winTaxes}回納めたらクリア`, `Pay ${CONFIG.winTaxes} taxes to win`)}</b><span>${L('払えないと終わり', "Can't pay = game over")}</span></div>`;
 }
+
+// ---- 初めての場面のカード ----
+
+/** 初めての市 */
+export function marketCard(): string {
+  return `<p class="ex-kicker">${L('はじめての市', 'Your first market')}</p>
+    <h2 class="ex-title">${L('水・土の朝は市', 'Wed & Sat mornings: market')}</h2>
+    <div class="ex-row"><span class="ex-trio">${big('rain', 'small')}${big('sun', 'small')}${big('seed', 'small')}</span><span class="ex-arrow">▶</span>${big('seed', 'bag')}</div>
+    <p class="ex-line">${L('3つから<b>1つ必ず</b>、タダで袋に入る', 'Pick <b>one of three</b>, free, into your bag')}</p>
+    <div class="ex-icons">${[['expand', L('畑を広げる', 'Expand')], ['scarecrow', L('道具', 'Tools')], ['crow', L('お邪魔を消す', 'Remove pests')]].map(([a, t]) => `<span>${art(a as ArtId)}<b>${t}</b></span>`).join('')}</div>
+    <p class="ex-note">${L('お金があれば買い物もできる', 'Spend gold on these too')}</p>`;
+}
+
+/** 初めての年貢の日 */
+export function taxCard(amount: number): string {
+  return `<p class="ex-kicker">${L('はじめての年貢', 'Your first tax')}</p>
+    <h2 class="ex-title">${L('日曜の終わりに年貢', 'Tax at the end of Sunday')}</h2>
+    <div class="ex-row">${big('bale')}<b class="ex-num">${amount}</b><span class="ex-arrow">▶</span>${big('official', 'small')}</div>
+    <p class="ex-line">${L('<b>足りないと終わり</b>。今日のうちに売って稼ぐ', '<b>Short = game over.</b> Sell today to make it')}</p>
+    <div class="ex-icons"><span>${art('gift')}<b>${L('払うとお守り1つ', 'Pay → pick a charm')}</b></span><span>${art('crow')}<b>${L('お邪魔が袋に増える', 'Pests join your bag')}</b></span></div>`;
+}
+
+/** 初めての週契約 */
+export function contractCard(): string {
+  return `<p class="ex-kicker">${L('はじめての週契約', 'Your first contract')}</p>
+    <h2 class="ex-title">${L('今週だけの縛り', 'A rule for this week only')}</h2>
+    <div class="ex-ribbon"><span>${L('月', 'M')}</span><i></i><span>${L('日', 'S')}</span></div>
+    <div class="ex-row">${big('lock', 'small')}<span class="ex-arrow">▶</span>${big('bale', 'small')}<span class="ex-arrow">▶</span>${big('gift', 'small')}</div>
+    <p class="ex-line">${L('3つから<b>1つ必ず</b>選ぶ。日曜の年貢を払えたら見返り', 'Pick <b>one</b>. Pay Sunday’s tax to get the reward')}</p>
+    <p class="ex-note">${L('★が多いほど縛りがきつく、見返りも大きい', 'More ★ = harder rule, bigger reward')}</p>`;
+}
+
+/** 初めて合体できるようになった */
+export function mergeCard(sym: SymbolId, to: SymbolId, cost: number): string {
+  return `<p class="ex-kicker">${L('はじめての合体', 'Your first merge')}</p>
+    <h2 class="ex-title">${L(`同じ札${CONFIG.mergeNeed}枚で合体`, `${CONFIG.mergeNeed} of a kind → merge`)}</h2>
+    <div class="ex-row"><span class="ex-stack">${Array.from({ length: CONFIG.mergeNeed }, () => art(sym)).join('')}</span><span class="ex-arrow">▶</span>${big(to)}</div>
+    <p class="ex-line">${L('袋が薄くなって、強い札が1枚に', 'A thinner bag and one strong card')}</p>
+    <div class="ex-icons"><span>${art('coin')}<b>${cost}${L('（年貢の30%）', ' (30% of tax)')}</b></span><span>${art('bargain')}<b>${L('市で1回まで', 'Once per market')}</b></span></div>`;
+}

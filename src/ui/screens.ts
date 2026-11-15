@@ -4,7 +4,7 @@ import { L } from '../i18n.ts';
 import {
   ACHIEVE_ADDS, CHARM_ORDER, FARMERS, COMBOS, CUT, isCutAdd, type CharmId, type SymbolId, PAUSED_CHARMS, CHARM_TIER_NAMES, CHARMS, CONFIG, DIFFICULTIES, FEEDBACK_URL, META, SHARE_URL, SYMBOL_ORDER, SYMBOLS, THUNDER_LINES, UPGRADES,
 } from '../config.ts';
-import { nextTax } from '../game.ts';
+import { nextTax, rateRun } from '../game.ts';
 import {
   awardPoints, buyCapacity, capacity, farmerUnlocked, isAchieveAdd, loadoutCost, maxDifficulty, nextCapacityPrice, recordRun, saveMeta, toggleLoadout, unlockAdd, unlockCharm,
 } from '../meta.ts';
@@ -21,6 +21,17 @@ import { FEVER_FX } from './shows.ts';
 import { explainOnce, overviewCard, showExplain, symbolCard } from './explain.ts';
 
 /** 結果画面。cleared=true はクリア後にここで終えたとき */
+/** 評価：大きな判子のランクと、4つの数字の棒 */
+function ratingHtml(): string {
+  const r = rateRun(state);
+  return `<div class="rating rank-${r.rank}">
+    <div class="rt-stamp"><b>${r.rank}</b><span>${r.score}${L('点', 'pts')}</span></div>
+    <ul class="rt-parts">${r.parts
+      .map((p) => `<li><span class="rt-label">${p.label}</span><span class="rt-bar"><i style="width:${p.value}%"></i></span><b>${p.value}</b><small>${p.detail}</small></li>`)
+      .join('')}</ul>
+  </div>`;
+}
+
 export function showGameOver(endedAfterClear = false): void {
   clearRun();
   document.documentElement.classList.remove('tax-danger');
@@ -42,6 +53,7 @@ export function showGameOver(endedAfterClear = false): void {
         <span>${art('bale')}<b>${state.taxesPaid}</b>${L('回', ' paid')}</span>
         <span>${art('coin')}<b>${state.stats.totalEarned}</b>${L('', 'g')}</span>
       </div>
+      ${ratingHtml()}
       ${reviewHtml(endedAfterClear, t.amount)}
       <div class="points-earned">${art('sprout')} <b>+${earned}pt</b><span>${L('計', 'Total')} ${meta.points}pt</span></div>
       ${newly.length ? `<div class="newly">${art('sparkle')} ${L('解放', 'Unlocked')}：${newly.map((x) => `<b>${x}</b>`).join('')}</div>` : ''}
@@ -252,6 +264,7 @@ export function showClear(): Promise<boolean> {
       <div class="big">${art('trophy')}</div>
       <h2>${L('クリア！', 'You win!')}</h2>
       <div class="record">${L(`${state.day}日目でクリア / 総収入 ${state.stats.totalEarned}`, `Won on day ${state.day} / earned ${state.stats.totalEarned}g`)}</div>
+      ${ratingHtml()}
       <p class="sub">+${META.clearBonus}pt</p>
       <button class="primary" id="clear-continue" disabled>${L('エンドレスへ', 'Keep going (endless)')}</button>
       <button class="secondary" id="clear-end" disabled>${L('ここで終える', 'Finish here')}</button>

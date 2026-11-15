@@ -196,6 +196,10 @@ export interface GameState {
     earnedByDay: number[];
     /** 使わずに消えた手動の出目の数（振り返り用） */
     expired: number;
+    /** 評価用：列で売った作物の数・出た手動の出目の数・納めた年貢の合計 */
+    lineCrops?: number;
+    manualTotal?: number;
+    taxTotal?: number;
   };
 }
 
@@ -615,6 +619,7 @@ function endDayRaw(state: GameState, rng: Rng): EndDayResult {
     return { ok: false, tax: t.amount, expired, cleared: false };
   }
   state.gold -= t.amount;
+  state.stats.taxTotal = (state.stats.taxTotal ?? 0) + t.amount;
   state.taxesPaid++;
   state.halfTax = false;
   state.taxCut = 0;
@@ -723,6 +728,7 @@ function spinDayRaw(state: GameState, rng: Rng): void {
     }
   }
   refreshCombos(state);
+  state.stats.manualTotal = (state.stats.manualTotal ?? 0) + state.results.filter((r) => SYMBOLS[r.symbol].kind === 'manual' && r.fog !== 'lost').length;
 }
 
 /** 市の日か（週の marketDays 日目） */
@@ -1222,6 +1228,37 @@ function earn(state: GameState, amount: number): void {
   state.stats.earnedByDay[state.day] = (state.stats.earnedByDay[state.day] ?? 0) + amount;
 }
 
+/**
+ * お邪魔の狙い：プレイヤーが一番やられたくない作物ほど高い点（実った列の売値・もうすぐ実る高い作物）。
+ * 同じ点なら乱数で選ぶ
+ */
+export function cropWorth(state: GameState, cell: number): number {
+  const root = rootOf(state, cell);
+  const c = state.field[root];
+  if (!c) return 0;
+  const price = cropPrice(state, c, root);
+  if (isRipe(c)) return price * Math.max(1, cellMultiplier(state, root)) + 1000;
+  return price * (0.4 + c.growth / CROPS[c.kind].ripe);
+}
+
+function pickWorst(cells: number[], score: (i: number) => number, rng: Rng): number {
+  let best = cells[0];
+  let top = -Infinity;
+  for (const i of cells) {
+    const v = score(i) + rng() * 0.01;
+    if (v > top) {
+      top = v;
+      best = i;
+    }
+  }
+  return best;
+}
+
+/** 雑草の狙い：周りに作物が多い空きマス（列を作らせない） */
+function weedWorth(state: GameState, cell: number): number {
+  return around(state, cell, 1).reduce((n, i) => n + (state.field[i] ? 1 + cropWorth(state, i) / 1000 : 0), 0);
+}
+
 function resolveAutoRaw(state: GameState, reel: number, rng: Rng): AutoEvent | null {
   const r = state.results[reel];
   if (!r || r.used || SYMBOLS[r.symbol].kind !== 'auto') return null;
@@ -1248,7 +1285,8 @@ function resolveAutoRaw(state: GameState, reel: number, rng: Rng): AutoEvent | n
     case 'bug': {
       const targets = state.field.flatMap((c, i) => (c && c.growth > 0 ? [i] : []));
       if (targets.length === 0) return { type: 'bug', cell: null, warded: false, damage: 0, hen: false };
-      const cell = targets[Math.floor(rng() * targets.length)];
+      // 一番やられたくない作物（実った列・もうすぐ実る高い作物）を狙う
+      const cell = pickWorst(targets, (i) => cropWorth(state, i), rng);
       // 鶏小屋の周りの虫は食べられてしまう
       if (nearHenhouse(state, cell)) return { type: 'bug', cell, warded: true, damage: 0, hen: true };
       if (rng() < 1 - Math.pow(0.5, lv(state, 'bugWard'))) return { type: 'bug', cell, warded: true, damage: 0, hen: false };
@@ -1263,7 +1301,7 @@ function resolveAutoRaw(state: GameState, reel: number, rng: Rng): AutoEvent | n
       state.bag.locust += bred;
       const targets = state.field.flatMap((c, i) => (c && c.growth > 0 && !isRipe(c) ? [i] : []));
       if (!targets.length) return { type: 'locust', cell: null, damage: 0, bred };
-      const cell = targets[Math.floor(rng() * targets.length)];
+      const cell = pickWorst(targets, (i) => cropWorth(state, i), rng);
       state.field[cell]!.growth -= 1;
       return { type: 'locust', cell, damage: 1, bred };
     }
@@ -1273,7 +1311,8 @@ function resolveAutoRaw(state: GameState, reel: number, rng: Rng): AutoEvent | n
       for (let k = 0; k < r.power; k++) {
         const open = state.field.flatMap((_, i) => (isOpen(state, i) ? [i] : []));
         if (!open.length) break;
-        const c = open[Math.floor(rng() * open.length)];
+        // 作物に囲まれた空きマスに生える（列をふさぐ）
+        const c = pickWorst(open, (i) => weedWorth(state, i), rng);
         state.weeds[c] = true;
         cells.push(c);
       }
@@ -1313,7 +1352,8 @@ function resolveAutoRaw(state: GameState, reel: number, rng: Rng): AutoEvent | n
       for (let k = 0; k < r.power; k++) {
         const free = fieldCells(state).filter((i) => !state.frost[i] && !state.tools[i]);
         if (!free.length) break;
-        const c = free[Math.floor(rng() * free.length)];
+        // 一番高い作物のマスを凍らせる（作物がなければどこでも）
+        const c = pickWorst(free, (i) => cropWorth(state, i), rng);
         // 溶ける日を数えるため、今日の分を1日足しておく（endDay で1減る）
         state.frost[c] = days + 1;
         cells.push(c);
@@ -1330,7 +1370,8 @@ function resolveAutoRaw(state: GameState, reel: number, rng: Rng): AutoEvent | n
           return c && !CROPS[c.kind].big && !state.frost[i] && neighbors(state, i).some((n) => isOpen(state, n));
         });
         if (!movable.length) break;
-        const from = movable[Math.floor(rng() * movable.length)];
+        // 一番大事な作物を押し出して、列を崩す
+        const from = pickWorst(movable, (i) => cropWorth(state, i), rng);
         // 鶏小屋の周り8マスに顔を出すと、鶏につつかれて逃げていく
         if (nearHenhouse(state, from)) {
           chased.push(from);
@@ -1351,7 +1392,8 @@ function resolveAutoRaw(state: GameState, reel: number, rng: Rng): AutoEvent | n
       // かぼちゃは大きくて重いので狙われない
       const occupied = state.field.flatMap((c, i) => (c && !CROPS[c.kind].crowProof ? [i] : []));
       if (occupied.length === 0) return { type: 'crow', cell: null, crop: null, eaten: false, toll, guarded: false };
-      const cell = occupied[Math.floor(rng() * occupied.length)];
+      // 一番やられたくない作物を狙う（かかしで守っていれば追い払われる）
+      const cell = pickWorst(occupied, (i) => cropWorth(state, i), rng);
       const crop = state.field[cell];
       // かかしの近くは追い払われる
       if (isGuarded(state, cell)) {
@@ -1762,6 +1804,7 @@ function sellRaw(state: GameState, cell: number, single = false): SellResult | n
   if (line) evolveTools(state);
   state.stats.cropsSold += cells.length;
   if (line) state.stats.lineHarvests++;
+  if (line) state.stats.lineCrops = (state.stats.lineCrops ?? 0) + cells.length;
   let orderReward = 0;
   const o = state.order;
   if (o && !o.done) {
@@ -2121,6 +2164,8 @@ export function logSnapshot(state: GameState): string[] {
   const out: string[] = [];
   out.push(`日=${state.day} 所持=${state.gold} 年貢=${state.taxesPaid}回納めた 次の年貢=${nextTax(state).amount}（D${nextTax(state).dueDay}） 難しさ=${state.difficulty} 農家=${state.farmer} リール=${state.reels} 畑=${state.cols}×${state.rows}${state.over ? ' 終わり' : ''}${state.cleared ? ' クリア済み' : ''}`);
   out.push(`袋(${bagTotal(state.bag)}枚): ${SYMBOL_ORDER.filter((s) => state.bag[s] > 0).map((s) => `${SYMBOLS[s].name}${state.bag[s]}`).join(' ')}`);
+  const rt = rateRun(state);
+  out.push(`評価: ${rt.rank}（${rt.score}点） ${rt.parts.map((p) => `${p.label}${p.value}(${p.detail})`).join(' ')}`);
   out.push(`お守り: ${CHARM_ORDER.filter((c) => state.charms[c] > 0).map((c) => `${CHARMS[c].name}${state.charms[c]}`).join(' ') || 'なし'}`);
   if (state.contract) out.push(`週契約: ${CONTRACTS[state.contract].name}`);
   if (state.stock.length) out.push(`置き待ち: ${state.stock.map((p) => PLACES[p].name).join(' ')}`);
@@ -2142,4 +2187,41 @@ export function logSnapshot(state: GameState): string[] {
     out.push(`  ${row.join(' | ')}`);
   }
   return out;
+}
+
+// ---- 評価：クリアの「うまさ」を4つの数字で ----
+
+export interface RatingPart {
+  key: 'line' | 'use' | 'guard' | 'margin';
+  label: string;
+  /** 0〜100 */
+  value: number;
+  detail: string;
+}
+export interface Rating {
+  score: number;
+  rank: 'S' | 'A' | 'B' | 'C' | 'D';
+  parts: RatingPart[];
+}
+
+export function rateRun(state: GameState): Rating {
+  const st = state.stats;
+  const pct = (x: number) => Math.max(0, Math.min(100, Math.round(x * 100)));
+  const sold = st.cropsSold;
+  const lineCrops = st.lineCrops ?? 0;
+  const manual = st.manualTotal ?? 0;
+  const taxTotal = st.taxTotal ?? 0;
+  const parts: RatingPart[] = [
+    // 列で売れたか（単品で売るほど下がる）
+    { key: 'line', label: L('列で売った', 'Sold in lines'), value: sold ? pct(lineCrops / sold) : 0, detail: `${lineCrops}/${sold}` },
+    // 出目をむだにしなかったか
+    { key: 'use', label: L('出目を使い切った', 'Used your reels'), value: manual ? pct(1 - st.expired / manual) : 0, detail: `${manual - st.expired}/${manual}` },
+    // お邪魔から守れたか
+    { key: 'guard', label: L('作物を守った', 'Protected crops'), value: sold + st.cropsEaten ? pct(1 - st.cropsEaten / (sold + st.cropsEaten)) : 0, detail: L(`取られた${st.cropsEaten}`, `${st.cropsEaten} lost`) },
+    // 年貢に対してどれだけ稼げたか（年貢の2.5倍で満点）
+    { key: 'margin', label: L('稼ぎの余裕', 'Earning margin'), value: taxTotal ? pct((st.totalEarned / taxTotal - 1) / 1.5) : 0, detail: taxTotal ? `×${(st.totalEarned / taxTotal).toFixed(1)}` : '-' },
+  ];
+  const score = Math.round(parts.reduce((n, p) => n + p.value, 0) / parts.length);
+  const rank = score >= 85 ? 'S' : score >= 70 ? 'A' : score >= 55 ? 'B' : score >= 40 ? 'C' : 'D';
+  return { score, rank, parts };
 }
