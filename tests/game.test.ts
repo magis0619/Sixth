@@ -6,7 +6,7 @@ import { CONFIG, CROPS, CUT, EVENT_CONDITIONS, FARMERS, THUNDER_LINES, UPGRADE_S
 import {
   animalGold, buy, buyPlace, drawDay, hasRanch, hiveBonus, isColorful, canPlace, canUse, cellMultiplier, cropPrice, isPond, waterWheels, checkReady, chooseCharm, endDay, evolveTools, expand, expandPrice,
   fieldCells, isGolden, lv, multSteps, newCrop, newGame, nextTax, obstacleRule, place, pullWeed, resolveAuto, ripeGroup,
-  canBuy, canBuyPlace, canExpand, isMarketDay, rollObstacles, takeOffer, refreshCombos, symbolShape, canPlaceAt, isPivotAdd, isPivotPlace, mustPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult, beginDay, takeContract, mergeable, mergeSymbol, mergeCost, bagCount, resolveAuto as autoOf,
+  canBuy, canBuyPlace, canExpand, isMarketDay, rollObstacles, takeOffer, refreshCombos, symbolShape, canPlaceAt, isPivotAdd, isPivotPlace, mustPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult, beginDay, takeContract, mergeable, mergeSymbol, mergeCost, bagCount, skipCharm, singleMult, resolveAuto as autoOf,
 } from '../src/game.ts';
 import { CONTRACTS, contractGold } from '../src/contracts.ts';
 import { farmerUnlocked, recordRun, type MetaState } from '../src/meta.ts';
@@ -457,13 +457,13 @@ describe('シナジー', () => {
     expect(s.field[at(1, 2)]!.growth).toBe(0);
   });
 
-  it('牛小屋の隣に水路があると収入+2、牧場主で鶏・牛とも+1、水車職人で水車×2', () => {
+  it('牛小屋の隣に水路があると収入+2、牧場主で鶏・牛とも+2、水車職人で水車×2', () => {
     const s = game();
     s.tools[at(0, 0)] = 'cowshed';
     s.tiles[at(1, 0)] = 'water';
     expect(animalGold(s, at(0, 0))).toBe(CONFIG.cowshedGold + CONFIG.cowWaterGold);
     s.charms.rancher = 1;
-    expect(animalGold(s, at(0, 0))).toBe(CONFIG.cowshedGold + CONFIG.cowWaterGold + 1);
+    expect(animalGold(s, at(0, 0))).toBe(CONFIG.cowshedGold + CONFIG.cowWaterGold + 2);
     const t = game();
     [at(0, 0), at(1, 0), at(2, 0)].forEach((c) => (t.tiles[c] = 'water'));
     t.charms.wheelwright = 1;
@@ -505,7 +505,7 @@ describe('シナジー', () => {
   it('大物狙いでスイカが高く、耕作上手で耕した土は成長+2', () => {
     const s = game();
     s.charms.bigGame = 1;
-    expect(cropPrice(s, newCrop('watermelon'))).toBe(CROPS.watermelon.price + 30);
+    expect(cropPrice(s, newCrop("watermelon"))).toBe(CROPS.watermelon.price + 50);
     s.charms.tillMaster = 1;
     s.tilled[at(0, 0)] = true;
     s.results = [reel('seed')];
@@ -1100,5 +1100,37 @@ describe('お邪魔の狙い', () => {
     w.results = [reel('weed')];
     resolveAuto(w, 0, () => 0.9);
     expect(w.weeds[at(1, 1)]).toBe(true);
+  });
+});
+
+describe('曰く付きのお守り・市の日', () => {
+  it('取ると袋にお邪魔が入り、年貢・市の値段・単品が重くなる', () => {
+    const s = newGame({ shop: [], charmPool: [] });
+    s.day = 2;
+    const crows = s.bag.crow;
+    s.charmOffer = ['sunBlessing'];
+    chooseCharm(s, 'sunBlessing');
+    expect(s.bag.crow).toBe(crows + 2);
+    const tax = nextTax(s).amount;
+    s.charms.artisan = 1;
+    expect(nextTax(s).amount).toBe(Math.round(taxAmount(0) * 1.2));
+    expect(tax).toBe(taxAmount(0));
+    const single = singleMult(s);
+    s.charms.bugWard = 1;
+    expect(singleMult(s)).toBe(single * 0.5);
+  });
+  it('どれも取らないこともできる', () => {
+    const s = newGame({ shop: [], charmPool: [] });
+    s.charmOffer = ['aging', 'bumper', 'artisan'];
+    skipCharm(s);
+    expect(s.charmOffer).toBe(null);
+    expect(s.charms.aging + s.charms.bumper + s.charms.artisan).toBe(0);
+  });
+  it('市の日（水・土）に売ると×1.5', () => {
+    const s = newGame({ shop: [], charmPool: [] });
+    s.day = 2;
+    const tue = cropPrice(s, newCrop('melon'));
+    s.day = 3;
+    expect(cropPrice(s, newCrop('melon'))).toBe(Math.round(tue * 1.5));
   });
 });

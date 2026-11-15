@@ -1,8 +1,8 @@
 // 1日の節目の演出：年貢の判子、お守りの3択、ゾロ目（フィーバー）、予告のカットイン、枯れる畑
 
 import { EN, gold, L } from '../i18n.ts';
-import { CHARM_PLACE, CHARM_TIER_NAMES, type CharmId, CHARMS, COMBOS, CONFIG, PLACES, type SymbolId, SYMBOLS } from '../config.ts';
-import { chooseCharm } from '../game.ts';
+import { curseText, CHARM_PLACE, CHARM_TIER_NAMES, type CharmId, CHARMS, COMBOS, CONFIG, PLACES, type SymbolId, SYMBOLS } from '../config.ts';
+import { chooseCharm, skipCharm } from '../game.ts';
 import { art, type ArtId } from '../art.ts';
 import { sfx } from '../audio.ts';
 import { burst, center, coinRain, flash, floatText, flyTo, isCalm, later, pop, shake, slamText, sleep, speedLines, vibrate } from '../fx.ts';
@@ -187,12 +187,17 @@ export function showCharmOffer(): Promise<void> {
               <span class="e">${art(id)}</span>
               <b>${c.name}${n > 0 ? ` <span class="lv">${n}→${n + 1}</span>` : ''}</b>
               <small>${toGold ? L('✦金色に ', '✦Goes golden ') : ''}${c.desc(toGold ? (n + 1) * 2 : n + 1)}</small>
+              ${curseText(id, n + 1) ? `<small class="curse">${art('warn')} ${curseText(id, n + 1)}</small>` : ''}
             </button>`;
           })
           .join('')}
       </div>
     </div>`;
+  // 全部曰く付きなので、どれも取らないのも手
+  el.overlay.querySelector('.charm-choices')!.insertAdjacentHTML('afterend', `<button class="charm-skip" disabled>${L('どれも取らない', 'Take none')}</button>`);
   el.overlay.classList.add('show');
+  const skipBtn = el.overlay.querySelector<HTMLButtonElement>('.charm-skip')!;
+  later(() => (skipBtn.disabled = false), 700);
   const cards = [...el.overlay.querySelectorAll<HTMLButtonElement>('.charm-card')];
   cards.forEach((card, k) => {
     card.animate([{ transform: 'translateY(30px) scale(.8)', opacity: 0 }, { transform: 'none', opacity: 1 }], {
@@ -206,6 +211,16 @@ export function showCharmOffer(): Promise<void> {
   later(() => cards.forEach((c) => (c.disabled = false)), 700);
   return new Promise((resolve) => {
     let picked = false;
+    skipBtn.addEventListener('click', () => {
+      if (picked) return;
+      picked = true;
+      skipCharm(state);
+      sfx.cancel();
+      el.overlay.classList.remove('show');
+      el.overlay.innerHTML = '';
+      hooks.render();
+      resolve();
+    });
     cards.forEach((card) =>
       card.addEventListener('click', () => {
         // 連打で2つ取ったり、閉じる処理が次の画面（クリアなど）まで消したりしないよう1回だけ

@@ -8415,3 +8415,25 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 .ex-stack { display: flex; }
 .ex-stack .art { width: 40px; height: 40px; margin-left: -16px; }
 .ex-stack .art:first-child { margin-left: 0; }
+
+/* 曰く付きの代償（赤） */
+.charm-card .curse, .charm .curse, p.curse { display: block; color: #c93c2b; font-weight: 800; font-style: normal; }
+.charm-card .curse .art, p.curse .art { width: 1.1em; height: 1.1em; vertical-align: -0.2em; }
+.charm-skip {
+  display: block;
+  margin: 10px auto 0;
+  padding: 8px 18px;
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  background: var(--cloth-deep);
+  color: var(--ink);
+  font-size: 0.9375rem;
+  font-weight: 800;
+}
+.st.market-day { background: #fff1b8; border-color: var(--gold-dark); }
+/* 曰く付きの行はカードの下に横いっぱい（名前・説明の段を崩さない） */
+.charm-card { grid-template-rows: auto auto auto; }
+.charm-card .e { grid-row: 1 / 3; }
+.charm-card > b { grid-column: 2; padding-right: 64px; }
+.charm-card > small:not(.curse) { grid-column: 2; }
+.charm-card > small.curse { grid-column: 1 / -1; grid-row: 3; margin-top: 4px; padding-top: 4px; border-top: 2px dashed #f0c4bc; font-size: 0.875rem; }

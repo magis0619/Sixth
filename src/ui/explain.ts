@@ -169,7 +169,7 @@ export function overviewCard(): string {
     </div>
     <h2 class="ex-title">${L('1週間の流れ', 'Each week')}</h2>
     <div class="ov-week">${days.map((d, k) => `<span class="${k === 2 || k === 5 ? 'mk' : ''}${k === 6 ? ' tx' : ''}"><b>${d}</b>${k === 2 || k === 5 ? art('bargain') : k === 6 ? art('bale') : ''}</span>`).join('')}</div>
-    <div class="ov-legend"><span>${art('bargain')} ${L('水・土は市（袋に絵柄を足す）', 'Wed/Sat: market (add symbols)')}</span><span>${art('bale')} ${L('日曜の終わりに年貢', 'Tax at the end of Sunday')}</span></div>
+    <div class="ov-legend"><span>${art('bargain')} ${L(`水・土は市（袋に絵柄を足す・売値×${CONFIG.marketDaySell}）`, `Wed/Sat: market (add symbols, prices ×${CONFIG.marketDaySell})`)}</span><span>${art('bale')} ${L('日曜の終わりに年貢', 'Tax at the end of Sunday')}</span></div>
     <div class="ov-goal">${art('trophy')}<b>${L(`年貢を${CONFIG.winTaxes}回納めたらクリア`, `Pay ${CONFIG.winTaxes} taxes to win`)}</b><span>${L('払えないと終わり', "Can't pay = game over")}</span></div>`;
 }
 
@@ -182,7 +182,7 @@ export function marketCard(): string {
     <div class="ex-row"><span class="ex-trio">${big('rain', 'small')}${big('sun', 'small')}${big('seed', 'small')}</span><span class="ex-arrow">▶</span>${big('seed', 'bag')}</div>
     <p class="ex-line">${L('3つから<b>1つ必ず</b>、タダで袋に入る', 'Pick <b>one of three</b>, free, into your bag')}</p>
     <div class="ex-icons">${[['expand', L('畑を広げる', 'Expand')], ['scarecrow', L('道具', 'Tools')], ['crow', L('お邪魔を消す', 'Remove pests')]].map(([a, t]) => `<span>${art(a as ArtId)}<b>${t}</b></span>`).join('')}</div>
-    <p class="ex-note">${L('お金があれば買い物もできる', 'Spend gold on these too')}</p>`;
+    <p class="ex-line">${art('coin')} ${L(`市の日は<b>売値×${CONFIG.marketDaySell}</b>。この日に実るように育てよう`, `Crops sell for <b>×${CONFIG.marketDaySell}</b> on market days. Time your harvest`)}</p>`;
 }
 
 /** 初めての年貢の日 */

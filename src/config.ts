@@ -254,7 +254,7 @@ export const PLACES: Record<PlaceId, PlaceDef> = {
   well: { id: 'well', kind: 'tool', name: '井戸', desc: '上下左右 毎日+1', price: 60 },
   goldenWell: { id: 'goldenWell', kind: 'tool', name: '黄金の井戸', desc: '周り8マス 毎日+1', price: null },
   hive: { id: 'hive', kind: 'tool', name: '巣箱', desc: '周り8マス 売値+2・苺が毎晩育つ', price: 30 },
-  queenHive: { id: 'queenHive', kind: 'tool', name: '女王蜂の巣箱', desc: '周り8マス 売値+4・苺が毎晩育つ', price: null },
+  queenHive: { id: 'queenHive', kind: 'tool', name: '女王蜂の巣箱', desc: '周り8マス 売値+6・苺が毎晩育つ', price: null },
   henhouse: { id: 'henhouse', kind: 'tool', name: '鶏小屋', desc: '毎日+2・周り8マスの虫を食べ、モグラを追い払う', price: 60 },
   cowshed: { id: 'cowshed', kind: 'tool', name: '牛小屋', desc: '毎日+4・隣に水路で+2', price: 120 },
   compost: { id: 'compost', kind: 'tile', name: '堆肥のマス', desc: '売値×2', price: 35 },
@@ -296,6 +296,8 @@ export const CONFIG = {
     oniSeed: 0, heartSeed: 0, lanternSeed: 0, boxSeed: 0, bigRain: 0, bigSun: 0, raijin: 0, queenBee: 0, superFert: 0, koban: 0,
   } as Record<SymbolId, number>,
   /** 合体に要る同じ絵柄の枚数（市で1回に1種類まで） */
+  /** 市の日（水・土）に売ると売値がこの倍率 */
+  marketDaySell: 1.5,
   mergeNeed: 5,
   /** 合体のお金：その週の年貢の割合（最低 mergeCostMin） */
   mergeCostRate: 0.3,
@@ -587,28 +589,52 @@ export interface CharmDef {
   special?: { kind: 'bag' | 'event' | 'combo'; hint: string };
 }
 
+/** 曰く付きの代償の文（n 個持ったとき）。代償がなければ空 */
+export function curseText(id: CharmId, n: number): string {
+  return CHARM_CURSE[id]?.text(n) ?? '';
+}
+
+/**
+ * 曰く付き：ふだんのお守りは強い代わりに、必ず何かを失う（n は持っている数）。
+ * bag は取ったときに袋に入るお邪魔
+ */
+export const CHARM_CURSE: Partial<Record<CharmId, { text: (n: number) => string; bag?: Partial<Record<SymbolId, number>> }>> = {
+  gentleRain: { text: () => '袋にカラス+1', bag: { crow: 1 } },
+  aging: { text: () => '実った作物をカラスが食べやすい（×1.5）' },
+  seedSack: { text: (n) => `年貢+${10 * n}%` },
+  sunBlessing: { text: () => '袋にカラス+2', bag: { crow: 2 } },
+  queenHive: { text: () => '袋に虫+2', bag: { bug: 2 } },
+  scarecrow: { text: () => '袋にカラス+1', bag: { crow: 1 } },
+  bumper: { text: (n) => `年貢+${10 * n}%` },
+  bugWard: { text: () => '単品の売値がさらに半分' },
+  artisan: { text: () => '年貢+20%' },
+  rancher: { text: (n) => `作物の売値−${10 * n}%` },
+  bigGame: { text: (n) => `列の倍率−${(0.2 * n).toFixed(1)}` },
+  taxRelief: { text: (n) => `市の値段+${30 * n}%` },
+};
+
 /** お守り。年貢を納めるたびに charmChoices 個から1つ選ぶ。同じものは重ねて効果アップ */
 export const CHARMS: Record<CharmId, CharmDef> = {
   coinPurse: { id: 'coinPurse', tier: 'uncommon', name: '金貨袋', emoji: '👛', desc: (n) => `金貨の額＋${2 * n}`, max: Infinity },
-  gentleRain: { id: 'gentleRain', tier: 'uncommon', name: '恵みの雨', emoji: '☔', desc: (n) => `雨の中心 さらに成長＋${n}`, max: Infinity },
+  gentleRain: { id: 'gentleRain', tier: 'uncommon', name: '恵みの雨', emoji: '☔', desc: (n) => `雨の中心 さらに成長＋${2 * n}`, max: 3 },
   crowToll: { id: 'crowToll', tier: 'common', name: 'カラスの通行料', emoji: '🪶', desc: (n) => `カラスが来るたびに＋${2 * n}`, max: Infinity },
-  aging: { id: 'aging', tier: 'common', name: '熟成', emoji: '🍷', desc: (n) => `実ったまま1日ごとに売値＋${n}（3日まで）`, max: 3 },
+  aging: { id: 'aging', tier: 'common', name: '熟成', emoji: '🍷', desc: (n) => `実ったまま1日ごとに売値＋${3 * n}（3日まで）`, max: 3 },
   seedSack: { id: 'seedSack', tier: 'rare', name: '大きな種袋', emoji: '🎒', desc: (n) => `全部の種で植えられる数＋${n}`, max: 2 },
   sunBlessing: { id: 'sunBlessing', tier: 'rare', name: '日だまり', emoji: '🌻', desc: (n) => `太陽の成長＋${n}`, max: 2 },
   goldenWell: { id: 'goldenWell', tier: 'rare', name: '黄金の井戸', emoji: '⛲', desc: () => '黄金の井戸を置く（周り8マス 毎日+1）', max: Infinity },
-  queenHive: { id: 'queenHive', tier: 'uncommon', name: '女王蜂の巣箱', emoji: '👑', desc: () => '女王蜂の巣箱を置く（周り8マス 売値+4）', max: 2 },
+  queenHive: { id: 'queenHive', tier: 'uncommon', name: '女王蜂の巣箱', emoji: '👑', desc: () => '女王蜂の巣箱を置く（周り8マス 売値+6）', max: 2 },
   bargain: { id: 'bargain', tier: 'uncommon', name: '値切り上手', emoji: '🏷️', desc: (n) => `強化の価格−${Math.min(50, 10 * n)}%`, max: 5 },
-  scarecrow: { id: 'scarecrow', tier: 'common', name: '大かかし', emoji: '🎃', desc: () => '大かかしを置く（2マス以内を守る）', max: Infinity },
-  bumper: { id: 'bumper', tier: 'rare', name: '豊作', emoji: '🧺', desc: (n) => `金以外の作物 売値＋${2 * n}`, max: 3 },
+  scarecrow: { id: 'scarecrow', tier: 'common', name: '大かかし', emoji: '🎃', desc: () => '大かかしを置く（2マス以内を守る）', max: 3 },
+  bumper: { id: 'bumper', tier: 'rare', name: '豊作', emoji: '🧺', desc: (n) => `金以外の作物 売値＋${3 * n}`, max: 3 },
   goldLuck: { id: 'goldLuck', tier: 'uncommon', name: '金運', emoji: '🐱', desc: (n) => `金のとうもろこし 売値＋${10 * n}`, max: 3 },
   bugWard: { id: 'bugWard', tier: 'common', name: '草よけ', emoji: '🌿', desc: (n) => `虫・雑草を${Math.round((1 - Math.pow(0.5, n)) * 100)}%防ぐ・草むしり無料`, max: 4 },
   heater: { id: 'heater', tier: 'common', name: '湯たんぽ', emoji: '♨️', desc: () => '霜が1日で溶ける', max: 1 },
   artisan: { id: 'artisan', tier: 'rare', name: 'からくり職人', emoji: '🎰', desc: (n) => `リール＋${n}`, max: 1 },
-  rancher: { id: 'rancher', tier: 'uncommon', name: '牧場主', emoji: '🤠', desc: (n) => `鶏小屋・牛小屋の収入＋${n}`, max: Infinity },
-  bigGame: { id: 'bigGame', tier: 'uncommon', name: '大物狙い', emoji: '🍉', desc: (n) => `スイカの売値＋${30 * n}`, max: Infinity },
+  rancher: { id: 'rancher', tier: 'uncommon', name: '牧場主', emoji: '🤠', desc: (n) => `鶏小屋・牛小屋の収入＋${2 * n}`, max: 3 },
+  bigGame: { id: 'bigGame', tier: 'uncommon', name: '大物狙い', emoji: '🍉', desc: (n) => `スイカの売値＋${50 * n}`, max: 3 },
   wheelwright: { id: 'wheelwright', tier: 'uncommon', name: '水車職人', emoji: '🛞', desc: () => '水車のお金×2', max: 1 },
   tillMaster: { id: 'tillMaster', tier: 'common', name: '耕作上手', emoji: '⛏️', desc: () => '耕した土に植えると成長+2', max: 1 },
-  taxRelief: { id: 'taxRelief', tier: 'uncommon', name: '年貢の減免', emoji: '📜', desc: (n) => `年貢−${Math.min(25, 5 * n)}%`, max: 3 },
+  taxRelief: { id: 'taxRelief', tier: 'uncommon', name: '年貢の減免', emoji: '📜', desc: (n) => `年貢−${Math.min(30, 10 * n)}%`, max: 3 },
   // 組み合わせ（お守りではない）：同じ日のスロットに2つそろうと、その日だけ自動で起きる（COMBOS）
   thunderstorm: { id: 'thunderstorm', tier: 'rare', name: '雷雨', emoji: '⛈️', desc: () => '今日は雨が斜めにも効く', max: 1, special: { kind: 'combo', hint: '雨と雷が一緒に出ると…？' } },
   tomatoFest: { id: 'tomatoFest', tier: 'rare', name: 'トマト祭り', emoji: '🍅', desc: () => '今日はトマトだけの列 さらに×1.5', max: 1, special: { kind: 'combo', hint: 'トマトの種が2つ出ると…？' } },
@@ -824,7 +850,7 @@ if (EN) {
     well: ['Well', 'Up/down/left/right +1 growth each day'],
     goldenWell: ['Golden Well', 'The 8 plots around +1 growth each day'],
     hive: ['Beehive', '8 plots around: price +2; strawberries grow nightly'],
-    queenHive: ['Queen Hive', '8 plots around: price +4; strawberries grow nightly'],
+    queenHive: ['Queen Hive', '8 plots around: price +6; strawberries grow nightly'],
     henhouse: ['Henhouse', '+2g daily; eats nearby bugs, scares off moles'],
     cowshed: ['Cowshed', '+4g daily; +2 next to water'],
     compost: ['Compost Plot', 'Price ×2'],
@@ -861,27 +887,34 @@ if (EN) {
     u.desc = remove ? `Remove one ${what} from the bag` : u.id === 'addMoon' ? 'Add one Full Moon (all crops +1) to the bag. Costs more each time' : `Add one ${what} to the bag`;
   });
   Object.assign(CHARM_TIER_NAMES, { common: 'Common', uncommon: 'Uncommon', rare: 'Rare' });
+  const curse: Partial<Record<CharmId, (n: number) => string>> = {
+    gentleRain: () => '+1 crow in your bag', aging: () => 'Crows eat ripe crops more (×1.5)', seedSack: (n) => `Tax +${10 * n}%`,
+    sunBlessing: () => '+2 crows in your bag', queenHive: () => '+2 bugs in your bag', scarecrow: () => '+1 crow in your bag', bumper: (n) => `Tax +${10 * n}%`,
+    bugWard: () => 'Singles sell for half again', artisan: () => 'Tax +20%', rancher: (n) => `Crop prices −${10 * n}%`, bigGame: (n) => `Line multiplier −${(0.2 * n).toFixed(1)}`,
+    taxRelief: (n) => `Market prices +${30 * n}%`,
+  };
+  (Object.keys(curse) as CharmId[]).forEach((id) => CHARM_CURSE[id] && (CHARM_CURSE[id]!.text = curse[id]!));
   const charm: Partial<Record<CharmId, [string, (n: number) => string, string?]>> = {
     coinPurse: ['Coin Purse', (n) => `Coins +${2 * n}g`],
-    gentleRain: ['Gentle Rain', (n) => `Rain center +${n} more growth`],
+    gentleRain: ['Gentle Rain', (n) => `Rain center +${2 * n} more growth`],
     crowToll: ['Crow Toll', (n) => `+${2 * n}g whenever a crow comes`],
-    aging: ['Aging', (n) => `Ripe crops gain +${n} price per day (up to 3 days)`],
+    aging: ['Aging', (n) => `Ripe crops gain +${3 * n} price per day (up to 3 days)`],
     seedSack: ['Big Seed Sack', (n) => `Every seed plants +${n} more`],
     sunBlessing: ['Sunny Spot', (n) => `Sun growth +${n}`],
     goldenWell: ['Golden Well', () => 'Place a Golden Well (8 around +1 daily)'],
-    queenHive: ['Queen Hive', () => 'Place a Queen Hive (8 around price +4)'],
+    queenHive: ['Queen Hive', () => 'Place a Queen Hive (8 around price +6)'],
     bargain: ['Haggler', (n) => `Shop prices −${Math.min(50, 10 * n)}%`],
     scarecrow: ['Big Scarecrow', () => 'Place a Big Scarecrow (guards within 2)'],
-    bumper: ['Good Harvest', (n) => `Non-gold crops price +${2 * n}`],
+    bumper: ['Good Harvest', (n) => `Non-gold crops price +${3 * n}`],
     goldLuck: ['Lucky Cat', (n) => `Golden corn price +${10 * n}`],
     bugWard: ['Pest Ward', (n) => `Blocks ${Math.round((1 - Math.pow(0.5, n)) * 100)}% of bugs/weeds; free weeding`],
     heater: ['Hot Water Bottle', () => 'Frost melts in 1 day'],
     artisan: ['Clockmaker', (n) => `Reels +${n}`],
-    rancher: ['Rancher', (n) => `Henhouse/cowshed income +${n}`],
-    bigGame: ['Big Game', (n) => `Watermelon price +${30 * n}`],
+    rancher: ['Rancher', (n) => `Henhouse/cowshed income +${2 * n}`],
+    bigGame: ['Big Game', (n) => `Watermelon price +${50 * n}`],
     wheelwright: ['Wheelwright', () => 'Waterwheel gold ×2'],
     tillMaster: ['Master Tiller', () => 'Planting on tilled soil gives +2 growth'],
-    taxRelief: ['Tax Relief', (n) => `Taxes −${Math.min(25, 5 * n)}%`],
+    taxRelief: ['Tax Relief', (n) => `Taxes −${Math.min(30, 10 * n)}%`],
     thunderstorm: ['Thunderstorm', () => 'Today rain also reaches diagonals', 'Rain and thunder together…?'],
     tomatoFest: ['Tomato Festival', () => 'Today tomato-only lines ×1.5 more', 'Two tomato seeds…?'],
     sunshower: ['Sunshower', () => 'Today plots hit by both rain and sun +1', 'Rain and sun together…?'],

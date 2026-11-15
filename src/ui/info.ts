@@ -2,7 +2,7 @@
 
 import { gold, L } from '../i18n.ts';
 import {
-  CHARM_TIER_NAMES, type CharmId, CHARMS, CONFIG, CROPS, type PlaceId, PLACES, SHAPE_NAMES, type SymbolId, SYMBOLS, TOOL_EVOLVE, UPGRADE_SYMBOL, UPGRADES, type UpgradeId,
+  CHARM_TIER_NAMES, curseText, type CharmId, CHARMS, CONFIG, CROPS, type PlaceId, PLACES, SHAPE_NAMES, type SymbolId, SYMBOLS, TOOL_EVOLVE, UPGRADE_SYMBOL, UPGRADES, type UpgradeId,
 } from '../config.ts';
 import { animalGold, cropPrice, hasRanch, inField, isGolden, isPond, isRipe, multSteps, rootOf, waterWheels, weedCost } from '../game.ts';
 import { art } from '../art.ts';
@@ -141,7 +141,7 @@ export function charmInfo(id: CharmId): string {
   const gold = isGolden(state, id);
   const tag = c.special ? L('特別', 'Special') : CHARM_TIER_NAMES[c.tier];
   const stack = c.max >= CONFIG.goldenAt ? `<p class="sub">${gold ? L('✦ 金色（効果2倍）', '✦ Golden (double effect)') : L(`${CONFIG.goldenAt}個で金色（効果2倍）`, `${CONFIG.goldenAt} to turn golden (double effect)`)}</p>` : '';
-  return `${infoHead(art(id), `${c.name}${n > 1 ? ` ×${n}` : ''}`, tag)}<p>${c.desc(gold ? n * 2 : Math.max(1, n))}</p>${stack}`;
+  return `${infoHead(art(id), `${c.name}${n > 1 ? ` ×${n}` : ''}`, tag)}<p>${c.desc(gold ? n * 2 : Math.max(1, n))}</p>${curseText(id, Math.max(1, n)) ? `<p class="curse">${art('warn')} ${curseText(id, Math.max(1, n))}</p>` : ''}${stack}`;
 }
 
 /** 長押しの詳しい説明を、畑・リール・お守り・袋・ショップにつける */
