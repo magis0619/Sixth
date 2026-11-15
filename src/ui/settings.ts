@@ -4,7 +4,8 @@ import { EN, L, setLang } from '../i18n.ts';
 import { CONFIG, TELEMETRY_URL } from '../config.ts';
 import { isMuted, setBgmVolume, setVolume, sfx, toggleMute } from '../audio.ts';
 import { isCalm, setFastFx, setVibrate, toggleCalm } from '../fx.ts';
-import { $, el } from './store.ts';
+import { $, el, meta } from './store.ts';
+import { saveMeta } from '../meta.ts';
 import { art } from '../art.ts';
 
 export interface Settings {
@@ -49,6 +50,48 @@ export function applySettings(): void {
 }
 
 /** 設定の画面。onClose：閉じたあとに戻す画面 */
+/**
+ * 試し用（一時的）：チュートリアルを確かめるため、ゼロデータと今のデータを行き来する。
+ * false にすると設定から2つのボタンが消える
+ */
+const DEV_DATA_SWAP = true;
+/** 退避したデータの置き場（「データを消す」でも消えないよう、別の名前） */
+const BACKUP_KEY = 'hatake-backup:data';
+/** 行き来するデータ（記録・解放・続き）。音や言語の設定はそのまま */
+const SWAP_KEYS = ['hatake-slot:meta', 'hatake-slot:run', 'hatake-slot:best'];
+
+function hasBackup(): boolean {
+  try {
+    return localStorage.getItem(BACKUP_KEY) !== null;
+  } catch {
+    return false;
+  }
+}
+
+/** 今のデータを退避して空にする（初めての人の状態） */
+function toZeroData(): void {
+  try {
+    const data = Object.fromEntries(SWAP_KEYS.map((k) => [k, localStorage.getItem(k)]));
+    localStorage.setItem(BACKUP_KEY, JSON.stringify(data));
+    SWAP_KEYS.forEach((k) => localStorage.removeItem(k));
+  } catch {
+    // 保存が使えない環境では何もしない
+  }
+  location.reload();
+}
+
+/** 退避したデータに戻す（ゼロデータで遊んだ分は捨てる） */
+function restoreData(): void {
+  try {
+    const data = JSON.parse(localStorage.getItem(BACKUP_KEY) ?? '{}') as Record<string, string | null>;
+    SWAP_KEYS.forEach((k) => (data[k] === null || data[k] === undefined ? localStorage.removeItem(k) : localStorage.setItem(k, data[k]!)));
+    localStorage.removeItem(BACKUP_KEY);
+  } catch {
+    // 保存が使えない環境では何もしない
+  }
+  location.reload();
+}
+
 export function showSettings(onClose?: () => void): void {
   const toggle = (id: string, label: string, on: boolean) =>
     `<button class="set-row toggle${on ? ' on' : ''}" id="${id}" role="switch" aria-checked="${on}"><span>${label}</span><i class="sw"></i></button>`;
@@ -64,6 +107,10 @@ export function showSettings(onClose?: () => void): void {
         ${toggle('set-fast', L('演出をはやく', 'Faster effects'), settings.fast)}
         ${toggle('set-calm', L('演出控えめ', 'Calm effects'), isCalm())}
         ${TELEMETRY_URL ? toggle('set-telemetry', L('遊んだ記録を送る', 'Send play stats'), settings.telemetry) : ''}
+        <button class="set-row" id="set-tutorial"><span>${art('question')} ${meta.tutorialDone ? L('チュートリアルをもう一度', 'Replay the tutorial') : L('チュートリアル：次にスタートを押すと始まる', 'Tutorial: starts on your next Start')}</span></button>
+        ${DEV_DATA_SWAP ? `<div class="dev-swap"><span class="dev-tag">${L('試し用', 'Testing')}</span>${hasBackup()
+          ? `<button class="set-row" id="set-restore"><span>${L('元のデータに戻す', 'Restore my data')}</span></button>`
+          : `<button class="set-row" id="set-zero"><span>${L('ゼロデータで試す（今のデータは取っておく）', 'Try as a new player (keeps your data)')}</span></button>`}</div>` : ''}
         <button class="set-row danger" id="set-reset"><span>${L('データを消す', 'Erase data')}</span></button>
         <div class="credits">
           <b>${L('畑スロット', 'Farm Slots')}</b>
@@ -104,6 +151,15 @@ export function showSettings(onClose?: () => void): void {
     });
     flip('set-calm', () => toggleCalm());
     flip('set-telemetry', () => (settings.telemetry = !settings.telemetry));
+    // チュートリアルをもう一度：次にスタートを押すと、準備画面を飛ばして始まる
+    $('set-tutorial').addEventListener('click', () => {
+      meta.tutorialDone = false;
+      saveMeta(meta);
+      sfx.select();
+      paint();
+    });
+    document.getElementById('set-zero')?.addEventListener('click', () => toZeroData());
+    document.getElementById('set-restore')?.addEventListener('click', () => restoreData());
     // データを消す：2回押して確かめる
     let armed = false;
     $('set-reset').addEventListener('click', (e) => {

@@ -7710,3 +7710,22 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 .coach.mid {
   top: 38%;
 }
+
+/* 試し用のボタン（一時的）：点線で囲んで「試し用」の札 */
+.dev-swap {
+  position: relative;
+  margin: 10px 0 4px;
+  padding: 10px 8px 4px;
+  border: 2px dashed var(--stitch);
+  border-radius: 12px;
+}
+.dev-tag {
+  position: absolute;
+  top: -10px;
+  left: 10px;
+  padding: 0 6px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  background: var(--cloth);
+  color: var(--ink-soft);
+}
