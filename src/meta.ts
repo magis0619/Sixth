@@ -34,6 +34,10 @@ export interface MetaState {
   farmer: string;
   /** チュートリアルを終えた（スキップも含む） */
   tutorialDone: boolean;
+  /** 出した「はじめて」のヒント（1回だけ出す） */
+  hints: string[];
+  /** 遊んだことのある農家（初めての農家だけ、こつを出す） */
+  farmersPlayed: string[];
   /** クリアした回数 */
   clears: number;
 }
@@ -59,6 +63,8 @@ function fresh(): MetaState {
     difficulty: 0,
     farmer: 'basic',
     tutorialDone: false,
+    hints: [],
+    farmersPlayed: [],
     clears: 0,
   };
 }

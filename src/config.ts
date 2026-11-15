@@ -657,14 +657,16 @@ export interface FarmerDef {
   favorPlaces?: PlaceId[];
   /** この難しさ（DIFFICULTIES の番号）をクリアすると解放。なければ最初から */
   unlockClear?: number;
+  /** 初めてこの農家で遊ぶときのこつ */
+  tip?: string;
 }
 
 export const FARMERS: FarmerDef[] = [
   { id: 'basic', name: 'ふつうの農家', desc: 'いつもの袋で、何でも育てる', art: 'tomato', bag: {}, charms: {}, stock: [], favor: [] },
-  { id: 'berry', name: '苺農家', desc: '苺の列で数を売る。市にいつも巣箱', art: 'strawberry', bag: { seed: -2, berrySeed: 3 }, charms: {}, stock: [], favor: ['addBerrySeed', 'addBee'], favorPlaces: ['hive'], unlockClear: 0 },
-  { id: 'pumpkin', name: 'かぼちゃ農家', desc: '大物を1つずつ高く売る。かぼちゃの種つき', art: 'pumpkin', bag: { seed: -1, pumpkinSeed: 1 }, charms: {}, stock: [], favor: ['addPumpkinSeed', 'addWatermelonSeed', 'addFertilizer'], unlockClear: 1 },
-  { id: 'rancher', name: '牧場主', desc: '小屋で毎晩お金を稼ぐ。市にいつも鶏小屋', art: 'henhouse', bag: {}, charms: {}, stock: [], favor: [], favorPlaces: ['henhouse'], unlockClear: 2 },
-  { id: 'rain', name: '雨乞い', desc: '雨で一気に育てる。恵みの雨つき', art: 'rain', bag: { rain: 1, sun: -1 }, charms: { gentleRain: 1 }, stock: [], favor: ['addRain', 'addThunder'], unlockClear: 3 },
+  { id: 'berry', name: '苺農家', desc: '苺の列で数を売る。市にいつも巣箱', art: 'strawberry', bag: { seed: -2, berrySeed: 3 }, charms: {}, stock: [], favor: ['addBerrySeed', 'addBee'], favorPlaces: ['hive'], unlockClear: 0, tip: '苺は2日で実る。市の巣箱を苺の近くに置くと、毎晩育って売値も上がる' },
+  { id: 'pumpkin', name: 'かぼちゃ農家', desc: '大物を1つずつ高く売る。かぼちゃの種つき', art: 'pumpkin', bag: { seed: -1, pumpkinSeed: 1 }, charms: {}, stock: [], favor: ['addPumpkinSeed', 'addWatermelonSeed', 'addFertilizer'], unlockClear: 1, tip: 'かぼちゃは高く売れて、カラスに食べられない。肥料と組み合わせよう' },
+  { id: 'rancher', name: '牧場主', desc: '小屋で毎晩お金を稼ぐ。市にいつも鶏小屋', art: 'henhouse', bag: {}, charms: {}, stock: [], favor: [], favorPlaces: ['henhouse'], unlockClear: 2, tip: '市にいつも鶏小屋。早めに買って置くと、毎晩お金が入る' },
+  { id: 'rain', name: '雨乞い', desc: '雨で一気に育てる。恵みの雨つき', art: 'rain', bag: { rain: 1, sun: -1 }, charms: { gentleRain: 1 }, stock: [], favor: ['addRain', 'addThunder'], unlockClear: 3, tip: '雨の真ん中のマスはさらに+1（恵みの雨）。雨を中心に組み立てよう' },
 ];
 
 /** 「足す」強化（ゲーム開始時にショップへ並べるものを選ぶ対象） */
@@ -847,7 +849,13 @@ if (EN) {
     rain: ['Rainmaker', 'Grow fast with rain. Starts with Gentle Rain'],
     rancher: ['Rancher', 'Earn gold every night. The market always has a henhouse'],
   };
-  FARMERS.forEach((f) => Object.assign(f, { name: farmer[f.id][0], desc: farmer[f.id][1] }));
+  const farmerTip: Record<string, string> = {
+    berry: 'Strawberries ripen in 2 days. Put the market beehive near them: they grow nightly and sell higher',
+    pumpkin: "Pumpkins sell high and crows can't eat them. Pair them with fertilizer",
+    rancher: 'The market always has a henhouse. Buy one early for gold every night',
+    rain: 'The center of rain gets +1 more (Gentle Rain). Build around rain',
+  };
+  FARMERS.forEach((f) => Object.assign(f, { name: farmer[f.id][0], desc: farmer[f.id][1] }, farmerTip[f.id] ? { tip: farmerTip[f.id] } : {}));
   const diff = [['Normal', ''], ['Hard 1', 'Tax ×1.3'], ['Hard 2', 'Shop ×1.3'], ['Hard 3', 'Pests earlier and more'], ['Hard 4', 'Singles ×0.3'], ['Hard 5', 'Multiplying locusts']];
   DIFFICULTIES.forEach((d, i) => Object.assign(d, { name: diff[i][0], desc: diff[i][1] }));
   Object.assign(ACHIEVE_ADDS.addMelonSeed!, { hint: 'Clear the game once…?', done: 'First clear' });

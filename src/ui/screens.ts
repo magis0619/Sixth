@@ -85,14 +85,21 @@ function reviewHtml(endedAfterClear: boolean, taxAmount: number): string {
   });
   if (days[bestDay]) rows.push(`<li>${art('coin')} ${L(`一番稼いだ日：<b>${bestDay}日目 +${days[bestDay]}</b>`, `Best day: <b>day ${bestDay}, +${days[bestDay]}g</b>`)}</li>`);
   rows.push(`<li>${art('tomato')} ${L(`列で売った：<b>${state.stats.lineHarvests}回</b>・取られた作物：<b>${state.stats.cropsEaten}個</b>`, `Lines sold: <b>${state.stats.lineHarvests}</b> · crops lost: <b>${state.stats.cropsEaten}</b>`)}</li>`);
+  // 次に試すこと：その回の遊び方から、一番効きそうな1つ（上から順に当てはまったもの）
+  const short = Math.max(0, taxAmount - state.gold);
+  const boughtPlaces = Object.entries(state.bought).some(([k, n]) => k !== 'expand' && (n ?? 0) > 0);
   const tip =
     state.stats.lineHarvests === 0
       ? L('作物を3つ並べて売ると ×1.3。並べずに売ると半値', 'Sell 3 crops in a line for ×1.3. Singles sell at half price')
       : state.stats.cropsEaten >= 5
-        ? L('カラス・タヌキには、かかし（周り8マスを守る）', 'Scarecrows guard the 8 plots around them from crows and tanuki')
-        : state.stats.purchases.length < 3
-          ? L('ショップで絵柄を足すと、狙った作物を育てやすい', 'Add symbols in the shop to grow the crops you want')
-          : L('同じ作物だけの列は、さらに ×1.3', 'Lines of a single crop get another ×1.3');
+        ? L('カラスには、市で「カラスを消す」か、かかし（周り8マスを守る）', 'Against crows: remove them at the market, or place a scarecrow (guards 8 plots around)')
+        : (state.stats.expired ?? 0) >= 6
+          ? L('使わずに消えた出目が多かった。雨・太陽は、育ち中の作物があるうちに使い切ろう', 'Many reels went unused. Use rain and sun while you have growing crops')
+          : !boughtPlaces && state.day >= 10
+            ? L('市で鶏小屋や巣箱を買うと、毎晩お金や売値が増える', 'Buy a henhouse or beehive at the market for nightly gold or higher prices')
+            : !state.cleared && short > 0 && short <= taxAmount * 0.2
+              ? L('あと少し！ 日曜の前に実った作物を売り切っておこう', 'So close! Sell your ripe crops before Sunday')
+              : L('同じ作物だけの列は、さらに ×1.3', 'Lines of a single crop get another ×1.3');
   return `<ul class="review">${rows.join('')}</ul><p class="tip">${art('sparkle')} ${L('次は', 'Next time')}：${tip}</p>`;
 }
 
@@ -293,6 +300,11 @@ export function showTitle(): void {
   $('title-start').addEventListener('click', () => {
     unlockAudio();
     sfx.select();
+    // 初めての人は準備画面を飛ばして、そのままチュートリアル（ふつうの農家・出目も市も決まった3日間）
+    if (!meta.tutorialDone && !loadRun()) {
+      hooks.startGame();
+      return;
+    }
     showPrep();
   });
   document.getElementById('title-resume')?.addEventListener('click', () => {

@@ -7683,3 +7683,30 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 }
 .farmer.locked .fm-desc { display: inline-flex; align-items: center; gap: 4px; }
 .farmer.locked .fm-desc svg { width: 16px; height: 16px; }
+
+/* ==== その場のヒント（初めて出会ったときに1回だけ） ==== */
+.hint-card {
+  position: fixed;
+  left: 50%;
+  top: calc(124px + env(safe-area-inset-top));
+  z-index: 45;
+  width: min(92vw, 420px);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #fffdf3;
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  box-shadow: 4px 4px 0 var(--ink);
+  opacity: 0;
+  cursor: pointer;
+}
+.hint-card p { margin: 0; font-size: 0.875rem; font-weight: 800; line-height: 1.5; }
+.hint-card p b { color: #c93c2b; }
+.hint-card p .art, .hint-card p svg { width: 1.4em; height: 1.4em; vertical-align: -0.35em; }
+.hc-badge { flex: none; width: 26px; height: 26px; display: flex; }
+.hc-badge svg { width: 100%; height: 100%; }
+.coach.mid {
+  top: 38%;
+}

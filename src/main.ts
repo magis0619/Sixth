@@ -1,7 +1,7 @@
 import { applyStaticLang, EN, gold, L } from './i18n.ts';
 import './style.css';
 import {
-  CHARMS, CHARM_ORDER, type CharmId, DIFFICULTIES, TOOL_EVOLVE, CONFIG, CROPS, PLACES, PLACE_ORDER, SEEDS, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL, type AddUpgradeId, type PlaceId, type SymbolId, type UpgradeId,
+  CHARMS, CHARM_ORDER, type CharmId, DIFFICULTIES, FARMERS, TOOL_EVOLVE, CONFIG, CROPS, PLACES, PLACE_ORDER, SEEDS, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL, type AddUpgradeId, type PlaceId, type SymbolId, type UpgradeId,
 } from './config.ts';
 import {
   isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult, mustPlace, hasRoomFor, takeOffer, refreshCombos, symbolShape, isRareOffer, isMarketDay, shopOpen, nextMarketDay, beginDay, spinDay,
@@ -467,6 +467,7 @@ let offerHinted = (() => {
 
 /** 回せるとき（出目を使い切った・1日目）はリール窓が光り「タップで回す」の帯が出る */
 function renderSpinButton(): void {
+  if (state.stock.length && mustPlace(state) && !ui.busy) hintOnce('place', `${art('hand')} ${L('もらった物は、<b>光るマスをタップ</b>して置く', 'Tap a <b>glowing plot</b> to place what you got')}`);
   const t = nextTax(state);
   el.spin.disabled = ui.busy || state.over;
   const ready = !ui.busy && !state.over && (state.day === 0 || usableReels().length === 0);
@@ -840,6 +841,10 @@ function renderFarmShop(): void {
 function onBuyFarm(key: PlaceId | 'expand'): void {
   unlockAudio();
   if (ui.busy || state.over || holdMarket()) return;
+  if (tut) {
+    reject(el.farmShop.querySelector(`[data-id="${key}"]`), L('チュートリアルのあとで', 'After the tutorial'));
+    return;
+  }
   const card = el.farmShop.querySelector(`[data-id="${key}"]`) as HTMLElement;
   if (key === 'expand') {
     const price = expandPrice(state);
@@ -952,8 +957,10 @@ async function onSpin(): Promise<void> {
     return;
   }
   beginDay(state, rng);
+  // チュートリアルの水曜の市は、決まった3つ
+  if (tut && isMarketDay(state.day) && state.offer.length) state.offer = [...TUT_OFFER];
   // 市の日の朝：リールを回す前に市を開く。市を閉じるとリールが回る
-  if (isMarketDay(state.day) && state.offer.length && !tut) {
+  if (isMarketDay(state.day) && state.offer.length) {
     endBusy();
     render();
     openMarket();
@@ -990,6 +997,7 @@ async function spinMorning(): Promise<void> {
   endBusy();
   autoSelect();
   render();
+  if (nextTax(state).daysLeft === 0) hintOnce('tax-day', `${art('bale')} ${L(`今日の終わりに<b>年貢 ${nextTax(state).amount}</b>。足りないと終わり`, `<b>Tax ${nextTax(state).amount}g</b> is due at the end of today. Can't pay = game over`)}`);
 }
 
 /** 市を閉じた：朝なら（置く物がなければ）そのままリールを回す */
@@ -1028,7 +1036,7 @@ function holdMarket(): boolean {
 
 /** 選ぶまで進めない仕入れが残っている */
 function forcedOffer(): boolean {
-  return CONFIG.offerForced && state.offer.length > 0 && state.day > 0 && !state.over && !tut;
+  return CONFIG.offerForced && state.offer.length > 0 && state.day > 0 && !state.over;
 }
 
 /** 動物がマスからひょっこり出てくる（何の動物か分かる大きさで） */
@@ -1324,6 +1332,8 @@ async function resolveAutos(): Promise<void> {
     if (SYMBOLS[state.results[i].symbol].kind !== 'auto') continue;
     const ev = resolveAuto(state, i, rng);
     if (!ev) continue;
+    const sym = state.results[i].symbol;
+    if (PEST_HINTS[sym]) hintOnce(`pest-${sym}`, `${symHtml(sym)} <b>${SYMBOLS[sym].name}</b>：${PEST_HINTS[sym]}`);
     // いま動いている出目のリールを光らせる（どのリールの出来事か分かるように）
     actingReel = i;
     reels[i].classList.add('acting');
@@ -1758,6 +1768,46 @@ function onPlotTap(cell: number): void {
   }
 }
 
+// ---- その場のヒント：初めて出会ったときに1回だけ、短い札で（遊びは止めない） ----
+
+/** 初めて出会ったお邪魔のひと言 */
+const PEST_HINTS: Partial<Record<SymbolId, string>> = {
+  crow: L('作物を1/2で食べる。かぼちゃ・スイカは平気。かかしの周りは守られる', 'Eats a crop half the time. Pumpkins and watermelons are safe. Scarecrows guard nearby plots'),
+  bug: L('育ち中の作物の成長−1。鶏小屋の周りでは食べてくれる', 'Growth −1 on a growing crop. Henhouses eat nearby bugs'),
+  weed: L('空きマスをふさいで広がる。タップで抜ける', 'Blocks empty plots and spreads. Tap to pull'),
+  tanuki: L('実った一番高い作物を盗む。かかしの周りには来ない', 'Steals your priciest ripe crop. Stays away from scarecrows'),
+  frost: L('マスが3日凍る。太陽で溶かせる', 'Freezes a plot for 3 days. Sun melts it'),
+  mole: L('作物を隣の空きマスへ押し出す。列が崩れることも', 'Pushes a crop into a nearby empty plot, which can break a line'),
+  locust: L('出るたびに袋で増えることがある。市で消そう', 'May multiply in your bag each time. Remove them at the market'),
+};
+
+let hintTimer = 0;
+/** ヒントを1回だけ出す（key ごと）。チュートリアル中は出さない */
+function hintOnce(key: string, html: string, ms = 5000): void {
+  if (tut || meta.hints.includes(key)) return;
+  meta.hints.push(key);
+  saveMeta(meta);
+  showHintCard(html, ms);
+}
+
+/** 画面の上の方に、絵とひと言の札。数秒で消える（タップでも消える） */
+function showHintCard(html: string, ms = 5000): void {
+  document.getElementById('hint-card')?.remove();
+  window.clearTimeout(hintTimer);
+  const card = document.createElement('div');
+  card.id = 'hint-card';
+  card.className = 'hint-card';
+  card.innerHTML = `<span class="hc-badge">${art('question')}</span><p>${html}</p>`;
+  document.body.appendChild(card);
+  card.animate([{ transform: 'translate(-50%, -12px)', opacity: 0 }, { transform: 'translate(-50%, 0)', opacity: 1 }], { duration: 260, easing: 'cubic-bezier(.2,.9,.3,1)', fill: 'forwards' });
+  const close = () => {
+    window.clearTimeout(hintTimer);
+    card.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 220, fill: 'forwards' }).onfinish = () => card.remove();
+  };
+  card.addEventListener('click', close);
+  hintTimer = window.setTimeout(close, ms);
+}
+
 /** お金の増減の表示：コインの絵と数字だけ（言葉は付けない） */
 function money(n: number): string {
   return `<span class="money">${art('coin')}${n >= 0 ? '+' : '−'}${Math.abs(n)}</span>`;
@@ -1845,6 +1895,8 @@ function sellCrop(cell: number): void {
   const big = price >= CROPS.corn.price || res.line;
   if (res.line) goldHeld++;
   render();
+  // 単品で売った：並べると高いことを1回だけ
+  if (!res.line && res.steps.some((st) => st.x < 1)) hintOnce('single', `${MARK_SINGLE} ${L('並んでいない作物は<b>半値</b>。縦・横・斜めに3つ並べてから売ると高い', 'Crops not in a line sell at <b>half price</b>. Line up 3 first to sell high')}`);
   // 注文達成：お客さんからまとめて代金（列で売ったときは、列の演出が終わってから）
   const orderDone = () => {
     if (!res.orderReward) return;
@@ -2012,6 +2064,13 @@ function startGame(resume: GameState | null = null): void {
   tut = null;
   document.getElementById('coach')?.remove();
   if (!resume && !meta.tutorialDone) startTutorial();
+  // 初めて遊ぶ農家は、最初にその農家のこつを出す
+  const farmer = FARMERS.find((f) => f.id === state.farmer);
+  if (!resume && farmer?.tip && !meta.farmersPlayed.includes(farmer.id)) {
+    meta.farmersPlayed.push(farmer.id);
+    saveMeta(meta);
+    later(() => showHintCard(`${art(farmer.art as ArtId)} <b>${farmer.name}</b>：${farmer.tip}`, 8000), 500);
+  }
   if (resume) autoSelect();
   el.overlay.classList.remove('show', 'title');
   el.overlay.innerHTML = '';
@@ -2164,17 +2223,26 @@ const reelEl = (i: number): Element[] => (el.reels.children[i] ? [el.reels.child
 const plotEls = (cells: number[]): Element[] => cells.map((c) => el.field.children[c]).filter(Boolean);
 
 const TUT_STEPS: TutStep[] = [
-  { text: L('ようこそ！ まずは<b>リールをタップ</b>して回そう', 'Welcome! First, <b>tap the reels</b> to spin'), focus: () => [el.reels], spin: true, done: () => state.day >= 1 && !ui.busy },
+  // 1日目：回す → 種を横一列に植える → 雨で育てる
+  { text: L('ようこそ！ まずは<b>リールをタップ</b>して回そう', 'Welcome! First, <b>tap the reels</b> to spin'), focus: () => [el.reels], spin: true, done: () => state.day >= 1 && !state.morning && !ui.busy },
   { text: `${symHtml('seed')} ${L('種が出た！ <b>種のリール</b>をタップ', 'A seed! Tap the <b>seed reel</b>')}`, focus: () => reelEl(0), reel: 0, done: () => selected === 0 || tutRow().some((c) => state.field[c]) },
-  { text: L('光る<b>横一列の3マス</b>に植えよう。<br>3つ並べると<b>列ごと高く売れる</b>！', 'Plant in the <b>3 glowing plots</b>.<br>3 in a row <b>sell high as a line</b>!'), focus: () => plotEls(tutRow()), reel: 0, cells: tutRow(), done: () => tutRow().every((c) => state.field[c]) },
+  { text: L('光る<b>横一列の3マス</b>に植えよう。<br>3つ並べると<b>列ごと高く売れる</b>', 'Plant in the <b>3 glowing plots</b>.<br>3 in a row <b>sell high as a line</b>'), focus: () => plotEls(tutRow()), reel: 0, cells: tutRow(), done: () => tutRow().every((c) => state.field[c]) },
   { text: `${symHtml('rain')} ${L('次は雨。<b>雨のリール</b>をタップして<br><b>真ん中のトマト</b>へ（縦横に育つ）', 'Now rain. Tap the <b>rain reel</b>,<br>then the <b>middle tomato</b> (grows a cross)')}`, focus: () => (selected === 1 ? plotEls([tutRow()[1]]) : reelEl(1)), reel: 1, cells: [tutRow()[1]], done: () => !!state.results[1]?.used },
-  { text: L('今日はここまで。<b>リールをタップ</b>で次の日へ', "That's today. <b>Tap the reels</b> for the next day"), focus: () => [el.reels], spin: true, done: () => state.day >= 2 && !ui.busy },
+  { text: L('○が増えた＝育った。<br>今日はここまで。<b>リールをタップ</b>で次の日へ', 'More ○ = grown.<br>That\'s today. <b>Tap the reels</b> for the next day'), focus: () => [el.reels], spin: true, done: () => state.day >= 2 && !state.morning && !ui.busy },
+  // 2日目：雷で実らせて、列で売る
   { text: `${symHtml('thunder')} ${L('雷！ 横一列が<b>+2</b>育つ。<br>雷をタップ → <b>トマトの列</b>へ', 'Thunder! A row grows <b>+2</b>.<br>Tap thunder → the <b>tomato row</b>')}`, focus: () => (selected === 0 ? plotEls(tutRow()) : reelEl(0)), reel: 0, cells: tutRow(), done: () => !!state.results[0]?.used },
   { text: L('3つそろって実った！<br><b>タップで列ごと売ろう</b>', 'All 3 are ripe!<br><b>Tap to sell the whole line</b>'), focus: () => plotEls(tutRow()), cells: tutRow(), done: () => state.stats.lineHarvests >= 1 && !ui.busy },
-  { text: L(`${MARK_LINE} 列は<b>×1.3</b>、同じ作物だけの列は<b>さらに×1.3</b>。<br>${MARK_SINGLE} 並んでいない<b>単品は半値</b>！<br>種を選ぶと、列になるマスに倍率が出るよ`, `${MARK_LINE} Lines are <b>×1.3</b>; single-crop lines get <b>another ×1.3</b>.<br>${MARK_SINGLE} Crops not in a line sell at <b>half price</b>!<br>Pick a seed to see line multipliers on the plots`), focus: () => [], button: L('なるほど', 'Got it') },
-  { text: `${art('official')} ${L('7日ごとに<b>年貢</b>。払えないと終わり。<br><b>7回納める（49日目）とクリア</b>！', "Every 7 days there's a <b>tax</b>. Can't pay = game over.<br><b>Pay 7 times (day 49) to win</b>!")}`, focus: () => [el.tax], button: L('次へ', 'Next') },
-  { text: `${art('bargain')} ${L(`毎週${CONFIG.marketDays.join('・')}日目は<b>市</b>。<br>絵柄を3つから1つタダで袋へ。<br>お金は市で畑の道具に`, `Market on days <b>${CONFIG.marketDays.join(' & ')}</b> of each week.<br>Take 1 of 3 symbols free.<br>Spend gold on farm tools there`)}`, focus: () => [document.querySelector('.tab[data-sheet="shop"]')!], button: L('はじめる！', "Let's go!") },
+  { text: L(`${MARK_LINE} 列は<b>×1.3</b>、同じ作物だけの列は<b>さらに×1.3</b>。<br>${MARK_SINGLE} 並んでいない<b>単品は半値</b>`, `${MARK_LINE} Lines are <b>×1.3</b>; single-crop lines get <b>another ×1.3</b>.<br>${MARK_SINGLE} Crops not in a line sell at <b>half price</b>`), focus: () => [], button: L('次へ', 'Next') },
+  // 3日目（水曜）：朝に市が開く → 1つ選ぶ → 次へでリールが回る
+  { text: L('上の曜日が今日。<b>明日の水曜は市</b>が開く。<br><b>リールをタップ</b>で次の日へ', "The top shows today. <b>Wednesday is market day</b>.<br><b>Tap the reels</b> for the next day"), focus: () => [el.week, el.reels], spin: true, done: () => state.day >= 3 },
+  { text: `${art('bargain')} ${L('市が開いた！<br>絵柄を<b>3つから1つ選ぶ</b>と、タダで袋に入る', 'The market is open!<br><b>Pick 1 of 3</b> symbols to add it to your bag for free')}`, focus: () => [document.querySelector('.offer-sec')!], done: () => state.day >= 3 && !state.offer.length },
+  { text: L('選んだ絵柄は、これからリールに出る。<br><b>次へ</b>で市を出ると、リールが回る', 'Your pick will show up on the reels from now on.<br>Press <b>Next</b> to leave and spin'), focus: () => [$('market-next')], spin: true, done: () => state.day >= 3 && !state.morning && !ui.busy },
+  { text: `${art('bale')} ${L('<b>日曜の終わりに年貢</b>。上の曜日であと何日か分かる。<br>お金が足りないと<b>赤く</b>なる', '<b>Tax is due at the end of Sunday</b>. The days on top show how long is left.<br>Gold turns <b>red</b> when short')}`, focus: () => [el.week, el.tax], button: L('次へ', 'Next') },
+  { text: L('あとは自由に！<br>列で売って、<b>年貢を7回納めるとクリア</b>', "You're on your own now!<br>Sell in lines and <b>pay the tax 7 times to win</b>"), focus: () => [], button: L('はじめる', "Let's go") },
 ];
+
+/** チュートリアルの水曜の市（決まった3つ） */
+const TUT_OFFER: AddUpgradeId[] = ['addRain', 'addSun', 'addSeed'];
 
 let tut: { step: number } | null = null;
 let tutFocus: Element[] = [];
@@ -2197,11 +2265,11 @@ function endTutorial(): void {
   render();
 }
 
-/** チュートリアルの日は出目を決めておく（1日目：種×3・雨・金貨、2日目：雷・金貨・金貨） */
+/** チュートリアルの日は出目を決めておく（1日目：種×3・雨・金貨、2日目：雷・金貨・金貨、3日目：種×2・太陽・金貨） */
 function tutScript(): void {
   if (!tut) return;
   const mk = (symbol: SymbolId, total = 1) => ({ symbol, used: false, total, left: total, power: 1 });
-  const plan: Record<number, ReturnType<typeof mk>[]> = { 1: [mk('seed', 3), mk('rain'), mk('coin')], 2: [mk('thunder'), mk('coin'), mk('coin')] };
+  const plan: Record<number, ReturnType<typeof mk>[]> = { 1: [mk('seed', 3), mk('rain'), mk('coin')], 2: [mk('thunder'), mk('coin'), mk('coin')], 3: [mk('seed', 2), mk('sun'), mk('coin')] };
   const r = plan[state.day];
   if (!r) return;
   state.results = [...r, ...state.results.slice(r.length).map(() => mk('coin'))];
@@ -2265,6 +2333,8 @@ function renderTutorial(): void {
   tutFocus = s.focus().filter(Boolean);
   tutFocus.forEach((e) => e.classList.add('coach-focus'));
   coach.classList.toggle('low', tutFocus.some((e) => e === el.tax));
+  // 上の曜日を指すときは、曜日を隠さないよう畑の上（真ん中）へ
+  coach.classList.toggle('mid', tutFocus.includes(el.week) && !tutFocus.includes(el.tax));
 }
 
 // ---- 起動 ----

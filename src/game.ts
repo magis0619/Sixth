@@ -177,6 +177,8 @@ export interface GameState {
     charms: { day: number; id: CharmId }[];
     /** 日ごとの稼ぎ（振り返り用。添え字は日） */
     earnedByDay: number[];
+    /** 使わずに消えた手動の出目の数（振り返り用） */
+    expired: number;
   };
 }
 
@@ -271,7 +273,7 @@ function freshGame(setup: GameSetup): GameState {
     cleared: false,
     stats: {
       spins: 0, totalEarned: 0, cropsSold: 0, cropsEaten: 0, crowEaten: 0, crowsMissed: 0, fevers: 0, lineHarvests: 0, ordersDone: 0,
-      soldKinds: [], purchases: [], charms: [], earnedByDay: [],
+      soldKinds: [], purchases: [], charms: [], earnedByDay: [], expired: 0,
     },
   };
 }
@@ -545,6 +547,7 @@ export type EndDayResult =
  */
 export function endDay(state: GameState, rng: Rng): EndDayResult {
   const expired = state.results.filter((r) => !r.used && SYMBOLS[r.symbol].kind === 'manual').length;
+  state.stats.expired = (state.stats.expired ?? 0) + expired;
   // 熟成：実ったまま日をまたいだ作物の売値が上がる
   if (state.day > 0 && lv(state, 'aging') > 0) {
     state.field.forEach((c) => {

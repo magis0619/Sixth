@@ -223,7 +223,10 @@ test('お守りの3択を連打しても1つしか取れず、最後（7回目�
 
 test('初めての人はチュートリアルで、横一列に植えて列で売るまで案内される', async ({ page }) => {
   const errors = await boot(page, { tutorial: true });
-  await start(page);
+  // 初めての人は準備画面を飛ばして、そのままチュートリアル
+  await page.click('#title-start', { force: true });
+  await expect(page.locator('#prep-start')).toHaveCount(0);
+  await expect(page.locator('#overlay')).not.toHaveClass(/show/);
   const coach = page.locator('#coach');
   await expect(coach).toContainText('リールをタップ');
   await page.locator('#reels .reel').first().click({ force: true });
@@ -246,9 +249,19 @@ test('初めての人はチュートリアルで、横一列に植えて列で�
   await page.locator('#field .plot').nth(6).click({ force: true });
   await expect(coach).toContainText('単品は半値', { timeout: 15_000 });
   await page.click('.coach-next');
-  await expect(coach).toContainText('年貢');
+  // 水曜の朝：リールを押すと先に市が開き、決まった3つから1つ選ぶ
+  await expect(coach).toContainText('水曜は市');
+  await page.locator('#reels .reel').first().click({ force: true });
+  await expect(page.locator('#sheet.open')).toHaveCount(1, { timeout: 15_000 });
+  await expect(coach).toContainText('3つから1つ');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('hatake-slot:run')!).offer)).toEqual(['addRain', 'addSun', 'addSeed']);
+  await page.locator('#offer-shop [data-take]').first().click({ force: true });
+  await expect(coach).toContainText('次へ', { timeout: 5_000 });
+  await page.click('#market-next', { force: true });
+  await expect(coach).toContainText('年貢', { timeout: 15_000 });
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('hatake-slot:run')!).results.map((r: { symbol: string }) => r.symbol))).toEqual(['seed', 'sun', 'coin']);
   await page.click('.coach-next');
-  await expect(coach).toContainText('市');
+  await expect(coach).toContainText('自由');
   await page.click('.coach-next');
   await expect(coach).toHaveCount(0);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('hatake-slot:meta')!).tutorialDone)).toBe(true);
