@@ -363,9 +363,10 @@ function renderWeek(): void {
     el.week,
     WEEKDAYS.map((w, k) => {
       const d = k + 1;
+      // 札の右下に小さな印：市の日は値札、日曜は年貢の俵
       const mark = d === CONFIG.taxPeriod ? art('bale') : CONFIG.marketDays.includes(d) ? art('bargain') : '';
       const cls = `wd${d === today ? ' now' : d < today ? ' past' : ''}${d === CONFIG.taxPeriod ? ' tax' : ''}${CONFIG.marketDays.includes(d) ? ' market' : ''}${d === CONFIG.taxPeriod && state.gold < t.amount ? ' short' : ''}`;
-      return `<span class="${cls}"><b>${w}</b><i>${mark}</i></span>`;
+      return `<span class="${cls}"><span class="wd-plate"><b>${w}</b>${mark ? `<i>${mark}</i>` : ''}</span></span>`;
     }).join(''),
   );
   el.week.setAttribute('aria-label', today ? L(`今日は${WEEKDAYS[today - 1]}曜日`, `Today: ${WEEKDAYS[today - 1]}`) : '');

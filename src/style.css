@@ -7765,3 +7765,138 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 .scene {
   min-height: 24px;
 }
+
+/* ==== 曜日（作り直し）：木の板の上に丸い札が道のりのように並ぶ。今日は金の札が大きく、上に▼ ==== */
+.week {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  align-items: center;
+  gap: 0;
+  margin: 8px auto 0;
+  max-width: 440px;
+  padding: 6px 8px;
+  background:
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.05) 0 2px, transparent 2px 46px),
+    linear-gradient(#c98c57, #b07444);
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  box-shadow: 4px 4px 0 var(--ink);
+}
+/* 札をつなぐ点線（道のり） */
+.week::before {
+  content: '';
+  position: absolute;
+  left: 7%;
+  right: 7%;
+  top: 50%;
+  border-top: 3px dashed rgba(61, 51, 38, 0.45);
+  translate: 0 -50%;
+}
+.wd {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  height: auto;
+  background: none;
+  border-radius: 0;
+  transform: none;
+  box-shadow: none;
+}
+.wd-plate {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--cloth);
+  border: 3px solid var(--ink);
+  color: var(--ink);
+  transition: transform 0.3s cubic-bezier(.3, 1.4, .5, 1), background-color 0.3s;
+}
+.wd-plate b {
+  font-family: var(--font-pop);
+  font-weight: 400;
+  font-size: 1rem;
+  line-height: 1;
+}
+/* 市・年貢の小さな印（札の右下） */
+.wd-plate i {
+  position: absolute;
+  right: -7px;
+  bottom: -6px;
+  display: flex;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  padding: 1px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--ink);
+}
+.wd-plate i svg { width: 100%; height: 100%; opacity: 1; filter: none; }
+/* 過ぎた日：くすんだ札に緑の済み印 */
+.wd.past .wd-plate { background: #e6dccb; color: #9a8b74; }
+.wd.past .wd-plate::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 14px;
+  height: 7px;
+  border-left: 3px solid #4e9230;
+  border-bottom: 3px solid #4e9230;
+  translate: -50% -50%;
+  rotate: -45deg;
+}
+.wd.past .wd-plate b { opacity: 0.35; }
+/* 今日：金の札が大きく、上に▼ */
+.wd.now .wd-plate {
+  background: var(--gold);
+  transform: scale(1.22);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.wd.now::before {
+  content: '';
+  position: absolute;
+  top: -11px;
+  left: 50%;
+  translate: -50% 0;
+  border: 6px solid transparent;
+  border-top: 8px solid var(--ink);
+  z-index: 2;
+}
+/* 日曜（年貢）：赤い縁。お金が足りないと赤く */
+.wd.tax .wd-plate { border-color: #c93c2b; }
+.wd.tax .wd-plate b { color: #c93c2b; }
+.wd.tax.short .wd-plate { background: #ffd9d2; }
+.wd.tax.now .wd-plate b { color: var(--ink); }
+.wd.tax.now.short .wd-plate { background: #ff8a7a; }
+/* 前の見た目の名残を消す */
+.wd b { color: inherit; }
+.wd.market b, .wd.tax b { color: inherit; }
+.wd:not(.now) i svg { opacity: 1; filter: none; }
+.wd.past { background: none; }
+.wd.now { background: none; box-shadow: none; transform: none; }
+
+/* 横持ち：曜日は上の帯の空いた真ん中に重ねる（新しい見た目のあとでもう一度） */
+@media (max-height: 480px) and (orientation: landscape) {
+  .week {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    margin: 0;
+    width: min(330px, 38vw);
+    padding: 3px 6px;
+    box-shadow: 2px 2px 0 var(--ink);
+    z-index: 2;
+  }
+  .wd-plate { width: 26px; height: 26px; border-width: 2px; }
+  .wd-plate b { font-size: 0.75rem; }
+  .wd-plate i { width: 14px; height: 14px; right: -5px; bottom: -5px; }
+  .wd.now::before { top: -9px; }
+}
