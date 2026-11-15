@@ -7,7 +7,7 @@ import {
   takeOffer,
   buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, expand, expandPrice, canUse, cellAt, cellX, cellY, chooseCharm, fieldCells,
   isOpen, isRipe, newGame, nextTax, place, placePrice, pullWeed, resolveAllAuto, resolveFever, ripeGroup, sell, shapeCells,
-  startDay, takeContract, upgradePrice, useSymbol, validTargets, type GameState,
+  startDay, takeContract, mergeable, mergeSymbol, upgradePrice, useSymbol, validTargets, type GameState,
 } from '../src/game.ts';
 
 const runs = Number(process.argv[2] ?? 2000);
@@ -183,6 +183,8 @@ for (let n = 0; n < runs; n++) {
     if (want) takeOffer(s, want as never);
     // 見送れない仕入れは、欲しい物がなくても1つ取る
     else if (CONFIG.offerForced && s.offer.length) takeOffer(s, s.offer[0]);
+    // 合体：MERGE=1 なら市で合体できる札があれば合体する
+    if (process.env.MERGE === '1') { const m = mergeable(s); if (m.length) mergeSymbol(s, m[0]); }
     playDay(s);
   }
   days.push(s.day);

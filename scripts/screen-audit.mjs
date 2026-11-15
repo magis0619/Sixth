@@ -249,6 +249,39 @@ for (const size of Object.keys(SIZES)) {
     if (errs.length) report.push({ size, key: 'errors-l', issues: errs });
     await ctx.close();
   }
+  // 合体：市で同じ札4枚→1枚
+  {
+    const { p, ctx, errs } = await page(size, mod((s) => {
+      s.day = 3; s.morning = true; s.results = []; s.offer = ['addRain', 'addSun', 'addSeed']; s.bag.rain = 3; s.bag.seed = 4; s.mergedThisMarket = false;
+    }));
+    await p.click('#title-resume', f); await p.waitForTimeout(900);
+    const take = p.locator('[data-take="addRain"]');
+    if (await take.count()) { await take.click(f); await p.waitForTimeout(1200); }
+    await p.evaluate(() => document.querySelector('.merge-sec')?.scrollIntoView({ block: 'center' }));
+    await snap(p, size, '27-merge');
+    const m = p.locator('[data-merge="rain"]');
+    if (await m.count()) { await m.click(f); await p.waitForTimeout(1600); }
+    await snap(p, size, '28-merged');
+    if (errs.length) report.push({ size, key: 'errors-m', issues: errs });
+    await ctx.close();
+  }
+  // 合体した作物と絵柄
+  {
+    const { p, ctx, errs } = await page(size, mod((s) => {
+      s.cols = 4; s.rows = 4; s.day = 9;
+      const put = (i, kind, growth, anchor) => (s.field[i] = { kind, growth, fertilized: false, bonus: 0, ...(anchor !== undefined ? { anchor } : {}) });
+      put(0, 'oniTomato', 99); put(1, 'tomato', 99); put(2, 'oniTomato', 99); put(5, 'heartBerry', 99); put(6, 'heartBerry', 1); put(7, 'lanternPumpkin', 99);
+      put(10, 'boxMelon', 99); put(11, 'boxMelon', 0, 10); put(15, 'boxMelon', 0, 10); put(16, 'boxMelon', 0, 10);
+      s.results = [{ symbol: 'bigSun', used: false, total: 1, left: 1, power: 1 }, { symbol: 'queenBee', used: false, total: 1, left: 1, power: 1 }, { symbol: 'koban', used: true, total: 1, left: 0, power: 1 }];
+      s.bag.bigSun = 1; s.bag.queenBee = 1; s.bag.koban = 1; s.bag.oniSeed = 1;
+    }));
+    await p.click('#title-resume', f); await p.waitForTimeout(600);
+    await snap(p, size, '29-merged-field');
+    await p.click('.tab[data-sheet="bag"]', f); await p.waitForTimeout(400);
+    await snap(p, size, '30-merged-bag');
+    if (errs.length) report.push({ size, key: 'errors-n', issues: errs });
+    await ctx.close();
+  }
   // 年貢が払えずゲームオーバー
   {
     const { p, ctx, errs } = await page(size, mod((s) => { s.day = 7; s.gold = 0; s.field = s.field.map(() => null); }));

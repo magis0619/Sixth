@@ -302,19 +302,21 @@ const crowBody = `
   ${ball('M17 37Q28 29 40 39Q30 49 17 37Z', 'cw-wing', '#7c7798', '#4b465a', '#262230', 0.3, 0.3, S2)}
   <path d="M22 39Q29 37 35 41" fill="none" stroke="#8d88a8" stroke-width="1.4" stroke-linecap="round"/>`;
 
-/** スロットの絵柄（天気・生き物など） */
-const SYMBOL_ART = {
-  rain: `${cloud(C.cloud, 0, -4)}${drop(19, 41, 1)}${drop(32, 45, 1.05)}${drop(45, 41, 1)}`,
-  sun: `${sunRays(32, 32, 16, 28)}${sunFace(32, 32, 17)}`,
-  fertilizer: `
-    ${face('M25 6H39V16H25Z', [C.purple[2], C.purple[0]], 28, 9, 0.85)}
-    ${face('M23 16H41Q49 22 49 32V52Q49 58 43 58H21Q15 58 15 52V32Q15 22 23 16Z', C.purple, 24, 28, 0.88)}
+const fertD = (t: string[], extra = '') => `
+    ${face('M25 6H39V16H25Z', [t[2], t[0]], 28, 9, 0.85)}
+    ${face('M23 16H41Q49 22 49 32V52Q49 58 43 58H21Q15 58 15 52V32Q15 22 23 16Z', t, 24, 28, 0.88)}
     <rect x="20" y="31" width="24" height="18" rx="4" fill="#fff8e7" ${S2}/>
     ${line('M32 46V39', C.leaf[1], 2)}
     <path d="M32 41C28 42 24 40 24 35C28 34 31 36 32 41Z" fill="${C.leaf[0]}" ${S2}/>
     <path d="M32 39C36 40 40 37 40 33C36 32 33 34 32 39Z" fill="${C.leaf[2]}" ${S2}/>
     ${hl(20, 24, 1.6, 4, -20, 0.7)}
-    <circle cx="54" cy="18" r="3" fill="${C.purple[2]}" ${S2}/><circle cx="57" cy="9" r="2" fill="${C.purple[2]}" ${S2}/>`,
+    <circle cx="54" cy="18" r="3" fill="${t[2]}" ${S2}/><circle cx="57" cy="9" r="2" fill="${t[2]}" ${S2}/>${extra}`;
+
+/** スロットの絵柄（天気・生き物など） */
+const SYMBOL_ART = {
+  rain: `${cloud(C.cloud, 0, -4)}${drop(19, 41, 1)}${drop(32, 45, 1.05)}${drop(45, 41, 1)}`,
+  sun: `${sunRays(32, 32, 16, 28)}${sunFace(32, 32, 17)}`,
+  fertilizer: fertD(C.purple),
   bee: `
     ${face(E(25, 20, 8, 11), ['#e6f4ff', '#bcd9ee'], 23, 16, 0.86, S2)}
     ${face(E(39, 18, 8, 11), ['#e6f4ff', '#bcd9ee'], 37, 14, 0.86, S2)}
@@ -857,6 +859,99 @@ const SCENE_ART = {
     ${hl(17, 35, 1.4, 4, 0, 0.7)}`,
 };
 
+// ---- 合体した絵柄（同じ札5枚で1枚） ----
+const oniTomato = `
+  ${ground(58, 17)}
+  ${face('M14 28Q8 16 10 3Q18 12 24 22Z', ['#fff3d6', '#e8cf9a', '#ffffff'], 14, 18, 0.82)}
+  ${face('M50 28Q56 16 54 3Q46 12 40 22Z', ['#fff3d6', '#e8cf9a', '#ffffff'], 50, 18, 0.82)}
+  <path d="M10 3Q11 8 13 10M54 3Q53 8 51 10" fill="none" stroke="#c4261a" stroke-width="2.4" stroke-linecap="round"/>
+  ${ball('M32 22C22 17 9 23 9 38C9 51 20 58 32 58C44 58 55 51 55 38C55 23 42 17 32 22Z', 'oni-body', '#ff7a5c', '#c4261a', '#6e0e0a', 0.32, 0.3)}
+  <path d="M21 28Q15 39 21 53M43 28Q49 39 43 53M32 30V56" fill="none" stroke="#7e130c" stroke-width="2" stroke-linecap="round" opacity="0.55"/>
+  ${hl(18, 34, 3.2, 6, -25)}${hl(22, 26, 1.6, 1.4, 0)}
+  ${ball(`M${starPts(32, 23, 5, 15, 6.5, 0.32, -90)}Z`, 'oni-calyx', '#7ccf4a', '#3f8a26', '#1f4d12', 0.4, 0.3)}
+  ${line('M32 21Q31 14 35 10', '#2f6b1c', 3.5)}`;
+
+const heartBerry = `
+  ${ground(59, 14)}
+  ${ball('M32 58C20 50 8 40 8 28C8 19 15 14 22 14C27 14 30 17 32 20C34 17 37 14 42 14C49 14 56 19 56 28C56 40 44 50 32 58Z', 'hb-body', '#ff9fc0', '#ef3f6e', '#a8173f', 0.32, 0.28)}
+  ${[[18, 25], [27, 27], [37, 27], [46, 25], [16, 34], [25, 36], [35, 36], [44, 34], [22, 44], [32, 45], [41, 44], [32, 52]]
+    .map(([x, y]) => `<path d="M${x} ${y - 2.2}Q${x + 1.6} ${y} ${x} ${y + 2.2}Q${x - 1.6} ${y} ${x} ${y - 2.2}Z" fill="#fff0b0" stroke="#b81d4a" stroke-width="0.8"/>`)
+    .join('')}
+  ${hl(16, 23, 2.4, 4.5, -35)}
+  ${ball(`M${starPts(32, 15, 6, 13, 6, 0.38, -90)}Z`, 'hb-calyx', '#a6dc72', '#5fae3c', '#3a7d22', 0.4, 0.3)}
+  ${line('M32 13V5', C.green[1], 3.5)}
+  ${sparkle(55, 8, 5, '#fff')}`;
+
+const lanternPumpkin = `
+  ${ground(59, 24)}
+  ${ball(E(17, 41, 11, 15), 'lp-side', '#ffa040', '#d9620e', '#8a3606', 0.3, 0.3)}
+  ${ball(E(47, 41, 11, 15), 'lp-side', '#ffa040', '#d9620e', '#8a3606', 0.3, 0.3)}
+  ${ball(E(25, 41, 10, 17), 'lp-mid', '#ffb050', '#ea7418', '#a24508', 0.3, 0.28)}
+  ${ball(E(39, 41, 10, 17), 'lp-mid', '#ffb050', '#ea7418', '#a24508', 0.3, 0.28)}
+  ${ball(E(32, 41, 9, 18), 'lp-front', '#ffc070', '#f58420', '#b8540c', 0.35, 0.25)}
+  ${gradient('lp-glow', '<radialGradient id="lp-glow" cx="0.5" cy="0.5" r="0.6"><stop offset="0" stop-color="#fffbd0"/><stop offset="0.6" stop-color="#ffd23f"/><stop offset="1" stop-color="#f28c18"/></radialGradient>')}
+  <path d="M15 37L22 29L26 38Z" fill="url(#lp-glow)" ${S2}/>
+  <path d="M49 37L42 29L38 38Z" fill="url(#lp-glow)" ${S2}/>
+  <path d="M30 40L32 36L34 40Z" fill="url(#lp-glow)" ${S2}/>
+  <path d="M13 44Q32 58 51 44L47 47L44 44L40 49L36 45L32 50L28 45L24 49L20 44L17 47Z" fill="url(#lp-glow)" ${S2}/>
+  <path d="M29 25Q28 15 34 9L38 12Q33 17 34 25Z" fill="#6b7d2a" ${S}/>
+  ${ball('M37 15Q47 6 54 15Q46 22 37 15Z', 'pk-leaf', '#b5e57c', '#6cbf3f', '#3e8a24', 0.3, 0.3, S2)}`;
+
+const boxMelon = `
+  ${ground(60, 24)}
+  ${ball('M14 14H50Q56 14 56 20V52Q56 58 50 58H14Q8 58 8 52V20Q8 14 14 14Z', 'bx-body', '#7fd25e', '#3f9a2c', '#1f5a16', 0.3, 0.25)}
+  <g fill="none" stroke="#215c16" stroke-width="3.2" stroke-linecap="round">
+    <path d="M20 15Q16 26 20 36Q16 46 20 57"/><path d="M32 15Q28 26 32 36Q28 46 32 57"/><path d="M44 15Q40 26 44 36Q40 46 44 57"/>
+  </g>
+  <path d="M14 20V50" stroke="#c4f0a6" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+  ${hl(16, 22, 2.4, 4, -10, 0.7)}
+  ${line('M32 14Q31 8 35 5', C.leaf[1], 3)}
+  <path d="M35 8Q42 4 46 9Q40 12 35 8Z" fill="${C.leaf[0]}" ${S2}/>`;
+
+/** 合体した種の袋：金の縁と星の印 */
+const packetGold = (bag: string[], inner: string) => `
+  ${face('M12 14H52V54Q52 58 48 58H16Q12 58 12 54Z', bag, 20, 24, 0.9)}
+  <path d="M12 14L15 8L18 12L21 8L24 12L27 8L30 12L33 8L36 12L39 8L42 12L45 8L48 12L51 8L52 14Z" fill="${C.gold[0]}" ${S2}/>
+  <rect x="16" y="17" width="32" height="32" rx="7" fill="#fff6c8" stroke="${C.gold[1]}" stroke-width="3"/>
+  <rect x="16" y="17" width="32" height="32" rx="7" fill="none" ${S2}/>
+  <g transform="translate(18.5 19.5) scale(0.42)">${inner}</g>
+  ${face(`M${starPts(50, 52, 5, 9, 9, 0.45, -90)}Z`, C.gold, 50, 52, 0.8, S2)}
+  ${hl(15.5, 30, 1.2, 7, 0, 0.45)}`;
+
+const MERGE_ART = {
+  oniTomato,
+  heartBerry,
+  lanternPumpkin,
+  boxMelon,
+  oniSeed: packetGold(['#a8261c', '#7e130c', '#e05a48'], oniTomato),
+  heartSeed: packetGold(C.pink, heartBerry),
+  lanternSeed: packetGold(C.black, lanternPumpkin),
+  boxSeed: packetGold(C.green, boxMelon),
+  bigRain: `${cloud(['#9aa6bf', '#717d99', '#c6cfe0'], -2, -8, 1.06)}
+    <g stroke="${C.blue[1]}" stroke-width="3" stroke-linecap="round"><path d="M14 44L10 54M24 42L20 56M34 44L30 58M44 42L40 56M54 44L50 54"/></g>
+    ${drop(17, 40, 0.8)}${drop(39, 40, 0.8)}`,
+  bigSun: `${sunRays(32, 32, 15, 30, 12)}${face(E(32, 32, 17), ['#ffb02e', '#e8701a'], 27, 27, 0.86)}
+    <path d="M17 28H47" ${S2} fill="none"/>
+    <path d="M18 28H30Q30 36 24 36Q18 36 18 28Z" fill="${INK}"/><path d="M34 28H46Q46 36 40 36Q34 36 34 28Z" fill="${INK}"/>
+    <path d="M21 30L24 30M37 30L40 30" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>
+    <path d="M26 41Q32 46 38 41" fill="none" ${S2}/>`,
+  raijin: `${cloud(['#7d7aa8', '#57548a', '#aaa7d0'], 2, -12, 0.95)}
+    ${bolt(-4, 22, 0.66)}${bolt(20, 22, 0.66)}
+    ${eye(26, 18, 2.2)}${eye(38, 18, 2.2)}<path d="M22 13L29 15M42 13L35 15" fill="none" ${S2}/>`,
+  queenBee: `<g transform="translate(4 8) scale(0.88)">${SYMBOL_ART.bee}</g>
+    ${face('M8 18L10 6L15 12L19 4L23 12L28 6L29 18Z', C.gold, 18, 12, 0.82, S2)}
+    <circle cx="19" cy="14" r="1.8" fill="${C.red[0]}"/>`,
+  superFert: fertD(C.gold, `${sparkle(10, 10, 6, '#fff')}${sparkle(8, 44, 4, C.gold[0])}`),
+  koban: `
+    ${face('M32 4C46 4 54 16 54 32C54 48 46 60 32 60C18 60 10 48 10 32C10 16 18 4 32 4Z', C.gold, 26, 26, 0.88)}
+    <path d="M32 9C43 9 49 19 49 32C49 45 43 55 32 55C21 55 15 45 15 32C15 19 21 9 32 9Z" fill="none" stroke="${C.gold[1]}" stroke-width="2"/>
+    <g stroke="${C.gold[1]}" stroke-width="1.6" stroke-linecap="round"><path d="M20 20V44M25 15V49M39 15V49M44 20V44"/></g>
+    <rect x="27" y="22" width="10" height="20" rx="2" fill="#fff6c8" ${S2}/>
+    <path d="M30 27H34M30 32H34M30 37H34" stroke="${INK}" stroke-width="1.6" stroke-linecap="round"/>
+    <path d="M17 18Q20 10 28 8" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity="0.9"/>
+    ${sparkle(54, 8, 5, '#fff')}`,
+};
+
 export const ART = {
   ...CROP_ART,
   ...SYMBOL_ART,
@@ -867,6 +962,7 @@ export const ART = {
   pumpkinSeed: packet(C.orange, pumpkin),
   melonSeed: packet(C.green, melon),
   watermelonSeed: packet(['#ff6b6b', '#d94a4a', '#ffb0b0'], watermelon),
+  ...MERGE_ART,
 };
 
 export type ArtId = keyof typeof ART;

@@ -47,7 +47,7 @@ export function roleClass(id: SymbolId): string {
 }
 
 export const CROP_STAGES: ArtId[] = ['sprout', 'leaf', 'bud'];
-export const FRUIT: Record<CropKind, ArtId> = { tomato: 'tomato', strawberry: 'strawberry', pumpkin: 'pumpkin', melon: 'melon', corn: 'corn', watermelon: 'watermelon' };
+export const FRUIT: Record<CropKind, ArtId> = { tomato: 'tomato', strawberry: 'strawberry', pumpkin: 'pumpkin', melon: 'melon', corn: 'corn', watermelon: 'watermelon', oniTomato: 'oniTomato', heartBerry: 'heartBerry', lanternPumpkin: 'lanternPumpkin', boxMelon: 'boxMelon' };
 export const STAGE_NAMES = EN ? ['sprout', 'leaves', 'bud', 'ripe'] : ['芽', '若葉', 'つぼみ', '実'];
 
 /** 実るまでの成長は作物ごとに違うので、見た目の段階（芽・若葉・つぼみ・実）に割り当てる */
@@ -94,7 +94,10 @@ export function shapeIcon(shape: string): string {
     (shape === 'column' && x === 1) ||
     (shape === 'row' && y === 1) ||
     (shape === 'x' && (x === y || x + y === 2)) ||
-    (shape === 'one' && x === 1 && y === 1);
+    (shape === 'one' && x === 1 && y === 1) ||
+    shape === 'col3' ||
+    shape === 'box' ||
+    (shape === 'xline' && (x === y || x + y === 2));
   const cells = Array.from({ length: 9 }, (_, k) => `<i class="${on(k % 3, Math.floor(k / 3)) ? 'on' : ''}"></i>`).join('');
   return `<span class="shape-icon" aria-label="${SHAPE_NAMES[shape as keyof typeof SHAPE_NAMES]}">${cells}</span>`;
 }

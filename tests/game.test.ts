@@ -6,7 +6,7 @@ import { CONFIG, CROPS, CUT, EVENT_CONDITIONS, FARMERS, THUNDER_LINES, UPGRADE_S
 import {
   animalGold, buy, buyPlace, drawDay, hasRanch, hiveBonus, isColorful, canPlace, canUse, cellMultiplier, cropPrice, isPond, waterWheels, checkReady, chooseCharm, endDay, evolveTools, expand, expandPrice,
   fieldCells, isGolden, lv, multSteps, newCrop, newGame, nextTax, obstacleRule, place, pullWeed, resolveAuto, ripeGroup,
-  canBuy, canBuyPlace, canExpand, isMarketDay, rollObstacles, takeOffer, refreshCombos, symbolShape, canPlaceAt, isPivotAdd, isPivotPlace, mustPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult, beginDay, takeContract,
+  canBuy, canBuyPlace, canExpand, isMarketDay, rollObstacles, takeOffer, refreshCombos, symbolShape, canPlaceAt, isPivotAdd, isPivotPlace, mustPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult, beginDay, takeContract, mergeable, mergeSymbol, bagCount, resolveAuto as autoOf,
 } from '../src/game.ts';
 import { CONTRACTS, contractGold } from '../src/contracts.ts';
 import { farmerUnlocked, recordRun, type MetaState } from '../src/meta.ts';
@@ -993,5 +993,63 @@ describe('週契約', () => {
     s.results = [reel('seed', 1)];
     expect(canUse(s, 0, at(s.cols - 1, 2))).toBe(false);
     expect(canUse(s, 0, at(0, 2))).toBe(true);
+  });
+});
+
+describe('合体', () => {
+  const market = (): GameState => {
+    const s = newGame({ shop: [], charmPool: [] });
+    s.day = 3;
+    return s;
+  };
+  it('同じ札が5枚で、市の日だけ合体できる。1回の市で1種類まで', () => {
+    const s = market();
+    s.bag.rain = 5;
+    s.bag.seed = 6;
+    s.bag.sun = 4;
+    expect(mergeable(s)).toEqual(['seed', 'rain']);
+    expect(mergeSymbol(s, 'rain')).toBe(true);
+    expect(s.bag.rain).toBe(0);
+    expect(s.bag.bigRain).toBe(1);
+    expect(mergeable(s)).toEqual([]);
+    expect(mergeSymbol(s, 'seed')).toBe(false);
+    const t = market();
+    t.day = 2;
+    t.bag.rain = 5;
+    expect(mergeable(t)).toEqual([]);
+    // お守りの条件では、合体した札は5枚と数える
+    expect(bagCount(s, 'rain')).toBe(5);
+  });
+  it('鬼トマトの種は鬼トマトを植え、トマトと同じ作物の列になる', () => {
+    const s = market();
+    s.results = [reel('oniSeed', 3)];
+    useSymbol(s, 0, at(0, 0));
+    expect(s.field[at(0, 0)]!.kind).toBe('oniTomato');
+    ripe(s, 'tomato', [at(1, 0), at(2, 0)]);
+    s.field[at(0, 0)]!.growth = 99;
+    expect(multSteps(s, at(0, 0)).map((x) => x.label)).toContain('同じ作物');
+  });
+  it('大雨は十字に+2、真夏の太陽は縦3列で真ん中+2、極上の肥料は周り9マスに肥料、小判は+20', () => {
+    const s = market();
+    [at(0, 0), at(1, 0), at(2, 0), at(1, 1)].forEach((c) => (s.field[c] = newCrop('melon')));
+    s.results = [reel('bigRain'), reel('bigSun'), reel('superFert')];
+    useSymbol(s, 0, at(1, 1));
+    expect(s.field[at(1, 0)]!.growth).toBe(2);
+    expect(s.field[at(0, 0)]!.growth).toBe(0);
+    useSymbol(s, 1, at(1, 2));
+    expect(s.field[at(1, 0)]!.growth).toBe(4);
+    expect(s.field[at(0, 0)]!.growth).toBe(1);
+    useSymbol(s, 2, at(1, 1));
+    expect([at(0, 0), at(1, 0), at(2, 0), at(1, 1)].every((c) => s.field[c]!.fertilized)).toBe(true);
+    s.results = [{ ...reel('koban') }];
+    const before = s.gold;
+    autoOf(s, 0, () => 0.5);
+    expect(s.gold - before).toBe(20);
+  });
+  it('合体した雨も、太陽と一緒なら組み合わせ（天気雨）になる', () => {
+    const s = market();
+    s.results = [reel('bigRain'), reel('sun')];
+    refreshCombos(s);
+    expect(s.combos).toContain('sunshower');
   });
 });

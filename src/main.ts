@@ -1,10 +1,10 @@
 import { applyStaticLang, EN, gold, L } from './i18n.ts';
 import './style.css';
 import {
-  CHARMS, CHARM_ORDER, type CharmId, DIFFICULTIES, FARMERS, TOOL_EVOLVE, CONFIG, CROPS, PLACES, PLACE_ORDER, SEEDS, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL, type AddUpgradeId, type PlaceId, type SymbolId, type UpgradeId,
+  CHARMS, CHARM_ORDER, symbolBase, cropBase, MERGES, type ShapeId, type CharmId, DIFFICULTIES, FARMERS, TOOL_EVOLVE, CONFIG, CROPS, PLACES, PLACE_ORDER, SEEDS, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL, type AddUpgradeId, type PlaceId, type SymbolId, type UpgradeId,
 } from './config.ts';
 import {
-  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult, mustPlace, hasRoomFor, takeOffer, roomLeft, refreshCombos, symbolShape, isRareOffer, isMarketDay, shopOpen, nextMarketDay, beginDay, spinDay, sellBlock, isFlooded,
+  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult, mustPlace, hasRoomFor, takeOffer, roomLeft, refreshCombos, symbolShape, isRareOffer, isMarketDay, shopOpen, nextMarketDay, beginDay, spinDay, sellBlock, isFlooded, mergeable, mergeSymbol,
 } from './game.ts';
 import { duckBgm, isMuted, sfx, suspendAudio, toggleMute, unlockAudio } from './audio.ts';
 import { saveMeta, setupFrom } from './meta.ts';
@@ -434,7 +434,7 @@ function reelTag(i: number): { text: string; cls: string } {
 function deadReason(sym: SymbolId): string {
   if (SEEDS[sym]) return L('空きマスなし', 'No room');
   if (sym === 'hoe') return L('耕す所なし', 'Nothing to till');
-  if (sym === 'fertilizer') return L('作物なし', 'No crop');
+  if (symbolBase(sym) === 'fertilizer') return L('作物なし', 'No crop');
   return L('育つ作物なし', 'Nothing to grow');
 }
 
@@ -743,6 +743,59 @@ function renderShop(): void {
   // 毎日の仕入れのときは、ショップに絵柄の区画はいらない
   (el.shop.closest('.stall-sec') as HTMLElement).hidden = adds.length === 0;
   renderUpgradeList($('remove-shop'), items.filter((u) => u.id.startsWith('remove')));
+  renderMergeShop();
+}
+
+/** 合体：同じ札が5枚そろった絵柄を、1枚の上位の札にできる（市で1回に1種類まで） */
+function renderMergeShop(): void {
+  const box = $('merge-shop');
+  const list = mergeable(state);
+  (box.closest('.stall-sec') as HTMLElement).hidden = !list.length;
+  if (list.length) hintOnce('merge', `${art('sparkle')} ${L(`同じ札が<b>${CONFIG.mergeNeed}枚</b>そろうと、市で<b>1枚の強い札に合体</b>できる（市で1回）`, `With <b>${CONFIG.mergeNeed} of the same</b>, you can <b>merge them into 1 strong card</b> at the market (once per market)`)}`, 6000);
+  const key = `${list.join(',')}|${state.mergedThisMarket}`;
+  if (box.dataset.key === key) return;
+  box.dataset.key = key;
+  box.innerHTML = list
+    .map((sym) => {
+      const to = MERGES[sym]!;
+      const def = SYMBOLS[to];
+      return `<button class="item affordable merge-item" data-merge="${sym}">
+        <span class="merge-from">${Array.from({ length: CONFIG.mergeNeed }, () => `<i>${symHtml(sym)}</i>`).join('')}</span>
+        <span class="merge-arrow">▶</span>
+        <span class="ico">${symHtml(to)}</span>
+        <span class="text"><span class="name">${def.name}${def.shape ? `<span class="oc-shape">${shapeIcon(def.shape)}</span>` : ''}</span><span class="effect">${def.desc}</span></span>
+      </button>`;
+    })
+    .join('');
+  box.querySelectorAll<HTMLButtonElement>('[data-merge]').forEach((b) => b.addEventListener('click', () => onMerge(b)));
+}
+
+function onMerge(b: HTMLButtonElement): void {
+  unlockAudio();
+  if (ui.busy || state.over) return;
+  const sym = b.dataset.merge as SymbolId;
+  const to = MERGES[sym]!;
+  const from = [...b.querySelectorAll<HTMLElement>('.merge-from i')];
+  const target = b.querySelector('.ico') as HTMLElement;
+  if (!mergeSymbol(state, sym)) return;
+  sfx.charmGet();
+  vibrate(30);
+  // 4枚が1か所に集まって、1枚の上位の札になる
+  const t = center(target);
+  from.forEach((f, k) => {
+    const q = center(f);
+    f.animate([{ transform: 'translate(0,0) scale(1)', opacity: 1 }, { transform: `translate(${t.x - q.x}px, ${t.y - q.y}px) scale(.6)`, opacity: 0.2 }], { duration: 380, delay: k * 60, easing: 'cubic-bezier(.5,0,.7,1)', fill: 'forwards' });
+  });
+  later(() => {
+    flash('#fff6c0', 220);
+    burst(t.x, t.y, ['✨', '⭐', '🌟'], 16, 80);
+    pop(target, 1.4);
+    floatText(t.x, t.y - 40, `${SYMBOLS[to].name}！`, { cls: 'good', size: 1.1 });
+    later(() => {
+      render();
+      renderShop();
+    }, 700);
+  }, 380 + CONFIG.mergeNeed * 60);
 }
 
 /** 仕入れの段を畳んでいる最中（終わるまで描き直さない） */
@@ -1747,6 +1800,10 @@ function onPlotTap(cell: number): void {
       return;
     }
     const power = state.results[reel].power;
+    // 合体した絵柄は元の絵柄の演出で（範囲は合体した形）
+    const kind = symbolBase(sym);
+    const big = kind !== sym;
+    const area = (fallback: ShapeId) => shapeCells(state, symbolShape(state, sym) ?? fallback, cell);
     const affected = useSymbol(state, reel, cell) ?? [];
     const left = state.results[reel].left;
     selected = left > 0 && canUse(state, reel, null) ? reel : null;
@@ -1762,48 +1819,49 @@ function onPlotTap(cell: number): void {
       burst(p.x, p.y + 10, sym === 'goldSeed' ? ['✨', '🌟'] : ['🌰', '🌱'], 7, 36);
       pop(plot, 1.15);
       if (left > 0 && selected === null) say(L('空きマスなし', 'No empty plots'));
-    } else if (sym === 'hoe') {
+    } else if (kind === 'hoe') {
       sfx.poof();
       affected.forEach((c, k) => {
         const q = center(el.field.children[c]);
         later(() => burst(q.x, q.y + 10, ['💨', '🌰'], 5, 34), k * 70);
       });
-    } else if (sym === 'fertilizer' && left > 0) {
+    } else if (kind === 'fertilizer' && left > 0) {
       sfx.fertilizer();
       floatText(p.x, p.y - 20, L('売値×2（あと1つ）', 'Price ×2 (1 more)'), { cls: 'combo', size: 0.9 });
-    } else if (sym === 'rain') {
+    } else if (kind === 'rain') {
       sfx.rain();
-      rainShower(shapeCells(state, 'cross', cell).map((c) => el.field.children[c]));
-      afterGrowth(affected, `+${CONFIG.rainGrowth * power}`);
-    } else if (sym === 'sun') {
+      rainShower(area('cross').map((c) => el.field.children[c]));
+      afterGrowth(affected, `+${(big ? 2 : CONFIG.rainGrowth) * power}`);
+    } else if (kind === 'sun') {
       sfx.sun();
-      sunBeam(shapeCells(state, 'column', cell).map((c) => el.field.children[c]));
-      shapeCells(state, 'column', cell).forEach((c, k) => {
+      sunBeam(area('column').map((c) => el.field.children[c]));
+      area('column').forEach((c, k) => {
         const q = center(el.field.children[c]);
         later(() => burst(q.x, q.y, ['✨'], 4, 36), 200 + k * 70);
       });
       flash('#fff3a0', 300);
       afterGrowth(affected, `+${CONFIG.sunGrowth * power + state.charms.sunBlessing}`);
-    } else if (sym === 'bee') {
+    } else if (kind === 'bee') {
       sfx.bee();
-      beeFlight(shapeCells(state, 'x', cell).map((c) => el.field.children[c]), symHtml('bee'));
-      shapeCells(state, 'x', cell).forEach((c, k) => {
+      beeFlight(area('x').map((c) => el.field.children[c]), symHtml(sym));
+      area('x').forEach((c, k) => {
         const q = center(el.field.children[c]);
         later(() => burst(q.x, q.y, ['🌼'], 3, 30), k * 220);
       });
       afterGrowth(affected, `+${CONFIG.beeGrowth * power}`);
       if (left > 0 && selected === null) say(L('使える場所なし', 'Nowhere to use it'));
-    } else if (sym === 'thunder') {
+    } else if (kind === 'thunder') {
       sfx.crt();
       flash('#fff6c0', 220);
-      shapeCells(state, symbolShape(state, 'thunder')!, cell).forEach((c, k) => {
+      area('row').forEach((c, k) => {
         const q = center(el.field.children[c]);
         later(() => burst(q.x, q.y, ['⚡', '✨'], 4, 36), k * 60);
       });
       shake(el.field, 4);
       afterGrowth(affected, `+${2 * power}`);
-    } else if (sym === 'fertilizer') {
+    } else if (kind === 'fertilizer') {
       sfx.fertilizer();
+      if (big) affected.forEach((c) => pop(el.field.children[c] as HTMLElement, 1.12));
       burst(p.x, p.y, ['✨', '💜'], 10, 50);
       pop(plot, 1.15);
       floatText(p.x, p.y - 20, L('売値×2', 'Price ×2'), { cls: 'combo', size: 0.9 });

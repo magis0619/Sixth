@@ -266,6 +266,17 @@ export const FEVER_FX: Record<SymbolId, { ico: ArtId | null; text: string }> = {
   frost: { ico: null, text: L('2マス凍る', 'Freezes 2') },
   mole: { ico: null, text: L('2つ押し出す', 'Pushes 2') },
   locust: { ico: null, text: L('2匹ずつ増える', 'Breeds ×2') },
+  // 合体した絵柄は元の絵柄と同じ役
+  oniSeed: { ico: 'bud', text: L('育って植わる', 'Plant grown') },
+  heartSeed: { ico: 'bud', text: L('育って植わる', 'Plant grown') },
+  lanternSeed: { ico: 'bud', text: L('育って植わる', 'Plant grown') },
+  boxSeed: { ico: 'bud', text: L('育って植わる', 'Plant grown') },
+  bigRain: { ico: 'leaf', text: L('全部 +1', 'All +1') },
+  raijin: { ico: 'leaf', text: L('全部 +1', 'All +1') },
+  bigSun: { ico: 'coin', text: L('売値 ×2', 'Price ×2') },
+  superFert: { ico: 'fertilizer', text: L('全部に肥料', 'Fertilize all') },
+  queenBee: { ico: 'coin', text: L('作物ごと +4', '+4 per crop') },
+  koban: { ico: 'coin', text: L('大当たり×3', 'Jackpot ×3') },
 };
 
 /** フィーバーの札：絵柄ごとに1枚。良い絵柄には大当たりの金貨の印 */
