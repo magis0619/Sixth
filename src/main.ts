@@ -774,7 +774,7 @@ function renderMergeShop(): void {
   (box.closest('.stall-sec') as HTMLElement).hidden = !list.length;
   if (list.length) void explainOnce('ex:merge', mergeCard(list[0], MERGES[list[0]]!, mergeCost(state)), !!tut);
   const cost = mergeCost(state);
-  const key = `${list.join(',')}|${state.mergedThisMarket}|${cost}|${state.gold >= cost}`;
+  const key = `${list.join(",")}|${state.mergedThisMarket}|${cost}|${state.gold}`;
   if (box.dataset.key === key) return;
   box.dataset.key = key;
   box.innerHTML = list
@@ -786,7 +786,7 @@ function renderMergeShop(): void {
         <span class="merge-arrow">▶</span>
         <span class="ico">${symHtml(to)}</span>
         <span class="text"><span class="name">${def.name}${def.shape ? `<span class="oc-shape">${shapeIcon(def.shape)}</span>` : ''}</span><span class="effect">${def.desc}</span></span>
-        <span class="cost"><b>${cost}</b>${state.gold < cost ? `<small>${L(`あと${cost - state.gold}`, `${cost - state.gold} more`)}</small>` : ''}</span>
+        ${costHtml(cost, state.gold >= cost)}
       </button>`;
     })
     .join('');

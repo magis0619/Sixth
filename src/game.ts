@@ -2222,6 +2222,8 @@ export interface RatingPart {
   detail: string;
 }
 export interface Rating {
+  /** 進み具合（0〜100。クリアで100） */
+  progress: number;
   score: number;
   rank: 'S' | 'A' | 'B' | 'C' | 'D';
   parts: RatingPart[];
@@ -2244,7 +2246,10 @@ export function rateRun(state: GameState): Rating {
     // 年貢に対してどれだけ稼げたか（年貢の2.5倍で満点）
     { key: 'margin', label: L('稼ぎの余裕', 'Earning margin'), value: taxTotal ? pct((st.totalEarned / taxTotal - 1) / 1.5) : 0, detail: taxTotal ? `×${(st.totalEarned / taxTotal).toFixed(1)}` : '-' },
   ];
-  const score = Math.round(parts.reduce((n, p) => n + p.value, 0) / parts.length);
+  // うまさの平均に、どこまで進んだかを掛ける（負けたら高い評価にはならない）。クリアなら×1
+  const progress = state.cleared ? 1 : Math.min(1, state.taxesPaid / CONFIG.winTaxes);
+  const skill = parts.reduce((n, p) => n + p.value, 0) / parts.length;
+  const score = Math.round(skill * (0.2 + 0.8 * progress));
   const rank = score >= 85 ? 'S' : score >= 70 ? 'A' : score >= 55 ? 'B' : score >= 40 ? 'C' : 'D';
-  return { score, rank, parts };
+  return { score, rank, parts, progress: Math.round(progress * 100) };
 }

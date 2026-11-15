@@ -26,6 +26,7 @@ function ratingHtml(): string {
   const r = rateRun(state);
   return `<div class="rating rank-${r.rank}">
     <div class="rt-stamp"><b>${r.rank}</b><span>${r.score}${L('点', 'pts')}</span></div>
+    ${r.progress < 100 ? `<p class="rt-progress">${art('bale')} ${L(`進み具合 ${state.taxesPaid}/${CONFIG.winTaxes}（点数に掛かる）`, `Progress ${state.taxesPaid}/${CONFIG.winTaxes} (scales the score)`)}</p>` : ''}
     <ul class="rt-parts">${r.parts
       .map((p) => `<li><span class="rt-label">${p.label}</span><span class="rt-bar"><i style="width:${p.value}%"></i></span><b>${p.value}</b><small>${p.detail}</small></li>`)
       .join('')}</ul>

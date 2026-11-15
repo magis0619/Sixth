@@ -2,7 +2,7 @@
 
 import { EN, gold, L } from '../i18n.ts';
 import { CONFIG, type CropKind, CROPS, type PlaceId, SHAPE_NAMES, type SymbolId, SYMBOLS, UPGRADE_SYMBOL, type UpgradeId } from '../config.ts';
-import { bagTotal, type Crop, removeLimitReached } from '../game.ts';
+import { bagTotal, type Crop, nextTax, removeLimitReached } from '../game.ts';
 import { art, type ArtId } from '../art.ts';
 import { el, state } from './store.ts';
 
@@ -112,8 +112,10 @@ export const PLACE_ART: Record<PlaceId, ArtId> = {
 
 export function costHtml(price: number | null, affordable: boolean, doneText = L('完了', 'Done')): string {
   if (price === null) return `<span class="cost done">${doneText}</span>`;
+  // 買うと次の年貢に足りなくなるときは、赤い注意を出す（買えなくはしない）
+  const risk = affordable && state.day > 0 && state.gold - price < nextTax(state).amount;
   return affordable
-    ? `<span class="cost"><b>${gold(price)}</b></span>`
+    ? `<span class="cost${risk ? ' tax-risk' : ''}"><b>${gold(price)}</b>${risk ? `<small>${L('年貢が足りなくなる', 'Tax at risk')}</small>` : ''}</span>`
     : `<span class="cost"><b>${gold(price)}</b>${price > state.gold ? `<small>${L('あと', 'need ')}${price - state.gold}</small>` : ''}</span>`;
 }
 

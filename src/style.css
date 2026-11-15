@@ -8437,3 +8437,8 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 .charm-card > b { grid-column: 2; padding-right: 64px; }
 .charm-card > small:not(.curse) { grid-column: 2; }
 .charm-card > small.curse { grid-column: 1 / -1; grid-row: 3; margin-top: 4px; padding-top: 4px; border-top: 2px dashed #f0c4bc; font-size: 0.875rem; }
+/* 買うと年貢に足りなくなる値札 */
+.item .cost.tax-risk { background: #ffe0dc; border-color: #c93c2b; }
+.item .cost.tax-risk small { color: #c93c2b; font-weight: 800; }
+.rt-progress { grid-column: 1 / -1; grid-row: 2; margin: 0; font-size: 0.875rem; font-weight: 800; color: #c93c2b; }
+.rt-progress .art { width: 1.2em; height: 1.2em; vertical-align: -0.25em; }
