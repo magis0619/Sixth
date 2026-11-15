@@ -655,14 +655,16 @@ export interface FarmerDef {
   favor: UpgradeId[];
   /** 市の畑の品にいつも並ぶ品 */
   favorPlaces?: PlaceId[];
+  /** この難しさ（DIFFICULTIES の番号）をクリアすると解放。なければ最初から */
+  unlockClear?: number;
 }
 
 export const FARMERS: FarmerDef[] = [
   { id: 'basic', name: 'ふつうの農家', desc: 'いつもの袋で、何でも育てる', art: 'tomato', bag: {}, charms: {}, stock: [], favor: [] },
-  { id: 'berry', name: '苺農家', desc: '苺の列で数を売る。市にいつも巣箱', art: 'strawberry', bag: { seed: -2, berrySeed: 3 }, charms: {}, stock: [], favor: ['addBerrySeed', 'addBee'], favorPlaces: ['hive'] },
-  { id: 'pumpkin', name: 'かぼちゃ農家', desc: '大物を1つずつ高く売る。かぼちゃの種つき', art: 'pumpkin', bag: { seed: -1, pumpkinSeed: 1 }, charms: {}, stock: [], favor: ['addPumpkinSeed', 'addWatermelonSeed', 'addFertilizer'] },
-  { id: 'rain', name: '雨乞い', desc: '雨で一気に育てる。恵みの雨つき', art: 'rain', bag: { rain: 1, sun: -1 }, charms: { gentleRain: 1 }, stock: [], favor: ['addRain', 'addThunder'] },
-  { id: 'rancher', name: '牧場主', desc: '小屋で毎晩お金を稼ぐ。市にいつも鶏小屋', art: 'henhouse', bag: {}, charms: {}, stock: [], favor: [], favorPlaces: ['henhouse'] },
+  { id: 'berry', name: '苺農家', desc: '苺の列で数を売る。市にいつも巣箱', art: 'strawberry', bag: { seed: -2, berrySeed: 3 }, charms: {}, stock: [], favor: ['addBerrySeed', 'addBee'], favorPlaces: ['hive'], unlockClear: 0 },
+  { id: 'pumpkin', name: 'かぼちゃ農家', desc: '大物を1つずつ高く売る。かぼちゃの種つき', art: 'pumpkin', bag: { seed: -1, pumpkinSeed: 1 }, charms: {}, stock: [], favor: ['addPumpkinSeed', 'addWatermelonSeed', 'addFertilizer'], unlockClear: 1 },
+  { id: 'rancher', name: '牧場主', desc: '小屋で毎晩お金を稼ぐ。市にいつも鶏小屋', art: 'henhouse', bag: {}, charms: {}, stock: [], favor: [], favorPlaces: ['henhouse'], unlockClear: 2 },
+  { id: 'rain', name: '雨乞い', desc: '雨で一気に育てる。恵みの雨つき', art: 'rain', bag: { rain: 1, sun: -1 }, charms: { gentleRain: 1 }, stock: [], favor: ['addRain', 'addThunder'], unlockClear: 3 },
 ];
 
 /** 「足す」強化（ゲーム開始時にショップへ並べるものを選ぶ対象） */

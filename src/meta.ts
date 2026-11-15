@@ -174,6 +174,8 @@ export function recordRun(meta: MetaState, state: GameState, final: boolean): st
   };
   if (state.cleared) {
     if (state.difficulty > meta.maxCleared) {
+      // この難しさをクリアして開く農家
+      if (CONFIG.farmers) FARMERS.filter((f) => f.unlockClear !== undefined && f.unlockClear > meta.maxCleared && f.unlockClear <= state.difficulty).forEach((f) => newly.push(f.name));
       meta.maxCleared = state.difficulty;
       if (state.difficulty + 1 < DIFFICULTIES.length) newly.push(DIFFICULTIES[state.difficulty + 1].name);
     }
@@ -188,6 +190,12 @@ export function recordRun(meta: MetaState, state: GameState, final: boolean): st
   return newly;
 }
 
+/** 農家が解放済みか（その難しさをクリアしている） */
+export function farmerUnlocked(meta: MetaState, id: string): boolean {
+  const f = FARMERS.find((x) => x.id === id);
+  return !!f && (f.unlockClear === undefined || meta.maxCleared >= f.unlockClear);
+}
+
 /** 達成で解放される強化か（ポイントでは買えない） */
 export function isAchieveAdd(id: AddUpgradeId): boolean {
   return id in ACHIEVE_ADDS;
@@ -196,7 +204,9 @@ export function isAchieveAdd(id: AddUpgradeId): boolean {
 export function setupFrom(meta: MetaState): GameSetup {
   // 農家を選ぶ準備（試し中）：市に出やすいのは農家の品。初めての人（チュートリアル）はふつうの農家
   if (CONFIG.farmers) {
-    const farmer = FARMERS.find((f) => f.id === (meta.tutorialDone ? meta.farmer : 'basic')) ?? FARMERS[0];
+    // 解放していない農家は選べない（ふつうの農家にする）
+    const id = meta.tutorialDone && farmerUnlocked(meta, meta.farmer) ? meta.farmer : 'basic';
+    const farmer = FARMERS.find((f) => f.id === id) ?? FARMERS[0];
     return {
       difficulty: Math.min(meta.difficulty, maxDifficulty(meta)),
       farmer: farmer.id,

@@ -6,7 +6,7 @@ import {
 } from '../config.ts';
 import { nextTax } from '../game.ts';
 import {
-  awardPoints, buyCapacity, capacity, isAchieveAdd, loadoutCost, maxDifficulty, nextCapacityPrice, recordRun, saveMeta, toggleLoadout, unlockAdd, unlockCharm,
+  awardPoints, buyCapacity, capacity, farmerUnlocked, isAchieveAdd, loadoutCost, maxDifficulty, nextCapacityPrice, recordRun, saveMeta, toggleLoadout, unlockAdd, unlockCharm,
 } from '../meta.ts';
 import { art, type ArtId } from '../art.ts';
 import { sfx, unlockAudio } from '../audio.ts';
@@ -501,6 +501,11 @@ function farmerCards(): string {
     ...f.stock.map((id) => `<span class="fm-chip up">${art(PLACE_ART[id])}</span>`),
   ].join('');
   return `<p class="fm-lead">${L('農家を選ぶ', 'Choose your farmer')}</p><div class="farmers">${FARMERS.map((f) => {
+    // まだの農家は影と解放の条件だけ（どの難しさをクリアすると開くか）
+    if (!farmerUnlocked(meta, f.id)) {
+      return `<div class="farmer locked"><span class="fm-art silhouette">${art(f.art as ArtId)}</span>
+        <span class="fm-text"><b>？？？</b><span class="fm-desc">${art('lock')} ${L(`「${DIFFICULTIES[f.unlockClear!].name}」をクリアで解放`, `Clear "${DIFFICULTIES[f.unlockClear!].name}" to unlock`)}</span></span></div>`;
+    }
     const on = f.id === meta.farmer;
     const favor = f.favor.filter((id) => !isCutAdd(id) && !CONFIG.rareOffers.includes(id));
     return `<button class="farmer${on ? ' on' : ''}" data-farmer="${f.id}">

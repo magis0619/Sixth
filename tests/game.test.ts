@@ -2,13 +2,13 @@
 // 画面に依存しない部分だけを確かめる。 npm test
 
 import { describe, expect, it } from 'vitest';
-import { CONFIG, CROPS, CUT, EVENT_CONDITIONS, THUNDER_LINES, UPGRADE_SYMBOL } from '../src/config.ts';
+import { CONFIG, CROPS, CUT, EVENT_CONDITIONS, FARMERS, THUNDER_LINES, UPGRADE_SYMBOL } from '../src/config.ts';
 import {
   animalGold, buy, buyPlace, drawDay, hasRanch, hiveBonus, isColorful, canPlace, canUse, cellMultiplier, cropPrice, isPond, waterWheels, checkReady, chooseCharm, endDay, evolveTools, expand, expandPrice,
   fieldCells, isGolden, lv, multSteps, newCrop, newGame, nextTax, obstacleRule, place, pullWeed, resolveAuto, ripeGroup,
   canBuy, canBuyPlace, canExpand, isMarketDay, rollObstacles, takeOffer, refreshCombos, symbolShape, canPlaceAt, isPivotAdd, isPivotPlace, mustPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult,
 } from '../src/game.ts';
-import { recordRun, type MetaState } from '../src/meta.ts';
+import { farmerUnlocked, recordRun, type MetaState } from '../src/meta.ts';
 import type { CropKind, SymbolId } from '../src/config.ts';
 
 const C = CONFIG.fieldCols;
@@ -282,6 +282,21 @@ describe('遊ぶたびに増える要素', () => {
     expect(m.skins).toContain('gold');
     expect(m.maxCleared).toBe(0);
     expect(newly.length).toBeGreaterThan(0);
+  });
+
+  it('ふつうをクリアすると苺農家が開き、難しさを上げてクリアするたびに次の農家が開く', () => {
+    const m = meta();
+    expect(farmerUnlocked(m, 'basic')).toBe(true);
+    expect(farmerUnlocked(m, 'berry')).toBe(false);
+    const s = game();
+    s.cleared = true;
+    const newly = recordRun(m, s, true);
+    expect(farmerUnlocked(m, 'berry')).toBe(true);
+    expect(farmerUnlocked(m, 'pumpkin')).toBe(false);
+    expect(newly).toContain(FARMERS.find((f) => f.id === 'berry')!.name);
+    s.difficulty = 1;
+    recordRun(m, s, true);
+    expect(farmerUnlocked(m, 'pumpkin')).toBe(true);
   });
 
   it('累計で列を売ると雷が開く', () => {
