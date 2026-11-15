@@ -151,16 +151,16 @@ export const SYMBOLS: Record<SymbolId, SymbolDef> = {
   frost: { id: 'frost', name: '霜', emoji: '❄️', kind: 'auto', desc: '3日凍らせる', feverDesc: '群れ：2マスが凍る', rarity: 'bad' },
   mole: { id: 'mole', name: 'モグラ', emoji: '🐀', kind: 'auto', desc: '作物を隣の空きマスへ押し出す', feverDesc: '群れ：2つ押し出す', rarity: 'bad' },
   // ---- 合体した絵柄（同じ札5枚が1枚になる） ----
-  oniSeed: { id: 'oniSeed', name: '鬼トマトの種', emoji: '🍅', kind: 'manual', desc: '鬼トマト（売値18）を3〜5個植える', feverDesc: '品種改良：今日植える鬼トマトは1段階育った状態から', rarity: 'rare', base: 'seed' },
-  heartSeed: { id: 'heartSeed', name: 'ハート苺の種', emoji: '🍓', kind: 'manual', desc: 'ハート苺（売値14）を4〜6個植える', feverDesc: '品種改良：今日植えるハート苺は1段階育った状態から', rarity: 'rare', base: 'berrySeed' },
-  lanternSeed: { id: 'lanternSeed', name: 'ランタンかぼちゃの種', emoji: '🎃', kind: 'manual', desc: 'ランタンかぼちゃ（4日で実る・売値90）を1個植える', feverDesc: '品種改良：今日植えるランタンかぼちゃは1段階育った状態から', rarity: 'rare', base: 'pumpkinSeed' },
-  boxSeed: { id: 'boxSeed', name: '箱スイカの種', emoji: '🍉', kind: 'manual', desc: '箱スイカ（5日で実る・売値320）を1個植える（2×2マス）', feverDesc: '品種改良：今日植える箱スイカは1段階育った状態から', rarity: 'rare', base: 'watermelonSeed' },
-  bigRain: { id: 'bigRain', name: '大雨', emoji: '🌧️', kind: 'manual', shape: 'cross', desc: '縦横十字 成長+2', feverDesc: '虹：全作物の成長＋1', rarity: 'rare', base: 'rain' },
-  bigSun: { id: 'bigSun', name: '真夏の太陽', emoji: '☀️', kind: 'manual', shape: 'col3', desc: '縦3列 成長+1（真ん中の列は+2）', feverDesc: '夏祭り：今日の売値×2', rarity: 'rare', base: 'sun' },
-  raijin: { id: 'raijin', name: '雷神', emoji: '⚡', kind: 'manual', shape: 'cross', desc: '縦横十字 成長+2', feverDesc: '大雷：全作物の成長＋1', rarity: 'rare', base: 'thunder' },
-  queenBee: { id: 'queenBee', name: '女王蜂', emoji: '🐝', kind: 'manual', shape: 'xline', desc: '斜めの線いっぱい 成長+1（苺は+2）', feverDesc: 'はちみつ：作物1つにつき＋4', rarity: 'rare', base: 'bee' },
-  superFert: { id: 'superFert', name: '極上の肥料', emoji: '🧪', kind: 'manual', shape: 'box', desc: '周り9マスの作物の売値×2', feverDesc: '堆肥：畑の全作物に肥料', rarity: 'rare', base: 'fertilizer' },
-  koban: { id: 'koban', name: '小判', emoji: '🪙', kind: 'auto', desc: '+20（年貢を納めるたびに+5）', feverDesc: '大当たり×3', rarity: 'rare', base: 'coin' },
+  oniSeed: { id: 'oniSeed', name: '鬼トマトの種', emoji: '🍅', kind: 'manual', desc: '鬼トマト（売値12）を2〜4個植える', feverDesc: '品種改良：今日植える鬼トマトは1段階育った状態から', rarity: 'rare', base: 'seed' },
+  heartSeed: { id: 'heartSeed', name: 'ハート苺の種', emoji: '🍓', kind: 'manual', desc: 'ハート苺（売値9）を3〜5個植える', feverDesc: '品種改良：今日植えるハート苺は1段階育った状態から', rarity: 'rare', base: 'berrySeed' },
+  lanternSeed: { id: 'lanternSeed', name: 'ランタンかぼちゃの種', emoji: '🎃', kind: 'manual', desc: 'ランタンかぼちゃ（4日で実る・売値60）を1個植える', feverDesc: '品種改良：今日植えるランタンかぼちゃは1段階育った状態から', rarity: 'rare', base: 'pumpkinSeed' },
+  boxSeed: { id: 'boxSeed', name: '箱スイカの種', emoji: '🍉', kind: 'manual', desc: '箱スイカ（5日で実る・売値220）を1個植える（2×2マス）', feverDesc: '品種改良：今日植える箱スイカは1段階育った状態から', rarity: 'rare', base: 'watermelonSeed' },
+  bigRain: { id: 'bigRain', name: '大雨', emoji: '🌧️', kind: 'manual', shape: 'cross', desc: '縦横十字 成長+1（真ん中は+2）', feverDesc: '虹：全作物の成長＋1', rarity: 'rare', base: 'rain' },
+  bigSun: { id: 'bigSun', name: '真夏の太陽', emoji: '☀️', kind: 'manual', shape: 'col3', desc: '縦3列 成長+1', feverDesc: '夏祭り：今日の売値×2', rarity: 'rare', base: 'sun' },
+  raijin: { id: 'raijin', name: '雷神', emoji: '⚡', kind: 'manual', shape: 'row', desc: '横一列 成長+3', feverDesc: '大雷：全作物の成長＋1', rarity: 'rare', base: 'thunder' },
+  queenBee: { id: 'queenBee', name: '女王蜂', emoji: '🐝', kind: 'manual', shape: 'xline', desc: '斜めの線いっぱい 成長+1', feverDesc: 'はちみつ：作物1つにつき＋4', rarity: 'rare', base: 'bee' },
+  superFert: { id: 'superFert', name: '極上の肥料', emoji: '🧪', kind: 'manual', shape: 'plus', desc: '十字の5マスの作物の売値×2', feverDesc: '堆肥：畑の全作物に肥料', rarity: 'rare', base: 'fertilizer' },
+  koban: { id: 'koban', name: '小判', emoji: '🪙', kind: 'auto', desc: '+12（年貢を納めるたびに+3）', feverDesc: '大当たり×3', rarity: 'rare', base: 'coin' },
   locust: { id: 'locust', name: 'イナゴ', emoji: '🦗', kind: 'auto', desc: '出るたびに1/2で袋に1匹増える・成長−1', feverDesc: '大群：増えるときは2匹', rarity: 'bad' },
 };
 
@@ -198,10 +198,10 @@ export const CROPS: Record<CropKind, CropDef> = {
   corn: { kind: 'corn', name: '金のとうもろこし', ripe: 3, price: 30, gold: true },
   watermelon: { kind: 'watermelon', name: 'スイカ', ripe: 6, price: 90, crowProof: true, big: true },
   // 合体した種で育つ作物
-  oniTomato: { kind: 'oniTomato', name: '鬼トマト', ripe: 3, price: 18, base: 'tomato' },
-  heartBerry: { kind: 'heartBerry', name: 'ハート苺', ripe: 2, price: 14, base: 'strawberry' },
-  lanternPumpkin: { kind: 'lanternPumpkin', name: 'ランタンかぼちゃ', ripe: 4, price: 90, crowProof: true, base: 'pumpkin' },
-  boxMelon: { kind: 'boxMelon', name: '箱スイカ', ripe: 5, price: 320, crowProof: true, big: true, base: 'watermelon' },
+  oniTomato: { kind: 'oniTomato', name: '鬼トマト', ripe: 3, price: 12, base: 'tomato' },
+  heartBerry: { kind: 'heartBerry', name: 'ハート苺', ripe: 2, price: 9, base: 'strawberry' },
+  lanternPumpkin: { kind: 'lanternPumpkin', name: 'ランタンかぼちゃ', ripe: 4, price: 60, crowProof: true, base: 'pumpkin' },
+  boxMelon: { kind: 'boxMelon', name: '箱スイカ', ripe: 5, price: 220, crowProof: true, big: true, base: 'watermelon' },
 };
 
 /** 元の作物（合体した作物は元の作物として数える） */
@@ -223,16 +223,16 @@ export const SEEDS: Partial<Record<SymbolId, { crop: CropKind; extra: number; si
   melonSeed: { crop: 'melon', extra: 0, single: true },
   goldSeed: { crop: 'corn', extra: 0, single: true },
   watermelonSeed: { crop: 'watermelon', extra: 0, single: true },
-  oniSeed: { crop: 'oniTomato', extra: 1 },
-  heartSeed: { crop: 'heartBerry', extra: 2 },
+  oniSeed: { crop: 'oniTomato', extra: 0 },
+  heartSeed: { crop: 'heartBerry', extra: 1 },
   lanternSeed: { crop: 'lanternPumpkin', extra: 0, single: true },
   boxSeed: { crop: 'boxMelon', extra: 0, single: true },
 };
 
 /** 出目の効く範囲の形 */
-export type ShapeId = 'cross' | 'column' | 'row' | 'x' | 'all' | 'one' | 'col3' | 'xline' | 'box';
+export type ShapeId = 'cross' | 'column' | 'row' | 'x' | 'all' | 'one' | 'col3' | 'xline' | 'box' | 'plus';
 
-export const SHAPE_NAMES: Record<ShapeId, string> = { cross: '縦横十字', column: '縦一列', row: '横一列', x: '斜め', all: '畑全体', one: '1マス', col3: '縦3列', xline: '斜めの線', box: '周り9マス' };
+export const SHAPE_NAMES: Record<ShapeId, string> = { cross: '縦横十字', column: '縦一列', row: '横一列', x: '斜め', all: '畑全体', one: '1マス', col3: '縦3列', xline: '斜めの線', box: '周り9マス', plus: '十字の5マス' };
 
 // ---- 畑に置くもの（道具・特別なマス） ----
 
@@ -297,6 +297,9 @@ export const CONFIG = {
   } as Record<SymbolId, number>,
   /** 合体に要る同じ絵柄の枚数（市で1回に1種類まで） */
   mergeNeed: 5,
+  /** 合体のお金：その週の年貢の割合（最低 mergeCostMin） */
+  mergeCostRate: 0.3,
+  mergeCostMin: 10,
   initialGold: 0,
   /** 成長（実るまでの成長は作物ごとに CROPS で決める） */
   rainGrowth: 1,
@@ -796,16 +799,16 @@ if (EN) {
     frost: ['Frost', 'Freezes a plot for 3 days', 'Cold snap: freezes 2 plots'],
     mole: ['Mole', 'Pushes a crop into a nearby empty plot', 'Pack: pushes 2'],
     locust: ['Locust', 'Each time it appears, 1/2 chance another joins your bag; growth −1', 'Plague: 2 join instead of 1'],
-    oniSeed: ['Ogre Tomato Seed', 'Plant 3–5 Ogre Tomatoes (price 18)', 'Breeding: Ogre Tomatoes planted today start +1'],
-    heartSeed: ['Heart Berry Seed', 'Plant 4–6 Heart Berries (price 14)', 'Breeding: Heart Berries planted today start +1'],
-    lanternSeed: ['Lantern Pumpkin Seed', 'Plant 1 Lantern Pumpkin (ripe in 4, price 90)', 'Breeding: Lantern Pumpkins planted today start +1'],
-    boxSeed: ['Square Melon Seed', 'Plant 1 Square Melon (2×2, ripe in 5, price 320)', 'Breeding: Square Melons planted today start +1'],
-    bigRain: ['Downpour', 'Cross: growth +2', 'Rainbow: all crops +1'],
-    bigSun: ['Midsummer Sun', '3 columns: growth +1 (middle +2)', 'Summer festival: prices ×2 today'],
-    raijin: ['Thunder God', 'Cross: growth +2', 'Great thunder: all crops +1'],
-    queenBee: ['Queen Bee', 'Full diagonals: growth +1 (strawberries +2)', 'Honey: +4g per crop'],
-    superFert: ['Premium Fertilizer', 'Crops in a 3×3: price ×2', 'Compost: fertilize every crop'],
-    koban: ['Gold Koban', '+20g (+5g per tax paid)', 'Jackpot ×3'],
+    oniSeed: ['Ogre Tomato Seed', 'Plant 2–4 Ogre Tomatoes (price 12)', 'Breeding: Ogre Tomatoes planted today start +1'],
+    heartSeed: ['Heart Berry Seed', 'Plant 3–5 Heart Berries (price 9)', 'Breeding: Heart Berries planted today start +1'],
+    lanternSeed: ['Lantern Pumpkin Seed', 'Plant 1 Lantern Pumpkin (ripe in 4, price 60)', 'Breeding: Lantern Pumpkins planted today start +1'],
+    boxSeed: ['Square Melon Seed', 'Plant 1 Square Melon (2×2, ripe in 5, price 220)', 'Breeding: Square Melons planted today start +1'],
+    bigRain: ['Downpour', 'Cross: growth +1 (center +2)', 'Rainbow: all crops +1'],
+    bigSun: ['Midsummer Sun', '3 columns: growth +1', 'Summer festival: prices ×2 today'],
+    raijin: ['Thunder God', 'Row: growth +3', 'Great thunder: all crops +1'],
+    queenBee: ['Queen Bee', 'Full diagonals: growth +1', 'Honey: +4g per crop'],
+    superFert: ['Premium Fertilizer', 'Crops in a plus (5): price ×2', 'Compost: fertilize every crop'],
+    koban: ['Gold Koban', '+12g (+3g per tax paid)', 'Jackpot ×3'],
   };
   (Object.keys(sym) as SymbolId[]).forEach((id) => {
     const [name, desc, feverDesc] = sym[id]!;
@@ -813,7 +816,7 @@ if (EN) {
   });
   const crop: Record<CropKind, string> = { strawberry: 'Strawberry', tomato: 'Tomato', pumpkin: 'Pumpkin', melon: 'Melon', corn: 'Golden Corn', watermelon: 'Watermelon', oniTomato: 'Ogre Tomato', heartBerry: 'Heart Berry', lanternPumpkin: 'Lantern Pumpkin', boxMelon: 'Square Melon' };
   (Object.keys(crop) as CropKind[]).forEach((k) => (CROPS[k].name = crop[k]));
-  Object.assign(SHAPE_NAMES, { cross: 'Cross', column: 'Column', row: 'Row', x: 'Diagonals', all: 'Whole field', one: '1 square', col3: '3 columns', xline: 'Diagonal lines', box: '3×3' });
+  Object.assign(SHAPE_NAMES, { cross: 'Cross', column: 'Column', row: 'Row', x: 'Diagonals', all: 'Whole field', one: '1 square', col3: '3 columns', xline: 'Diagonal lines', box: '3×3', plus: 'Plus (5)' });
   const place: Record<PlaceId, [string, string]> = {
     scarecrow: ['Scarecrow', 'Guards the 8 plots around it'],
     bigScarecrow: ['Big Scarecrow', 'Guards everything within 2 plots'],

@@ -6,7 +6,7 @@ import { CONFIG, CROPS, CUT, EVENT_CONDITIONS, FARMERS, THUNDER_LINES, UPGRADE_S
 import {
   animalGold, buy, buyPlace, drawDay, hasRanch, hiveBonus, isColorful, canPlace, canUse, cellMultiplier, cropPrice, isPond, waterWheels, checkReady, chooseCharm, endDay, evolveTools, expand, expandPrice,
   fieldCells, isGolden, lv, multSteps, newCrop, newGame, nextTax, obstacleRule, place, pullWeed, resolveAuto, ripeGroup,
-  canBuy, canBuyPlace, canExpand, isMarketDay, rollObstacles, takeOffer, refreshCombos, symbolShape, canPlaceAt, isPivotAdd, isPivotPlace, mustPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult, beginDay, takeContract, mergeable, mergeSymbol, bagCount, resolveAuto as autoOf,
+  canBuy, canBuyPlace, canExpand, isMarketDay, rollObstacles, takeOffer, refreshCombos, symbolShape, canPlaceAt, isPivotAdd, isPivotPlace, mustPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult, beginDay, takeContract, mergeable, mergeSymbol, mergeCost, bagCount, resolveAuto as autoOf,
 } from '../src/game.ts';
 import { CONTRACTS, contractGold } from '../src/contracts.ts';
 import { farmerUnlocked, recordRun, type MetaState } from '../src/meta.ts';
@@ -1000,8 +1000,20 @@ describe('合体', () => {
   const market = (): GameState => {
     const s = newGame({ shop: [], charmPool: [] });
     s.day = 3;
+    s.gold = 100;
     return s;
   };
+  it('合体にはその週の年貢の30%（最低10）かかる。足りないと合体できない', () => {
+    const s = market();
+    s.bag.rain = 5;
+    const cost = mergeCost(s);
+    expect(cost).toBe(Math.max(10, Math.round(nextTax(s).amount * 0.3)));
+    s.gold = cost - 1;
+    expect(mergeSymbol(s, 'rain')).toBe(false);
+    s.gold = cost;
+    expect(mergeSymbol(s, 'rain')).toBe(true);
+    expect(s.gold).toBe(0);
+  });
   it('同じ札が5枚で、市の日だけ合体できる。1回の市で1種類まで', () => {
     const s = market();
     s.bag.rain = 5;
@@ -1029,22 +1041,24 @@ describe('合体', () => {
     s.field[at(0, 0)]!.growth = 99;
     expect(multSteps(s, at(0, 0)).map((x) => x.label)).toContain('同じ作物');
   });
-  it('大雨は十字に+2、真夏の太陽は縦3列で真ん中+2、極上の肥料は周り9マスに肥料、小判は+20', () => {
+  it('大雨は十字に+1（真ん中+2）、真夏の太陽は縦3列に+1、極上の肥料は十字の5マスに肥料、小判は+12', () => {
     const s = market();
     [at(0, 0), at(1, 0), at(2, 0), at(1, 1)].forEach((c) => (s.field[c] = newCrop('melon')));
     s.results = [reel('bigRain'), reel('bigSun'), reel('superFert')];
     useSymbol(s, 0, at(1, 1));
-    expect(s.field[at(1, 0)]!.growth).toBe(2);
+    expect(s.field[at(1, 0)]!.growth).toBe(1);
+    expect(s.field[at(1, 1)]!.growth).toBe(2);
     expect(s.field[at(0, 0)]!.growth).toBe(0);
     useSymbol(s, 1, at(1, 2));
-    expect(s.field[at(1, 0)]!.growth).toBe(4);
+    expect(s.field[at(1, 0)]!.growth).toBe(2);
     expect(s.field[at(0, 0)]!.growth).toBe(1);
     useSymbol(s, 2, at(1, 1));
-    expect([at(0, 0), at(1, 0), at(2, 0), at(1, 1)].every((c) => s.field[c]!.fertilized)).toBe(true);
+    expect([at(1, 0), at(1, 1)].every((c) => s.field[c]!.fertilized)).toBe(true);
+    expect(s.field[at(0, 0)]!.fertilized).toBe(false);
     s.results = [{ ...reel('koban') }];
     const before = s.gold;
     autoOf(s, 0, () => 0.5);
-    expect(s.gold - before).toBe(20);
+    expect(s.gold - before).toBe(12);
   });
   it('合体した雨も、太陽と一緒なら組み合わせ（天気雨）になる', () => {
     const s = market();

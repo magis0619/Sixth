@@ -349,6 +349,7 @@ export function shapeCells(state: GameState, shape: ShapeId, cell: number): numb
   if (shape === 'col3') return fieldCells(state).filter((c) => Math.abs(cellX(c) - cellX(cell)) <= 1);
   if (shape === 'xline') return fieldCells(state).filter((c) => Math.abs(cellX(c) - cellX(cell)) === Math.abs(cellY(c) - cellY(cell)));
   if (shape === 'box') return [cell, ...around(state, cell, 1)];
+  if (shape === 'plus') return [cell, ...neighbors(state, cell)];
   if (shape === 'cross') {
     // 雷雨：斜めにもいっぱいに効く
     const diag = comboOn(state, 'thunderstorm');
@@ -743,9 +744,17 @@ export function mergeable(state: GameState): SymbolId[] {
   return (Object.keys(MERGES) as SymbolId[]).filter((s) => state.bag[s] >= CONFIG.mergeNeed && !CUT.symbols.includes(s));
 }
 
-/** 同じ札 mergeNeed 枚を1枚の上位の札にする */
+/** 合体のお金：その週の年貢の30%（最低10） */
+export function mergeCost(state: GameState): number {
+  return Math.max(CONFIG.mergeCostMin, Math.round(nextTax(state).amount * CONFIG.mergeCostRate));
+}
+
+/** 同じ札 mergeNeed 枚を、お金を払って1枚の上位の札にする */
 export function mergeSymbol(state: GameState, sym: SymbolId): boolean {
   if (!mergeable(state).includes(sym)) return false;
+  const cost = mergeCost(state);
+  if (state.gold < cost) return false;
+  state.gold -= cost;
   state.bag[sym] -= CONFIG.mergeNeed;
   state.bag[MERGES[sym]!]++;
   state.mergedThisMarket = true;
@@ -1219,8 +1228,8 @@ export function resolveAuto(state: GameState, reel: number, rng: Rng): AutoEvent
       return { type: 'coin', amount };
     }
     case 'koban': {
-      // 小判：金貨5枚分より少し多く。年貢を納めるたびに増える
-      const amount = (20 + 5 * state.taxesPaid + 2 * lv(state, 'coinPurse')) * r.power * (comboOn(state, 'prosperity') ? COMBO_POWER.prosperity : 1);
+      // 小判：金貨より多く、年貢を納めるたびに増える
+      const amount = (12 + 3 * state.taxesPaid + 2 * lv(state, 'coinPurse')) * r.power * (comboOn(state, 'prosperity') ? COMBO_POWER.prosperity : 1);
       earn(state, amount);
       return { type: 'coin', amount };
     }
@@ -1420,7 +1429,7 @@ export function canUse(state: GameState, reel: number, cell: number | null): boo
   // 太陽は霜も溶かすので、縦一列に霜があっても使える
   if (symbolBase(r.symbol) === 'sun' && shapeCells(state, symbolShape(state, r.symbol)!, cell).some((i) => state.frost[i] > 0)) return true;
   // 極上の肥料は、範囲に肥料をまだやっていない作物があれば使える（実っていてもよい）
-  if (r.symbol === 'superFert') return shapeCells(state, 'box', cell).some((i) => { const c = state.field[rootOf(state, i)]; return !!c && !c.fertilized && !frozenCrop(state, i); });
+  if (r.symbol === 'superFert') return shapeCells(state, 'plus', cell).some((i) => { const c = state.field[rootOf(state, i)]; return !!c && !c.fertilized && !frozenCrop(state, i); });
   // 形で効く出目は、範囲に育てられる作物が1つでもあれば使える
   if (def.shape) return shapeCells(state, symbolShape(state, r.symbol)!, cell).some((i) => growableAt(state, i));
   if (frozenCrop(state, cell)) return false;
@@ -1482,21 +1491,19 @@ export function useSymbol(state: GameState, reel: number, cell: number | null): 
   }
   switch (r.symbol) {
     case 'bigRain':
-      shapeCells(state, 'cross', cell!).forEach((i) => grow(state, i, 2 * r.power + (i === cell ? lv(state, 'gentleRain') : 0), affected));
+      // 大雨：十字に+1、真ん中だけ+2
+      shapeCells(state, 'cross', cell!).forEach((i) => grow(state, i, r.power + (i === cell ? 1 + lv(state, 'gentleRain') : 0), affected));
       state.today.rain.push(...shapeCells(state, 'cross', cell!));
       sunshower(state, affected);
       return affected;
     case 'raijin':
-      shapeCells(state, 'cross', cell!).forEach((i) => grow(state, i, 2 * r.power, affected));
+      shapeCells(state, 'row', cell!).forEach((i) => grow(state, i, 3 * r.power, affected));
       return affected;
     case 'queenBee':
-      shapeCells(state, 'xline', cell!).forEach((i) => {
-        const c = state.field[rootOf(state, i)];
-        grow(state, i, (c && cropBase(c.kind) === 'strawberry' ? 2 : 1) * r.power, affected);
-      });
+      shapeCells(state, 'xline', cell!).forEach((i) => grow(state, i, r.power, affected));
       return affected;
     case 'superFert':
-      shapeCells(state, 'box', cell!).forEach((i) => {
+      shapeCells(state, 'plus', cell!).forEach((i) => {
         const root = rootOf(state, i);
         const c = state.field[root];
         if (c && !c.fertilized && !frozenCrop(state, i)) {
@@ -1514,8 +1521,7 @@ export function useSymbol(state: GameState, reel: number, cell: number | null): 
         }
       });
       const amount = CONFIG.sunGrowth * r.power + state.charms.sunBlessing;
-      // 真ん中の列は+1多く（曇り続きの週は1マスに+2）
-      sunCells.forEach((i) => grow(state, i, amount + (cellX(i) === cellX(cell!) ? 1 : 0), affected));
+      sunCells.forEach((i) => grow(state, i, amount, affected));
       state.today.sun.push(...sunCells);
       sunshower(state, affected);
       return affected;

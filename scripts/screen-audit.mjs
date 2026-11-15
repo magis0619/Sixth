@@ -252,7 +252,7 @@ for (const size of Object.keys(SIZES)) {
   // 合体：市で同じ札4枚→1枚
   {
     const { p, ctx, errs } = await page(size, mod((s) => {
-      s.day = 3; s.morning = true; s.results = []; s.offer = ['addRain', 'addSun', 'addSeed']; s.bag.rain = 3; s.bag.seed = 4; s.mergedThisMarket = false;
+      s.day = 3; s.morning = true; s.results = []; s.offer = ['addRain', 'addSun', 'addSeed']; s.bag.rain = 4; s.bag.seed = 5; s.gold = 12; s.mergedThisMarket = false;
     }));
     await p.click('#title-resume', f); await p.waitForTimeout(900);
     const take = p.locator('[data-take="addRain"]');

@@ -4,7 +4,7 @@ import {
   CHARMS, CHARM_ORDER, symbolBase, cropBase, MERGES, type ShapeId, type CharmId, DIFFICULTIES, FARMERS, TOOL_EVOLVE, CONFIG, CROPS, PLACES, PLACE_ORDER, SEEDS, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL, type AddUpgradeId, type PlaceId, type SymbolId, type UpgradeId,
 } from './config.ts';
 import {
-  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult, mustPlace, hasRoomFor, takeOffer, roomLeft, refreshCombos, symbolShape, isRareOffer, isMarketDay, shopOpen, nextMarketDay, beginDay, spinDay, sellBlock, isFlooded, mergeable, mergeSymbol,
+  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult, mustPlace, hasRoomFor, takeOffer, roomLeft, refreshCombos, symbolShape, isRareOffer, isMarketDay, shopOpen, nextMarketDay, beginDay, spinDay, sellBlock, isFlooded, mergeable, mergeSymbol, mergeCost,
 } from './game.ts';
 import { duckBgm, isMuted, sfx, suspendAudio, toggleMute, unlockAudio } from './audio.ts';
 import { saveMeta, setupFrom } from './meta.ts';
@@ -752,18 +752,20 @@ function renderMergeShop(): void {
   const list = mergeable(state);
   (box.closest('.stall-sec') as HTMLElement).hidden = !list.length;
   if (list.length) hintOnce('merge', `${art('sparkle')} ${L(`同じ札が<b>${CONFIG.mergeNeed}枚</b>そろうと、市で<b>1枚の強い札に合体</b>できる（市で1回）`, `With <b>${CONFIG.mergeNeed} of the same</b>, you can <b>merge them into 1 strong card</b> at the market (once per market)`)}`, 6000);
-  const key = `${list.join(',')}|${state.mergedThisMarket}`;
+  const cost = mergeCost(state);
+  const key = `${list.join(',')}|${state.mergedThisMarket}|${cost}|${state.gold >= cost}`;
   if (box.dataset.key === key) return;
   box.dataset.key = key;
   box.innerHTML = list
     .map((sym) => {
       const to = MERGES[sym]!;
       const def = SYMBOLS[to];
-      return `<button class="item affordable merge-item" data-merge="${sym}">
+      return `<button class="item merge-item${state.gold >= cost ? ' affordable' : ' short'}" data-merge="${sym}">
         <span class="merge-from">${Array.from({ length: CONFIG.mergeNeed }, () => `<i>${symHtml(sym)}</i>`).join('')}</span>
         <span class="merge-arrow">▶</span>
         <span class="ico">${symHtml(to)}</span>
         <span class="text"><span class="name">${def.name}${def.shape ? `<span class="oc-shape">${shapeIcon(def.shape)}</span>` : ''}</span><span class="effect">${def.desc}</span></span>
+        <span class="cost"><b>${cost}</b>${state.gold < cost ? `<small>${L(`あと${cost - state.gold}`, `${cost - state.gold} more`)}</small>` : ''}</span>
       </button>`;
     })
     .join('');
@@ -777,7 +779,16 @@ function onMerge(b: HTMLButtonElement): void {
   const to = MERGES[sym]!;
   const from = [...b.querySelectorAll<HTMLElement>('.merge-from i')];
   const target = b.querySelector('.ico') as HTMLElement;
+  const cost = mergeCost(state);
+  if (state.gold < cost) {
+    reject(b, needGold(cost));
+    return;
+  }
   if (!mergeSymbol(state, sym)) return;
+  // 払ったお金はすぐ減らす
+  syncGold();
+  const pay = center(b.querySelector('.cost') ?? b);
+  floatText(pay.x, pay.y - 10, money(-cost), { cls: 'bad', size: 0.9 });
   sfx.charmGet();
   vibrate(30);
   // 4枚が1か所に集まって、1枚の上位の札になる
