@@ -1067,3 +1067,38 @@ describe('合体', () => {
     expect(s.combos).toContain('sunshower');
   });
 });
+
+describe('お邪魔の狙い', () => {
+  it('カラスは一番高い実りを狙い、かかしで守っていれば追い払われる', () => {
+    const s = newGame({ shop: [], charmPool: [] });
+    s.day = 2;
+    ripe(s, 'tomato', [at(0, 0)]);
+    ripe(s, 'corn', [at(2, 2)]);
+    s.results = [reel('crow')];
+    const ev = resolveAuto(s, 0, () => 0.1);
+    expect(ev && ev.type === 'crow' && ev.cell).toBe(at(2, 2));
+    const t = newGame({ shop: [], charmPool: [] });
+    t.day = 2;
+    ripe(t, 'tomato', [at(0, 0)]);
+    ripe(t, 'corn', [at(2, 2)]);
+    t.tools[at(2, 1)] = 'scarecrow';
+    t.results = [reel('crow')];
+    const ev2 = resolveAuto(t, 0, () => 0.1);
+    expect(ev2 && ev2.type === 'crow' && ev2.guarded).toBe(true);
+  });
+  it('虫はもうすぐ実る作物、雑草は作物に囲まれた空きマスを狙う', () => {
+    const s = newGame({ shop: [], charmPool: [] });
+    s.day = 2;
+    s.field[at(0, 0)] = { ...newCrop('tomato'), growth: 1 };
+    s.field[at(2, 2)] = { ...newCrop('tomato'), growth: 2 };
+    s.results = [reel('bug')];
+    const ev = resolveAuto(s, 0, () => 0.9);
+    expect(ev && ev.type === 'bug' && ev.cell).toBe(at(2, 2));
+    const w = newGame({ shop: [], charmPool: [] });
+    w.day = 2;
+    [at(0, 1), at(2, 1), at(1, 0), at(1, 2)].forEach((c) => (w.field[c] = newCrop('tomato')));
+    w.results = [reel('weed')];
+    resolveAuto(w, 0, () => 0.9);
+    expect(w.weeds[at(1, 1)]).toBe(true);
+  });
+});
