@@ -8138,3 +8138,9 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 .merge-item .text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .merge-item .name { font-size: 1rem; font-weight: 800; }
 .merge-item .effect { font-size: 0.875rem; line-height: 1.4; }
+
+/* 年貢が足りないとき：帯は大きくせず、赤い縁を光らせる（横持ちで右のメニューに重ならないように） */
+.hud-tax.warn { animation: tax-glow 0.9s ease-in-out infinite; }
+@keyframes tax-glow {
+  50% { box-shadow: inset 0 0 0 3px var(--danger), 0 0 0 3px rgba(214, 69, 69, 0.35); }
+}
