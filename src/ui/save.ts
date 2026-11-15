@@ -34,6 +34,7 @@ export function loadRun(): GameState | null {
     s.weekly ??= [];
     s.offer ??= [];
     s.farmer ??= 'basic';
+    s.morning ??= false;
     s.combos ??= [];
     // 週替わり3品にする前の保存データ：今週の品を選び直す
     if (!s.weeklyPlaces || s.weekly.length < CONFIG.weeklyCount) {

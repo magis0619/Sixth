@@ -79,6 +79,8 @@ export interface GameState {
   difficulty: number;
   /** 選んだ農家（FARMERS の id） */
   farmer: string;
+  /** 朝（日付は進んだが、まだリールを回していない。市の日は市が開いている） */
+  morning: boolean;
   /** 0 = まだ1回も回していない */
   day: number;
   gold: number;
@@ -221,6 +223,7 @@ function freshGame(setup: GameSetup): GameState {
     runId: Math.random().toString(36).slice(2, 10),
     difficulty: setup.difficulty ?? 0,
     farmer: setup.farmer ?? 'basic',
+    morning: false,
     shop: [...setup.shop],
     pool: [...(setup.pool ?? setup.shop)],
     offer: [],
@@ -606,11 +609,37 @@ export function rollObstacles(n: number, rng: Rng, difficulty = 0): SymbolId[] {
   return Array.from({ length: count }, () => pool[Math.floor(rng() * pool.length)]);
 }
 
+/** 次の日を始めて、そのままリールを回す（市の日は beginDay と spinDay の間に市を開く） */
 export function drawDay(state: GameState, rng: Rng): void {
+  beginDay(state, rng);
+  spinDay(state, rng);
+}
+
+/** 朝：日付を進め、市の品・注文・週替わりを用意する。リールはまだ回さない（市の日はここで市を開く） */
+export function beginDay(state: GameState, rng: Rng): void {
   state.day++;
-  state.stats.spins++;
   state.colorfulToday = false;
   state.priceMult = 1;
+  state.morning = true;
+  // 仕入れ：市の日に3択（市の日がなければ毎日）
+  state.offer = CONFIG.dailyPick && (!CONFIG.marketDays.length || isMarketDay(state.day)) ? rollOffer(state, rng) : [];
+  // 新しい週には新しい注文と週替わりの品が来る
+  if (!state.order || state.order.dueDay < state.day) {
+    state.order = makeOrder(state, rng);
+    state.weekly = rollWeekly(state, rng);
+    state.weeklyPlaces = rollWeeklyPlaces(state, rng);
+    state.removedThisWeek = 0;
+    // 相場は難しいモードから（marketFrom 以上）
+    state.market = CONFIG.marketOn && state.difficulty >= CONFIG.marketFrom ? rollMarket(state, rng) : null;
+  }
+  // お邪魔を消せる回数は市ごとに戻る
+  if (isMarketDay(state.day)) state.removedThisWeek = 0;
+}
+
+/** リールを回す：袋から引いて、フィーバー・組み合わせを決める */
+export function spinDay(state: GameState, rng: Rng): void {
+  state.morning = false;
+  state.stats.spins++;
   const bag = drawBag(state);
   state.cloverBoost = 1;
   const symbols = Array.from({ length: state.reels }, () => drawSymbol(bag, rng));
@@ -626,19 +655,6 @@ export function drawDay(state: GameState, rng: Rng): void {
     return { symbol, used: false, total, left: total, power };
   });
   refreshCombos(state);
-  // 仕入れ：市の日に3択（市の日がなければ毎日）
-  state.offer = CONFIG.dailyPick && (!CONFIG.marketDays.length || isMarketDay(state.day)) ? rollOffer(state, rng) : [];
-  // 新しい週には新しい注文と週替わりの品が来る
-  if (!state.order || state.order.dueDay < state.day) {
-    state.order = makeOrder(state, rng);
-    state.weekly = rollWeekly(state, rng);
-    state.weeklyPlaces = rollWeeklyPlaces(state, rng);
-    state.removedThisWeek = 0;
-    // 相場は難しいモードから（marketFrom 以上）
-    state.market = CONFIG.marketOn && state.difficulty >= CONFIG.marketFrom ? rollMarket(state, rng) : null;
-  }
-  // お邪魔を消せる回数は市ごとに戻る
-  if (isMarketDay(state.day)) state.removedThisWeek = 0;
 }
 
 /** 市の日か（週の marketDays 日目） */

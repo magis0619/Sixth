@@ -26,7 +26,8 @@ async function boot(page: Page, opts: { tutorial?: boolean } = {}): Promise<stri
 async function start(page: Page): Promise<void> {
   await page.click('#title-start', { force: true });
   await expect(page.locator('#prep-start')).toBeVisible();
-  await page.click('#prep-start', { force: true });
+  // 準備の窓が入ってくる動きの途中で押すと外れるので、止まってから押す
+  await page.click('#prep-start');
   await expect(page.locator('#overlay')).not.toHaveClass(/show/);
 }
 
@@ -86,7 +87,8 @@ async function useReels(page: Page): Promise<number> {
 }
 
 test('タイトルから始めて、植えて育てて売り、年貢まで進む', async ({ page }) => {
-  test.setTimeout(300_000);
+  // 並べて動かすと遅くなるので長めに（単独なら2分弱）
+  test.setTimeout(480_000);
   const errors = await boot(page);
   await expect(page.locator('#title-start')).toBeVisible();
   await expect(page.locator('#build-label')).toContainText(/\S/);

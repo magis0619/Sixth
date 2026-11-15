@@ -4,7 +4,7 @@ import {
   CHARMS, CHARM_ORDER, type CharmId, DIFFICULTIES, TOOL_EVOLVE, CONFIG, CROPS, PLACES, PLACE_ORDER, SEEDS, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL, type AddUpgradeId, type PlaceId, type SymbolId, type UpgradeId,
 } from './config.ts';
 import {
-  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawDay, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult, mustPlace, hasRoomFor, takeOffer, refreshCombos, symbolShape, isRareOffer, isMarketDay, shopOpen, nextMarketDay,
+  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult, mustPlace, hasRoomFor, takeOffer, refreshCombos, symbolShape, isRareOffer, isMarketDay, shopOpen, nextMarketDay, beginDay, spinDay,
 } from './game.ts';
 import { duckBgm, isMuted, sfx, suspendAudio, toggleMute, unlockAudio } from './audio.ts';
 import { saveMeta, setupFrom } from './meta.ts';
@@ -476,7 +476,7 @@ function renderSpinButton(): void {
   const go = $('spin-go');
   go.hidden = !ready;
   go.classList.toggle('tax', state.day > 0 && t.daysLeft === 0);
-  setHtml(go, state.day === 0
+  setHtml(go, state.day === 0 || state.morning
     ? `<span class="go-hand">${art('hand')}</span><span class="go-text"><b>${L('タップで回す', 'Tap to spin')}</b></span>`
     : `<span class="go-hand">${art('hand')}</span><span class="go-text">${t.daysLeft === 0 ? `<small>${L(`年貢${t.amount}を納めて`, `Pay ${t.amount}g tax`)}</small>` : ''}<b>${L(`${state.day + 1}日目へ`, `To day ${state.day + 1}`)}</b><small>${L('リールをタップ', 'Tap the reels')}</small></span>`);
   // 筐体の看板：今日の仕入れがあれば、そこに3つの絵柄（押すと袋に入る）。なければ「タップで回す」など
@@ -903,6 +903,11 @@ async function onSpin(): Promise<void> {
     return;
   }
   if (openSheetName) closeSheet();
+  // 朝（市を閉じたあと・続きから）：日付はもう進んでいるので、リールだけ回す
+  if (state.morning) {
+    await spinMorning();
+    return;
+  }
   // 出目が残っているときは確認を出す（はい→armedNextDay を立てて回す）
   const leftover = state.day > 0 ? usableReels().length : 0;
   if (leftover > 0 && !armedNextDay) {
@@ -946,7 +951,25 @@ async function onSpin(): Promise<void> {
     showGameOver(true);
     return;
   }
-  drawDay(state, rng);
+  beginDay(state, rng);
+  // 市の日の朝：リールを回す前に市を開く。市を閉じるとリールが回る
+  if (isMarketDay(state.day) && state.offer.length && !tut) {
+    endBusy();
+    render();
+    openMarket();
+    return;
+  }
+  await spinMorning();
+}
+
+/** 朝のリールを回す（演出・フィーバー・自動の絵柄まで） */
+async function spinMorning(): Promise<void> {
+  selected = null;
+  ui.busy = true;
+  done.spin = true;
+  renderSpinButton();
+  renderReelStates();
+  spinDay(state, rng);
   tutScript();
   // チュートリアルで出目を差し替えたときも、組み合わせは出目に合わせる
   refreshCombos(state);
@@ -967,8 +990,12 @@ async function onSpin(): Promise<void> {
   endBusy();
   autoSelect();
   render();
-  // 市の日は、演出が終わったら市を開く（仕入れは見送れない）
-  if (isMarketDay(state.day) && !tut) openMarket();
+}
+
+/** 市を閉じた：朝なら（置く物がなければ）そのままリールを回す */
+function leaveMarket(): void {
+  closeSheet();
+  if (state.morning && !mustPlace(state)) void onSpin();
 }
 
 /** 市を開く（仕入れ・畑の品・お邪魔を消す・広げるが1つの画面） */
@@ -1992,6 +2019,8 @@ function startGame(resume: GameState | null = null): void {
   el.shop.innerHTML = '';
   $('remove-shop').innerHTML = '';
   render();
+  // 市の朝に閉じていたら、続きは市から
+  if (resume && state.morning && state.offer.length && isMarketDay(state.day)) openMarket();
 }
 
 // ---- 押す回数を減らす：なぞって植える・リールから畑へ引っぱる・使える出目が1つなら選んでおく ----
@@ -2328,11 +2357,15 @@ document.querySelectorAll<HTMLButtonElement>('.tab').forEach((t) =>
     }
   }),
 );
-el.sheetBackdrop.addEventListener('click', () => holdMarket() || closeSheet());
+el.sheetBackdrop.addEventListener('click', () => {
+  if (holdMarket()) return;
+  if (openSheetName === 'shop') leaveMarket();
+  else closeSheet();
+});
 $('market-next').addEventListener('click', () => {
   if (holdMarket()) return;
   sfx.select();
-  closeSheet();
+  leaveMarket();
 });
 $('sheet-close').addEventListener('click', () => holdMarket() || closeSheet());
 // メニュー（遊び方・音・演出控えめ）

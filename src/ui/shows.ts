@@ -61,10 +61,50 @@ export async function showTaxStamp(amount: number, ok: boolean): Promise<void> {
   stamp.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: 'forwards' }).onfinish = () => stamp.remove();
   if (ok) {
     burst(window.innerWidth / 2, window.innerHeight * 0.4, ['🎊', '✨', '🌾'], 14, 140);
-    floatText(window.innerWidth / 2, window.innerHeight * 0.4, state.cleared ? L(`年貢${state.taxesPaid}回 納付`, `Tax #${state.taxesPaid} paid`) : L(`★${state.taxesPaid}/${CONFIG.winTaxes} あと${CONFIG.winTaxes - state.taxesPaid}回でクリア`, `★${state.taxesPaid}/${CONFIG.winTaxes} ${CONFIG.winTaxes - state.taxesPaid} more to win`), { cls: 'good', size: 1.1 });
-    await sleep(500);
+    await showTaxProgress();
     if (state.lastObstacles.length) await showPestsJoin(state.lastObstacles);
   }
+}
+
+/**
+ * 年貢を納めたあと：クリアまでの道のりを数秒だけ大きく見せる（押さなくても消える）。
+ * 俵が7つ並び、納めた分は判子、今回の1つが押される。最後はクリアの旗
+ */
+async function showTaxProgress(): Promise<void> {
+  const paid = state.taxesPaid;
+  const goal = CONFIG.winTaxes;
+  const root = document.createElement('div');
+  root.className = 'tax-progress';
+  const endless = paid > goal;
+  root.innerHTML = endless
+    ? `<div class="tp-card"><b class="tp-title">${L(`エンドレス ${paid - goal}回目`, `Endless #${paid - goal}`)}</b><span class="tp-sub">${L('年貢を納めた', 'Tax paid')}</span></div>`
+    : `<div class="tp-card">
+        <b class="tp-title">${L(`年貢 ${paid} / ${goal}`, `Tax ${paid} / ${goal}`)}</b>
+        <div class="tp-track">${Array.from({ length: goal }, (_, k) => `<span class="tp-step${k < paid - 1 ? ' done' : k === paid - 1 ? ' now' : ''}">${art('bale')}</span>`).join('<i class="tp-line"></i>')}<span class="tp-goal${paid >= goal ? ' reached' : ''}">${art('trophy')}</span></div>
+        <span class="tp-sub">${paid >= goal ? L('クリア！', 'Cleared!') : L(`クリアまで あと${goal - paid}回`, `${goal - paid} more to clear`)}</span>
+      </div>`;
+  document.body.appendChild(root);
+  const card = root.querySelector<HTMLElement>('.tp-card')!;
+  card.animate([{ transform: 'translateY(30px) scale(0.9)', opacity: 0 }, { transform: 'translateY(0) scale(1)', opacity: 1 }], { duration: 320, easing: 'cubic-bezier(.2,.9,.3,1.1)', fill: 'forwards' });
+  const now = root.querySelector<HTMLElement>('.tp-step.now');
+  if (now) {
+    later(() => {
+      now.classList.add('stamped');
+      now.animate([{ transform: 'scale(2.2) rotate(-14deg)', opacity: 0 }, { transform: 'scale(0.9) rotate(-4deg)', opacity: 1, offset: 0.6 }, { transform: 'scale(1) rotate(0deg)', opacity: 1 }], {
+        duration: 420,
+        easing: 'cubic-bezier(.3,1.4,.5,1)',
+      });
+      sfx.pon();
+      vibrate(30);
+    }, 380);
+  }
+  await sleep(isCalm() ? 1600 : 2400);
+  await new Promise<void>((done) => {
+    root.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 260, fill: 'forwards' }).onfinish = () => {
+      root.remove();
+      done();
+    };
+  });
 }
 
 /**
