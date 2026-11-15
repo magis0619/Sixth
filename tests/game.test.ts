@@ -6,8 +6,9 @@ import { CONFIG, CROPS, CUT, EVENT_CONDITIONS, FARMERS, THUNDER_LINES, UPGRADE_S
 import {
   animalGold, buy, buyPlace, drawDay, hasRanch, hiveBonus, isColorful, canPlace, canUse, cellMultiplier, cropPrice, isPond, waterWheels, checkReady, chooseCharm, endDay, evolveTools, expand, expandPrice,
   fieldCells, isGolden, lv, multSteps, newCrop, newGame, nextTax, obstacleRule, place, pullWeed, resolveAuto, ripeGroup,
-  canBuy, canBuyPlace, canExpand, isMarketDay, rollObstacles, takeOffer, refreshCombos, symbolShape, canPlaceAt, isPivotAdd, isPivotPlace, mustPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult,
+  canBuy, canBuyPlace, canExpand, isMarketDay, rollObstacles, takeOffer, refreshCombos, symbolShape, canPlaceAt, isPivotAdd, isPivotPlace, mustPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult, beginDay, takeContract,
 } from '../src/game.ts';
+import { CONTRACTS, contractGold } from '../src/contracts.ts';
 import { farmerUnlocked, recordRun, type MetaState } from '../src/meta.ts';
 import type { CropKind, SymbolId } from '../src/config.ts';
 
@@ -874,5 +875,123 @@ describe('タヌキと畑の品', () => {
     }
     expect(seen.has('water')).toBe(true);
     expect(seen.has('well')).toBe(true);
+  });
+});
+
+describe('週契約', () => {
+  const monday = (difficulty: number, week = 2): GameState => {
+    const s = newGame({ shop: [], charmPool: [], difficulty });
+    s.day = (week - 1) * CONFIG.taxPeriod;
+    s.taxesPaid = week - 1;
+    s.gold = 9999;
+    return s;
+  };
+  it('ふつうでは出ない。難しい1は★1だけ、最初の週は出ない', () => {
+    const s0 = monday(0);
+    beginDay(s0, Math.random);
+    expect(s0.contractOffer).toEqual([]);
+    const first = monday(1, 1);
+    beginDay(first, Math.random);
+    expect(first.contractOffer).toEqual([]);
+    for (let k = 0; k < 20; k++) {
+      const s = monday(1);
+      beginDay(s, Math.random);
+      expect(s.contractOffer.length).toBe(3);
+      expect(s.contractOffer.every((id) => CONTRACTS[id].stars === 1)).toBe(true);
+    }
+  });
+  it('火曜以降は並ばない', () => {
+    const s = monday(3);
+    s.day += 1;
+    beginDay(s, Math.random);
+    expect(s.contractOffer).toEqual([]);
+  });
+  it('曇り続き：太陽は1マスだけ。日曜の年貢を納めると見返りが入り、契約は終わる', () => {
+    const s = monday(1);
+    beginDay(s, () => 0.5);
+    s.contractOffer = ['cloudy'];
+    expect(takeContract(s, 'cloudy')).toBe(true);
+    s.field[at(0, 0)] = newCrop('tomato');
+    s.field[at(0, 1)] = newCrop('tomato');
+    s.results = [reel('sun')];
+    expect(useSymbol(s, 0, at(0, 0))).toEqual([at(0, 0)]);
+    expect(s.field[at(0, 1)]!.growth).toBe(0);
+    s.day = 2 * CONFIG.taxPeriod;
+    const before = s.gold;
+    const tax = nextTax(s).amount;
+    endDay(s, () => 0.5);
+    expect(s.contract).toBe(null);
+    expect(s.contractDone).toBe('cloudy');
+    expect(s.gold).toBe(before - tax + contractGold(30, 1));
+  });
+  it('日照りの誓い：雨が使えない。斜めの風：横の列は列にならない', () => {
+    const s = monday(2);
+    s.contract = 'drought';
+    s.field[at(1, 1)] = newCrop('tomato');
+    s.results = [reel('rain')];
+    expect(canUse(s, 0, at(1, 1))).toBe(false);
+    s.contract = 'diagWind';
+    ripe(s, 'tomato', [at(0, 0), at(1, 0), at(2, 0)]);
+    expect(ripeGroup(s, at(0, 0))).toEqual([at(0, 0)]);
+    ripe(s, 'tomato', [at(1, 1), at(2, 2)]);
+    expect(ripeGroup(s, at(0, 0)).length).toBe(3);
+  });
+  it('目利きの客は単品が売れない。市場休みは平日に売れない', () => {
+    const s = monday(2);
+    s.day += 1;
+    s.contract = 'connoisseur';
+    ripe(s, 'tomato', [at(0, 0)]);
+    expect(sell(s, at(0, 0))).toBe(null);
+    s.contract = 'sellWeekend';
+    expect(sell(s, at(0, 0))).toBe(null);
+    s.day += 5;
+    expect(sell(s, at(0, 0))).not.toBe(null);
+  });
+  it('市が閉まる：市も仕入れも開かず、見返りで次の年貢が−30%', () => {
+    const s = monday(2);
+    beginDay(s, () => 0.5);
+    takeContract(s, null);
+    s.contract = 'marketClosed';
+    s.day += 1;
+    beginDay(s, () => 0.5);
+    expect(s.offer).toEqual([]);
+    expect(canExpand(s)).toBe(false);
+    s.day = 2 * CONFIG.taxPeriod;
+    endDay(s, () => 0.5);
+    expect(s.taxCut).toBe(0.3);
+    expect(nextTax(s).amount).toBe(Math.round(taxAmount(2) * 0.7 * 1.3));
+  });
+  it('虫の大発生：毎朝虫が入り、日曜に全部いなくなる。壊れたリールは週が終わると戻る', () => {
+    const s = monday(3);
+    beginDay(s, () => 0.5);
+    s.contractOffer = ['bugBloom'];
+    const bugs = s.bag.bug;
+    takeContract(s, 'bugBloom');
+    for (let k = 0; k < 6; k++) beginDay(s, () => 0.5);
+    expect(s.bag.bug).toBe(bugs + 7);
+    endDay(s, () => 0.5);
+    expect(s.bag.bug).toBe(bugs);
+    expect(s.stock).toContain('henhouse');
+    const r = monday(3);
+    r.reels = 4;
+    r.contractOffer = ['brokenReel'];
+    takeContract(r, 'brokenReel');
+    expect(r.reels).toBe(3);
+    r.day = 2 * CONFIG.taxPeriod;
+    endDay(r, () => 0.5);
+    expect(r.reels).toBe(4);
+  });
+  it('忙しい週：使える出目は1日2つまで。長雨：右端の列に植えられない', () => {
+    const s = monday(3);
+    s.contract = 'busyWeek';
+    s.results = [reel('seed', 2), reel('seed', 2), reel('seed', 2)];
+    expect(useSymbol(s, 0, at(0, 0))).not.toBe(null);
+    expect(useSymbol(s, 1, at(1, 0))).not.toBe(null);
+    expect(canUse(s, 2, at(2, 0))).toBe(false);
+    expect(canUse(s, 0, at(0, 1))).toBe(true);
+    s.contract = 'longRain';
+    s.results = [reel('seed', 1)];
+    expect(canUse(s, 0, at(s.cols - 1, 2))).toBe(false);
+    expect(canUse(s, 0, at(0, 2))).toBe(true);
   });
 });

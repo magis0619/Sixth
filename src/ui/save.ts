@@ -52,6 +52,11 @@ export function loadRun(): GameState | null {
     s.toolXp ??= s.field.map(() => 0);
     s.today ??= { rain: [], sun: [], boosted: [] };
     s.halfTax ??= false;
+    s.contractOffer ??= [];
+    s.contract ??= null;
+    s.contractBugs ??= 0;
+    s.contractDone ??= null;
+    s.taxCut ??= 0;
     s.notices ??= [];
     s.stats.crowEaten ??= 0;
     // スイカ・鍬・水路のつながり・相場・品評会を入れる前の保存データ

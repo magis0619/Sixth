@@ -4,7 +4,7 @@ import {
   CHARMS, CHARM_ORDER, type CharmId, DIFFICULTIES, FARMERS, TOOL_EVOLVE, CONFIG, CROPS, PLACES, PLACE_ORDER, SEEDS, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL, type AddUpgradeId, type PlaceId, type SymbolId, type UpgradeId,
 } from './config.ts';
 import {
-  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult, mustPlace, hasRoomFor, takeOffer, roomLeft, refreshCombos, symbolShape, isRareOffer, isMarketDay, shopOpen, nextMarketDay, beginDay, spinDay,
+  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult, mustPlace, hasRoomFor, takeOffer, roomLeft, refreshCombos, symbolShape, isRareOffer, isMarketDay, shopOpen, nextMarketDay, beginDay, spinDay, sellBlock, isFlooded,
 } from './game.ts';
 import { duckBgm, isMuted, sfx, suspendAudio, toggleMute, unlockAudio } from './audio.ts';
 import { saveMeta, setupFrom } from './meta.ts';
@@ -24,6 +24,7 @@ import { applySettings, showSettings } from './ui/settings.ts';
 import { accept, reject } from './ui/states.ts';
 import { renderDanger, renderSky, setupScene } from './ui/scene.ts';
 import { blockLongPress, setupLongPress } from './ui/info.ts';
+import { contractRibbon, contractSay, showContractDone, showContractOffer } from './ui/contract-ui.ts';
 import { CUTIN_MS, comboBanner, feverBanner, playCutIn, showCharmOffer, showTaxStamp, witherField } from './ui/shows.ts';
 
 let selected: number | null = null;
@@ -364,11 +365,14 @@ function renderWeek(): void {
     WEEKDAYS.map((w, k) => {
       const d = k + 1;
       // 札の右下に小さな印：市の日は値札、日曜は年貢の俵
-      const mark = d === CONFIG.taxPeriod ? art('bale') : CONFIG.marketDays.includes(d) ? art('bargain') : '';
-      const cls = `wd${d === today ? ' now' : d < today ? ' past' : ''}${d === CONFIG.taxPeriod ? ' tax' : ''}${CONFIG.marketDays.includes(d) ? ' market' : ''}${d === CONFIG.taxPeriod && state.gold < t.amount ? ' short' : ''}`;
+      // 市が閉まる週は市の印を出さない
+      const market = CONFIG.marketDays.includes(d) && state.contract !== 'marketClosed';
+      const mark = d === CONFIG.taxPeriod ? art('bale') : market ? art('bargain') : '';
+      const cls = `wd${d === today ? ' now' : d < today ? ' past' : ''}${d === CONFIG.taxPeriod ? ' tax' : ''}${market ? ' market' : ''}${d === CONFIG.taxPeriod && state.gold < t.amount ? ' short' : ''}`;
       return `<span class="${cls}"><span class="wd-plate"><b>${w}</b>${mark ? `<i>${mark}</i>` : ''}</span></span>`;
-    }).join(''),
+    }).join('') + contractRibbon(),
   );
+  el.week.classList.toggle('has-contract', !!state.contract);
   el.week.setAttribute('aria-label', today ? L(`今日は${WEEKDAYS[today - 1]}曜日`, `Today: ${WEEKDAYS[today - 1]}`) : '');
 }
 
@@ -458,7 +462,7 @@ function renderReelStates(): void {
     const tag = reelTag(i);
     const fever = r && r.power > 1;
     const badFever = fever && SYMBOLS[r.symbol].rarity === 'bad';
-    b.className = `reel ${r ? roleClass(r.symbol) : ''} ${tag.cls}${r?.symbol === 'goldSeed' ? ' rare' : ''}${fever ? (badFever ? ' fever-bad' : ' fever') : ''}${r && el.machine.classList.contains('rainbow') && state.fever.includes(r.symbol) ? ' rainbow-sym' : ''}${actingReel === i ? ' acting' : ''}`;
+    b.className = `reel ${r ? roleClass(r.symbol) : ''} ${tag.cls}${r?.symbol === 'goldSeed' ? ' rare' : ''}${fever ? (badFever ? ' fever-bad' : ' fever') : ''}${r && el.machine.classList.contains('rainbow') && state.fever.includes(r.symbol) ? ' rainbow-sym' : ''}${actingReel === i ? ' acting' : ''}${r?.fog ? ` fog fog-${r.fog}` : ''}`;
     // 札：自動の出目は結果を短く、手動の出目は効く形の絵（3×3のマス目）
     const shape = r ? symbolShape(state, r.symbol) : undefined;
     const tagEl = b.querySelector('.tag') as HTMLElement;
@@ -467,6 +471,20 @@ function renderReelStates(): void {
     tagEl.classList.toggle('empty', !html);
     tagEl.classList.toggle('shape', !tag.text && !!shape);
     renderCount(b, i);
+    // 霧の週：霧に隠れたリール（使えない日は濃い霧に「×」）
+    const win = b.querySelector('.window')!;
+    let fogEl = win.querySelector('.fog-cover');
+    if (r?.fog && !fogEl) {
+      fogEl = document.createElement('span');
+      fogEl.className = 'fog-cover';
+      win.appendChild(fogEl);
+    }
+    if (fogEl && !r?.fog) fogEl.remove();
+    else if (fogEl) {
+      fogEl.className = `fog-cover ${r!.fog}`;
+      const html = `${art('puff')}${art('puff')}${r!.fog === 'lost' ? `<b>${L('霧', 'Fog')}</b>` : ''}`;
+      if (fogEl.innerHTML.length < 10 || fogEl.classList.contains('lost') !== (r!.fog === 'lost')) fogEl.innerHTML = html;
+    }
     b.setAttribute('aria-label', r ? `${SYMBOLS[r.symbol].name}: ${tag.text}` : L('リール', 'Reel'));
   });
 }
@@ -671,6 +689,11 @@ function renderField(): void {
       label += L('、水車', ', waterwheel');
     }
     if (tile) label += `、${PLACES[tile].name}（${PLACES[tile].desc}）`;
+    if (isFlooded(state, i)) {
+      cls.push('flooded');
+      html += `<span class="flood">${art('drop')}</span>`;
+      label += L('、長雨で水びたし（植えられない）', ', flooded by the long rain (no planting)');
+    }
     if (state.frost[i]) {
       cls.push('frozen');
       html += `<span class="ice"></span><span class="badge-frost">${art('frost')}${state.frost[i]}${L('日', 'd')}</span>`;
@@ -942,6 +965,11 @@ async function onSpin(): Promise<void> {
     openMarket();
     return;
   }
+  // 月曜の朝：週契約を決めるまで回さない（続きから始めたときなど）
+  if (state.morning && state.contractOffer.length) {
+    await showContractOffer();
+    return;
+  }
   if (openSheetName) closeSheet();
   // 朝（市を閉じたあと・続きから）：日付はもう進んでいるので、リールだけ回す
   if (state.morning) {
@@ -986,12 +1014,22 @@ async function onSpin(): Promise<void> {
     render();
     await showCharmOffer();
   }
+  // 週契約を果たした：見返り（お守りなら3択）
+  if (state.contractDone) {
+    render();
+    await showContractDone();
+  }
   if (res.cleared && !(await showClear())) {
     endBusy();
     showGameOver(true);
     return;
   }
   beginDay(state, rng);
+  // 月曜の朝：今週の週契約（回す前に選ぶ）
+  if (state.contractOffer.length) {
+    render();
+    await showContractOffer();
+  }
   // チュートリアルの水曜の市は、決まった3つ
   if (tut && isMarketDay(state.day) && state.offer.length) state.offer = [...TUT_OFFER];
   // 市の日の朝：リールを回す前に市を開く。市を閉じるとリールが回る
@@ -1803,6 +1841,12 @@ function onPlotTap(cell: number): void {
   const root = rootOf(state, cell);
   const crop = state.field[root];
   if (isRipe(crop)) {
+    const block = sellBlock(state, root);
+    if (block) {
+      reject(plot, block.replace(/<[^>]+>/g, ''));
+      say(`${art('calendar')} ${block}`);
+      return;
+    }
     sellCrop(root);
     return;
   }
@@ -2138,6 +2182,7 @@ function startGame(resume: GameState | null = null): void {
   render();
   // 市の朝に閉じていたら、続きは市から
   if (resume && state.morning && state.offer.length && isMarketDay(state.day)) openMarket();
+  if (resume && state.morning && state.contractOffer.length) void showContractOffer();
 }
 
 // ---- 押す回数を減らす：なぞって植える・リールから畑へ引っぱる・使える出目が1つなら選んでおく ----
@@ -2508,6 +2553,13 @@ el.tax.addEventListener('click', () => {
       ),
     3000,
   );
+});
+// 曜日の帯（週契約）をタップ：縛りと見返り
+el.week.addEventListener('click', (e) => {
+  const rb = (e.target as HTMLElement).closest('.wk-ribbon');
+  if (!rb) return;
+  pop(rb, 1.05);
+  say(contractSay(), 5000);
 });
 el.order.addEventListener('click', () => {
   const o = state.order;

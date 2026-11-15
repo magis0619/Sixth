@@ -184,9 +184,9 @@ export const SEEDS: Partial<Record<SymbolId, { crop: CropKind; extra: number; si
 };
 
 /** 出目の効く範囲の形 */
-export type ShapeId = 'cross' | 'column' | 'row' | 'x' | 'all';
+export type ShapeId = 'cross' | 'column' | 'row' | 'x' | 'all' | 'one';
 
-export const SHAPE_NAMES: Record<ShapeId, string> = { cross: '縦横十字', column: '縦一列', row: '横一列', x: '斜め', all: '畑全体' };
+export const SHAPE_NAMES: Record<ShapeId, string> = { cross: '縦横十字', column: '縦一列', row: '横一列', x: '斜め', all: '畑全体', one: '1マス' };
 
 // ---- 畑に置くもの（道具・特別なマス） ----
 
@@ -754,7 +754,7 @@ if (EN) {
   });
   const crop: Record<CropKind, string> = { strawberry: 'Strawberry', tomato: 'Tomato', pumpkin: 'Pumpkin', melon: 'Melon', corn: 'Golden Corn', watermelon: 'Watermelon' };
   (Object.keys(crop) as CropKind[]).forEach((k) => (CROPS[k].name = crop[k]));
-  Object.assign(SHAPE_NAMES, { cross: 'Cross', column: 'Column', row: 'Row', x: 'Diagonals', all: 'Whole field' });
+  Object.assign(SHAPE_NAMES, { cross: 'Cross', column: 'Column', row: 'Row', x: 'Diagonals', all: 'Whole field', one: '1 square' });
   const place: Record<PlaceId, [string, string]> = {
     scarecrow: ['Scarecrow', 'Guards the 8 plots around it'],
     bigScarecrow: ['Big Scarecrow', 'Guards everything within 2 plots'],

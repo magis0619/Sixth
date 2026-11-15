@@ -5,6 +5,7 @@ import {
   BAG_CONDITIONS, COMBOS, CUT, FARMERS, PAUSED_CHARMS, isCutAdd, COMBO_POWER, CHARMS, CHARM_ORDER, CHARM_PLACE, CONFIG, CROPS, EVENT_CONDITIONS, PLACE_ORDER, PLACES, SEEDS, SYMBOLS, SYMBOL_ORDER, TOOL_EVOLVE, UPGRADE_SYMBOL,
   type AddUpgradeId, type CharmId, type CropKind, type PlaceId, type ShapeId, type SymbolId, type UpgradeId,
 } from './config.ts';
+import { CONTRACTS, CONTRACT_ORDER, CONTRACT_STAR_WEIGHTS, contractGold, contractMaxStars, type ContractId } from './contracts.ts';
 
 export type Rng = () => number;
 
@@ -28,6 +29,8 @@ export interface ReelResult {
   left: number;
   /** 効果の倍率（カラス・虫の「群れ」で 2。良い絵柄のフィーバーは役で報いるので 1 のまま） */
   power: number;
+  /** 霧の週：霧に隠れたリール（lost なら今日は使えない） */
+  fog?: 'seen' | 'lost';
 }
 
 /** お客さんの注文。年貢の週ごとに1件 */
@@ -108,6 +111,16 @@ export interface GameState {
   halfTax: boolean;
   /** 画面に知らせる出来事 */
   notices: Notice[];
+  /** 週契約：月曜の朝に並ぶ3つ（受けるか見送るまで残る） */
+  contractOffer: ContractId[];
+  /** 今週受けた週契約 */
+  contract: ContractId | null;
+  /** 虫の大発生で今週袋に入れた虫の数（日曜に抜く） */
+  contractBugs: number;
+  /** 日曜に果たした週契約（画面で見返りを見せたら消す） */
+  contractDone: ContractId | null;
+  /** 次の年貢の割引（市が閉まるの見返り。0.3 なら −30%） */
+  taxCut: number;
   /** 買った回数（畑を広げる・道具ごと。価格が上がる） */
   bought: Partial<Record<PlaceId | 'expand', number>>;
   /** 鍬で耕したマス（次に植えた作物が成長+1） */
@@ -254,6 +267,11 @@ function freshGame(setup: GameSetup): GameState {
     today: { rain: [], sun: [], boosted: [] },
     halfTax: false,
     notices: [],
+    contractOffer: [],
+    contract: null,
+    contractBugs: 0,
+    contractDone: null,
+    taxCut: 0,
     tilled: Array.from({ length: CONFIG.fieldCols * CONFIG.fieldRows }, () => false),
     market: null,
     nightIncome: null,
@@ -323,6 +341,7 @@ export function shapeCells(state: GameState, shape: ShapeId, cell: number): numb
   if (!inField(state, cell)) return [];
   if (shape === 'x') return [cell, ...offsets(state, cell, [[-1, -1], [1, -1], [-1, 1], [1, 1]])];
   if (shape === 'all') return fieldCells(state);
+  if (shape === 'one') return [cell];
   if (shape === 'cross') {
     // 雷雨：斜めにもいっぱいに効く
     const diag = comboOn(state, 'thunderstorm');
@@ -533,7 +552,7 @@ export function nextTax(state: GameState): TaxInfo {
   // 年貢の減免：1つで5%、上限25%（強すぎたので弱めた）
   const relief = Math.min(0.25, 0.05 * lv(state, 'taxRelief'));
   const half = (state.halfTax ? 0.5 : 1) * (state.difficulty >= 1 ? 1.3 : 1);
-  return { dueDay, daysLeft: dueDay - state.day, amount: Math.round(taxAmount(index) * (1 - relief) * half), index };
+  return { dueDay, daysLeft: dueDay - state.day, amount: Math.round(taxAmount(index) * (1 - relief) * (1 - (state.taxCut ?? 0)) * half), index };
 }
 
 // ---- 1日の進行 ----
@@ -583,6 +602,9 @@ export function endDay(state: GameState, rng: Rng): EndDayResult {
   state.gold -= t.amount;
   state.taxesPaid++;
   state.halfTax = false;
+  state.taxCut = 0;
+  // 週契約：その週を越えられたら見返り。契約は日曜で終わる
+  finishContract(state);
   // 首の皮：ギリギリで払えたら、次の年貢が半分
   if (state.charms.lastStraw === 0 && state.taxesPaid >= EVENT_CONDITIONS.lastStrawFrom && state.gold <= EVENT_CONDITIONS.lastStraw) {
     grant(state, 'lastStraw');
@@ -640,6 +662,14 @@ export function beginDay(state: GameState, rng: Rng): void {
     // 相場は難しいモードから（marketFrom 以上）
     state.market = CONFIG.marketOn && state.difficulty >= CONFIG.marketFrom ? rollMarket(state, rng) : null;
   }
+  // 週契約：月曜の朝に3つ並ぶ。虫の大発生は毎朝虫が1枚入る
+  state.contractOffer = weekDay(state.day) === 1 ? rollContracts(state, rng) : [];
+  if (state.contract === 'bugBloom') {
+    state.bag.bug++;
+    state.contractBugs++;
+  }
+  // 市が閉まる週は、仕入れも市も出ない
+  if (!shopOpen(state)) state.offer = [];
   // 市ごとに：お邪魔を消せる回数が戻り、畑の品が入れ替わる
   if (isMarketDay(state.day)) {
     state.removedThisWeek = 0;
@@ -662,9 +692,20 @@ export function spinDay(state: GameState, rng: Rng): void {
     const power = state.fever.includes(symbol) && SYMBOLS[symbol].rarity === 'bad' ? CONFIG.feverPower : 1;
     const seed = SEEDS[symbol];
     // 大きな種袋は、1個ずつ植える種（かぼちゃ・メロン・金の種・スイカ）も含めて全部の種に効く
-    const total = seed ? (seed.single ? 1 : rollSeedCount(rng) + seed.extra) + lv(state, 'seedSack') : 1;
-    return { symbol, used: false, total, left: total, power };
+    let total = seed ? (seed.single ? 1 : rollSeedCount(rng) + seed.extra) + lv(state, 'seedSack') : 1;
+    // 種の節約：1枚で2個まで
+    if (seed && state.contract === 'seedThrift') total = Math.min(2, total);
+    return { symbol, used: false, total, left: total, power } as ReelResult;
   });
+  // 霧の週：毎日リールが1つ霧に隠れ、半分の日はその出目が使えない
+  if (state.contract === 'fog' && state.results.length) {
+    const r = state.results[Math.floor(rng() * state.results.length)];
+    r.fog = rng() < 0.5 ? 'lost' : 'seen';
+    if (r.fog === 'lost') {
+      r.used = true;
+      r.left = 0;
+    }
+  }
   refreshCombos(state);
 }
 
@@ -673,9 +714,128 @@ export function isMarketDay(day: number): boolean {
   return day > 0 && CONFIG.marketDays.includes(((day - 1) % CONFIG.taxPeriod) + 1);
 }
 
-/** 今、買い物ができるか（市の日がない設定ならいつでも） */
+/** 今、買い物ができるか（市の日がない設定ならいつでも）。市が閉まる週は開かない */
 export function shopOpen(state: GameState): boolean {
+  if (state.contract === 'marketClosed') return false;
   return !CONFIG.marketDays.length || isMarketDay(state.day);
+}
+
+/** 週の何日目か（1＝月 … 7＝日） */
+export function weekDay(day: number): number {
+  return ((Math.max(1, day) - 1) % CONFIG.taxPeriod) + 1;
+}
+
+// ---- 週契約 ----
+
+/** 今の袋や畑で意味のある週契約か（縛りが空振りしない・見返りが受け取れる） */
+function contractFits(state: GameState, id: ContractId): boolean {
+  switch (id) {
+    case 'cloudy':
+      return state.bag.sun > 0;
+    case 'drought':
+      return state.bag.rain > 0;
+    case 'crowFlock':
+      return state.bag.crow > 0;
+    case 'brokenReel':
+      return state.reels > 2;
+    case 'fog':
+      return state.reels < CONFIG.maxReels;
+    case 'busyWeek':
+      return state.reels > 2 && expandPrice(state) !== null;
+    case 'longRain':
+      return state.cols > 2;
+    default:
+      return true;
+  }
+}
+
+/** 月曜の朝の週契約3つ（難しい1から。最初の週は出ない） */
+export function rollContracts(state: GameState, rng: Rng): ContractId[] {
+  const max = contractMaxStars(state.difficulty);
+  if (!max || state.day < CONFIG.taxPeriod + 1) return [];
+  const items = CONTRACT_ORDER.filter((id) => CONTRACTS[id].stars <= max && contractFits(state, id)).map((id) => ({ id, w: CONTRACT_STAR_WEIGHTS[CONTRACTS[id].stars] }));
+  return pickWeighted(items, 3, rng);
+}
+
+/** 週契約を受ける（null なら見送る） */
+export function takeContract(state: GameState, id: ContractId | null): boolean {
+  if (id !== null && !state.contractOffer.includes(id)) return false;
+  state.contractOffer = [];
+  state.contract = id;
+  state.contractBugs = 0;
+  if (id === 'brokenReel') state.reels--;
+  // 市が閉まる：今週の仕入れも出ない
+  if (id === 'marketClosed') state.offer = [];
+  if (id === 'bugBloom') {
+    state.bag.bug++;
+    state.contractBugs++;
+  }
+  return true;
+}
+
+/** 見返りのお金（週が進むほど増える） */
+export function contractRewardGold(state: GameState, id: ContractId): number {
+  const r = CONTRACTS[id].reward;
+  return r.kind === 'gold' ? contractGold(r.n, state.taxesPaid) : 0;
+}
+
+/** 日曜の年貢を納めたあと：見返りを渡して、週契約を終える（お守りの3択は画面側で出す） */
+function finishContract(state: GameState): void {
+  const id = state.contract;
+  if (!id) return;
+  const r = CONTRACTS[id].reward;
+  // お金は納めたあとの週の数で数える（表示と同じになるよう、先に数える）
+  const gold = contractGold(r.kind === 'gold' ? r.n : 0, state.taxesPaid - 1);
+  if (r.kind === 'gold') earn(state, gold);
+  if (r.kind === 'remove') state.bag[r.symbol] = Math.max(0, state.bag[r.symbol] - 1);
+  if (r.kind === 'place') state.stock.push(r.id);
+  if (r.kind === 'moon') state.bag.moon++;
+  if (r.kind === 'taxCut') state.taxCut = r.pct / 100;
+  if (r.kind === 'reel') state.reels = Math.min(CONFIG.maxReels, state.reels + 1);
+  if (r.kind === 'expand' && (state.cols < CONFIG.fieldCols || state.rows < CONFIG.fieldRows)) {
+    state.bought.expand = (state.bought.expand ?? 0) + 1;
+    if (state.cols <= state.rows) state.cols++;
+    else state.rows++;
+  }
+  // 縛りを元に戻す
+  if (id === 'brokenReel') state.reels++;
+  if (id === 'bugBloom') state.bag.bug = Math.max(0, state.bag.bug - state.contractBugs);
+  state.contractBugs = 0;
+  state.contract = null;
+  state.contractDone = id;
+}
+
+/** 週契約の見返りのお守り3択（レアは rare の段だけから） */
+export function rollContractCharms(state: GameState, rng: Rng, rare: boolean): CharmId[] {
+  const pool = state.charmPool
+    .filter((id) => !PAUSED_CHARMS.includes(id) && !CHARMS[id].special && state.charms[id] < CHARMS[id].max && charmUseful(state, id) && (!rare || CHARMS[id].tier === 'rare'))
+    .map((id) => ({ id, w: CONFIG.charmTierWeights[CHARMS[id].tier] }));
+  return pickWeighted(pool, CONFIG.charmChoices, rng);
+}
+
+/** 作物を今売れないわけ（週契約）。売れるなら null */
+export function sellBlock(state: GameState, cell: number, single = false): string | null {
+  if (state.contract === 'sellWeekend' && weekDay(state.day) < 6) return L('今週は<b>土日だけ</b>売れる', 'This week you can sell on <b>Sat/Sun only</b>');
+  if (state.contract === 'connoisseur') {
+    const root = rootOf(state, cell);
+    const crop = state.field[root];
+    if (crop && !CROPS[crop.kind].big && (single || harvestGroup(state, root).length < MIN_RUN)) return L('今週は<b>単品は売れない</b>', '<b>No singles</b> this week');
+  }
+  return null;
+}
+
+/** 長雨で水びたしのマス（右端の1列） */
+export function isFlooded(state: GameState, cell: number): boolean {
+  return state.contract === 'longRain' && cellX(cell) === state.cols - 1;
+}
+
+/** 忙しい週：今日もう新しい出目を使えないか */
+function busyLimit(state: GameState, reel: number): boolean {
+  if (state.contract !== 'busyWeek') return false;
+  const r = state.results[reel];
+  if (r.left < r.total) return false;
+  const started = state.results.filter((x, k) => k !== reel && SYMBOLS[x.symbol].kind === 'manual' && x.left < x.total && x.fog !== 'lost').length;
+  return started >= 2;
 }
 
 /** 次の市の日（今日が市なら今日） */
@@ -687,7 +847,7 @@ export function nextMarketDay(state: GameState): number | null {
 
 /** 空きマス（畑の中で、作物・道具・雑草・霜・池がない） */
 export function isOpen(state: GameState, cell: number): boolean {
-  return inField(state, cell) && !state.field[cell] && !state.tools[cell] && !state.weeds[cell] && !state.frost[cell] && !isPond(state, cell);
+  return inField(state, cell) && !state.field[cell] && !state.tools[cell] && !state.weeds[cell] && !state.frost[cell] && !isPond(state, cell) && !isFlooded(state, cell);
 }
 
 /** 井戸・黄金の井戸・水路のマスで、夜のうちに育つマス */
@@ -759,6 +919,8 @@ function grant(state: GameState, id: CharmId, notice = true): void {
 /** 出目の効く形（組み合わせで変わる：青天の霹靂の日は雷が十字） */
 export function symbolShape(state: GameState, sym: SymbolId): ShapeId | undefined {
   if (sym === 'thunder' && comboOn(state, 'bolt')) return 'cross';
+  // 曇り続き：太陽は1マスだけ
+  if (sym === 'sun' && state.contract === 'cloudy') return 'one';
   return SYMBOLS[sym].shape;
 }
 
@@ -1002,8 +1164,9 @@ export type AutoEvent =
   | { type: 'locust'; cell: number | null; damage: number; bred: number }
   | { type: 'clover'; boost: number };
 
-export function crowEatChance(_state: GameState, power: number): number {
-  return Math.min(1, power > 1 ? CONFIG.crowEatChance * CONFIG.crowFeverMultiplier : CONFIG.crowEatChance);
+export function crowEatChance(state: GameState, power: number): number {
+  const flock = state.contract === 'crowFlock' ? 2 : 1;
+  return Math.min(1, (power > 1 ? CONFIG.crowEatChance * CONFIG.crowFeverMultiplier : CONFIG.crowEatChance) * flock);
 }
 
 function earn(state: GameState, amount: number): void {
@@ -1204,6 +1367,9 @@ export function canUse(state: GameState, reel: number, cell: number | null): boo
   if (!r || r.used || state.over) return false;
   const def = SYMBOLS[r.symbol];
   if (def.kind !== 'manual') return false;
+  // 日照りの誓い：雨が効かない。忙しい週：1日2つまで
+  if (r.symbol === 'rain' && state.contract === 'drought') return false;
+  if (busyLimit(state, reel)) return false;
   // 畑全体に効く出目（満月）は、マスを選ばずに使う
   if (def.shape === 'all') return fieldCells(state).some((i) => growableAt(state, i));
   if (cell === null) return validTargets(state, reel).length > 0;
@@ -1214,7 +1380,7 @@ export function canUse(state: GameState, reel: number, cell: number | null): boo
   // 鍬は、横一列に耕せるマスが1つでもあれば使える
   if (r.symbol === 'hoe') return shapeCells(state, 'row', cell).some((i) => tillable(state, i));
   // 太陽は霜も溶かすので、縦一列に霜があっても使える
-  if (r.symbol === 'sun' && shapeCells(state, 'column', cell).some((i) => state.frost[i] > 0)) return true;
+  if (r.symbol === 'sun' && shapeCells(state, symbolShape(state, 'sun')!, cell).some((i) => state.frost[i] > 0)) return true;
   // 形で効く出目は、範囲に育てられる作物が1つでもあれば使える
   if (def.shape) return shapeCells(state, symbolShape(state, r.symbol)!, cell).some((i) => growableAt(state, i));
   if (frozenCrop(state, cell)) return false;
@@ -1298,15 +1464,16 @@ export function useSymbol(state: GameState, reel: number, cell: number | null): 
       return affected;
     case 'sun': {
       // 霜を溶かしてから育てる（溶けたマスの作物もすぐ育つ）
-      shapeCells(state, 'column', cell!).forEach((i) => {
+      const sunCells = shapeCells(state, symbolShape(state, 'sun')!, cell!);
+      sunCells.forEach((i) => {
         if (state.frost[i] > 0) {
           state.frost[i] = 0;
           if (!affected.includes(i)) affected.push(i);
         }
       });
       const amount = CONFIG.sunGrowth * r.power + state.charms.sunBlessing;
-      shapeCells(state, 'column', cell!).forEach((i) => grow(state, i, amount, affected));
-      state.today.sun.push(...shapeCells(state, 'column', cell!));
+      sunCells.forEach((i) => grow(state, i, amount, affected));
+      state.today.sun.push(...sunCells);
       sunshower(state, affected);
       return affected;
     }
@@ -1343,6 +1510,8 @@ export function isRipe(crop: Crop | null): boolean {
 /** 一列（縦・横・斜め）に並ぶとみなす最小の個数 */
 const MIN_RUN = 3;
 const RUN_DIRS: [number, number][] = [[1, 0], [0, 1], [1, 1], [1, -1]];
+/** 斜めの風：斜めの列だけ */
+const DIAG_DIRS: [number, number][] = [[1, 1], [1, -1]];
 
 /**
  * cell を通る、縦・横・斜めに MIN_RUN 個以上そろった一列（実ったマスだけ）。
@@ -1358,7 +1527,7 @@ function runsThrough(state: GameState, cell: number): number[][] {
   const cx = cellX(cell);
   const cy = cellY(cell);
   const runs: number[][] = [];
-  for (const [dx, dy] of RUN_DIRS) {
+  for (const [dx, dy] of state.contract === 'diagWind' ? DIAG_DIRS : RUN_DIRS) {
     const run = [cell];
     for (let x = cx + dx, y = cy + dy; ok(x, y); x += dx, y += dy) run.push(cellAt(state, x, y)!);
     for (let x = cx - dx, y = cy - dy; ok(x, y); x -= dx, y -= dy) run.push(cellAt(state, x, y)!);
@@ -1400,7 +1569,7 @@ export function singleMult(state: GameState): number {
 
 /** ショップの値段の倍率（難しい2以上で高い） */
 export function shopMult(state: GameState): number {
-  return state.difficulty >= 2 ? 1.3 : 1;
+  return (state.difficulty >= 2 ? 1.3 : 1) * (state.contract === 'pricey' ? 1.5 : 1);
 }
 
 /** 同じ作物だけの列に入っているか（演出・表示用） */
@@ -1462,7 +1631,7 @@ export interface SellResult {
 export function sell(state: GameState, cell: number, single = false): SellResult | null {
   cell = rootOf(state, cell);
   const crop = state.field[cell];
-  if (state.over || !crop || !isRipe(crop) || frozenCrop(state, cell)) return null;
+  if (state.over || !crop || !isRipe(crop) || frozenCrop(state, cell) || sellBlock(state, cell, single)) return null;
   const group = single ? [cell] : harvestGroup(state, cell);
   if (isColorful(state)) state.colorfulToday = true;
   const size = group.length;
@@ -1705,7 +1874,7 @@ export function plantLineMult(state: GameState, cell: number, kind: CropKind): n
   const cx = cellX(cell);
   const cy = cellY(cell);
   const runs: CropKind[][] = [];
-  for (const [dx, dy] of RUN_DIRS) {
+  for (const [dx, dy] of state.contract === 'diagWind' ? DIAG_DIRS : RUN_DIRS) {
     const run: CropKind[] = [kind];
     for (let x = cx + dx, y = cy + dy, k = cropAt(x, y); k; x += dx, y += dy, k = cropAt(x, y)) run.push(k);
     for (let x = cx - dx, y = cy - dy, k = cropAt(x, y); k; x -= dx, y -= dy, k = cropAt(x, y)) run.push(k);

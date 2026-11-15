@@ -93,7 +93,8 @@ export function shapeIcon(shape: string): string {
     (shape === 'cross' && (x === 1 || y === 1)) ||
     (shape === 'column' && x === 1) ||
     (shape === 'row' && y === 1) ||
-    (shape === 'x' && (x === y || x + y === 2));
+    (shape === 'x' && (x === y || x + y === 2)) ||
+    (shape === 'one' && x === 1 && y === 1);
   const cells = Array.from({ length: 9 }, (_, k) => `<i class="${on(k % 3, Math.floor(k / 3)) ? 'on' : ''}"></i>`).join('');
   return `<span class="shape-icon" aria-label="${SHAPE_NAMES[shape as keyof typeof SHAPE_NAMES]}">${cells}</span>`;
 }

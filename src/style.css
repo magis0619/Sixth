@@ -7900,3 +7900,211 @@ body:has(#overlay.show) :is(.machine, .machine *) {
   .wd-plate i { width: 14px; height: 14px; right: -5px; bottom: -5px; }
   .wd.now::before { top: -9px; }
 }
+
+/* ==== 週契約 ==== */
+/* 月曜の3択 */
+.contract-modal h2 { display: flex; align-items: center; gap: 8px; }
+.contract-modal h2 .art { width: 1.4em; height: 1.4em; }
+.ct-sub { margin: 2px 0 8px; font-size: 0.9375rem; line-height: 1.5; color: var(--ink); }
+/* 「今週だけ」を見せる小さな月〜日の帯 */
+.ct-week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin: 0 0 10px;
+  padding: 3px 4px;
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  background: #c93c2b;
+  color: #fff;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.ct-week i { font-style: normal; text-align: center; font-family: var(--font-pop); font-size: 0.875rem; line-height: 1.4; }
+.ct-choices { display: grid; gap: 10px; }
+.ct-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  grid-template-areas: 'ico name' 'ico rule' 'reward reward';
+  column-gap: 10px;
+  row-gap: 2px;
+  align-items: center;
+  text-align: left;
+  padding: 10px 12px;
+  background: #fff;
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.ct-card:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+.ct-card:disabled { cursor: default; }
+.ct-card.s2 { background: #fff6dc; }
+.ct-card.s3 { background: #ffe9e4; }
+.ct-ico { grid-area: ico; display: flex; width: 52px; height: 52px; }
+.ct-ico .art { width: 100%; height: 100%; }
+.ct-name { grid-area: name; font-size: 1.0625rem; padding-right: 54px; }
+.ct-rule { grid-area: rule; font-size: 0.9375rem; line-height: 1.45; }
+.ct-rule b { color: #c93c2b; }
+.ct-stars {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 0.9375rem;
+  letter-spacing: 1px;
+  color: var(--gold-dark);
+  -webkit-text-stroke: 0.5px var(--ink);
+}
+.ct-stars.s3 { color: #e0452f; }
+.ct-reward {
+  grid-area: reward;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 4px 8px;
+  border-radius: 10px;
+  background: var(--gold-soft);
+  border: 2px dashed var(--gold-dark);
+}
+.ct-reward-h { font-size: 0.8125rem; font-weight: 800; color: var(--wood-dark); }
+.ct-reward-t { font-size: 0.875rem; font-weight: 700; }
+.ct-rw { display: inline-flex; align-items: center; gap: 2px; font-weight: 800; }
+.ct-rw .art { width: 1.5em; height: 1.5em; }
+.ct-rw b { font-size: 0.9375rem; }
+.ct-skip {
+  display: block;
+  margin: 12px auto 0;
+  padding: 8px 18px;
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  background: var(--cloth-deep);
+  color: var(--ink);
+  font-size: 0.9375rem;
+  font-weight: 800;
+}
+.ct-skip:disabled { opacity: 0.6; }
+
+/* 日曜：果たした */
+.contract-done { text-align: center; }
+.contract-done h2 { justify-content: center; color: #c93c2b; }
+.ct-done-card {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 8px 54px 8px 12px;
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+}
+.ct-done-card .ct-ico { width: 40px; height: 40px; }
+.ct-done-reward {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin: 6px 0 12px;
+  font-size: 1rem;
+  font-weight: 800;
+}
+.ct-done-reward .ct-rw { font-size: 1.6rem; }
+.ct-ok {
+  padding: 10px 28px;
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  background: var(--gold);
+  color: var(--ink);
+  font-size: 1.0625rem;
+  font-weight: 800;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+/* 曜日の板の下に伸びる帯（月から日まで）。日曜の端に見返り */
+.week.has-contract { padding-bottom: 4px; row-gap: 6px; }
+.wk-ribbon {
+  grid-column: 1 / -1;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  margin: 0 -2px;
+  padding: 2px 4px 2px 4px;
+  background: #c93c2b;
+  color: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  box-shadow: 2px 2px 0 var(--ink);
+  font: inherit;
+  text-align: left;
+}
+.rb-tag {
+  flex: none;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: #fff;
+  color: #c93c2b;
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1.6;
+}
+.rb-ico { display: flex; width: 22px; height: 22px; flex: none; }
+.rb-ico .art { width: 100%; height: 100%; }
+.rb-name { flex: 1; min-width: 0; font-size: 0.9375rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rb-end {
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: var(--gold-soft);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+}
+.rb-end .ct-rw .art { width: 1.2em; height: 1.2em; }
+.rb-end .ct-rw b { font-size: 0.8125rem; }
+
+/* 長雨：水びたしのマス */
+.plot.flooded {
+  background:
+    repeating-linear-gradient(170deg, rgba(255, 255, 255, 0.25) 0 3px, transparent 3px 12px),
+    #5f9fc9 !important;
+}
+.plot.flooded .empty { display: none; }
+.plot .flood { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; opacity: 0.55; pointer-events: none; }
+.plot .flood .art { width: 40%; height: 40%; }
+
+/* 霧の週：霧に隠れたリール */
+.window { position: relative; }
+.fog-cover {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: inherit;
+  background: radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.55), rgba(214, 220, 228, 0.35) 70%);
+  pointer-events: none;
+}
+.fog-cover .art { position: absolute; width: 70%; height: 70%; opacity: 0.8; }
+.fog-cover .art:first-child { left: -12%; top: 4%; }
+.fog-cover .art:nth-child(2) { right: -14%; bottom: 0; }
+.fog-cover.lost { background: radial-gradient(circle at 50% 45%, rgba(250, 251, 253, 0.97), rgba(214, 220, 228, 0.92) 75%); }
+.fog-cover.lost .art { opacity: 1; }
+.fog-cover b {
+  position: relative;
+  font-family: var(--font-pop);
+  font-weight: 400;
+  font-size: 1.5rem;
+  color: #6c7383;
+}
+.reel.fog-lost { filter: none; }
+
+@media (max-height: 480px) and (orientation: landscape) {
+  .week.has-contract { top: 4px; transform: translate(-50%, 0); }
+  .wk-ribbon { min-height: 20px; }
+  .rb-name { font-size: 0.75rem; }
+}

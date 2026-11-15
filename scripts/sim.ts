@@ -7,7 +7,7 @@ import {
   takeOffer,
   buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, expand, expandPrice, canUse, cellAt, cellX, cellY, chooseCharm, fieldCells,
   isOpen, isRipe, newGame, nextTax, place, placePrice, pullWeed, resolveAllAuto, resolveFever, ripeGroup, sell, shapeCells,
-  startDay, upgradePrice, useSymbol, validTargets, type GameState,
+  startDay, takeContract, upgradePrice, useSymbol, validTargets, type GameState,
 } from '../src/game.ts';
 
 const runs = Number(process.argv[2] ?? 2000);
@@ -173,6 +173,9 @@ for (let n = 0; n < runs; n++) {
     const r = startDay(s, Math.random);
     if (!r.ok) break;
     resolveFever(s, Math.random);
+    // 週契約：CONTRACT=1 なら並んだ中から1つ受ける（受けないときは見送る）
+    if (s.contractOffer.length) takeContract(s, process.env.CONTRACT === '1' ? pick(s.contractOffer) : null);
+    if (s.contractDone) s.contractDone = null;
     if (s.charmOffer) chooseCharm(s, smart ? (s.charmOffer.find((id) => !CHARMS[id].special) ?? s.charmOffer[0]) : pick(s.charmOffer));
     resolveAllAuto(s, Math.random);
     // 毎日の仕入れ：買い物の優先順で欲しい物があれば取る。なければ見送る（袋を薄めない）
