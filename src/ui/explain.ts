@@ -106,7 +106,7 @@ function shapeGrid(shape: ShapeId, amount: string, center?: string): string {
 /** 手で使う成長系の、効く量（形のマスに書く数） */
 const AMOUNT: Partial<Record<SymbolId, [string, string?]>> = {
   rain: ['+1'], bigRain: ['+1', '+2'], sun: ['+1'], bigSun: ['+1'], thunder: ['+2'], raijin: ['+3'], bee: ['+1'], queenBee: ['+1'], moon: ['+1'],
-  hoe: [L('耕', 'T')], superFert: ['×2'],
+  hoe: [L('耕', 'T')], superFert: ['×1.5'],
 };
 
 const KIND_TAG = (sym: SymbolId): string => {
@@ -134,7 +134,7 @@ export function symbolCard(sym: SymbolId): string {
       <div class="ex-row">${shapeGrid('all', '+1')}</div>`;
   } else if (d.kind === 'manual' && (symbolShape(state, sym) || sym === 'fertilizer')) {
     const shape = sym === 'fertilizer' ? 'one' : symbolShape(state, sym)!;
-    const [amt, mid] = sym === 'fertilizer' ? ['×2'] : (AMOUNT[sym] ?? ['+1']);
+    const [amt, mid] = sym === 'fertilizer' ? ['×1.5'] : (AMOUNT[sym] ?? ['+1']);
     pic = `<div class="ex-row">${big(sym)}<span class="ex-arrow">▶</span>${shapeGrid(shape, amt, mid)}</div>`;
   } else {
     pic = `<div class="ex-row">${big(sym, d.rarity === 'bad' ? 'bad' : '')}</div>`;

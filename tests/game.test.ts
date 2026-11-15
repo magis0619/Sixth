@@ -1,7 +1,7 @@
 // ルール本体（src/game.ts）と遊ぶたびに増える要素（src/meta.ts）の単体テスト。
 // 画面に依存しない部分だけを確かめる。 npm test
 
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { CONFIG, CROPS, CUT, EVENT_CONDITIONS, FARMERS, THUNDER_LINES, UPGRADE_SYMBOL } from '../src/config.ts';
 import {
   animalGold, buy, buyPlace, drawDay, hasRanch, hiveBonus, isColorful, canPlace, canUse, cellMultiplier, cropPrice, isPond, waterWheels, checkReady, chooseCharm, endDay, evolveTools, expand, expandPrice,
@@ -884,6 +884,9 @@ describe('タヌキと畑の品', () => {
 });
 
 describe('週契約', () => {
+  // 週契約は一旦お休み中なので、確かめる間だけ戻す
+  beforeAll(() => ((CONFIG as { contractsOn: boolean }).contractsOn = true));
+  afterAll(() => ((CONFIG as { contractsOn: boolean }).contractsOn = false));
   const monday = (difficulty: number, week = 2): GameState => {
     const s = newGame({ shop: [], charmPool: [], difficulty });
     s.day = (week - 1) * CONFIG.taxPeriod;
@@ -1219,5 +1222,24 @@ describe('月の満ち欠け', () => {
     drawDay(s, Math.random);
     expect(s.results[0].moon).toBe(1);
     expect(canUse(s, 0, null)).toBe(false);
+  });
+});
+
+describe('肥料とつつき', () => {
+  it('肥料は×1.5。かぼちゃはカラスに食べられず、つつかれて売値−20%', () => {
+    const s = newGame({ shop: [], charmPool: [] });
+    s.day = 2;
+    const c = newCrop('pumpkin');
+    c.growth = 99;
+    const base = cropPrice(s, c);
+    c.fertilized = true;
+    expect(cropPrice(s, c)).toBe(Math.round(base * 1.5));
+    c.fertilized = false;
+    s.field[at(1, 1)] = c;
+    s.results = [reel('crow')];
+    const ev = resolveAuto(s, 0, () => 0.1);
+    expect(ev && ev.type === 'crow' && ev.pecked).toBe(true);
+    expect(s.field[at(1, 1)]).not.toBe(null);
+    expect(cropPrice(s, s.field[at(1, 1)]!)).toBe(Math.round(base * 0.8));
   });
 });

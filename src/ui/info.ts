@@ -118,7 +118,7 @@ export function plotInfo(cell: number): string | null {
       const mult = steps.reduce((m, x) => m * x.x, 1);
       sellLine = `<p>${L('今売ると', 'Sell now for')} <b>${gold(Math.round(base * mult))}</b></p><p class="sub">${gold(base)} ${steps.map((x) => `×${fmtMult(x.x)}（${x.label}）`).join(' ')}</p>`;
     }
-    parts.push(`${infoHead(art(FRUIT[crop.kind]), def.name, ripe ? L('実り', 'Ripe') : `${crop.growth}/${def.ripe}`)}<p>${L('売値', 'Price')} ${gold(def.price)}${crop.fertilized ? L('・肥料×2', ' · fertilized ×2') : ''}${def.big ? L('・2×2マス（列には入らない）', ' · 2×2 (not part of lines)') : ''}</p>${sellLine}`);
+    parts.push(`${infoHead(art(FRUIT[crop.kind]), def.name, ripe ? L('実り', 'Ripe') : `${crop.growth}/${def.ripe}`)}<p>${L('売値', 'Price')} ${gold(def.price)}${crop.fertilized ? L('・肥料×1.5', ' · fertilized ×1.5') : ''}${crop.pecked ? L('・つつかれ−20%', ' · pecked −20%') : ''}${def.big ? L('・2×2マス（列には入らない）', ' · 2×2 (not part of lines)') : ''}</p>${sellLine}`);
   } else if (state.weeds[cell]) {
     parts.push(`${infoHead(art('weed'), L('雑草', 'Weed'), L('お邪魔', 'Pest'))}<p>${L('タップで抜く', 'Tap to pull')}（${gold(weedCost(state))}）</p>`);
   } else if (isPond(state, cell)) {

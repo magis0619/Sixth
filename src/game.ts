@@ -17,6 +17,8 @@ export interface Crop {
   bonus: number;
   /** 2×2の大物（スイカ）の右・下・右下のマス：本体（左上）のマスの番号。本体と成長・売値は本体が持つ */
   anchor?: number;
+  /** カラスにつつかれた（かぼちゃ・スイカなど食べられない作物）。売値−20% */
+  pecked?: boolean;
 }
 
 export interface ReelResult {
@@ -840,6 +842,8 @@ function contractFits(state: GameState, id: ContractId): boolean {
 
 /** 月曜の朝の週契約3つ（難しい1から。最初の週は出ない） */
 export function rollContracts(state: GameState, rng: Rng): ContractId[] {
+  // 週契約は一旦お休み（仕組みは残してある。CONFIG.contractsOn で戻せる）
+  if (!CONFIG.contractsOn) return [];
   const max = contractMaxStars(state.difficulty);
   if (!max || state.day < CONFIG.taxPeriod + 1) return [];
   const items = CONTRACT_ORDER.filter((id) => CONTRACTS[id].stars <= max && contractFits(state, id)).map((id) => ({ id, w: CONTRACT_STAR_WEIGHTS[CONTRACTS[id].stars] }));
@@ -1243,7 +1247,7 @@ export function startDay(state: GameState, rng: Rng): EndDayResult {
 }
 
 export type AutoEvent =
-  | { type: 'crow'; cell: number | null; crop: Crop | null; eaten: boolean; toll: number; guarded: boolean }
+  | { type: 'crow'; cell: number | null; crop: Crop | null; eaten: boolean; toll: number; guarded: boolean; pecked?: boolean }
   | { type: 'bug'; cell: number | null; warded: boolean; damage: number; hen: boolean }
   | { type: 'coin'; amount: number }
   | { type: 'merchant'; mult: number }
@@ -1449,7 +1453,8 @@ function resolveAutoRaw(state: GameState, reel: number, rng: Rng): AutoEvent | n
       const toll = 2 * lv(state, 'crowToll') + 3 * state.charms.crowReturn;
       if (toll) earn(state, toll);
       // かぼちゃは大きくて重いので狙われない
-      const occupied = state.field.flatMap((c, i) => (c && !CROPS[c.kind].crowProof ? [i] : []));
+      // かぼちゃ・スイカのような重い作物も狙う（食べられないが、つついて売値を下げる）
+      const occupied = state.field.flatMap((c, i) => (c && (c.anchor === undefined) ? [i] : []));
       if (occupied.length === 0) return { type: 'crow', cell: null, crop: null, eaten: false, toll, guarded: false };
       // 一番やられたくない作物を狙う（かかしで守っていれば追い払われる）
       const cell = pickWorst(occupied, (i) => cropWorth(state, i), rng);
@@ -1465,6 +1470,11 @@ function resolveAutoRaw(state: GameState, reel: number, rng: Rng): AutoEvent | n
       if (rng() >= crowEatChance(state, r.power) * (crop && isRipe(crop) && state.charms.aging > 0 ? 1.5 : 1)) {
         state.stats.crowsMissed++;
         return { type: 'crow', cell, crop, eaten: false, toll, guarded: false };
+      }
+      // 重くて食べられない作物は、つつくだけ（売値−20%、1回まで）
+      if (crop && CROPS[crop.kind].crowProof) {
+        crop.pecked = true;
+        return { type: 'crow', cell, crop, eaten: false, toll, guarded: false, pecked: true };
       }
       removeCrop(state, cell);
       state.stats.cropsEaten++;
@@ -1692,7 +1702,7 @@ export function cropPrice(state: GameState, crop: Crop, cell?: number): number {
   // 売値のおまけは元の売値に比例（安い作物ほど得をしないように）。金運・大物狙いはその作物だけなので足し算のまま
   const charm = (def.gold ? 10 * lv(state, 'goldLuck') : def.price * 0.15 * lv(state, 'bumper')) + (def.big ? 50 * lv(state, 'bigGame') : 0);
   const hive = cell === undefined ? 0 : def.price * hiveBonus(state, cell);
-  const fert = crop.fertilized ? CONFIG.fertilizerMultiplier : 1;
+  const fert = (crop.fertilized ? CONFIG.fertilizerMultiplier : 1) * (crop.pecked ? 0.8 : 1);
   const tile = cell !== undefined && state.tiles[cell] === 'compost' ? 2 : 1;
   const fair = (1 + CONFIG.exhibitionBonus * state.charms.exhibition) * (isColorful(state) ? 1 + CONFIG.colorfulBonus : 1);
   // 組み合わせ：秋の月（かぼちゃ）・豊年祭（全部）

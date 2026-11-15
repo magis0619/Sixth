@@ -135,9 +135,9 @@ export const SYMBOLS: Record<SymbolId, SymbolDef> = {
   goldSeed: { id: 'goldSeed', name: '金の種', emoji: '🌟', kind: 'manual', desc: '金のとうもろこしを植える', feverDesc: '黄金の実り：大当たり×3', rarity: 'rare' },
   rain: { id: 'rain', name: '雨', emoji: '🌧️', kind: 'manual', shape: 'cross', desc: '縦横十字 成長+1', feverDesc: '虹：全作物の成長＋1', rarity: 'normal' },
   sun: { id: 'sun', name: '太陽', emoji: '☀️', kind: 'manual', shape: 'column', desc: '縦一列 成長+1', feverDesc: '夏祭り：今日の売値×2', rarity: 'normal' },
-  fertilizer: { id: 'fertilizer', name: '肥料', emoji: '🧪', kind: 'manual', desc: '売値×2', feverDesc: '堆肥：畑の全作物に肥料', rarity: 'normal' },
+  fertilizer: { id: 'fertilizer', name: '肥料', emoji: '🧪', kind: 'manual', desc: '売値×1.5', feverDesc: '堆肥：畑の全作物に肥料', rarity: 'normal' },
   bee: { id: 'bee', name: '蜂', emoji: '🐝', kind: 'manual', shape: 'x', desc: '斜め 成長+1', feverDesc: 'はちみつ：作物1つにつき＋4', rarity: 'normal' },
-  crow: { id: 'crow', name: 'カラス', emoji: '🐦', kind: 'auto', desc: '一番大事な作物を狙い、1/2で食べる（かぼちゃは平気）', feverDesc: '群れ：食べる確率 1/2 → 3/4', rarity: 'bad' },
+  crow: { id: 'crow', name: 'カラス', emoji: '🐦', kind: 'auto', desc: '一番大事な作物を狙い、1/2で食べる（かぼちゃ・スイカはつついて売値−20%）', feverDesc: '群れ：食べる確率 1/2 → 3/4', rarity: 'bad' },
   bug: { id: 'bug', name: '虫', emoji: '🐛', kind: 'auto', desc: '一番大事な作物の成長−1', feverDesc: '群れ：成長−2', rarity: 'bad' },
   coin: { id: 'coin', name: '金貨', emoji: '🪙', kind: 'auto', desc: '+金', feverDesc: '大当たり×3', rarity: 'normal' },
   merchant: { id: 'merchant', name: '商人', emoji: '🧑‍🌾', kind: 'auto', desc: '今日の売値×1.5', feverDesc: '大商い：実った作物を今すぐ×2で全部買い取る', rarity: 'normal' },
@@ -159,7 +159,7 @@ export const SYMBOLS: Record<SymbolId, SymbolDef> = {
   bigSun: { id: 'bigSun', name: '真夏の太陽', emoji: '☀️', kind: 'manual', shape: 'col3', desc: '縦3列 成長+1', feverDesc: '夏祭り：今日の売値×2', rarity: 'rare', base: 'sun' },
   raijin: { id: 'raijin', name: '雷神', emoji: '⚡', kind: 'manual', shape: 'row', desc: '横一列 成長+3', feverDesc: '大雷：全作物の成長＋1', rarity: 'rare', base: 'thunder' },
   queenBee: { id: 'queenBee', name: '女王蜂', emoji: '🐝', kind: 'manual', shape: 'xline', desc: '斜めの線いっぱい 成長+1', feverDesc: 'はちみつ：作物1つにつき＋4', rarity: 'rare', base: 'bee' },
-  superFert: { id: 'superFert', name: '極上の肥料', emoji: '🧪', kind: 'manual', shape: 'plus', desc: '十字の5マスの作物の売値×2', feverDesc: '堆肥：畑の全作物に肥料', rarity: 'rare', base: 'fertilizer' },
+  superFert: { id: 'superFert', name: '極上の肥料', emoji: '🧪', kind: 'manual', shape: 'plus', desc: '十字の5マスの作物の売値×1.5', feverDesc: '堆肥：畑の全作物に肥料', rarity: 'rare', base: 'fertilizer' },
   koban: { id: 'koban', name: '小判', emoji: '🪙', kind: 'auto', desc: '+12（年貢を納めるたびに+3）', feverDesc: '大当たり×3', rarity: 'rare', base: 'coin' },
   locust: { id: 'locust', name: 'イナゴ', emoji: '🦗', kind: 'auto', desc: '出るたびに1/2で袋に1匹増える・成長−1', feverDesc: '大群：増えるときは2匹', rarity: 'bad' },
 };
@@ -310,7 +310,10 @@ export const CONFIG = {
   sunGrowth: 1,
   beeGrowth: 1,
   /** 肥料の売値倍率（作物ごとの売値は CROPS） */
-  fertilizerMultiplier: 2,
+  // 肥料は×1.5（高い作物にかけて溜めると一撃が大きすぎた）
+  fertilizerMultiplier: 1.5,
+  /** 週契約（一旦お休み。仕組みは残してある） */
+  contractsOn: false,
   /** 金貨の額 */
   coinAmount: 3,
   /** カラスが狙った作物を食べる確率（外れると追い払える） */
@@ -819,9 +822,9 @@ if (EN) {
     goldSeed: ['Golden Seed', 'Plant golden corn', 'Golden harvest: jackpot ×3'],
     rain: ['Rain', 'Cross: growth +1', 'Rainbow: all crops +1'],
     sun: ['Sun', 'Column: growth +1', 'Summer festival: prices ×2 today'],
-    fertilizer: ['Fertilizer', 'Price ×2', 'Compost: fertilize every crop'],
+    fertilizer: ['Fertilizer', 'Price ×1.5', 'Compost: fertilize every crop'],
     bee: ['Bee', 'Diagonals: growth +1', 'Honey: +4g per crop'],
-    crow: ['Crow', 'Goes for your most valuable crop; eats it 1/2 of the time (not pumpkins)', 'Flock: chance 1/2 → 3/4'],
+    crow: ['Crow', 'Goes for your most valuable crop; eats it 1/2 of the time (pumpkins/melons get pecked: price −20%)', 'Flock: chance 1/2 → 3/4'],
     bug: ['Bug', 'Your most valuable crop: growth −1', 'Swarm: growth −2'],
     coin: ['Coin', '+gold', 'Jackpot ×3'],
     merchant: ['Merchant', 'Prices ×1.5 today', 'Big deal: buys all ripe crops now at ×2'],
@@ -842,7 +845,7 @@ if (EN) {
     bigSun: ['Midsummer Sun', '3 columns: growth +1', 'Summer festival: prices ×2 today'],
     raijin: ['Thunder God', 'Row: growth +3', 'Great thunder: all crops +1'],
     queenBee: ['Queen Bee', 'Full diagonals: growth +1', 'Honey: +4g per crop'],
-    superFert: ['Premium Fertilizer', 'Crops in a plus (5): price ×2', 'Compost: fertilize every crop'],
+    superFert: ['Premium Fertilizer', 'Crops in a plus (5): price ×1.5', 'Compost: fertilize every crop'],
     koban: ['Gold Koban', '+12g (+3g per tax paid)', 'Jackpot ×3'],
   };
   (Object.keys(sym) as SymbolId[]).forEach((id) => {

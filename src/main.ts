@@ -676,7 +676,9 @@ function renderField(): void {
       html += `<span class="crop"${ripe ? '' : ` style="--g:${(0.55 + 0.45 * (crop.growth / def.ripe)).toFixed(2)}"`}>${cropEmoji(crop)}</span>`;
       // 育っている間も何の作物か分かるように小さな札を出す
       if (!ripe) html += `<span class="badge-kind">${art(FRUIT[crop.kind])}</span>`;
-      if (crop.fertilized) html += `<span class="badge-fert" title="${L('肥料（売値×2）', 'Fertilized (price ×2)')}">${art('fertilizer')}</span>`;
+      if (crop.fertilized) html += `<span class="badge-fert" title="${L('肥料（売値×1.5）', 'Fertilized (price ×1.5)')}">${art('fertilizer')}</span>`;
+      // カラスにつつかれた跡（売値−20%）
+      if (crop.pecked) html += `<span class="badge-peck" title="${L('つつかれた（売値−20%）', 'Pecked (price −20%)')}">${art('crow')}</span>`;
       if (ripe) {
         // 列に入っていれば倍率、入っていなければ単品（半値）
         const mult = cellMultiplier(state, i);
@@ -1729,6 +1731,17 @@ async function resolveAutos(): Promise<void> {
     } else if (ev.cell === null) {
       autoOutcome[i] = L('空振り', 'Miss');
       sfx.crow();
+    } else if (ev.pecked) {
+      // 重い作物はつつくだけ：売値−20%
+      autoOutcome[i] = L('つついた', 'Pecked');
+      const plot = el.field.children[ev.cell] as HTMLElement;
+      await travel(edgeFrom(plot, true), plot, symHtml('crow'), false);
+      sfx.crow();
+      const p = center(plot);
+      burst(p.x, p.y, ['🪶', '💨'], 6, 40);
+      shake(plot, 5);
+      floatText(p.x, p.y - 20, L('つつかれた −20%', 'Pecked −20%'), { cls: 'bad pill', size: 0.85 });
+      renderField();
     } else if (!ev.eaten) {
       autoOutcome[i] = L('セーフ', 'Safe');
       const plot = el.field.children[ev.cell] as HTMLElement;
@@ -1968,7 +1981,7 @@ function onPlotTap(cell: number): void {
       if (big) affected.forEach((c) => pop(el.field.children[c] as HTMLElement, 1.12));
       burst(p.x, p.y, ['✨', '💜'], 10, 50);
       pop(plot, 1.15);
-      floatText(p.x, p.y - 20, L('売値×2', 'Price ×2'), { cls: 'combo', size: 0.9 });
+      floatText(p.x, p.y - 20, L('売値×1.5', 'Price ×1.5'), { cls: 'combo', size: 0.9 });
     }
     return;
   }
