@@ -744,13 +744,13 @@ describe('増えるイナゴ（難しい5）', () => {
 });
 
 describe('組み合わせ（同じ日にそろうと自動で起きる）', () => {
-  it('雨と雷が一緒に出ると雷雨：その日は雨が斜めにも効く', () => {
+  it('雨2つと雷がそろうと雷雨：その日は雨が斜めにも効く。2つだけでは起きない', () => {
     const s = game();
-    s.results = [reel('rain'), reel('sun'), reel('coin')];
-    refreshCombos(s);
-    expect(s.combos).toEqual(['sunshower']);
-    expect(shapeCells(s, 'cross', at(1, 1))).not.toContain(at(0, 0));
     s.results = [reel('rain'), reel('thunder'), reel('coin')];
+    refreshCombos(s);
+    expect(s.combos).toEqual([]);
+    expect(shapeCells(s, 'cross', at(1, 1))).not.toContain(at(0, 0));
+    s.results = [reel('rain'), reel('thunder'), reel('rain')];
     refreshCombos(s);
     expect(s.combos).toContain('thunderstorm');
     expect(shapeCells(s, 'cross', at(1, 1))).toContain(at(0, 0));
@@ -761,7 +761,7 @@ describe('組み合わせ（同じ日にそろうと自動で起きる）', () =
     s.results = [reel('seed', 3), reel('seed', 2), reel('crow')];
     refreshCombos(s);
     expect(s.combos).toEqual([]);
-    s.results = [reel('rain'), reel('sun'), reel('crow')];
+    s.results = [reel('rain'), reel('sun'), reel('seed', 2)];
     refreshCombos(s);
     expect(s.combos).toEqual(['sunshower']);
     endDay(s, () => 0.9);
@@ -784,9 +784,9 @@ describe('組み合わせ（同じ日にそろうと自動で起きる）', () =
     expect(seenRare).toBeLessThan(70);
   });
 
-  it('雷＋太陽＝青天の霹靂：雷が十字に効く', () => {
+  it('雷＋太陽2つ＝青天の霹靂：雷が十字に効く', () => {
     const s = game();
-    s.results = [reel('thunder'), reel('sun'), reel('crow')];
+    s.results = [reel('thunder'), reel('sun'), reel('sun')];
     refreshCombos(s);
     expect(s.combos).toContain('bolt');
     expect(symbolShape(s, 'thunder')).toBe('cross');
@@ -803,7 +803,7 @@ describe('組み合わせ（同じ日にそろうと自動で起きる）', () =
     expect(s.gold - before).toBe(CONFIG.coinAmount * 2);
   });
 
-  it('雨＋太陽＋満月＝豊年祭：全部の売値×1.5、かぼちゃの種＋満月＝秋の月：かぼちゃ×2', () => {
+  it('雨＋太陽＋満月＝豊年祭：全部の売値×1.5、かぼちゃの種＋満月＋雨＝秋の月：かぼちゃ×2', () => {
     const s = game();
     const tomato = newCrop('tomato');
     const pumpkin = newCrop('pumpkin');
@@ -812,7 +812,7 @@ describe('組み合わせ（同じ日にそろうと自動で起きる）', () =
     refreshCombos(s);
     expect(s.combos).toContain('festival');
     expect(cropPrice(s, tomato)).toBe(Math.round(base[0] * 1.5));
-    s.results = [reel('pumpkinSeed'), reel('moon'), reel('crow')];
+    s.results = [reel('pumpkinSeed'), reel('moon'), reel('rain')];
     refreshCombos(s);
     expect(cropPrice(s, pumpkin)).toBe(base[1] * 2);
     expect(cropPrice(s, tomato)).toBe(base[0]);
@@ -828,10 +828,10 @@ describe('組み合わせ（同じ日にそろうと自動で起きる）', () =
     expect(s.field[at(0, 0)]!.growth).toBe(1);
   });
 
-  it('蜂＋苺の種＝花畑：苺だけの列×1.5', () => {
+  it('蜂＋苺の種＋太陽＝花畑：苺だけの列×1.5', () => {
     const s = game();
     ripe(s, 'strawberry', [at(0, 0), at(1, 0), at(2, 0)]);
-    s.results = [reel('bee'), reel('berrySeed', 3), reel('crow')];
+    s.results = [reel('bee'), reel('berrySeed', 3), reel('sun')];
     refreshCombos(s);
     expect(multSteps(s, at(0, 0)).map((x) => x.label)).toContain('花畑');
   });
@@ -1065,9 +1065,9 @@ describe('合体', () => {
     autoOf(s, 0, () => 0.5);
     expect(s.gold - before).toBe(12);
   });
-  it('合体した雨も、太陽と一緒なら組み合わせ（天気雨）になる', () => {
+  it('合体した雨も、雨として組み合わせ（天気雨）に数える', () => {
     const s = market();
-    s.results = [reel('bigRain'), reel('sun')];
+    s.results = [reel('bigRain'), reel('sun'), reel('seed', 2)];
     refreshCombos(s);
     expect(s.combos).toContain('sunshower');
   });

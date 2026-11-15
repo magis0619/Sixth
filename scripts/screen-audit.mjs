@@ -299,7 +299,7 @@ for (const size of Object.keys(SIZES)) {
     // 初めての絵柄：説明を出す設定で、雷と虫と合体の雨が出た日
     const { p, ctx, errs } = await page(size, mod((s) => {
       s.day = 9; s.morning = true; s.results = [];
-      s.bag = Object.fromEntries(Object.keys(s.bag).map((k) => [k, 0])); s.bag.raijin = 1; s.bag.sun = 1;
+      s.bag = Object.fromEntries(Object.keys(s.bag).map((k) => [k, 0])); s.bag.raijin = 1; s.bag.sun = 2;
     }));
     await p.evaluate(() => { localStorage.removeItem('hatake-slot:noexplain'); sessionStorage.setItem('explain', '1'); });
     await p.click('#title-resume', f); await p.waitForTimeout(400);
