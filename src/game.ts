@@ -1801,7 +1801,8 @@ function sellRaw(state: GameState, cell: number, single = false): SellResult | n
   });
   // 大豊作：畑の植えられるマスを全部いっぺんに売った
   const plantable = fieldCells(state).filter((i) => !state.tools[i]).length;
-  const whole = !single && size >= plantable && size >= 9;
+  // 大豊作は畑を4×4以上に広げてから（3×3は全部植えるだけでそろってしまう）
+  const whole = !single && size >= plantable && size >= 16;
   // 巣箱は周りで列が売れるたびに経験を積む
   if (line) {
     fieldCells(state).forEach((i) => {

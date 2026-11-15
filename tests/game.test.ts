@@ -110,11 +110,16 @@ describe('列の収穫', () => {
     expect(multSteps(s, at(0, 0)).map((x) => x.label)).toContain('トマト祭り');
   });
 
-  it('畑を全部いっぺんに売ると大豊作（1プレイに1回だけ）', () => {
+  it('畑を全部いっぺんに売ると大豊作（4×4以上・1プレイに1回だけ）', () => {
+    const small = game();
+    ripe(small, 'tomato', fieldCells(small));
+    expect(sell(small, at(0, 0))!.bumper).toBe(0);
     const s = game();
+    s.cols = 4;
+    s.rows = 4;
     ripe(s, 'tomato', fieldCells(s));
     const r = sell(s, at(0, 0))!;
-    expect(r.size).toBe(9);
+    expect(r.size).toBe(16);
     expect(r.bumper).toBeGreaterThan(0);
     expect(s.charms.bumperHarvest).toBe(1);
     ripe(s, 'tomato', fieldCells(s));
@@ -700,14 +705,14 @@ describe('土地と建物', () => {
     expect(canBuyPlace(s, 'henhouse')).toBe(false);
   });
 
-  it('年貢の減免は1つで5%、上限25%', () => {
+  it('年貢の減免は1つで10%、上限30%', () => {
     const s = newGame();
     const base = nextTax(s).amount;
     s.charms.taxRelief = 1;
-    expect(nextTax(s).amount).toBe(Math.round(base * 0.95));
+    expect(nextTax(s).amount).toBe(Math.round(base * 0.9));
     s.charms.taxRelief = 3;
-    // 3つで金色（効果2倍）でも上限は25%
-    expect(nextTax(s).amount).toBe(Math.round(base * 0.75));
+    // 3つで金色（効果2倍）でも上限は30%
+    expect(nextTax(s).amount).toBe(Math.round(base * 0.7));
   });
 });
 
@@ -1126,11 +1131,11 @@ describe('曰く付きのお守り・市の日', () => {
     expect(s.charmOffer).toBe(null);
     expect(s.charms.aging + s.charms.bumper + s.charms.artisan).toBe(0);
   });
-  it('市の日（水・土）に売ると×1.5', () => {
+  it('市の日（水・土）に売ると×1.25', () => {
     const s = newGame({ shop: [], charmPool: [] });
     s.day = 2;
     const tue = cropPrice(s, newCrop('melon'));
     s.day = 3;
-    expect(cropPrice(s, newCrop('melon'))).toBe(Math.round(tue * 1.5));
+    expect(cropPrice(s, newCrop('melon'))).toBe(Math.round(tue * 1.25));
   });
 });

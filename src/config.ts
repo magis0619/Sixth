@@ -297,7 +297,7 @@ export const CONFIG = {
   } as Record<SymbolId, number>,
   /** 合体に要る同じ絵柄の枚数（市で1回に1種類まで） */
   /** 市の日（水・土）に売ると売値がこの倍率 */
-  marketDaySell: 1.5,
+  marketDaySell: 1.25,
   mergeNeed: 5,
   /** 合体のお金：その週の年貢の割合（最低 mergeCostMin） */
   mergeCostRate: 0.3,
@@ -401,7 +401,7 @@ export const CONFIG = {
   singleMult: 0.5,
   lineMult: 1.3,
   sameCropMult: 1.3,
-  crossBonus: 0.15,
+  crossBonus: 0.08,
 
   /** 強化の価格 */
   upgradePrices: {
@@ -481,7 +481,8 @@ export const CONFIG = {
   taxPeriod: 7,
   /** 1回目から順の年貢額。表を超えたら（エンドレス）直前の額 × taxGrowth */
   // 4回目からは中盤以後として×1.3（185→240・280→365・380→495・475→620・570→740）
-  taxSchedule: [5, 25, 80, 240, 365, 495, 620, 740],
+  // 序盤（1〜3回目）も、1週目の稼ぎに合わせて上げた（5・25・80 → 10・45・110）
+  taxSchedule: [10, 45, 110, 240, 365, 495, 620, 740],
   taxGrowth: 1.5,
   /** この回数の年貢を納めるとクリア（その後はエンドレス） */
   winTaxes: 7,
