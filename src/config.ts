@@ -388,8 +388,8 @@ export const CONFIG = {
   honeyPerCrop: 4,
 
   /** 注文：年貢の週ごとに1件。報酬 = 必要数 × 売値 × orderRewardMult ＋ orderRewardBase ×（週＋1） */
-  orderRewardMult: 1.5,
-  orderRewardBase: 5,
+  orderRewardMult: 0.6,
+  orderRewardBase: 3,
 
   /**
    * 列の収穫：縦・横・斜めに3つ以上そろった実は列ごとまとめて売る。

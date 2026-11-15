@@ -8323,3 +8323,40 @@ body:has(#overlay.show) :is(.machine, .machine *) {
   .ov-goal .art { width: 32px; height: 32px; }
   .ex-tap { margin-top: 4px; }
 }
+
+/* ==== 道のり（点線をやめて、木の溝と金の進み具合に） ==== */
+.week::before {
+  left: 7%;
+  right: 7%;
+  top: 23px;
+  height: 10px;
+  border: none;
+  border-radius: 5px;
+  background: #6e4224;
+  box-shadow: inset 0 2px 0 rgba(0, 0, 0, 0.35), 0 1px 0 rgba(255, 230, 190, 0.35);
+  translate: 0 -50%;
+}
+.week::after {
+  content: '';
+  position: absolute;
+  left: 7%;
+  top: 23px;
+  width: calc(86% * var(--wk-p, 0));
+  height: 10px;
+  border-radius: 5px;
+  background: linear-gradient(#ffe27a, #f2b91a 60%, #d99b06);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.15);
+  translate: 0 -50%;
+  transition: width 0.5s cubic-bezier(.3, .9, .4, 1);
+}
+.week > .wd { position: relative; z-index: 1; }
+/* 年貢の道のり：溝の区間、済んだ区間は金 */
+.tp-line {
+  height: 8px;
+  margin: 0 -3px;
+  border-radius: 4px;
+  background: #d9cdb5;
+  box-shadow: inset 0 2px 0 rgba(0, 0, 0, 0.18);
+}
+.tp-line.done { background: linear-gradient(#ffe27a, #f2b91a 60%, #d99b06); box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.15); }
+.tp-step, .tp-goal { position: relative; z-index: 1; }

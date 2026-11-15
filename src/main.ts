@@ -374,6 +374,8 @@ function renderWeek(): void {
     }).join('') + contractRibbon(),
   );
   el.week.classList.toggle('has-contract', !!state.contract);
+  // 道のりの進み具合（月＝0、日＝1）。済んだ区間は金色に塗る
+  el.week.style.setProperty('--wk-p', String(today ? (today - 1) / (CONFIG.taxPeriod - 1) : 0));
   el.week.setAttribute('aria-label', today ? L(`今日は${WEEKDAYS[today - 1]}曜日`, `Today: ${WEEKDAYS[today - 1]}`) : '');
 }
 

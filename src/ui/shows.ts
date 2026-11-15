@@ -80,7 +80,7 @@ async function showTaxProgress(): Promise<void> {
     ? `<div class="tp-card"><b class="tp-title">${L(`エンドレス ${paid - goal}回目`, `Endless #${paid - goal}`)}</b><span class="tp-sub">${L('年貢を納めた', 'Tax paid')}</span></div>`
     : `<div class="tp-card">
         <b class="tp-title">${L(`年貢 ${paid} / ${goal}`, `Tax ${paid} / ${goal}`)}</b>
-        <div class="tp-track">${Array.from({ length: goal }, (_, k) => `<span class="tp-step${k < paid - 1 ? ' done' : k === paid - 1 ? ' now' : ''}">${art('bale')}</span>`).join('<i class="tp-line"></i>')}<span class="tp-goal${paid >= goal ? ' reached' : ''}">${art('trophy')}</span></div>
+        <div class="tp-track">${Array.from({ length: goal }, (_, k) => `<span class="tp-step${k < paid - 1 ? ' done' : k === paid - 1 ? ' now' : ''}">${art('bale')}</span><i class="tp-line${k < paid - 1 || (k === goal - 1 && paid >= goal) ? ' done' : ''}"></i>`).join('')}<span class="tp-goal${paid >= goal ? ' reached' : ''}">${art('trophy')}</span></div>
         <span class="tp-sub">${paid >= goal ? L('クリア！', 'Cleared!') : L(`クリアまで あと${goal - paid}回`, `${goal - paid} more to clear`)}</span>
       </div>`;
   document.body.appendChild(root);
