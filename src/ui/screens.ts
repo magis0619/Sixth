@@ -490,10 +490,15 @@ function setModal(screen: string, cls: string, label: string, inner: string): HT
 /** 準備画面：今回ショップに並べる組み合わせを選んで始める（スタートとプレイの間） */
 /** 農家を選ぶ札：絵・名前・勝ち筋のひと言・最初に持っている物（増える絵柄・お守り・畑の品）と市に出やすい品 */
 function farmerCards(): string {
+  // 最初の袋に入るカードを全部（いつもの袋＋農家の増減）。農家で増えた絵柄は色つき
   const chips = (f: (typeof FARMERS)[number]) => [
-    ...(Object.entries(f.bag) as [SymbolId, number][]).filter(([, n]) => n > 0).map(([sym, n]) => `<span class="fm-chip">${art(sym as ArtId)}<b>+${n}</b></span>`),
-    ...(Object.keys(f.charms) as CharmId[]).map((id) => `<span class="fm-chip">${art(id as ArtId)}</span>`),
-    ...f.stock.map((id) => `<span class="fm-chip">${art(PLACE_ART[id])}</span>`),
+    ...SYMBOL_ORDER.flatMap((sym) => {
+      const n = Math.max(0, CONFIG.initialBag[sym] + (f.bag[sym] ?? 0));
+      const d = f.bag[sym] ?? 0;
+      return n > 0 ? [`<span class="fm-chip${d > 0 ? ' up' : d < 0 ? ' down' : ''}${SYMBOLS[sym].rarity === 'bad' ? ' bad' : ''}">${art(sym as ArtId)}<b>×${n}</b></span>`] : [];
+    }),
+    ...(Object.keys(f.charms) as CharmId[]).map((id) => `<span class="fm-chip up">${art(id as ArtId)}</span>`),
+    ...f.stock.map((id) => `<span class="fm-chip up">${art(PLACE_ART[id])}</span>`),
   ].join('');
   return `<p class="fm-lead">${L('農家を選ぶ', 'Choose your farmer')}</p><div class="farmers">${FARMERS.map((f) => {
     const on = f.id === meta.farmer;
@@ -501,7 +506,8 @@ function farmerCards(): string {
     return `<button class="farmer${on ? ' on' : ''}" data-farmer="${f.id}">
       <span class="fm-art">${art(f.art as ArtId)}</span>
       <span class="fm-text"><b>${f.name}</b><span class="fm-desc">${f.desc}</span>
-        <span class="fm-chips">${chips(f) || `<span class="fm-none">${L('いつもの袋', 'Standard bag')}</span>`}${favor.length || f.favorPlaces?.length ? `<span class="fm-favor">${L('市', 'Market')}${favor.map((id) => ADD_EMOJI[id]).join('')}${(f.favorPlaces ?? []).map((id) => art(PLACE_ART[id])).join('')}</span>` : ''}</span></span>
+        <span class="fm-row"><span class="fm-k">${L('袋', 'Bag')}</span><span class="fm-chips">${chips(f)}</span></span>
+        ${favor.length || f.favorPlaces?.length ? `<span class="fm-row"><span class="fm-k">${L('市', 'Market')}</span><span class="fm-chips">${favor.map((id) => `<span class="fm-chip">${ADD_EMOJI[id]}</span>`).join('')}${(f.favorPlaces ?? []).map((id) => `<span class="fm-chip">${art(PLACE_ART[id])}</span>`).join('')}</span></span>` : ''}</span>
       ${on ? `<span class="tag-stamp">${L('この人', 'Chosen')}</span>` : ''}</button>`;
   }).join('')}</div>`;
 }

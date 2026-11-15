@@ -6,7 +6,7 @@ import { CONFIG, CROPS, CUT, EVENT_CONDITIONS, THUNDER_LINES, UPGRADE_SYMBOL } f
 import {
   animalGold, buy, buyPlace, drawDay, hasRanch, hiveBonus, isColorful, canPlace, canUse, cellMultiplier, cropPrice, isPond, waterWheels, checkReady, chooseCharm, endDay, evolveTools, expand, expandPrice,
   fieldCells, isGolden, lv, multSteps, newCrop, newGame, nextTax, obstacleRule, place, pullWeed, resolveAuto, ripeGroup,
-  canBuy, canBuyPlace, canExpand, isMarketDay, takeOffer, refreshCombos, symbolShape, canPlaceAt, isPivotAdd, isPivotPlace, mustPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult,
+  canBuy, canBuyPlace, canExpand, isMarketDay, rollObstacles, takeOffer, refreshCombos, symbolShape, canPlaceAt, isPivotAdd, isPivotPlace, mustPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult,
 } from '../src/game.ts';
 import { recordRun, type MetaState } from '../src/meta.ts';
 import type { CropKind, SymbolId } from '../src/config.ts';
@@ -816,5 +816,31 @@ describe('農家（試し中）', () => {
     expect(rain.bag.sun).toBe(Math.max(0, base.bag.sun - 1));
     expect(base.farmer).toBe('basic');
     expect(base.stock).toEqual([]);
+  });
+});
+
+describe('タヌキと畑の品', () => {
+  it('タヌキは難しい4からしか年貢のあとに増えず、増えるときは1枚だけ', () => {
+    for (let n = 1; n <= 10; n++) for (let k = 0; k < 60; k++) expect(rollObstacles(n, Math.random, 0)).not.toContain('tanuki');
+    let seen = 0;
+    for (let k = 0; k < 400; k++) {
+      const got = rollObstacles(7, Math.random, CONFIG.tanukiFrom);
+      if (got.includes('tanuki')) {
+        seen++;
+        expect(got).toEqual(['tanuki']);
+      }
+    }
+    expect(seen).toBeGreaterThan(0);
+  });
+
+  it('市ごとに畑の品が入れ替わり、水路や井戸も並ぶ', () => {
+    const s = newGame();
+    const seen = new Set<string>();
+    for (let k = 0; k < 120; k++) {
+      drawDay(s, Math.random);
+      s.weeklyPlaces.forEach((id) => seen.add(id));
+    }
+    expect(seen.has('water')).toBe(true);
+    expect(seen.has('well')).toBe(true);
   });
 });

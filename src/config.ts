@@ -93,7 +93,7 @@ export type CharmId =
  */
 export const CUT = {
   symbols: ['melonSeed', 'goldSeed', 'clover', 'hoe', 'merchant', 'frost', 'mole'] as SymbolId[],
-  places: ['well', 'water'] as string[],
+  places: [] as string[],
   charms: ['coinPurse', 'crowToll', 'bargain', 'goldLuck', 'goldenWell', 'wheelwright', 'tillMaster', 'heater', 'crowReturn', 'sowing', 'prosperity'] as CharmId[],
 };
 
@@ -280,6 +280,8 @@ export const CONFIG = {
     { from: 5, count: 2, pool: ['bug', 'weed', 'frost', 'tanuki', 'mole', 'crow'] },
     { from: 7, count: 3, pool: ['bug', 'weed', 'frost', 'tanuki', 'mole', 'crow'] },
   ] as { from: number; count: number; pool: SymbolId[] }[],
+  /** タヌキは単体で凶悪なので、年貢のあとに増えるのは難しいこの段階から。増えるときはほかのお邪魔と一緒にしない */
+  tanukiFrom: 4,
   /** 雑草：抜く費用と、毎日となりの空きマスへ広がる確率 */
   weedPullCost: 3,
   weedSpreadChance: 0.5,

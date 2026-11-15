@@ -605,8 +605,12 @@ export function rollObstacles(n: number, rng: Rng, difficulty = 0): SymbolId[] {
   const rule = obstacleRule(n, difficulty);
   const count = rule.count;
   // 難しい5：年貢のたびに増えるお邪魔にイナゴも混ざる
-  const pool = (difficulty >= 5 ? [...rule.pool, 'locust' as SymbolId] : rule.pool).filter((s) => !CUT.symbols.includes(s));
-  return Array.from({ length: count }, () => pool[Math.floor(rng() * pool.length)]);
+  const pool = (difficulty >= 5 ? [...rule.pool, 'locust' as SymbolId] : rule.pool).filter(
+    (s) => !CUT.symbols.includes(s) && (s !== 'tanuki' || difficulty >= CONFIG.tanukiFrom),
+  );
+  const picks = Array.from({ length: count }, () => pool[Math.floor(rng() * pool.length)]);
+  // タヌキが来るときは、ほかのお邪魔と一緒にしない（1枚だけ）
+  return picks.includes('tanuki') ? ['tanuki'] : picks;
 }
 
 /** 次の日を始めて、そのままリールを回す（市の日は beginDay と spinDay の間に市を開く） */
@@ -632,8 +636,11 @@ export function beginDay(state: GameState, rng: Rng): void {
     // 相場は難しいモードから（marketFrom 以上）
     state.market = CONFIG.marketOn && state.difficulty >= CONFIG.marketFrom ? rollMarket(state, rng) : null;
   }
-  // お邪魔を消せる回数は市ごとに戻る
-  if (isMarketDay(state.day)) state.removedThisWeek = 0;
+  // 市ごとに：お邪魔を消せる回数が戻り、畑の品が入れ替わる
+  if (isMarketDay(state.day)) {
+    state.removedThisWeek = 0;
+    state.weeklyPlaces = rollWeeklyPlaces(state, rng);
+  }
 }
 
 /** リールを回す：袋から引いて、フィーバー・組み合わせを決める */

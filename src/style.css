@@ -7654,3 +7654,22 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 .tp-goal svg { width: 28px; height: 28px; }
 .tp-goal.reached { background: var(--gold); }
 .tp-goal.reached svg { opacity: 1; filter: none; }
+
+/* 農家の札：袋に入るカードを全部、市に出やすい品を別の行に */
+.fm-row { display: flex; align-items: flex-start; gap: 6px; margin-top: 3px; }
+.fm-k {
+  flex: none;
+  min-width: 2.4em;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #fff;
+  background: var(--ink-soft);
+  border-radius: 8px;
+  padding: 1px 4px;
+  margin-top: 4px;
+}
+.fm-row .fm-chips { margin-top: 0; }
+.fm-chip.up { background: #d8f0c4; box-shadow: inset 0 0 0 2px #5a9e33; }
+.fm-chip.down { opacity: 0.75; }
+.fm-chip.bad { background: #f6dde6; }
