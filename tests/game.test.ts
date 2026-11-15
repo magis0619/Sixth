@@ -6,7 +6,7 @@ import { CONFIG, CROPS, CUT, EVENT_CONDITIONS, FARMERS, THUNDER_LINES, UPGRADE_S
 import {
   animalGold, buy, buyPlace, drawDay, hasRanch, hiveBonus, isColorful, canPlace, canUse, cellMultiplier, cropPrice, isPond, waterWheels, checkReady, chooseCharm, endDay, evolveTools, expand, expandPrice,
   fieldCells, isGolden, lv, multSteps, newCrop, newGame, nextTax, obstacleRule, place, pullWeed, resolveAuto, ripeGroup,
-  canBuy, canBuyPlace, canExpand, isMarketDay, rollObstacles, takeOffer, refreshCombos, symbolShape, canPlaceAt, isPivotAdd, isPivotPlace, mustPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult, beginDay, takeContract, mergeable, mergeSymbol, mergeCost, bagCount, skipCharm, singleMult, resolveAuto as autoOf,
+  canBuy, canBuyPlace, canExpand, isMarketDay, rollObstacles, takeOffer, refreshCombos, symbolShape, canPlaceAt, isPivotAdd, isPivotPlace, mustPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult, beginDay, takeContract, mergeable, mergeSymbol, mergeCost, bagCount, skipCharm, singleMult, rollOffer, resolveAuto as autoOf,
 } from '../src/game.ts';
 import { CONTRACTS, contractGold } from '../src/contracts.ts';
 import { farmerUnlocked, recordRun, type MetaState } from '../src/meta.ts';
@@ -1137,5 +1137,39 @@ describe('曰く付きのお守り・市の日', () => {
     const tue = cropPrice(s, newCrop('melon'));
     s.day = 3;
     expect(cropPrice(s, newCrop('melon'))).toBe(Math.round(tue * 1.25));
+  });
+});
+
+describe('かかし・余った種・仕入れ', () => {
+  it('かかしの周りは虫・雑草からも守られる', () => {
+    const s = newGame({ shop: [], charmPool: [] });
+    s.day = 2;
+    s.field[at(1, 1)] = { ...newCrop('tomato'), growth: 2 };
+    s.tools[at(0, 0)] = 'scarecrow';
+    s.results = [reel('bug')];
+    const ev = resolveAuto(s, 0, () => 0.9);
+    expect(ev && ev.type === 'bug' && ev.warded).toBe(true);
+    expect(s.field[at(1, 1)]!.growth).toBe(2);
+    const w = newGame({ shop: [], charmPool: [] });
+    w.day = 2;
+    w.tools[at(1, 1)] = 'scarecrow';
+    w.results = [reel('weed')];
+    resolveAuto(w, 0, () => 0.9);
+    expect(w.weeds.some(Boolean)).toBe(false);
+  });
+  it('植えきれなかった種は1つ1金で売れる', () => {
+    const s = newGame({ shop: [], charmPool: [] });
+    s.day = 2;
+    s.results = [reel('seed', 3), reel('rain')];
+    const before = s.gold;
+    const r = endDay(s, () => 0.9);
+    expect(r.seedGold).toBe(3);
+    expect(s.gold - before).toBe(3);
+  });
+  it('市の仕入れには最初からトマトの種が候補に入る', () => {
+    const s = newGame({ shop: ['addRain', 'addSun'], charmPool: [] });
+    const seen = new Set<string>();
+    for (let k = 0; k < 50; k++) rollOffer(s, Math.random).forEach((id) => seen.add(id));
+    expect(seen.has('addSeed')).toBe(true);
   });
 });

@@ -249,8 +249,8 @@ export interface PlaceDef {
 }
 
 export const PLACES: Record<PlaceId, PlaceDef> = {
-  scarecrow: { id: 'scarecrow', kind: 'tool', name: 'かかし', desc: '周り8マスを守る', price: 20 },
-  bigScarecrow: { id: 'bigScarecrow', kind: 'tool', name: '大かかし', desc: '2マス以内を守る', price: null },
+  scarecrow: { id: 'scarecrow', kind: 'tool', name: 'かかし', desc: '周り8マスをカラス・虫・雑草から守る', price: 20 },
+  bigScarecrow: { id: 'bigScarecrow', kind: 'tool', name: '大かかし', desc: '2マス以内をカラス・虫・雑草から守る', price: null },
   well: { id: 'well', kind: 'tool', name: '井戸', desc: '上下左右 毎日+1', price: 60 },
   goldenWell: { id: 'goldenWell', kind: 'tool', name: '黄金の井戸', desc: '周り8マス 毎日+1', price: null },
   hive: { id: 'hive', kind: 'tool', name: '巣箱', desc: '周り8マス 売値+2・苺が毎晩育つ', price: 30 },
@@ -298,6 +298,8 @@ export const CONFIG = {
   /** 合体に要る同じ絵柄の枚数（市で1回に1種類まで） */
   /** 市の日（水・土）に売ると売値がこの倍率 */
   marketDaySell: 1.25,
+  /** 植えきれなかった種は、夜に1つこの額で売れる */
+  seedSellGold: 1,
   mergeNeed: 5,
   /** 合体のお金：その週の年貢の割合（最低 mergeCostMin） */
   mergeCostRate: 0.3,
@@ -329,10 +331,11 @@ export const CONFIG = {
    * from 回目の年貢から、pool の中から count 枚（表の最後の行より先はエンドレスでも同じ）
    */
   obstacleSchedule: [
-    { from: 1, count: 1, pool: ['bug', 'weed'] },
-    { from: 3, count: 1, pool: ['bug', 'weed', 'frost', 'tanuki', 'mole'] },
-    { from: 5, count: 2, pool: ['bug', 'weed', 'frost', 'tanuki', 'mole', 'crow'] },
-    { from: 7, count: 3, pool: ['bug', 'weed', 'frost', 'tanuki', 'mole', 'crow'] },
+    // カラスは中盤から多め（同じ名前を重ねるほど出やすい）。かかしで守る相手にする
+    { from: 1, count: 1, pool: ['bug', 'weed', 'crow'] },
+    { from: 3, count: 1, pool: ['bug', 'weed', 'crow', 'crow', 'frost', 'tanuki', 'mole'] },
+    { from: 5, count: 2, pool: ['bug', 'weed', 'crow', 'crow', 'crow', 'frost', 'tanuki', 'mole'] },
+    { from: 7, count: 3, pool: ['bug', 'weed', 'crow', 'crow', 'crow', 'frost', 'tanuki', 'mole'] },
   ] as { from: number; count: number; pool: SymbolId[] }[],
   /** タヌキは単体で凶悪なので、年貢のあとに増えるのは難しいこの段階から。増えるときはほかのお邪魔と一緒にしない */
   tanukiFrom: 4,
@@ -421,7 +424,8 @@ export const CONFIG = {
     addMerchant: 15,
     addClover: 20,
     addMoon: 60,
-    removeCrow: 15,
+    // カラスは消すより守る相手（高め）
+    removeCrow: 30,
     removeBug: 12,
     removeWeed: 12,
     removeTanuki: 15,
@@ -498,7 +502,7 @@ export const CONFIG = {
   /** 同じお守りをこの数そろえると金色に進化して効果が2倍 */
   goldenAt: 3,
   /** 大豊作の大当たり（1プレイに1回。年貢の回数で増える） */
-  bumperJackpot: 80,
+  bumperJackpot: 40,
 
   /** 演出のタイミング（ミリ秒） */
   timing: {
@@ -607,7 +611,7 @@ export const CHARM_CURSE: Partial<Record<CharmId, { text: (n: number) => string;
   seedSack: { text: (n) => `年貢+${10 * n}%` },
   sunBlessing: { text: () => '袋にカラス+2', bag: { crow: 2 } },
   queenHive: { text: () => '袋に虫+2', bag: { bug: 2 } },
-  scarecrow: { text: () => '袋にカラス+1', bag: { crow: 1 } },
+  scarecrow: { text: (n) => `年貢+${5 * n}%` },
   bumper: { text: (n) => `年貢+${10 * n}%` },
   bugWard: { text: () => '単品の売値がさらに半分' },
   artisan: { text: () => '年貢+20%' },
@@ -627,7 +631,7 @@ export const CHARMS: Record<CharmId, CharmDef> = {
   goldenWell: { id: 'goldenWell', tier: 'rare', name: '黄金の井戸', emoji: '⛲', desc: () => '黄金の井戸を置く（周り8マス 毎日+1）', max: Infinity },
   queenHive: { id: 'queenHive', tier: 'uncommon', name: '女王蜂の巣箱', emoji: '👑', desc: () => '女王蜂の巣箱を置く（周り8マス 売値+6）', max: 2 },
   bargain: { id: 'bargain', tier: 'uncommon', name: '値切り上手', emoji: '🏷️', desc: (n) => `強化の価格−${Math.min(50, 10 * n)}%`, max: 5 },
-  scarecrow: { id: 'scarecrow', tier: 'common', name: '大かかし', emoji: '🎃', desc: () => '大かかしを置く（2マス以内を守る）', max: 3 },
+  scarecrow: { id: 'scarecrow', tier: 'common', name: '大かかし', emoji: '🎃', desc: () => '大かかしを置く（2マス以内をカラス・虫・雑草から守る）', max: 3 },
   bumper: { id: 'bumper', tier: 'rare', name: '豊作', emoji: '🧺', desc: (n) => `金以外の作物 売値＋${3 * n}`, max: 3 },
   goldLuck: { id: 'goldLuck', tier: 'uncommon', name: '金運', emoji: '🐱', desc: (n) => `金のとうもろこし 売値＋${10 * n}`, max: 3 },
   bugWard: { id: 'bugWard', tier: 'common', name: '草よけ', emoji: '🌿', desc: (n) => `虫・雑草を${Math.round((1 - Math.pow(0.5, n)) * 100)}%防ぐ・草むしり無料`, max: 4 },
@@ -849,8 +853,8 @@ if (EN) {
   (Object.keys(crop) as CropKind[]).forEach((k) => (CROPS[k].name = crop[k]));
   Object.assign(SHAPE_NAMES, { cross: 'Cross', column: 'Column', row: 'Row', x: 'Diagonals', all: 'Whole field', one: '1 square', col3: '3 columns', xline: 'Diagonal lines', box: '3×3', plus: 'Plus (5)' });
   const place: Record<PlaceId, [string, string]> = {
-    scarecrow: ['Scarecrow', 'Guards the 8 plots around it'],
-    bigScarecrow: ['Big Scarecrow', 'Guards everything within 2 plots'],
+    scarecrow: ['Scarecrow', 'Guards the 8 plots around it from crows, bugs and weeds'],
+    bigScarecrow: ['Big Scarecrow', 'Guards everything within 2 plots from crows, bugs and weeds'],
     well: ['Well', 'Up/down/left/right +1 growth each day'],
     goldenWell: ['Golden Well', 'The 8 plots around +1 growth each day'],
     hive: ['Beehive', '8 plots around: price +2; strawberries grow nightly'],
@@ -893,7 +897,7 @@ if (EN) {
   Object.assign(CHARM_TIER_NAMES, { common: 'Common', uncommon: 'Uncommon', rare: 'Rare' });
   const curse: Partial<Record<CharmId, (n: number) => string>> = {
     gentleRain: () => '+1 crow in your bag', aging: () => 'Crows eat ripe crops more (×1.5)', seedSack: (n) => `Tax +${10 * n}%`,
-    sunBlessing: () => '+2 crows in your bag', queenHive: () => '+2 bugs in your bag', scarecrow: () => '+1 crow in your bag', bumper: (n) => `Tax +${10 * n}%`,
+    sunBlessing: () => '+2 crows in your bag', queenHive: () => '+2 bugs in your bag', scarecrow: (n) => `Tax +${5 * n}%`, bumper: (n) => `Tax +${10 * n}%`,
     bugWard: () => 'Singles sell for half again', artisan: () => 'Tax +20%', rancher: (n) => `Crop prices −${10 * n}%`, bigGame: (n) => `Line multiplier −${(0.2 * n).toFixed(1)}`,
     taxRelief: (n) => `Market prices +${30 * n}%`,
   };

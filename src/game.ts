@@ -569,7 +569,7 @@ export function nextTax(state: GameState): TaxInfo {
   // 年貢の減免：1つで5%、上限25%（強すぎたので弱めた）
   const relief = Math.min(0.3, 0.1 * lv(state, 'taxRelief'));
   // 曰く付きのお守りの代償：大きな種袋・豊作は1つ+10%、からくり職人は+20%
-  const curse = 1 + 0.1 * state.charms.seedSack + 0.1 * state.charms.bumper + 0.2 * state.charms.artisan;
+  const curse = 1 + 0.1 * state.charms.seedSack + 0.1 * state.charms.bumper + 0.2 * state.charms.artisan + 0.05 * state.charms.scarecrow;
   // 難しい1〜5：年貢×1.3・1.4・1.5・1.6・1.7
   const half = (state.halfTax ? 0.5 : 1) * (state.difficulty >= 1 ? 1.2 + 0.1 * state.difficulty : 1);
   return { dueDay, daysLeft: dueDay - state.day, amount: Math.round(taxAmount(index) * (1 - relief) * curse * (1 - (state.taxCut ?? 0)) * half), index };
@@ -578,8 +578,8 @@ export function nextTax(state: GameState): TaxInfo {
 // ---- 1日の進行 ----
 
 export type EndDayResult =
-  | { ok: true; tax: number | null; expired: number; cleared: boolean }
-  | { ok: false; tax: number; expired: number; cleared: false };
+  | { ok: true; tax: number | null; expired: number; cleared: boolean; seedGold: number }
+  | { ok: false; tax: number; expired: number; cleared: false; seedGold: number };
 
 /**
  * 今日を終える。期日なら年貢を徴収し、払えればお守りの候補を用意する（charmOffer）。
@@ -588,6 +588,9 @@ export type EndDayResult =
 function endDayRaw(state: GameState, rng: Rng): EndDayResult {
   const expired = state.results.filter((r) => !r.used && SYMBOLS[r.symbol].kind === 'manual').length;
   state.stats.expired = (state.stats.expired ?? 0) + expired;
+  // 植えきれなかった種は、1つ1金で売れる（あふれた種がむだにならないように）
+  const seedGold = state.results.reduce((n, r) => n + (SEEDS[r.symbol] && r.fog !== 'lost' ? Math.max(0, r.left) : 0), 0) * CONFIG.seedSellGold;
+  if (seedGold) earn(state, seedGold);
   // 熟成：実ったまま日をまたいだ作物の売値が上がる
   if (state.day > 0 && lv(state, 'aging') > 0) {
     state.field.forEach((c) => {
@@ -614,11 +617,11 @@ function endDayRaw(state: GameState, rng: Rng): EndDayResult {
   state.fever = [];
   state.bred = [];
   state.priceMult = 1;
-  if (!(state.day > 0 && state.day % CONFIG.taxPeriod === 0)) return { ok: true, tax: null, expired, cleared: false };
+  if (!(state.day > 0 && state.day % CONFIG.taxPeriod === 0)) return { ok: true, tax: null, expired, cleared: false, seedGold };
   const t = nextTax(state);
   if (state.gold < t.amount) {
     state.over = true;
-    return { ok: false, tax: t.amount, expired, cleared: false };
+    return { ok: false, tax: t.amount, expired, cleared: false, seedGold };
   }
   state.gold -= t.amount;
   state.stats.taxTotal = (state.stats.taxTotal ?? 0) + t.amount;
@@ -638,7 +641,7 @@ function endDayRaw(state: GameState, rng: Rng): EndDayResult {
   state.charmOffer = rollCharmOffer(state, rng);
   const cleared = !state.cleared && state.taxesPaid >= CONFIG.winTaxes;
   if (cleared) state.cleared = true;
-  return { ok: true, tax: t.amount, expired, cleared };
+  return { ok: true, tax: t.amount, expired, cleared, seedGold };
 }
 
 /** n 回目の年貢を納めたときに袋に増えるお邪魔 */
@@ -1050,7 +1053,8 @@ export function rollWeekly(state: GameState, rng: Rng): AddUpgradeId[] {
 
 /** 今日の仕入れ：準備で選んだ品（出やすい）・解放済みの品から。レア（満月・金の種）はたまに1つだけ混ざる */
 export function rollOffer(state: GameState, rng: Rng): AddUpgradeId[] {
-  const ids = [...new Set<AddUpgradeId>([...state.shop, ...state.pool])].filter((id) => !isRareOffer(id) && !isCutAdd(id));
+  // トマトの種は最初から必ず候補に入れる（雨・太陽の2択にならないように）
+  const ids = [...new Set<AddUpgradeId>(['addSeed', ...state.shop, ...state.pool])].filter((id) => !isRareOffer(id) && !isCutAdd(id));
   const picks = pickWeighted(ids.map((id) => ({ id, w: state.shop.includes(id) ? 2 : 1 })), CONFIG.dailyOfferCount, rng);
   // たまにレア（満月・金の種）が1つ混ざる
   const rares = CONFIG.rareOffers.filter((id) => !isCutAdd(id));
@@ -1256,6 +1260,13 @@ function pickWorst(cells: number[], score: (i: number) => number, rng: Rng): num
   return best;
 }
 
+/** かかしが追い払った：かかしは経験を積む（進化に使う） */
+function scared(state: GameState, cell: number): void {
+  state.stats.crowsMissed++;
+  guardians(state, cell).forEach((g) => state.toolXp[g]++);
+  evolveTools(state);
+}
+
 /** 雑草の狙い：周りに作物が多い空きマス（列を作らせない） */
 function weedWorth(state: GameState, cell: number): number {
   return around(state, cell, 1).reduce((n, i) => n + (state.field[i] ? 1 + cropWorth(state, i) / 1000 : 0), 0);
@@ -1291,6 +1302,11 @@ function resolveAutoRaw(state: GameState, reel: number, rng: Rng): AutoEvent | n
       const cell = pickWorst(targets, (i) => cropWorth(state, i), rng);
       // 鶏小屋の周りの虫は食べられてしまう
       if (nearHenhouse(state, cell)) return { type: 'bug', cell, warded: true, damage: 0, hen: true };
+      // かかしの周りの虫は追い払われる
+      if (isGuarded(state, cell)) {
+        scared(state, cell);
+        return { type: 'bug', cell, warded: true, damage: 0, hen: false };
+      }
       if (rng() < 1 - Math.pow(0.5, lv(state, 'bugWard'))) return { type: 'bug', cell, warded: true, damage: 0, hen: false };
       const crop = state.field[cell]!;
       const damage = Math.min(crop.growth, CONFIG.bugDamage * r.power);
@@ -1304,6 +1320,11 @@ function resolveAutoRaw(state: GameState, reel: number, rng: Rng): AutoEvent | n
       const targets = state.field.flatMap((c, i) => (c && c.growth > 0 && !isRipe(c) ? [i] : []));
       if (!targets.length) return { type: 'locust', cell: null, damage: 0, bred };
       const cell = pickWorst(targets, (i) => cropWorth(state, i), rng);
+      // かかしの周りでは食べられない
+      if (isGuarded(state, cell)) {
+        scared(state, cell);
+        return { type: 'locust', cell, damage: 0, bred };
+      }
       state.field[cell]!.growth -= 1;
       return { type: 'locust', cell, damage: 1, bred };
     }
@@ -1315,6 +1336,11 @@ function resolveAutoRaw(state: GameState, reel: number, rng: Rng): AutoEvent | n
         if (!open.length) break;
         // 作物に囲まれた空きマスに生える（列をふさぐ）
         const c = pickWorst(open, (i) => weedWorth(state, i), rng);
+        // かかしの周りには生えない
+        if (isGuarded(state, c)) {
+          scared(state, c);
+          return { type: 'weed', cells, warded: true };
+        }
         state.weeds[c] = true;
         cells.push(c);
       }
@@ -2064,7 +2090,7 @@ export function endDay(state: GameState, rng: Rng): EndDayResult {
   const before = state.gold;
   const expiredNames = state.results.filter((r) => !r.used && SYMBOLS[r.symbol].kind === 'manual').map((r) => SYMBOLS[r.symbol].name);
   const res = endDayRaw(state, rng);
-  if (state.day > 0) glog(state, `夜 所持${state.gold}${expiredNames.length ? ` 使わず消えた:${expiredNames.join('・')}` : ''}${state.nightIncome && state.nightIncome.wheel + state.nightIncome.fish + state.nightIncome.animals ? ` 夜の収入+${state.nightIncome.wheel + state.nightIncome.fish + state.nightIncome.animals}` : ''}`);
+  if (state.day > 0) glog(state, `夜 所持${state.gold}${res.seedGold ? ` 余った種+${res.seedGold}` : ''}${expiredNames.length ? ` 使わず消えた:${expiredNames.join('・')}` : ''}${state.nightIncome && state.nightIncome.wheel + state.nightIncome.fish + state.nightIncome.animals ? ` 夜の収入+${state.nightIncome.wheel + state.nightIncome.fish + state.nightIncome.animals}` : ''}`);
   if (res.tax !== null) {
     glog(state, res.ok ? `年貢${state.taxesPaid}回目 ${res.tax}を払った（${before}→${state.gold}）${state.lastObstacles.length ? ` お邪魔+${state.lastObstacles.map((o) => SYMBOLS[o].name).join('・')}` : ''}${res.cleared ? ' ★クリア' : ''}` : `年貢 ${res.tax}が払えず終わり（所持${state.gold}）`);
     if (state.charmOffer) glog(state, `お守り候補 ${state.charmOffer.map((id) => CHARMS[id].name).join('/')}`);

@@ -1084,6 +1084,15 @@ async function onSpin(): Promise<void> {
 
   const res = endDay(state, rng);
   autoOutcome = {};
+  // 植えきれなかった種は1つ1金で売れる：リールから所持金へ
+  if (res.seedGold) {
+    const land = holdGold(res.seedGold);
+    const q = center(el.reels);
+    floatText(q.x, q.y - 30, `${art('seed')} ${money(res.seedGold)}`, { cls: 'gold', size: 0.9 });
+    flyTo(q, el.goldBox, '🪙', Math.min(5, res.seedGold), land);
+    hintOnce('seed-sell', `${art('seed')} ${L('植えきれなかった種は、<b>1つ1金</b>で売れる', 'Seeds you couldn’t plant sell for <b>1 gold each</b>')}`);
+    await sleep(EVENT_GAP);
+  }
   await showNightIncome();
   if (res.tax !== null) {
     await sleep(EVENT_GAP);
@@ -1964,8 +1973,8 @@ function onPlotTap(cell: number): void {
 /** 初めて出会ったお邪魔のひと言 */
 const PEST_HINTS: Partial<Record<SymbolId, string>> = {
   crow: L('<b>一番大事な作物</b>を狙い、1/2で食べる。かかしの周りは守られる', 'Goes for your <b>most valuable crop</b> and eats it half the time. Scarecrows guard nearby plots'),
-  bug: L('<b>もうすぐ実る作物</b>の成長−1。鶏小屋の周りでは食べてくれる', 'Growth −1 on the crop <b>closest to ripe</b>. Henhouses eat nearby bugs'),
-  weed: L('<b>作物に囲まれた空きマス</b>をふさいで広がる。タップで抜ける', 'Blocks <b>empty plots between crops</b> and spreads. Tap to pull'),
+  bug: L('<b>もうすぐ実る作物</b>の成長−1。かかしの周りは守られ、鶏小屋の周りでは食べてくれる', 'Growth −1 on the crop <b>closest to ripe</b>. Henhouses eat nearby bugs'),
+  weed: L('<b>作物に囲まれた空きマス</b>をふさいで広がる。かかしの周りには生えない。タップで抜ける', 'Blocks <b>empty plots between crops</b> and spreads. Tap to pull'),
   tanuki: L('実った一番高い作物を盗む。かかしの周りには来ない', 'Steals your priciest ripe crop. Stays away from scarecrows'),
   frost: L('マスが3日凍る。太陽で溶かせる', 'Freezes a plot for 3 days. Sun melts it'),
   mole: L('作物を隣の空きマスへ押し出す。列が崩れることも', 'Pushes a crop into a nearby empty plot, which can break a line'),
