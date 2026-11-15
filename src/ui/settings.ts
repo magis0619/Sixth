@@ -8,6 +8,7 @@ import { $, el, meta } from './store.ts';
 import { saveMeta } from '../meta.ts';
 import { art } from '../art.ts';
 import { buildLogText } from './save.ts';
+import { resetExplains } from './explain.ts';
 
 export interface Settings {
   /** 効果音の大きさ（0〜1） */
@@ -109,6 +110,7 @@ export function showSettings(onClose?: () => void): void {
         ${toggle('set-calm', L('演出控えめ', 'Calm effects'), isCalm())}
         ${TELEMETRY_URL ? toggle('set-telemetry', L('遊んだ記録を送る', 'Send play stats'), settings.telemetry) : ''}
         <button class="set-row" id="set-tutorial"><span>${art('question')} ${meta.tutorialDone ? L('チュートリアルをもう一度', 'Replay the tutorial') : L('チュートリアル：次にスタートを押すと始まる', 'Tutorial: starts on your next Start')}</span></button>
+        <button class="set-row" id="set-explain"><span>${art('book')} ${L('説明カードをもう一度出す', 'Show the picture guides again')}</span></button>
         ${DEV_DATA_SWAP ? `<div class="dev-swap"><span class="dev-tag">${L('試し用', 'Testing')}</span>${hasBackup()
           ? `<button class="set-row" id="set-restore"><span>${L('元のデータに戻す', 'Restore my data')}</span></button>`
           : `<button class="set-row" id="set-zero"><span>${L('ゼロデータで試す（今のデータは取っておく）', 'Try as a new player (keeps your data)')}</span></button>`}</div>` : ''}
@@ -161,6 +163,11 @@ export function showSettings(onClose?: () => void): void {
       paint();
     });
     document.getElementById('set-zero')?.addEventListener('click', () => toZeroData());
+    $('set-explain').addEventListener('click', (e) => {
+      resetExplains();
+      sfx.select();
+      (e.currentTarget as HTMLElement).querySelector('span')!.lastChild!.textContent = ` ${L('次に出会ったときに出ます', 'They will show again')}`;
+    });
     document.getElementById('set-log')?.addEventListener('click', () => {
       sfx.select();
       showLogExport(paint);

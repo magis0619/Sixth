@@ -120,6 +120,8 @@ async function page(size, run) {
     if (!measure) localStorage.setItem('hatake-slot:calm', '1');
     // 表示の言語（UI_LANG=en で英語の画面を確かめる）
     localStorage.setItem('hatake-slot:lang', lang);
+    // 一枚絵の説明は別の場面で確かめる（ふだんは出さない）
+    if (!sessionStorage.getItem('explain')) localStorage.setItem('hatake-slot:noexplain', '1');
     // チュートリアルは別に確かめる（ここでは済ませた状態から）
     localStorage.setItem('hatake-slot:meta', JSON.stringify({ tutorialDone: true }));
     if (r) localStorage.setItem('hatake-slot:run', r);
@@ -280,6 +282,39 @@ for (const size of Object.keys(SIZES)) {
     await p.click('.tab[data-sheet="bag"]', f); await p.waitForTimeout(400);
     await snap(p, size, '30-merged-bag');
     if (errs.length) report.push({ size, key: 'errors-n', issues: errs });
+    await ctx.close();
+  }
+  // 一枚絵の説明：全体像（遊び方から）・絵柄（図鑑から）・組み合わせ
+  {
+    const { p, ctx, errs } = await page(size);
+    await p.click('#title-help', f); await p.waitForTimeout(300);
+    await p.click('#help-overview', f); await p.waitForTimeout(700);
+    await snap(p, size, '31-explain-overview');
+    await p.click('.explain-layer', f); await p.waitForTimeout(400);
+    await p.click('#help-close', f);
+    if (errs.length) report.push({ size, key: 'errors-o', issues: errs });
+    await ctx.close();
+  }
+  {
+    // 初めての絵柄：説明を出す設定で、雷と虫と合体の雨が出た日
+    const { p, ctx, errs } = await page(size, mod((s) => {
+      s.day = 9; s.morning = true; s.results = [];
+      s.bag = Object.fromEntries(Object.keys(s.bag).map((k) => [k, 0])); s.bag.raijin = 1; s.bag.sun = 1;
+    }));
+    await p.evaluate(() => { localStorage.removeItem('hatake-slot:noexplain'); sessionStorage.setItem('explain', '1'); });
+    await p.click('#title-resume', f); await p.waitForTimeout(400);
+    await p.evaluate(() => document.getElementById('spin').click());
+    for (let k = 0; k < 40; k++) { await p.waitForTimeout(150); if (await p.$('.explain-card')) break; }
+    await p.waitForTimeout(500);
+    await snap(p, size, '32-explain-symbol');
+    for (let k = 0; k < 40; k++) {
+      await p.waitForTimeout(300);
+      if (!(await p.$('.explain-layer'))) continue;
+      await p.waitForTimeout(500);
+      if (await p.$('.ex-row.combo')) { await snap(p, size, '33-explain-combo'); break; }
+      await p.click('.explain-layer', f).catch(() => {});
+    }
+    if (errs.length) report.push({ size, key: 'errors-p', issues: errs });
     await ctx.close();
   }
   // 年貢が払えずゲームオーバー

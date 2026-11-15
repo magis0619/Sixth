@@ -24,6 +24,7 @@ import { applySettings, showSettings } from './ui/settings.ts';
 import { accept, reject } from './ui/states.ts';
 import { renderDanger, renderSky, setupScene } from './ui/scene.ts';
 import { blockLongPress, setupLongPress } from './ui/info.ts';
+import { comboCard, explainOnce, markTutorialSymbols, symbolCard } from './ui/explain.ts';
 import { contractRibbon, contractSay, showContractDone, showContractOffer } from './ui/contract-ui.ts';
 import { CUTIN_MS, comboBanner, feverBanner, playCutIn, showCharmOffer, showTaxStamp, witherField } from './ui/shows.ts';
 
@@ -1121,7 +1122,12 @@ async function spinMorning(): Promise<void> {
   const show = planShow();
   render();
   await spinReels(show);
-  if (state.combos.length) await showCombos();
+  // 初めて出た絵柄は、一枚絵で説明（お邪魔は効く前に）
+  for (const s of [...new Set(state.results.map((r) => r.symbol))]) await explainOnce(`ex:sym:${s}`, symbolCard(s), !!tut);
+  if (state.combos.length) {
+    await showCombos();
+    for (const id of state.combos) await explainOnce(`ex:combo:${id}`, comboCard(id), !!tut);
+  }
   if (state.fever.length) {
     hintOnce('fever', `${art('flame')} ${L('同じ絵柄が<b>3つそろうとフィーバー</b>。<br>良い絵柄は特別な効果と<b>大当たり</b>、お邪魔は効果が<b>2倍</b>', 'Match <b>3 of the same symbol for a FEVER</b>.<br>Good symbols give a special effect and a <b>jackpot</b>; pests hit <b>twice as hard</b>')}`, 6000);
     await showFever();
@@ -2442,6 +2448,8 @@ function endTutorial(): void {
   document.getElementById('tut-hand')?.remove();
   meta.tutorialDone = true;
   saveMeta(meta);
+  // チュートリアルで教えた絵柄は、説明カードを出さない
+  markTutorialSymbols();
   tutFocus.forEach((e) => e.classList.remove('coach-focus'));
   tutFocus = [];
   document.getElementById('coach')?.remove();
@@ -2662,7 +2670,7 @@ document.querySelector('.machine-top')!.addEventListener('click', () => {
 // 窓（お守り選び・確認など）や案内の吹き出しを押したときは、選ぶための操作なので早送りにしない
 document.addEventListener('pointerdown', (e) => {
   if (!ui.busy) return;
-  if ((e.target as Element | null)?.closest('#overlay.show, .coach, .sheet')) return;
+  if ((e.target as Element | null)?.closest('#overlay.show, .coach, .sheet, .explain-layer')) return;
   setHurry(true);
 }, { capture: true });
 // 押した瞬間の手応え

@@ -18,6 +18,7 @@ import { clearRun, loadBest, loadRun, saveBest } from './save.ts';
 import { stopHeartbeat } from './scene.ts';
 import { showSettings } from './settings.ts';
 import { FEVER_FX } from './shows.ts';
+import { explainOnce, overviewCard, showExplain, symbolCard } from './explain.ts';
 
 /** 結果画面。cleared=true はクリア後にここで終えたとき */
 export function showGameOver(endedAfterClear = false): void {
@@ -144,6 +145,7 @@ export type HelpTab = 'rules' | 'symbols' | 'combos' | 'charms';
 export function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
   const tabs: [HelpTab, string][] = [['rules', L('遊び方', 'How to play')], ['symbols', L('絵柄', 'Symbols')], ['combos', L('組み合わせ', 'Combos')], ['charms', L('お守り', 'Charms')]];
   const rules = `
+    <button class="set-row help-overview" id="help-overview"><span>${art('calendar')} ${L('全体の流れを一枚絵で見る', 'See the whole game in one picture')}</span></button>
     <ul class="help-list icons">
       <li>${art('calendar')}<span>${L('1回転＝1日', 'One spin = one day')}</span></li>
       <li>${art('seed')}<span>${L('光る出目 → マスをタップ', 'Tap a glowing reel → tap a plot')}</span></li>
@@ -162,7 +164,7 @@ export function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
   const symbols = SYMBOL_ORDER.filter((id) => !CUT.symbols.includes(id) || state.bag[id] > 0).map((id) => {
     const d = SYMBOLS[id];
     if (!meta.seenSymbols.includes(id) && state.bag[id] === 0) return secret(symHtml(id));
-    return `<div class="dex-row${d.rarity === 'bad' ? ' bad' : ''}"><span class="e">${symHtml(id)}</span>
+    return `<div class="dex-row${d.rarity === 'bad' ? ' bad' : ''}" data-ex-sym="${id}"><span class="e">${symHtml(id)}</span>
       <div><b>${d.name}</b> <span class="tag-k">${d.kind === 'manual' ? L('手動', 'Tap') : L('自動', 'Auto')}</span>
       <span class="dex-desc">${d.desc}</span>
       <span class="dex-fever">${art('flame')}${FEVER_FX[id].ico ? art(FEVER_FX[id].ico!) : ''}${FEVER_FX[id].text}</span></div>
@@ -216,6 +218,13 @@ export function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
   el.overlay.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((b) =>
     b.addEventListener('click', () => showHelp(b.dataset.tab as HelpTab, onClose)),
   );
+  // 全体の流れ・絵柄の一枚絵をもう一度
+  el.overlay.firstElementChild?.addEventListener('click', (e) => {
+    const t = e.target as HTMLElement;
+    if (t.closest('#help-overview')) void showExplain(overviewCard());
+    const row = t.closest<HTMLElement>('[data-ex-sym]');
+    if (row) void showExplain(symbolCard(row.dataset.exSym as SymbolId));
+  });
   $('help-close').addEventListener('click', () => {
     el.overlay.classList.remove('show');
     el.overlay.innerHTML = '';
@@ -298,11 +307,12 @@ export function showTitle(): void {
       </div>
     </div>`;
   el.overlay.classList.add('show', 'title');
-  $('title-start').addEventListener('click', () => {
+  $('title-start').addEventListener('click', async () => {
     unlockAudio();
     sfx.select();
-    // 初めての人は準備画面を飛ばして、そのままチュートリアル（ふつうの農家・出目も市も決まった3日間）
+    // 初めての人は、まずゲームの全体像を一枚絵で。それから準備画面を飛ばしてチュートリアル（ふつうの農家・出目も市も決まった3日間）
     if (!meta.tutorialDone && !loadRun()) {
+      await explainOnce('ex:overview', overviewCard());
       hooks.startGame();
       return;
     }
