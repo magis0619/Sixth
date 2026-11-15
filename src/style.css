@@ -8308,3 +8308,18 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 .ov-goal span { font-size: 0.8125rem; color: #c93c2b; font-weight: 700; }
 .help-overview { margin-bottom: 10px; }
 .dex-row[data-ex-sym] { cursor: pointer; }
+/* 横持ち：説明カードを横に広げて詰める（下が切れないように） */
+@media (max-height: 480px) and (orientation: landscape) {
+  .explain-card { width: min(760px, 100%); padding: 10px 14px 6px; }
+  .ex-title { font-size: 1.15rem; margin: 0 0 4px; }
+  .ex-kicker { margin-bottom: 2px; }
+  .ex-art { width: 72px; height: 72px; }
+  .ov-loop { margin: 2px 0 6px; }
+  .ov-step { flex-direction: row; padding: 6px; }
+  .ov-pic .art { width: 24px; height: 24px; }
+  .ov-week span { width: 30px; height: 30px; justify-self: center; }
+  .ov-legend { flex-direction: row; justify-content: center; gap: 16px; margin: 4px 0; }
+  .ov-goal { padding: 4px 10px; }
+  .ov-goal .art { width: 32px; height: 32px; }
+  .ex-tap { margin-top: 4px; }
+}
