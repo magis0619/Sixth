@@ -78,6 +78,8 @@ export function loadMeta(): MetaState {
     if ((JSON.parse(raw) as Partial<MetaState>).tutorialDone === undefined) m.tutorialDone = m.plays > 0;
     // レア仕入れになった絵柄（満月・金の種）は、ショップに並べる組み合わせから外す
     m.loadout = m.loadout.filter((id) => !CONFIG.rareOffers.includes(id));
+    // 最初から並ぶ札が増えたので、前から遊んでいる人にも足す
+    META.startUnlocked.forEach((id) => m.unlockedAdds.includes(id) || m.unlockedAdds.push(id));
     return m;
   } catch {
     return fresh();

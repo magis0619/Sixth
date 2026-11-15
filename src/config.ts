@@ -465,6 +465,8 @@ export const CONFIG = {
   offerForced: true,
   /** レア仕入れ：準備では選べず、毎日の仕入れにたまに混ざる絵柄と、その確率 */
   rareOffers: ['addMoon', 'addGoldSeed'] as UpgradeId[],
+  /** 市の仕入れの出やすさ（書いていない札は1） */
+  offerWeights: { addRain: 4, addSun: 4, addSeed: 2 } as Partial<Record<AddUpgradeId, number>>,
   rareOfferChance: 0.08,
   /** 毎週1つは必ず並ぶ「作戦が変わる品」と、その作戦のひと言 */
   pivotAdds: {
@@ -773,7 +775,8 @@ export const META = {
   pointsPerTax: 3,
   clearBonus: 20,
   /** 最初から解放されている「足す」強化 */
-  startUnlocked: ['addSun', 'addRain'] as AddUpgradeId[],
+  // 最初から並ぶ札（はじめての人が雨・太陽だけにならないように。上級の物だけポイントで解放）
+  startUnlocked: ['addSun', 'addRain', 'addSeed', 'addBerrySeed', 'addPumpkinSeed', 'addFertilizer', 'addBee'] as AddUpgradeId[],
   /** 「足す」強化の解放ポイントと、ショップに並べるコスト */
   adds: {
     addSun: { unlock: 0, cost: 2 },

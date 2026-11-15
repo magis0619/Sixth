@@ -1090,7 +1090,8 @@ export function rollWeekly(state: GameState, rng: Rng): AddUpgradeId[] {
 export function rollOffer(state: GameState, rng: Rng): AddUpgradeId[] {
   // トマトの種は最初から必ず候補に入れる（雨・太陽の2択にならないように）
   const ids = [...new Set<AddUpgradeId>(['addSeed', ...state.shop, ...state.pool])].filter((id) => !isRareOffer(id) && !isCutAdd(id));
-  const picks = pickWeighted(ids.map((id) => ({ id, w: state.shop.includes(id) ? 2 : 1 })), CONFIG.dailyOfferCount, rng);
+  // 雨・太陽はよく出る（基本の札）。農家の得意な品はその次
+  const picks = pickWeighted(ids.map((id) => ({ id, w: (CONFIG.offerWeights[id] ?? 1) * (state.shop.includes(id) ? 1.5 : 1) })), CONFIG.dailyOfferCount, rng);
   // たまにレア（満月・金の種）が1つ混ざる
   const rares = CONFIG.rareOffers.filter((id) => !isCutAdd(id));
   if (rares.length && rng() < CONFIG.rareOfferChance) {
