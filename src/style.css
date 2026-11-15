@@ -8144,3 +8144,20 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 @keyframes tax-glow {
   50% { box-shadow: inset 0 0 0 3px var(--danger), 0 0 0 3px rgba(214, 69, 69, 0.35); }
 }
+
+/* ==== 開発用：プレイログ ==== */
+.log-sub { margin: 4px 0 8px; font-size: 0.9375rem; }
+.log-text {
+  width: 100%;
+  height: min(48dvh, 420px);
+  padding: 8px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  font: 0.8125rem/1.45 ui-monospace, Menlo, monospace;
+  white-space: pre;
+  resize: none;
+}
+.log-btns { display: flex; gap: 8px; margin: 10px 0; }
+.log-btns .primary { flex: 1; }

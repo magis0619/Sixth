@@ -7,6 +7,7 @@ import { isCalm, setFastFx, setVibrate, toggleCalm } from '../fx.ts';
 import { $, el, meta } from './store.ts';
 import { saveMeta } from '../meta.ts';
 import { art } from '../art.ts';
+import { buildLogText } from './save.ts';
 
 export interface Settings {
   /** 効果音の大きさ（0〜1） */
@@ -111,6 +112,7 @@ export function showSettings(onClose?: () => void): void {
         ${DEV_DATA_SWAP ? `<div class="dev-swap"><span class="dev-tag">${L('試し用', 'Testing')}</span>${hasBackup()
           ? `<button class="set-row" id="set-restore"><span>${L('元のデータに戻す', 'Restore my data')}</span></button>`
           : `<button class="set-row" id="set-zero"><span>${L('ゼロデータで試す（今のデータは取っておく）', 'Try as a new player (keeps your data)')}</span></button>`}</div>` : ''}
+        ${DEV_DATA_SWAP ? `<button class="set-row" id="set-log"><span>${art('copy')} ${L('プレイログを書き出す（開発用）', 'Export play log (dev)')}</span></button>` : ''}
         <button class="set-row danger" id="set-reset"><span>${L('データを消す', 'Erase data')}</span></button>
         <div class="credits">
           <b>${L('畑スロット', 'Farm Slots')}</b>
@@ -159,6 +161,10 @@ export function showSettings(onClose?: () => void): void {
       paint();
     });
     document.getElementById('set-zero')?.addEventListener('click', () => toZeroData());
+    document.getElementById('set-log')?.addEventListener('click', () => {
+      sfx.select();
+      showLogExport(paint);
+    });
     document.getElementById('set-restore')?.addEventListener('click', () => restoreData());
     // データを消す：2回押して確かめる
     let armed = false;
@@ -188,4 +194,48 @@ export function showSettings(onClose?: () => void): void {
     });
   };
   paint();
+}
+
+/** 開発用：プレイログを表示して、コピー・ファイル保存できるようにする */
+function showLogExport(back: () => void): void {
+  const text = buildLogText(__BUILD__);
+  el.overlay.innerHTML = `
+    <div class="modal settings-modal log-modal" role="dialog" aria-label="${L('プレイログ', 'Play log')}">
+      <h2>${art('copy')} ${L('プレイログ', 'Play log')}</h2>
+      ${text
+        ? `<p class="log-sub">${L(`${text.split('\n').length}行。コピーかファイルで渡してください`, `${text.split('\n').length} lines. Copy it or save it as a file`)}</p>
+           <textarea class="log-text" readonly>${text.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</textarea>
+           <div class="log-btns"><button class="primary" id="log-copy">${L('コピー', 'Copy')}</button><button class="primary" id="log-save">${L('ファイルに保存', 'Save file')}</button></div>`
+        : `<p class="log-sub">${L('まだログがありません。1日以上遊ぶと残ります', 'No log yet. Play at least one day')}</p>`}
+      <button class="set-row" id="log-back"><span>${L('戻る', 'Back')}</span></button>
+    </div>`;
+  el.overlay.classList.add('show');
+  const ta = el.overlay.querySelector<HTMLTextAreaElement>('.log-text');
+  document.getElementById('log-copy')?.addEventListener('click', async (e) => {
+    const b = e.currentTarget as HTMLButtonElement;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // クリップボードが使えないときは選択して端末のコピーに任せる
+      ta?.select();
+      document.execCommand?.('copy');
+    }
+    sfx.select();
+    b.textContent = L('コピーした', 'Copied');
+  });
+  document.getElementById('log-save')?.addEventListener('click', () => {
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `hatake-log-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    sfx.select();
+  });
+  $('log-back').addEventListener('click', () => {
+    sfx.cancel();
+    back();
+  });
 }

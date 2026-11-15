@@ -1,13 +1,58 @@
 // 中断セーブ（途中から続ける）と最高記録
 
 import { CHARM_ORDER, CONFIG, type CropKind, SYMBOL_ORDER } from '../config.ts';
-import { type GameState, rollWeekly, rollWeeklyPlaces } from '../game.ts';
+import { type GameState, logSnapshot, rollWeekly, rollWeeklyPlaces } from '../game.ts';
 import { state, ui } from './store.ts';
 
 export const RUN_KEY = 'hatake-slot:run';
 
+const LOG_KEY = 'hatake-slot:lastlog';
+let loggedLen = -1;
+
+/** 開発用：最後のプレイのログを取っておく（終わったあとやページを開き直しても書き出せるように） */
+function saveLastLog(): void {
+  if (state.day === 0 || !state.log) return;
+  const key = state.log.length * 2 + (state.over ? 1 : 0);
+  if (key === loggedLen) return;
+  loggedLen = key;
+  try {
+    localStorage.setItem(LOG_KEY, JSON.stringify({ log: state.log, snapshot: logSnapshot(state), at: new Date().toISOString() }));
+  } catch {
+    // 保存できなくても遊べる
+  }
+}
+
+/** 書き出すログの文字列（遊んでいる途中なら今のプレイ、なければ最後のプレイ） */
+export function buildLogText(build: string): string {
+  let log: string[] = [];
+  let snapshot: string[] = [];
+  let at = new Date().toISOString();
+  if (state.day > 0 && state.log?.length) {
+    log = state.log;
+    snapshot = logSnapshot(state);
+  } else {
+    try {
+      const saved = JSON.parse(localStorage.getItem(LOG_KEY) ?? 'null');
+      if (saved) ({ log, snapshot, at } = saved);
+    } catch {
+      // 読めなければ空
+    }
+  }
+  if (!log.length) return '';
+  return [
+    `# 畑スロット プレイログ v1`,
+    `# 版=${build} 書き出し=${at} 画面=${typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : '-'}`,
+    `# 読み方: 行頭=日と曜日（D8月＝8日目の月曜）。マスは(列,行)で左上が(1,1)。お金は所持金の数字`,
+    '## いまの様子',
+    ...snapshot,
+    `## 出来事（${log.length}行）`,
+    ...log,
+  ].join('\n');
+}
+
 /** 日をまたぐ処理の途中は保存しない */
 export function saveRun(): void {
+  saveLastLog();
   if (ui.busy || state.over || state.day === 0) return;
   try {
     localStorage.setItem(RUN_KEY, JSON.stringify(state));
@@ -58,6 +103,7 @@ export function loadRun(): GameState | null {
     s.contractDone ??= null;
     s.taxCut ??= 0;
     s.mergedThisMarket ??= false;
+    s.log ??= [];
     s.notices ??= [];
     s.stats.crowEaten ??= 0;
     // スイカ・鍬・水路のつながり・相場・品評会を入れる前の保存データ
