@@ -564,7 +564,8 @@ export function nextTax(state: GameState): TaxInfo {
   const dueDay = (index + 1) * CONFIG.taxPeriod;
   // 年貢の減免：1つで5%、上限25%（強すぎたので弱めた）
   const relief = Math.min(0.25, 0.05 * lv(state, 'taxRelief'));
-  const half = (state.halfTax ? 0.5 : 1) * (state.difficulty >= 1 ? 1.3 : 1);
+  // 難しい1〜5：年貢×1.3・1.4・1.5・1.6・1.7
+  const half = (state.halfTax ? 0.5 : 1) * (state.difficulty >= 1 ? 1.2 + 0.1 * state.difficulty : 1);
   return { dueDay, daysLeft: dueDay - state.day, amount: Math.round(taxAmount(index) * (1 - relief) * (1 - (state.taxCut ?? 0)) * half), index };
 }
 
@@ -1577,7 +1578,7 @@ function useSymbolRaw(state: GameState, reel: number, cell: number | null): numb
 /** 周りの巣箱で上がる売値 */
 export function hiveBonus(state: GameState, cell: number): number {
   const ranch = hasRanch(state) ? 2 : 1;
-  return around(state, cell, 1).reduce((n, i) => n + (state.tools[i] === 'hive' ? 2 : state.tools[i] === 'queenHive' ? 6 : 0), 0) * ranch;
+  return around(state, cell, 1).reduce((n, i) => n + (state.tools[i] === 'hive' ? 2 : state.tools[i] === 'queenHive' ? 4 : 0), 0) * ranch;
 }
 
 /** 列の倍率をかける前の売値。cell を渡すと巣箱・堆肥のマスも効く */

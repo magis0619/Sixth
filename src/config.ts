@@ -254,7 +254,7 @@ export const PLACES: Record<PlaceId, PlaceDef> = {
   well: { id: 'well', kind: 'tool', name: '井戸', desc: '上下左右 毎日+1', price: 60 },
   goldenWell: { id: 'goldenWell', kind: 'tool', name: '黄金の井戸', desc: '周り8マス 毎日+1', price: null },
   hive: { id: 'hive', kind: 'tool', name: '巣箱', desc: '周り8マス 売値+2・苺が毎晩育つ', price: 30 },
-  queenHive: { id: 'queenHive', kind: 'tool', name: '女王蜂の巣箱', desc: '周り8マス 売値+6・苺が毎晩育つ', price: null },
+  queenHive: { id: 'queenHive', kind: 'tool', name: '女王蜂の巣箱', desc: '周り8マス 売値+4・苺が毎晩育つ', price: null },
   henhouse: { id: 'henhouse', kind: 'tool', name: '鶏小屋', desc: '毎日+2・周り8マスの虫を食べ、モグラを追い払う', price: 60 },
   cowshed: { id: 'cowshed', kind: 'tool', name: '牛小屋', desc: '毎日+4・隣に水路で+2', price: 120 },
   compost: { id: 'compost', kind: 'tile', name: '堆肥のマス', desc: '売値×2', price: 35 },
@@ -593,17 +593,17 @@ export const CHARMS: Record<CharmId, CharmDef> = {
   gentleRain: { id: 'gentleRain', tier: 'uncommon', name: '恵みの雨', emoji: '☔', desc: (n) => `雨の中心 さらに成長＋${n}`, max: Infinity },
   crowToll: { id: 'crowToll', tier: 'common', name: 'カラスの通行料', emoji: '🪶', desc: (n) => `カラスが来るたびに＋${2 * n}`, max: Infinity },
   aging: { id: 'aging', tier: 'common', name: '熟成', emoji: '🍷', desc: (n) => `実ったまま1日ごとに売値＋${n}（3日まで）`, max: 3 },
-  seedSack: { id: 'seedSack', tier: 'rare', name: '大きな種袋', emoji: '🎒', desc: (n) => `全部の種で植えられる数＋${n}`, max: Infinity },
+  seedSack: { id: 'seedSack', tier: 'rare', name: '大きな種袋', emoji: '🎒', desc: (n) => `全部の種で植えられる数＋${n}`, max: 2 },
   sunBlessing: { id: 'sunBlessing', tier: 'rare', name: '日だまり', emoji: '🌻', desc: (n) => `太陽の成長＋${n}`, max: 2 },
   goldenWell: { id: 'goldenWell', tier: 'rare', name: '黄金の井戸', emoji: '⛲', desc: () => '黄金の井戸を置く（周り8マス 毎日+1）', max: Infinity },
-  queenHive: { id: 'queenHive', tier: 'uncommon', name: '女王蜂の巣箱', emoji: '👑', desc: () => '女王蜂の巣箱を置く（周り8マス 売値+6）', max: Infinity },
+  queenHive: { id: 'queenHive', tier: 'uncommon', name: '女王蜂の巣箱', emoji: '👑', desc: () => '女王蜂の巣箱を置く（周り8マス 売値+4）', max: 2 },
   bargain: { id: 'bargain', tier: 'uncommon', name: '値切り上手', emoji: '🏷️', desc: (n) => `強化の価格−${Math.min(50, 10 * n)}%`, max: 5 },
   scarecrow: { id: 'scarecrow', tier: 'common', name: '大かかし', emoji: '🎃', desc: () => '大かかしを置く（2マス以内を守る）', max: Infinity },
-  bumper: { id: 'bumper', tier: 'rare', name: '豊作', emoji: '🧺', desc: (n) => `金以外の作物 売値＋${2 * n}`, max: Infinity },
-  goldLuck: { id: 'goldLuck', tier: 'uncommon', name: '金運', emoji: '🐱', desc: (n) => `金のとうもろこし 売値＋${10 * n}`, max: Infinity },
+  bumper: { id: 'bumper', tier: 'rare', name: '豊作', emoji: '🧺', desc: (n) => `金以外の作物 売値＋${2 * n}`, max: 3 },
+  goldLuck: { id: 'goldLuck', tier: 'uncommon', name: '金運', emoji: '🐱', desc: (n) => `金のとうもろこし 売値＋${10 * n}`, max: 3 },
   bugWard: { id: 'bugWard', tier: 'common', name: '草よけ', emoji: '🌿', desc: (n) => `虫・雑草を${Math.round((1 - Math.pow(0.5, n)) * 100)}%防ぐ・草むしり無料`, max: 4 },
   heater: { id: 'heater', tier: 'common', name: '湯たんぽ', emoji: '♨️', desc: () => '霜が1日で溶ける', max: 1 },
-  artisan: { id: 'artisan', tier: 'rare', name: 'からくり職人', emoji: '🎰', desc: (n) => `リール＋${n}`, max: 2 },
+  artisan: { id: 'artisan', tier: 'rare', name: 'からくり職人', emoji: '🎰', desc: (n) => `リール＋${n}`, max: 1 },
   rancher: { id: 'rancher', tier: 'uncommon', name: '牧場主', emoji: '🤠', desc: (n) => `鶏小屋・牛小屋の収入＋${n}`, max: Infinity },
   bigGame: { id: 'bigGame', tier: 'uncommon', name: '大物狙い', emoji: '🍉', desc: (n) => `スイカの売値＋${30 * n}`, max: Infinity },
   wheelwright: { id: 'wheelwright', tier: 'uncommon', name: '水車職人', emoji: '🛞', desc: () => '水車のお金×2', max: 1 },
@@ -688,10 +688,10 @@ export const TOOL_EVOLVE: Partial<Record<PlaceId, { to: PlaceId; need: number; w
 export const DIFFICULTIES = [
   { name: 'ふつう', desc: '' },
   { name: '難しい1', desc: '年貢×1.3' },
-  { name: '難しい2', desc: 'ショップ×1.3' },
-  { name: '難しい3', desc: 'お邪魔が早く多い' },
-  { name: '難しい4', desc: '単品×0.3' },
-  { name: '難しい5', desc: '増えるイナゴ' },
+  { name: '難しい2', desc: 'ショップ×1.3・年貢×1.4' },
+  { name: '難しい3', desc: 'お邪魔が早く多い・年貢×1.5' },
+  { name: '難しい4', desc: '単品×0.3・年貢×1.6' },
+  { name: '難しい5', desc: '増えるイナゴ・年貢×1.7' },
 ];
 
 /** 農家：最初の袋（いつもの袋からの増減）・最初のお守り・最初に持っている畑の品・市に出やすい品（2倍） */
@@ -824,7 +824,7 @@ if (EN) {
     well: ['Well', 'Up/down/left/right +1 growth each day'],
     goldenWell: ['Golden Well', 'The 8 plots around +1 growth each day'],
     hive: ['Beehive', '8 plots around: price +2; strawberries grow nightly'],
-    queenHive: ['Queen Hive', '8 plots around: price +6; strawberries grow nightly'],
+    queenHive: ['Queen Hive', '8 plots around: price +4; strawberries grow nightly'],
     henhouse: ['Henhouse', '+2g daily; eats nearby bugs, scares off moles'],
     cowshed: ['Cowshed', '+4g daily; +2 next to water'],
     compost: ['Compost Plot', 'Price ×2'],
@@ -869,7 +869,7 @@ if (EN) {
     seedSack: ['Big Seed Sack', (n) => `Every seed plants +${n} more`],
     sunBlessing: ['Sunny Spot', (n) => `Sun growth +${n}`],
     goldenWell: ['Golden Well', () => 'Place a Golden Well (8 around +1 daily)'],
-    queenHive: ['Queen Hive', () => 'Place a Queen Hive (8 around price +6)'],
+    queenHive: ['Queen Hive', () => 'Place a Queen Hive (8 around price +4)'],
     bargain: ['Haggler', (n) => `Shop prices −${Math.min(50, 10 * n)}%`],
     scarecrow: ['Big Scarecrow', () => 'Place a Big Scarecrow (guards within 2)'],
     bumper: ['Good Harvest', (n) => `Non-gold crops price +${2 * n}`],
@@ -919,7 +919,7 @@ if (EN) {
     rain: 'The center of rain gets +1 more (Gentle Rain). Build around rain',
   };
   FARMERS.forEach((f) => Object.assign(f, { name: farmer[f.id][0], desc: farmer[f.id][1] }, farmerTip[f.id] ? { tip: farmerTip[f.id] } : {}));
-  const diff = [['Normal', ''], ['Hard 1', 'Tax ×1.3'], ['Hard 2', 'Shop ×1.3'], ['Hard 3', 'Pests earlier and more'], ['Hard 4', 'Singles ×0.3'], ['Hard 5', 'Multiplying locusts']];
+  const diff = [['Normal', ''], ['Hard 1', 'Tax ×1.3'], ['Hard 2', 'Shop ×1.3 · Tax ×1.4'], ['Hard 3', 'Pests earlier and more · Tax ×1.5'], ['Hard 4', 'Singles ×0.3 · Tax ×1.6'], ['Hard 5', 'Multiplying locusts · Tax ×1.7']];
   DIFFICULTIES.forEach((d, i) => Object.assign(d, { name: diff[i][0], desc: diff[i][1] }));
   Object.assign(ACHIEVE_ADDS.addMelonSeed!, { hint: 'Clear the game once…?', done: 'First clear' });
   Object.assign(ACHIEVE_ADDS.addThunder!, { hint: 'Sell lots of lines…?', done: 'Sell 100 lines in total' });

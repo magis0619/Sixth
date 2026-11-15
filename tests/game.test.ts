@@ -959,7 +959,7 @@ describe('週契約', () => {
     s.day = 2 * CONFIG.taxPeriod;
     endDay(s, () => 0.5);
     expect(s.taxCut).toBe(0.3);
-    expect(nextTax(s).amount).toBe(Math.round(taxAmount(2) * 0.7 * 1.3));
+    expect(nextTax(s).amount).toBe(Math.round(taxAmount(2) * 0.7 * 1.4));
   });
   it('虫の大発生：毎朝虫が入り、日曜に全部いなくなる。壊れたリールは週が終わると戻る', () => {
     const s = monday(3);
