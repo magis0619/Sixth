@@ -1,7 +1,7 @@
 // 遊ぶたびに増える要素（豊穣ポイント・解放・ショップの組み合わせ）。ブラウザに保存する。
 
 import { L } from './i18n.ts';
-import { ACHIEVE_ADDS, CHARMS, CHARM_ORDER, CONFIG, isCutAdd, DIFFICULTIES, META, THUNDER_LINES, type AddUpgradeId, type CharmId, type SymbolId } from './config.ts';
+import { ACHIEVE_ADDS, CHARMS, CHARM_ORDER, CONFIG, FARMERS, isCutAdd, DIFFICULTIES, META, THUNDER_LINES, type AddUpgradeId, type CharmId, type SymbolId } from './config.ts';
 import { ALL_ADDS, type GameSetup, type GameState } from './game.ts';
 
 export interface MetaState {
@@ -30,6 +30,8 @@ export interface MetaState {
   skin: string;
   /** 次に遊ぶ難しさ */
   difficulty: number;
+  /** 次に遊ぶ農家（FARMERS の id） */
+  farmer: string;
   /** チュートリアルを終えた（スキップも含む） */
   tutorialDone: boolean;
   /** クリアした回数 */
@@ -55,6 +57,7 @@ function fresh(): MetaState {
     skins: [],
     skin: '',
     difficulty: 0,
+    farmer: 'basic',
     tutorialDone: false,
     clears: 0,
   };
@@ -191,6 +194,17 @@ export function isAchieveAdd(id: AddUpgradeId): boolean {
 }
 
 export function setupFrom(meta: MetaState): GameSetup {
+  // 農家を選ぶ準備（試し中）：市に出やすいのは農家の品。初めての人（チュートリアル）はふつうの農家
+  if (CONFIG.farmers) {
+    const farmer = FARMERS.find((f) => f.id === (meta.tutorialDone ? meta.farmer : 'basic')) ?? FARMERS[0];
+    return {
+      difficulty: Math.min(meta.difficulty, maxDifficulty(meta)),
+      farmer: farmer.id,
+      shop: (farmer.favor as AddUpgradeId[]).filter((id) => !CONFIG.rareOffers.includes(id) && !isCutAdd(id)),
+      charmPool: CHARM_ORDER.filter((id) => !(id in META.charmUnlock) || meta.unlockedCharms.includes(id)),
+      pool: ALL_ADDS.filter((id) => meta.unlockedAdds.includes(id) && !CONFIG.rareOffers.includes(id) && !isCutAdd(id)),
+    };
+  }
   return {
     difficulty: Math.min(meta.difficulty, maxDifficulty(meta)),
     // レア仕入れ（満月・金の種）は準備で選べない（前に選んでいても外す）

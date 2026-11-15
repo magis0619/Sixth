@@ -2,7 +2,7 @@
 
 import { L } from '../i18n.ts';
 import {
-  ACHIEVE_ADDS, CHARM_ORDER, COMBOS, CUT, isCutAdd, type CharmId, type SymbolId, PAUSED_CHARMS, CHARM_TIER_NAMES, CHARMS, CONFIG, DIFFICULTIES, FEEDBACK_URL, META, SHARE_URL, SYMBOL_ORDER, SYMBOLS, THUNDER_LINES, UPGRADES,
+  ACHIEVE_ADDS, CHARM_ORDER, FARMERS, COMBOS, CUT, isCutAdd, type CharmId, type SymbolId, PAUSED_CHARMS, CHARM_TIER_NAMES, CHARMS, CONFIG, DIFFICULTIES, FEEDBACK_URL, META, SHARE_URL, SYMBOL_ORDER, SYMBOLS, THUNDER_LINES, UPGRADES,
 } from '../config.ts';
 import { nextTax } from '../game.ts';
 import {
@@ -13,7 +13,7 @@ import { sfx, unlockAudio } from '../audio.ts';
 import { burst, center, confetti, firework, flash, floatText, isCalm, shake, toggleCalm, vibrate } from '../fx.ts';
 import { track } from '../telemetry.ts';
 import { $, el, hooks, meta, state } from './store.ts';
-import { say, symHtml, upgradeArt } from './view.ts';
+import { PLACE_ART, say, symHtml, upgradeArt } from './view.ts';
 import { clearRun, loadBest, loadRun, saveBest } from './save.ts';
 import { stopHeartbeat } from './scene.ts';
 import { showSettings } from './settings.ts';
@@ -488,6 +488,24 @@ function setModal(screen: string, cls: string, label: string, inner: string): HT
 }
 
 /** 準備画面：今回ショップに並べる組み合わせを選んで始める（スタートとプレイの間） */
+/** 農家を選ぶ札：絵・名前・勝ち筋のひと言・最初に持っている物（増える絵柄・お守り・畑の品）と市に出やすい品 */
+function farmerCards(): string {
+  const chips = (f: (typeof FARMERS)[number]) => [
+    ...(Object.entries(f.bag) as [SymbolId, number][]).filter(([, n]) => n > 0).map(([sym, n]) => `<span class="fm-chip">${art(sym as ArtId)}<b>+${n}</b></span>`),
+    ...(Object.keys(f.charms) as CharmId[]).map((id) => `<span class="fm-chip">${art(id as ArtId)}</span>`),
+    ...f.stock.map((id) => `<span class="fm-chip">${art(PLACE_ART[id])}</span>`),
+  ].join('');
+  return `<p class="fm-lead">${L('農家を選ぶ', 'Choose your farmer')}</p><div class="farmers">${FARMERS.map((f) => {
+    const on = f.id === meta.farmer;
+    const favor = f.favor.filter((id) => !isCutAdd(id) && !CONFIG.rareOffers.includes(id));
+    return `<button class="farmer${on ? ' on' : ''}" data-farmer="${f.id}">
+      <span class="fm-art">${art(f.art as ArtId)}</span>
+      <span class="fm-text"><b>${f.name}</b><span class="fm-desc">${f.desc}</span>
+        <span class="fm-chips">${chips(f) || `<span class="fm-none">${L('いつもの袋', 'Standard bag')}</span>`}${favor.length || f.favorPlaces?.length ? `<span class="fm-favor">${L('市', 'Market')}${favor.map((id) => ADD_EMOJI[id]).join('')}${(f.favorPlaces ?? []).map((id) => art(PLACE_ART[id])).join('')}</span>` : ''}</span></span>
+      ${on ? `<span class="tag-stamp">${L('この人', 'Chosen')}</span>` : ''}</button>`;
+  }).join('')}</div>`;
+}
+
 export function showPrep(): void {
   leaveTitle();
   const saved = loadRun();
@@ -518,12 +536,12 @@ export function showPrep(): void {
           <b>${art('bargain')} ${L('開店準備', 'Opening the stall')}</b>
         </div>
         ${maxDifficulty(meta) > 0 ? `<div class="diff-row">${DIFFICULTIES.slice(0, maxDifficulty(meta) + 1).map((d, k) => `<button class="diff-chip${meta.difficulty === k ? ' on' : ''}" data-diff="${k}">${d.name}</button>`).join('')}</div>${diffSummary(meta.difficulty)}` : ''}
-        <div class="prep-cart${used > cap ? ' over' : ''}">
+        ${CONFIG.farmers ? farmerCards() : `<div class="prep-cart${used > cap ? ' over' : ''}">
           <span class="cart-label">${L('荷台', 'Cart')}<b>${used} / ${cap}</b></span>
           <div class="cart-bed">${cart}</div>
           <span class="cart-wheel l"></span><span class="cart-wheel r"></span>
         </div>
-        <div class="prep-shelf">${adds}</div>
+        <div class="prep-shelf">${adds}</div>`}
         <div class="prep-actions">
           <button class="primary prep-go" id="prep-start">${saved ? (confirmNew ? L('はじめる（続きは消えます）', 'Start (erases saved game)') : L('はじめる', 'Start')) : L('はじめる！', 'Start!')}</button>
           <button class="link-back" id="prep-back">← ${L('もどる', 'Back')}</button>
@@ -537,6 +555,14 @@ export function showPrep(): void {
           shake(b, 4);
           return;
         }
+        paint();
+      }),
+    );
+    el.overlay.querySelectorAll<HTMLButtonElement>('[data-farmer]').forEach((b) =>
+      b.addEventListener('click', () => {
+        meta.farmer = b.dataset.farmer!;
+        saveMeta(meta);
+        sfx.select();
         paint();
       }),
     );

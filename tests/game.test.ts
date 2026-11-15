@@ -799,3 +799,22 @@ describe('組み合わせ（同じ日にそろうと自動で起きる）', () =
   });
 });
 
+
+describe('農家（試し中）', () => {
+  it('農家ごとに最初の袋・お守り・畑の品が違う', () => {
+    const base = newGame({ shop: [], charmPool: [] });
+    const berry = newGame({ shop: [], charmPool: [], farmer: 'berry' });
+    expect(berry.farmer).toBe('berry');
+    expect(berry.bag.berrySeed).toBe(base.bag.berrySeed + 3);
+    expect(berry.bag.seed).toBe(base.bag.seed - 2);
+    expect(berry.stock).toEqual([]);
+    // 苺農家の市には巣箱がいつも並ぶ
+    drawDay(berry, Math.random);
+    expect(berry.weeklyPlaces).toContain('hive');
+    const rain = newGame({ shop: [], charmPool: [], farmer: 'rain' });
+    expect(rain.charms.gentleRain).toBe(1);
+    expect(rain.bag.sun).toBe(Math.max(0, base.bag.sun - 1));
+    expect(base.farmer).toBe('basic');
+    expect(base.stock).toEqual([]);
+  });
+});

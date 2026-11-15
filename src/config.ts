@@ -392,6 +392,11 @@ export const CONFIG = {
    * 空にすると、仕入れは毎日・ショップはいつでもに戻る
    */
   marketDays: [3, 6] as number[],
+  /**
+   * 農家（試し中）：始める前に農家を1人選ぶ。最初の袋・最初に持っている物・市に出やすい品が農家ごとに違う。
+   * false にすると、前の「荷台に積んだ品が市に出やすい」準備に戻る
+   */
+  farmers: true,
   /** 仕入れは見送れない（必ず1つ選ぶ）。false なら見送れる */
   offerForced: true,
   /** レア仕入れ：準備では選べず、毎日の仕入れにたまに混ざる絵柄と、その確率 */
@@ -634,6 +639,30 @@ export const DIFFICULTIES = [
   { name: '難しい5', desc: '増えるイナゴ' },
 ];
 
+/** 農家：最初の袋（いつもの袋からの増減）・最初のお守り・最初に持っている畑の品・市に出やすい品（2倍） */
+export interface FarmerDef {
+  id: string;
+  name: string;
+  /** 一言の説明（勝ち筋） */
+  desc: string;
+  /** 準備画面の絵 */
+  art: string;
+  bag: Partial<Record<SymbolId, number>>;
+  charms: Partial<Record<CharmId, number>>;
+  stock: PlaceId[];
+  favor: UpgradeId[];
+  /** 市の畑の品にいつも並ぶ品 */
+  favorPlaces?: PlaceId[];
+}
+
+export const FARMERS: FarmerDef[] = [
+  { id: 'basic', name: 'ふつうの農家', desc: 'いつもの袋で、何でも育てる', art: 'tomato', bag: {}, charms: {}, stock: [], favor: [] },
+  { id: 'berry', name: '苺農家', desc: '苺の列で数を売る。市にいつも巣箱', art: 'strawberry', bag: { seed: -2, berrySeed: 3 }, charms: {}, stock: [], favor: ['addBerrySeed', 'addBee'], favorPlaces: ['hive'] },
+  { id: 'pumpkin', name: 'かぼちゃ農家', desc: '大物を1つずつ高く売る。かぼちゃの種つき', art: 'pumpkin', bag: { seed: -1, pumpkinSeed: 1 }, charms: {}, stock: [], favor: ['addPumpkinSeed', 'addWatermelonSeed', 'addFertilizer'] },
+  { id: 'rain', name: '雨乞い', desc: '雨で一気に育てる。恵みの雨つき', art: 'rain', bag: { rain: 1, sun: -1 }, charms: { gentleRain: 1 }, stock: [], favor: ['addRain', 'addThunder'] },
+  { id: 'rancher', name: '牧場主', desc: '小屋で毎晩お金を稼ぐ。市にいつも鶏小屋', art: 'henhouse', bag: {}, charms: {}, stock: [], favor: [], favorPlaces: ['henhouse'] },
+];
+
 /** 「足す」強化（ゲーム開始時にショップへ並べるものを選ぶ対象） */
 export type AddUpgradeId = Exclude<UpgradeId, `remove${string}`>;
 
@@ -807,6 +836,14 @@ if (EN) {
   Object.assign(TOOL_EVOLVE.scarecrow!, { what: 'Guard' });
   Object.assign(TOOL_EVOLVE.well!, { what: 'Grow' });
   Object.assign(TOOL_EVOLVE.hive!, { what: 'Line sale' });
+  const farmer: Record<string, [string, string]> = {
+    basic: ['Farmer', 'The usual bag; grow anything'],
+    berry: ['Berry Farmer', 'Sell strawberries in lines. The market always has a beehive'],
+    pumpkin: ['Pumpkin Farmer', 'Sell big crops one by one. Starts with a pumpkin seed'],
+    rain: ['Rainmaker', 'Grow fast with rain. Starts with Gentle Rain'],
+    rancher: ['Rancher', 'Earn gold every night. The market always has a henhouse'],
+  };
+  FARMERS.forEach((f) => Object.assign(f, { name: farmer[f.id][0], desc: farmer[f.id][1] }));
   const diff = [['Normal', ''], ['Hard 1', 'Tax ×1.3'], ['Hard 2', 'Shop ×1.3'], ['Hard 3', 'Pests earlier and more'], ['Hard 4', 'Singles ×0.3'], ['Hard 5', 'Multiplying locusts']];
   DIFFICULTIES.forEach((d, i) => Object.assign(d, { name: diff[i][0], desc: diff[i][1] }));
   Object.assign(ACHIEVE_ADDS.addMelonSeed!, { hint: 'Clear the game once…?', done: 'First clear' });

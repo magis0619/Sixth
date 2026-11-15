@@ -7518,3 +7518,83 @@ body:has(#overlay.show) :is(.machine, .machine *) {
   top: 44%;
   right: 7%;
 }
+
+/* 成長の○：背景の緑に紛れないよう、灯った○は黄色に墨の縁 */
+.pip.on {
+  background: #ffd84a;
+  box-shadow: inset 0 0 0 2px #fff6c8, 0 0 0 2px var(--ink);
+}
+@keyframes pip-bump {
+  0% { transform: scale(1); }
+  35% { transform: scale(2.1); background: #fff; box-shadow: inset 0 0 0 2px #ffd84a, 0 0 0 2px var(--ink); }
+  100% { transform: scale(1); }
+}
+
+/* ==== 農家を選ぶ（準備画面） ==== */
+.fm-lead {
+  margin: 8px 0 6px;
+  text-align: center;
+  font-family: var(--font-pop);
+  font-size: 1.125rem;
+}
+.farmers {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 4px 8px;
+}
+.farmer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  text-align: left;
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  box-shadow: 3px 3px 0 var(--ink);
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+}
+.farmer.on {
+  background: var(--gold-soft);
+  box-shadow: 0 0 0 3px var(--gold), 4px 4px 0 var(--ink);
+}
+.fm-art {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  display: flex;
+}
+.fm-art svg { width: 100%; height: 100%; }
+.fm-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.fm-text > b { font-family: var(--font-pop); font-weight: 400; font-size: 1.125rem; }
+.fm-desc { font-size: 0.875rem; font-weight: 800; color: var(--ink-soft); }
+.fm-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 2px; }
+.fm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 1px 5px 1px 2px;
+  background: var(--cloth-deep);
+  border-radius: 8px;
+  font-size: 0.875rem;
+}
+.fm-chip svg { width: 22px; height: 22px; }
+.fm-none { font-size: 0.875rem; font-weight: 800; color: var(--ink-soft); }
+.fm-favor {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 4px;
+  padding: 1px 6px;
+  border: 2px dashed var(--stitch);
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+.fm-favor svg { width: 20px; height: 20px; }
+.farmer .tag-stamp { position: absolute; top: -8px; right: 8px; }

@@ -2,7 +2,7 @@
 
 import { L } from './i18n.ts';
 import {
-  BAG_CONDITIONS, COMBOS, CUT, PAUSED_CHARMS, isCutAdd, COMBO_POWER, CHARMS, CHARM_ORDER, CHARM_PLACE, CONFIG, CROPS, EVENT_CONDITIONS, PLACE_ORDER, PLACES, SEEDS, SYMBOLS, SYMBOL_ORDER, TOOL_EVOLVE, UPGRADE_SYMBOL,
+  BAG_CONDITIONS, COMBOS, CUT, FARMERS, PAUSED_CHARMS, isCutAdd, COMBO_POWER, CHARMS, CHARM_ORDER, CHARM_PLACE, CONFIG, CROPS, EVENT_CONDITIONS, PLACE_ORDER, PLACES, SEEDS, SYMBOLS, SYMBOL_ORDER, TOOL_EVOLVE, UPGRADE_SYMBOL,
   type AddUpgradeId, type CharmId, type CropKind, type PlaceId, type ShapeId, type SymbolId, type UpgradeId,
 } from './config.ts';
 
@@ -77,6 +77,8 @@ export interface GameState {
   runId: string;
   /** 難しさ（0＝ふつう、1〜4＝難しい） */
   difficulty: number;
+  /** 選んだ農家（FARMERS の id） */
+  farmer: string;
   /** 0 = まだ1回も回していない */
   day: number;
   gold: number;
@@ -196,14 +198,29 @@ export interface GameSetup {
   pool?: AddUpgradeId[];
   /** 難しさ（0＝ふつう） */
   difficulty?: number;
+  /** 農家（FARMERS の id） */
+  farmer?: string;
 }
 
 export const ALL_ADDS: AddUpgradeId[] = ['addSeed', 'addBerrySeed', 'addPumpkinSeed', 'addMelonSeed', 'addWatermelonSeed', 'addRain', 'addSun', 'addThunder', 'addHoe', 'addFertilizer', 'addBee', 'addMerchant', 'addGoldSeed', 'addClover'];
 
 export function newGame(setup: GameSetup = { shop: ALL_ADDS, charmPool: CHARM_ORDER }): GameState {
+  const state = freshGame(setup);
+  // 農家：最初の袋の増減・最初のお守り・最初に持っている畑の品
+  const farmer = FARMERS.find((f) => f.id === state.farmer);
+  if (farmer) {
+    (Object.entries(farmer.bag) as [SymbolId, number][]).forEach(([sym, n]) => (state.bag[sym] = Math.max(0, state.bag[sym] + n)));
+    (Object.entries(farmer.charms) as [CharmId, number][]).forEach(([id, n]) => (state.charms[id] += n));
+    state.stock.push(...farmer.stock);
+  }
+  return state;
+}
+
+function freshGame(setup: GameSetup): GameState {
   return {
     runId: Math.random().toString(36).slice(2, 10),
     difficulty: setup.difficulty ?? 0,
+    farmer: setup.farmer ?? 'basic',
     shop: [...setup.shop],
     pool: [...(setup.pool ?? setup.shop)],
     offer: [],
@@ -817,6 +834,12 @@ export function takeOffer(state: GameState, id: AddUpgradeId): boolean {
 
 /** 今週の畑の品：ショップで買える道具・特別なマスから weeklyCount 個。1つは作戦が変わる品 */
 export function rollWeeklyPlaces(state: GameState, rng: Rng): PlaceId[] {
+  // 農家の品（牧場主の小屋など）はいつも並び、残りを週替わりで
+  const fixed = (FARMERS.find((f) => f.id === state.farmer)?.favorPlaces ?? []).filter((id) => !CUT.places.includes(id));
+  if (fixed.length) {
+    const rest = PLACE_ORDER.filter((id) => PLACES[id].price !== null && !CUT.places.includes(id) && !fixed.includes(id));
+    return [...fixed, ...pickWeighted(rest.map((id) => ({ id, w: 1 })), Math.max(0, CONFIG.weeklyCount - fixed.length), rng)];
+  }
   return rollWithPivot(PLACE_ORDER.filter((id) => PLACES[id].price !== null && !CUT.places.includes(id)).map((id) => ({ id, w: 1 })), (id) => isPivotPlace(state, id), rng);
 }
 

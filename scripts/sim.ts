@@ -2,7 +2,7 @@
 // npm run sim -- [回数] [starter|full|addX,addY…] [smart|random]   （FOCUS=1 で買い物を絞る）
 //   smart: 列を狙って置き、列がそろうまで待つ / random: 置き場所・使う場所・買い物を適当に決め、実ったらすぐ売る
 
-import { CHARMS, CHARM_ORDER, CONFIG, CROPS, META, PLACES, SEEDS, SYMBOLS, type CropKind, type PlaceId, type UpgradeId } from '../src/config.ts';
+import { CHARMS, CHARM_ORDER, CONFIG, FARMERS, CROPS, META, PLACES, SEEDS, SYMBOLS, type CropKind, type PlaceId, type UpgradeId } from '../src/config.ts';
 import {
   takeOffer,
   buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, expand, expandPrice, canUse, cellAt, cellX, cellY, chooseCharm, fieldCells,
@@ -152,10 +152,13 @@ function playDay(s: GameState): void {
 const setup = mode === 'full'
   ? undefined
   : {
-      shop: mode === 'starter' ? META.startUnlocked : (mode.split(',') as typeof META.startUnlocked),
+      shop: process.env.FARMER ? (FARMERS.find((f) => f.id === process.env.FARMER)!.favor as typeof META.startUnlocked) : mode === 'starter' ? META.startUnlocked : (mode.split(',') as typeof META.startUnlocked),
+      pool: mode === 'starter' ? META.startUnlocked : undefined,
       charmPool: CHARM_ORDER.filter((id) => !(id in META.charmUnlock)),
       // DIFF=1〜4 で難しいモード
       difficulty: Number(process.env.DIFF ?? 0),
+      // FARMER=berry などで農家を選ぶ（市に出やすい品も農家のもの）
+      farmer: process.env.FARMER ?? 'basic',
     };
 // DAILY=0 で前の「週替わりの3品をショップで買う」と比べる
 if (process.env.DAILY === '0') (CONFIG as { dailyPick: boolean }).dailyPick = false;
