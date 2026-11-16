@@ -2,7 +2,7 @@
 
 import { L } from '../i18n.ts';
 import {
-  ACHIEVE_ADDS, CHARM_ORDER, FARMERS, COMBOS, CUT, isCutAdd, type CharmId, type SymbolId, PAUSED_CHARMS, CHARM_TIER_NAMES, CHARMS, CONFIG, DIFFICULTIES, FEEDBACK_URL, META, SHARE_URL, SYMBOL_ORDER, SYMBOLS, THUNDER_LINES, UPGRADES,
+  ACHIEVE_ADDS, PLACES, CHARM_ORDER, FARMERS, COMBOS, CUT, isCutAdd, type CharmId, type SymbolId, PAUSED_CHARMS, CHARM_TIER_NAMES, CHARMS, CONFIG, DIFFICULTIES, FEEDBACK_URL, META, SHARE_URL, SYMBOL_ORDER, SYMBOLS, THUNDER_LINES, UPGRADES,
 } from '../config.ts';
 import { nextTax, rateRun } from '../game.ts';
 import {
@@ -556,6 +556,11 @@ function farmerCards(): string {
 
 export function showPrep(): void {
   leaveTitle();
+  // 農家を選ぶ形のときは、画面いっぱいの「開店準備」（難しさの画面と同じ作り）
+  if (CONFIG.farmers) {
+    showFarmerScreen();
+    return;
+  }
   const saved = loadRun();
   let confirmNew = false;
   const paint = () => {
@@ -730,4 +735,105 @@ export function showDifficulty(): void {
     });
   };
   paint();
+}
+
+// ---- 開店準備：農家を選ぶ（画面いっぱい）----
+// 参考：Slay the Spire のキャラクター選び（大きな絵・最初のデッキと持ち物・下に顔の列）、
+// Balatro のデッキ選び（左右で切り替え、使えない物は鍵と条件）
+
+const FARMER_COLOR: Record<string, string> = { basic: '#5fae3c', berry: '#e5688f', pumpkin: '#e8862c', rancher: '#a8743e', rain: '#3a86c8' };
+
+export function showFarmerScreen(dir = 0): void {
+  const saved = loadRun();
+  let confirmNew = false;
+  const paint = (d = 0) => {
+    const list = FARMERS;
+    let idx = Math.max(0, list.findIndex((f) => f.id === meta.farmer));
+    const f = list[idx];
+    const unlocked = farmerUnlocked(meta, f.id);
+    const color = FARMER_COLOR[f.id] ?? '#5fae3c';
+    const nextIsDiff = maxDifficulty(meta) > 0;
+    // 最初の袋：いつもの袋＋農家の増減（増えた札は色つき、減った札は薄く）
+    const bag = SYMBOL_ORDER.flatMap((sym) => {
+      const n = Math.max(0, CONFIG.initialBag[sym] + (f.bag[sym] ?? 0));
+      const dd = f.bag[sym] ?? 0;
+      return n > 0 || dd < 0 ? [`<span class="fs-card${dd > 0 ? ' up' : dd < 0 ? ' down' : ''}${SYMBOLS[sym].rarity === 'bad' ? ' bad' : ''}">${art(sym as ArtId)}<b>×${n}</b>${dd ? `<em>${dd > 0 ? '+' : ''}${dd}</em>` : ''}</span>`] : [];
+    }).join('');
+    const extras = [
+      ...(Object.keys(f.charms) as CharmId[]).map((id) => `<span class="fs-relic">${art(id as ArtId)}<b>${CHARMS[id].name}</b></span>`),
+      ...f.stock.map((id) => `<span class="fs-relic">${art(PLACE_ART[id])}<b>${PLACES[id].name}</b></span>`),
+    ].join('');
+    const favor = [
+      ...f.favor.filter((id) => !isCutAdd(id) && !CONFIG.rareOffers.includes(id)).map((id) => `<span class="fs-mini">${ADD_EMOJI[id]}</span>`),
+      ...(f.favorPlaces ?? []).map((id) => `<span class="fs-mini">${art(PLACE_ART[id])}</span>`),
+    ].join('');
+    el.overlay.innerHTML = `
+      <div class="farm-screen" style="--fc:${color}" role="dialog" aria-label="${L('開店準備', 'Setup')}">
+        <div class="ds-top">
+          <button class="ds-back" id="prep-back" aria-label="${L('もどる', 'Back')}">←</button>
+          <b class="ds-title">${art('bargain')} ${L('開店準備', 'Opening the stall')}</b>
+          ${nextIsDiff ? `<span class="fs-step">1 / 2</span>` : '<span></span>'}
+        </div>
+        <p class="fs-lead">${L('農家を選ぶ', 'Choose your farmer')}</p>
+        <div class="ds-stage">
+          <button class="ds-arrow l" id="fs-prev" aria-label="${L('前の農家', 'Previous')}">◀</button>
+          <div class="fs-portrait${unlocked ? '' : ' locked'}${d ? (d > 0 ? ' in-r' : ' in-l') : ''}">
+            <span class="fs-sun"></span>
+            <span class="fs-art">${art(f.art as ArtId)}</span>
+          </div>
+          <button class="ds-arrow r" id="fs-next" aria-label="${L('次の農家', 'Next')}">▶</button>
+        </div>
+        <h2 class="ds-name">${unlocked ? f.name : '？？？'}</h2>
+        ${unlocked ? `<p class="fs-desc">${f.desc}</p>` : `<p class="fs-desc locked">${art('lock')} ${L(`「${DIFFICULTIES[f.unlockClear!].name}」をクリアで解放`, `Clear "${DIFFICULTIES[f.unlockClear!].name}" to unlock`)}</p>`}
+        ${unlocked ? `<div class="ds-rules fs-info">
+          <p class="fs-k">${L('最初の袋', 'Starting bag')}</p>
+          <div class="fs-bag">${bag}</div>
+          ${extras ? `<p class="fs-k">${L('持ってくる物', 'Brings')}</p><div class="fs-relics">${extras}</div>` : ''}
+          ${favor ? `<p class="fs-k">${L('市に出やすい', 'Often at market')}</p><div class="fs-favor">${favor}</div>` : ''}
+        </div>` : ''}
+        <div class="fs-roster">${list.map((x) => `<button class="fs-face${x.id === f.id ? ' on' : ''}${farmerUnlocked(meta, x.id) ? '' : ' locked'}" data-farmer="${x.id}" style="--c:${FARMER_COLOR[x.id] ?? '#5fae3c'}" aria-label="${farmerUnlocked(meta, x.id) ? x.name : '？？？'}">${farmerUnlocked(meta, x.id) ? art(x.art as ArtId) : art('lock')}</button>`).join('')}</div>
+        <div class="ds-foot">
+          <button class="primary ds-go" id="prep-start" ${unlocked ? '' : 'disabled'}>${saved && confirmNew ? L('次へ（続きは消えます）', 'Next (erases saved game)') : nextIsDiff ? `${L('難しさを選ぶ', 'Choose difficulty')} ▶` : L('はじめる！', 'Start!')}</button>
+        </div>
+      </div>`;
+    el.overlay.classList.add('show');
+    const pick = (step: number) => {
+      idx = (idx + step + list.length) % list.length;
+      meta.farmer = list[idx].id;
+      saveMeta(meta);
+      sfx.select();
+      paint(step);
+    };
+    $('fs-prev').addEventListener('click', () => pick(-1));
+    $('fs-next').addEventListener('click', () => pick(1));
+    el.overlay.querySelectorAll<HTMLButtonElement>('[data-farmer]').forEach((b) =>
+      b.addEventListener('click', () => {
+        const k = list.findIndex((x) => x.id === b.dataset.farmer);
+        if (k !== idx) pick(k - idx);
+      }),
+    );
+    const screen = el.overlay.querySelector<HTMLElement>('.farm-screen')!;
+    screen.addEventListener('pointerdown', (e) => (diffSwipeX = e.clientX));
+    screen.addEventListener('pointerup', (e) => {
+      const dx = e.clientX - diffSwipeX;
+      if (Math.abs(dx) > 60 && !(e.target as HTMLElement).closest('.fs-roster')) pick(dx < 0 ? 1 : -1);
+    });
+    $('prep-back').addEventListener('click', () => {
+      sfx.cancel();
+      showTitle();
+    });
+    $('prep-start').addEventListener('click', () => {
+      if (!farmerUnlocked(meta, meta.farmer)) return;
+      if (saved && !confirmNew) {
+        confirmNew = true;
+        sfx.error();
+        paint();
+        return;
+      }
+      sfx.select();
+      if (nextIsDiff) showDifficulty();
+      else hooks.startGame();
+    });
+  };
+  paint(dir);
 }

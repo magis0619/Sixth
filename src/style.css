@@ -8590,3 +8590,100 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 }
 .diff-screen .ds-go:disabled { background: #8a7f72; color: #3d3326; opacity: 0.7; box-shadow: 0 5px 0 #3d3326; }
 .ds-rules li.dr-tax { color: #c93c2b; }
+
+/* ==== 開店準備：農家を選ぶ（画面いっぱい・難しさの画面と同じ作り） ==== */
+#overlay:has(.farm-screen) { padding: 0; }
+.farm-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: max(14px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  background:
+    radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--fc) 45%, #fff8e7) 0, color-mix(in srgb, var(--fc) 70%, #2a1d10) 58%, #22180f 100%);
+  color: #fff8e7;
+  overflow-y: auto;
+}
+.fs-step { padding: 3px 10px; border-radius: 999px; background: rgba(0, 0, 0, 0.3); font-weight: 800; font-size: 0.875rem; }
+.fs-lead { margin: 2px 0 0; font-weight: 800; font-size: 1rem; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35); }
+/* 大きな絵（窓枠のような額縁に、日の光） */
+.fs-portrait {
+  position: relative;
+  width: min(48vw, 190px);
+  aspect-ratio: 0.85;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  border-radius: 100px 100px 22px 22px;
+  background: linear-gradient(#bfe3f7, #e8f6ff 55%, #8fcf5c 56%, #5a9e33);
+  border: 6px solid var(--ink);
+  box-shadow: 0 10px 0 rgba(0, 0, 0, 0.35), inset 0 0 0 4px #fff8e7;
+  overflow: hidden;
+}
+.fs-portrait.in-r { animation: ds-in-r 0.35s cubic-bezier(.3, 1.4, .5, 1); }
+.fs-portrait.in-l { animation: ds-in-l 0.35s cubic-bezier(.3, 1.4, .5, 1); }
+.fs-sun { position: absolute; top: 14%; right: 14%; width: 22%; aspect-ratio: 1; border-radius: 50%; background: #ffd23f; box-shadow: 0 0 0 6px rgba(255, 210, 63, 0.35); }
+.fs-art { display: flex; width: 82%; margin-bottom: 6%; filter: drop-shadow(0 6px 0 rgba(0, 0, 0, 0.25)); }
+.fs-art .art { width: 100%; height: auto; aspect-ratio: 1; }
+.fs-portrait.locked { background: linear-gradient(#5b5550, #3d3833); }
+.fs-portrait.locked .fs-art { filter: brightness(0) opacity(0.55); }
+.fs-portrait.locked .fs-sun { display: none; }
+.fs-desc { margin: 0; text-align: center; font-weight: 700; font-size: 1rem; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35); max-width: 460px; }
+.fs-desc.locked { display: flex; align-items: center; gap: 6px; }
+.fs-desc .art { width: 1.4em; height: 1.4em; }
+/* 最初の袋（Slay the Spire の最初のデッキのように札を並べる） */
+.fs-info { display: grid; gap: 4px; }
+.fs-k { margin: 2px 0 0; font-size: 0.8125rem; font-weight: 800; color: var(--ink-soft); }
+.fs-bag { display: flex; flex-wrap: wrap; gap: 6px; }
+.fs-card {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  width: 46px;
+  padding: 4px 2px 2px;
+  background: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.2);
+}
+.fs-card .art { width: 32px; height: 32px; }
+.fs-card b { font-size: 0.8125rem; }
+.fs-card em { position: absolute; top: -8px; right: -8px; font-style: normal; font-size: 0.75rem; font-weight: 800; color: #fff; background: var(--role-manual); border: 2px solid var(--ink); border-radius: 999px; padding: 0 5px; }
+.fs-card.down { opacity: 0.55; }
+.fs-card.down em { background: #8a7a62; }
+.fs-card.bad { background: #fde7ec; }
+.fs-relics { display: flex; flex-wrap: wrap; gap: 6px; }
+.fs-relic { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px 3px 4px; background: var(--gold-soft); border: 2px solid var(--gold-dark); border-radius: 999px; font-size: 0.875rem; font-weight: 800; }
+.fs-relic .art { width: 1.6em; height: 1.6em; }
+.fs-favor { display: flex; gap: 4px; }
+.fs-mini { display: inline-flex; width: 30px; height: 30px; padding: 2px; background: #fff; border: 2px solid var(--ink); border-radius: 50%; }
+.fs-mini .art, .fs-mini svg { width: 100%; height: 100%; }
+/* 下の顔の列 */
+.fs-roster { display: flex; gap: 8px; margin-top: 4px; }
+.fs-face {
+  width: 52px;
+  height: 52px;
+  padding: 6px;
+  display: flex;
+  border-radius: 14px;
+  background: var(--c);
+  border: 3px solid var(--ink);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+  opacity: 0.75;
+}
+.fs-face .art { width: 100%; height: 100%; }
+.fs-face.on { opacity: 1; transform: translateY(-4px) scale(1.1); outline: 3px solid #fff8e7; outline-offset: 2px; }
+.fs-face.locked { background: #4a4038; }
+.farm-screen .ds-go {
+  background: var(--gold);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  box-shadow: 0 5px 0 var(--ink);
+  font-family: var(--font-pop);
+  font-weight: 400;
+}
+.farm-screen .ds-go:disabled { background: #8a7f72; color: #3d3326; opacity: 0.7; box-shadow: 0 5px 0 #3d3326; }
