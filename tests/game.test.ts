@@ -241,6 +241,23 @@ describe('道具・特別なマス', () => {
     expect(ev?.type === 'crow' && ev.guarded).toBe(true);
     expect(s.field[at(0, 0)]).not.toBeNull();
   });
+
+  it('かかしがカラスを追い払うとお礼が入る（大かかしは多め）', () => {
+    const s = game();
+    s.tools[at(1, 1)] = 'scarecrow';
+    s.field[at(0, 0)] = newCrop('tomato');
+    s.results = [{ symbol: 'crow', used: false, total: 1, left: 1, power: 1 }];
+    const g = s.gold;
+    const ev = resolveAuto(s, 0, () => 0);
+    expect(ev?.type === 'crow' && ev.reward).toBe(CONFIG.repelGold);
+    expect(s.gold - g).toBe(CONFIG.repelGold + (ev?.type === 'crow' ? ev.toll : 0));
+    const t = game();
+    t.tools[at(2, 2)] = 'bigScarecrow';
+    t.field[at(0, 0)] = newCrop('tomato');
+    t.results = [{ symbol: 'crow', used: false, total: 1, left: 1, power: 1 }];
+    const ev2 = resolveAuto(t, 0, () => 0);
+    expect(ev2?.type === 'crow' && ev2.reward).toBe(CONFIG.repelBigGold);
+  });
 });
 
 describe('お守り', () => {
@@ -396,6 +413,27 @@ describe('水路のつながり・小屋・相場・品評会', () => {
     const ev = resolveAuto(s, 0, () => 0.9);
     expect(ev?.type === 'bug' && ev.warded).toBe(true);
     expect(s.field[at(0, 0)]!.growth).toBe(2);
+  });
+
+  it('鶏小屋・牛小屋は働くほど育ち、毎晩の収入が増える', () => {
+    const s = game();
+    s.tools[at(0, 0)] = 'henhouse';
+    s.tools[at(2, 2)] = 'cowshed';
+    for (let k = 0; k < CONFIG.animalLvNeed; k++) endDay(s, () => 0.99);
+    expect(s.toolLv[at(0, 0)]).toBe(1);
+    expect(s.toolLv[at(2, 2)]).toBe(1);
+    expect(animalGold(s, at(0, 0))).toBe(CONFIG.henhouseGold + CONFIG.henhouseLvGold);
+    expect(animalGold(s, at(2, 2))).toBe(CONFIG.cowshedGold + CONFIG.cowshedLvGold);
+    for (let k = 0; k < CONFIG.animalLvNeed * 3; k++) endDay(s, () => 0.99);
+    expect(s.toolLv[at(0, 0)]).toBe(CONFIG.animalLvMax);
+    // 虫を食べても経験が入り、お礼も入る
+    const t = game();
+    t.tools[at(1, 1)] = 'henhouse';
+    t.field[at(0, 0)] = { ...newCrop('tomato'), growth: 2 };
+    t.results = [{ symbol: 'bug', used: false, total: 1, left: 1, power: 1 }];
+    const ev = resolveAuto(t, 0, () => 0.9);
+    expect(ev?.type === 'bug' && ev.reward).toBe(CONFIG.repelGold);
+    expect(t.toolXp[at(1, 1)]).toBe(1);
   });
 
   it('相場の高値・安値が売値にかかる', () => {

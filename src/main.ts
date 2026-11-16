@@ -194,6 +194,14 @@ function playNotice(n: Notice): void {
     flash('#ffd84a', 500);
     void slamText(L(`✦ ${CHARMS[n.id].name} 金色！`, `✦ ${CHARMS[n.id].name} golden!`), { size: 0.6, dur: 1500 });
     coinRain(20);
+  } else if (n.kind === 'toolLevel') {
+    const plot = el.field.children[n.cell];
+    if (!plot) return;
+    const q = center(plot);
+    sfx.rare();
+    burst(q.x, q.y, ['✨', '⭐'], 10, 70);
+    pop(plot, 1.2);
+    floatText(q.x, q.y - 30, `${PLACES[n.tool].name} Lv${n.lv + 1}`, { cls: 'gold', size: 1, dur: 1500 });
   } else if (n.kind === 'evolve') {
     const plot = el.field.children[n.cell];
     if (!plot) return;
@@ -294,6 +302,17 @@ function renderStatus(): void {
   if (hasRanch(state)) chips.push(`<span class="st set">${art('henhouse')}${art('cowshed')}${art('hive')} ${L('牧場', 'Ranch')} ×2</span>`);
   if (isColorful(state)) chips.push(`<span class="st set">${art('sunBlessing')} ${L('彩りの畑', 'Colorful field')} +${Math.round(CONFIG.colorfulBonus * 100)}%</span>`);
   setHtml(el.status, chips.join(''));
+}
+
+/** 道具の育ち：上に経験のゲージ、鶏小屋・牛小屋は段の札（育ちきったら札だけ） */
+function toolGrowHtml(cell: number, tool: PlaceId): string {
+  const animal = tool === 'henhouse' || tool === 'cowshed';
+  const need = animal ? CONFIG.animalLvNeed : TOOL_EVOLVE[tool]?.need;
+  if (!need) return '';
+  const lv = animal ? (state.toolLv?.[cell] ?? 0) : 0;
+  const maxed = animal && lv >= CONFIG.animalLvMax;
+  const pct = Math.min(100, Math.round(((state.toolXp[cell] ?? 0) / need) * 100));
+  return `${maxed ? '' : `<span class="tool-xp"><i style="width:${pct}%"></i></span>`}${lv ? `<b class="tool-lv">Lv${lv + 1}</b>` : ''}`;
 }
 
 /** 今週の相場：畑の右上の札に、高値と安値の作物を絵と記号だけで */
@@ -663,7 +682,7 @@ function renderField(): void {
       label = `${CROPS[part.kind].name}（2×2）`;
     } else if (tool) {
       cls.push('tool');
-      html += `<span class="crop">${art(PLACE_ART[tool])}</span><span class="tool-name">${PLACES[tool].name}</span>`;
+      html += `<span class="crop">${art(PLACE_ART[tool])}</span><span class="tool-name">${PLACES[tool].name}</span>${toolGrowHtml(i, tool)}`;
       label = `${PLACES[tool].name}：${PLACES[tool].desc}`;
     } else if (crop) {
       const ripe = isRipe(crop);
@@ -1609,6 +1628,9 @@ async function resolveAutos(): Promise<void> {
     // 金貨と通行料は、財布に届いてから増やす
     const landCoin = holdGold(ev.type === 'coin' ? ev.amount : 0);
     const landToll = holdGold(ev.type === 'crow' ? ev.toll : 0);
+    // 追い払ったお礼も、財布に届いてから増やす
+    const reward = 'reward' in ev ? (ev.reward ?? 0) : 0;
+    const landReward = holdGold(reward);
     const sym = state.results[i].symbol;
     if (PEST_HINTS[sym]) hintOnce(`pest-${sym}`, `${symHtml(sym)} <b>${SYMBOLS[sym].name}</b>：${PEST_HINTS[sym]}`);
     // いま動いている出目のリールを光らせる（どのリールの出来事か分かるように）
@@ -1835,6 +1857,16 @@ async function resolveAutos(): Promise<void> {
       sfx.coin();
       floatText(center(el.goldBox).x, center(el.goldBox).y + 28, money(ev.toll), { cls: 'gold', size: 0.8 });
       landToll();
+    }
+    if (reward > 0) {
+      // 追い払ったマスから財布へ、お礼の金貨が飛ぶ
+      const at = ev.type === 'tanuki' ? ev.guarded[0] : 'cell' in ev ? ev.cell : null;
+      const plot = at !== null && at !== undefined ? (el.field.children[at] as HTMLElement) : null;
+      const q = plot ? center(plot) : from;
+      sfx.coin();
+      floatText(q.x, q.y - 34, money(reward), { cls: 'gold', size: 0.9, dur: 900 });
+      await new Promise<void>((r) => flyTo(q, el.goldBox, '🪙', reward, r, true));
+      landReward();
     }
     renderReelStates();
     // 1つずつ見せきってから、少し間を空けて次へ

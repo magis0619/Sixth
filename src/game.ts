@@ -53,7 +53,8 @@ export type Notice =
   | { kind: 'ready'; id: CharmId }
   | { kind: 'got'; id: CharmId }
   | { kind: 'golden'; id: CharmId }
-  | { kind: 'evolve'; cell: number; from: PlaceId; to: PlaceId };
+  | { kind: 'evolve'; cell: number; from: PlaceId; to: PlaceId }
+  | { kind: 'toolLevel'; cell: number; tool: PlaceId; lv: number };
 
 /** 夜のうちに入ったお金（水車・釣り堀・鶏小屋・牛小屋） */
 export interface NightIncome {
@@ -109,6 +110,8 @@ export interface GameState {
   specials: CharmId[];
   /** 道具が働いた回数（マスごと。進化に使う） */
   toolXp: number[];
+  /** 鶏小屋・牛小屋の段（0〜animalLvMax）。働くほど上がる */
+  toolLv: number[];
   /** 今日、雨・太陽が効いたマスと、天気雨で上乗せ済みのマス */
   today: { rain: number[]; sun: number[]; boosted: number[] };
   /** 首の皮：次の年貢が半分 */
@@ -287,6 +290,7 @@ function freshGame(setup: GameSetup): GameState {
     ready: [],
     specials: [],
     toolXp: Array.from({ length: CONFIG.fieldCols * CONFIG.fieldRows }, () => 0),
+    toolLv: Array.from({ length: CONFIG.fieldCols * CONFIG.fieldRows }, () => 0),
     today: { rain: [], sun: [], boosted: [] },
     halfTax: false,
     notices: [],
@@ -469,6 +473,8 @@ function collectNightIncome(state: GameState, rng: Rng, grown: number[]): NightI
   });
   const animals = fieldCells(state).reduce((n, i) => n + animalGold(state, i), 0);
   earn(state, wheel + fish + animals);
+  // 鶏小屋・牛小屋は毎晩働いて経験を積む（収入のあとで段が上がる）
+  fieldCells(state).forEach((i) => (state.tools[i] === 'henhouse' || state.tools[i] === 'cowshed') && animalXp(state, i));
   return { wheel, wheels, fish, bigFish, animals, grown };
 }
 
@@ -497,7 +503,8 @@ export function isColorful(state: GameState): boolean {
 export function animalGold(state: GameState, cell: number): number {
   const t = state.tools[cell];
   if (t !== 'henhouse' && t !== 'cowshed') return 0;
-  let gold = (t === 'henhouse' ? CONFIG.henhouseGold : CONFIG.cowshedGold) + 2 * lv(state, 'rancher');
+  const step = state.toolLv?.[cell] ?? 0;
+  let gold = (t === 'henhouse' ? CONFIG.henhouseGold + CONFIG.henhouseLvGold * step : CONFIG.cowshedGold + CONFIG.cowshedLvGold * step) + 2 * lv(state, 'rancher');
   // 牛小屋の隣に水路があれば水飲み場
   if (t === 'cowshed' && neighbors(state, cell).some((n) => state.tiles[n] === 'water')) gold += CONFIG.cowWaterGold;
   return gold * (hasRanch(state) ? 2 : 1);
@@ -995,6 +1002,26 @@ function overnightGrowth(state: GameState): number[] {
   return affected;
 }
 
+/** 鶏小屋・牛小屋の経験：貯まったら段が上がる */
+function animalXp(state: GameState, cell: number): void {
+  state.toolLv ??= state.field.map(() => 0);
+  if ((state.toolLv[cell] ?? 0) >= CONFIG.animalLvMax) return;
+  state.toolXp[cell]++;
+  if (state.toolXp[cell] < CONFIG.animalLvNeed) return;
+  state.toolXp[cell] = 0;
+  state.toolLv[cell] = (state.toolLv[cell] ?? 0) + 1;
+  state.notices.push({ kind: 'toolLevel', cell, tool: state.tools[cell]!, lv: state.toolLv[cell] });
+  glog(state, `育った ${PLACES[state.tools[cell]!].name} Lv${state.toolLv[cell] + 1} ${cellName(cell)}`);
+}
+
+/** お邪魔を追い払ったお礼（大かかしの守りなら多め）。もらった額を返す */
+function repelReward(state: GameState, cell: number): number {
+  const big = fieldCells(state).some((i) => state.tools[i] === 'bigScarecrow' && Math.abs(cellX(i) - cellX(cell)) <= 2 && Math.abs(cellY(i) - cellY(cell)) <= 2);
+  const amount = big ? CONFIG.repelBigGold : CONFIG.repelGold;
+  earn(state, amount);
+  return amount;
+}
+
 /** 道具の進化：働いた回数が足りたら上位の道具に変わる */
 export function evolveTools(state: GameState): void {
   fieldCells(state).forEach((i) => {
@@ -1004,6 +1031,7 @@ export function evolveTools(state: GameState): void {
     state.tools[i] = ev.to;
     state.toolXp[i] = 0;
     state.notices.push({ kind: 'evolve', cell: i, from: t, to: ev.to });
+    glog(state, `進化 ${PLACES[t].name}→${PLACES[ev.to].name} ${cellName(i)}`);
   });
 }
 
@@ -1258,12 +1286,12 @@ export function startDay(state: GameState, rng: Rng): EndDayResult {
 }
 
 export type AutoEvent =
-  | { type: 'crow'; cell: number | null; crop: Crop | null; eaten: boolean; toll: number; guarded: boolean; pecked?: boolean }
-  | { type: 'bug'; cell: number | null; warded: boolean; damage: number; hen: boolean }
+  | { type: 'crow'; cell: number | null; crop: Crop | null; eaten: boolean; toll: number; guarded: boolean; pecked?: boolean; reward?: number }
+  | { type: 'bug'; cell: number | null; warded: boolean; damage: number; hen: boolean; reward?: number }
   | { type: 'coin'; amount: number }
   | { type: 'merchant'; mult: number }
   | { type: 'weed'; cells: number[]; warded: boolean }
-  | { type: 'tanuki'; taken: { cell: number; crop: Crop; price: number }[]; escaped: boolean; stolen: number; guarded: number[] }
+  | { type: 'tanuki'; taken: { cell: number; crop: Crop; price: number }[]; escaped: boolean; stolen: number; guarded: number[]; reward?: number }
   | { type: 'frost'; cells: number[] }
   | { type: 'mole'; moves: { from: number; to: number; crop: Crop }[]; chased: number[] }
   | { type: 'locust'; cell: number | null; damage: number; bred: number }
@@ -1370,11 +1398,15 @@ function resolveAutoRaw(state: GameState, reel: number, rng: Rng): AutoEvent | n
       // 一番やられたくない作物（実った列・もうすぐ実る高い作物）を狙う
       const cell = pickWorst(targets, (i) => cropWorth(state, i), rng);
       // 鶏小屋の周りの虫は食べられてしまう
-      if (nearHenhouse(state, cell)) return { type: 'bug', cell, warded: true, damage: 0, hen: true };
+      if (nearHenhouse(state, cell)) {
+        // 食べた鶏小屋は経験を積み、お礼が入る
+        around(state, cell, 1).filter((i) => state.tools[i] === 'henhouse').forEach((i) => animalXp(state, i));
+        return { type: 'bug', cell, warded: true, damage: 0, hen: true, reward: repelReward(state, cell) };
+      }
       // かかしの周りの虫は追い払われる
       if (isGuarded(state, cell)) {
         scared(state, cell);
-        return { type: 'bug', cell, warded: true, damage: 0, hen: false };
+        return { type: 'bug', cell, warded: true, damage: 0, hen: false, reward: repelReward(state, cell) };
       }
       if (rng() < 1 - Math.pow(0.5, lv(state, 'bugWard'))) return { type: 'bug', cell, warded: true, damage: 0, hen: false };
       const crop = state.field[cell]!;
@@ -1426,7 +1458,7 @@ function resolveAutoRaw(state: GameState, reel: number, rng: Rng): AutoEvent | n
       if (!taken.length && guarded.length) {
         guarded.forEach((c) => guardians(state, c).forEach((g) => state.toolXp[g]++));
         evolveTools(state);
-        return { type: 'tanuki', taken, escaped: true, stolen: 0, guarded };
+        return { type: 'tanuki', taken, escaped: true, stolen: 0, guarded, reward: repelReward(state, guarded[0]) };
       }
       let stolen = 0;
       if (!taken.length && state.gold > 0) {
@@ -1492,7 +1524,7 @@ function resolveAutoRaw(state: GameState, reel: number, rng: Rng): AutoEvent | n
         state.stats.crowsMissed++;
         guardians(state, cell).forEach((g) => state.toolXp[g]++);
         evolveTools(state);
-        return { type: 'crow', cell, crop, eaten: false, toll, guarded: true };
+        return { type: 'crow', cell, crop, eaten: false, toll, guarded: true, reward: repelReward(state, cell) };
       }
       // 熟成の代償：実った作物はカラスが食べやすい
       if (rng() >= crowEatChance(state, r.power) * (crop && isRipe(crop) && state.charms.aging > 0 ? 1.5 : 1)) {
@@ -2118,8 +2150,11 @@ export function mustPlace(state: GameState): boolean {
 function placeRaw(state: GameState, cell: number): PlaceId | null {
   if (!canPlace(state, cell)) return null;
   const id = state.stock.shift()!;
-  if (PLACES[id].kind === 'tool') state.tools[cell] = id;
-  else state.tiles[cell] = id;
+  if (PLACES[id].kind === 'tool') {
+    state.tools[cell] = id;
+    state.toolXp[cell] = 0;
+    if (state.toolLv) state.toolLv[cell] = 0;
+  } else state.tiles[cell] = id;
   return id;
 }
 
@@ -2316,7 +2351,9 @@ export function resolveAuto(state: GameState, reel: number, rng: Rng): AutoEvent
   const g0 = state.gold;
   const ev = resolveAutoRaw(state, reel, rng);
   if (!ev || !sym) return ev;
-  const dg = state.gold - g0;
+  const rw = 'reward' in ev ? (ev.reward ?? 0) : 0;
+  lstat(state, IN + '追い払い', rw);
+  const dg = state.gold - g0 - rw;
   if (dg > 0) lstat(state, IN + SYMBOLS[sym].name, dg);
   if (dg < 0) lstat(state, LOSS + SYMBOLS[sym].name + 'のお金', -dg);
   if (ev.type === 'crow' && ev.crop && (ev.eaten || ev.pecked)) {
@@ -2342,7 +2379,7 @@ export function resolveAuto(state: GameState, reel: number, rng: Rng): AutoEvent
     case 'egg': t = ev.hatched ? '孵ってツバメになった' : `孵化 ${ev.progress}/${CONFIG.eggHatch}`; break;
     case 'swallow': t = ev.removed ? `${SYMBOLS[ev.removed].name}を追い出した` : `+${ev.amount}`; break;
   }
-  glog(state, `自動 ${SYMBOLS[sym].name}: ${t}`);
+  glog(state, `自動 ${SYMBOLS[sym].name}: ${t}${rw ? ` 追い払いのお礼+${rw}` : ''}`);
   return ev;
 }
 

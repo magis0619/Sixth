@@ -107,7 +107,12 @@ export function plotInfo(cell: number): string | null {
   const tile = state.tiles[cell];
   if (tool) {
     const ev = TOOL_EVOLVE[tool];
-    parts.push(`${infoHead(art(PLACE_ART[tool]), PLACES[tool].name, L('道具', 'Tool'))}<p>${PLACES[tool].desc}</p>${ev ? `<p class="sub">${L('進化', 'Evolves')}：${ev.what} ${state.toolXp[cell]}/${ev.need} → ${PLACES[ev.to].name}</p>` : ''}`);
+    const animal = tool === 'henhouse' || tool === 'cowshed';
+    const step = state.toolLv?.[cell] ?? 0;
+    const grow = animal
+      ? `<p class="sub">Lv${step + 1}${step < CONFIG.animalLvMax ? `　${L('次', 'Next')} ${state.toolXp[cell]}/${CONFIG.animalLvNeed}` : ''}　${art('coin')}+${animalGold(state, cell)}</p>`
+      : ev ? `<p class="sub">${L('進化', 'Evolves')}：${ev.what} ${state.toolXp[cell]}/${ev.need} → ${PLACES[ev.to].name}</p>` : '';
+    parts.push(`${infoHead(art(PLACE_ART[tool]), PLACES[tool].name, L('道具', 'Tool'))}<p>${PLACES[tool].desc}</p>${grow}`);
   } else if (crop) {
     const def = CROPS[crop.kind];
     const ripe = isRipe(crop);

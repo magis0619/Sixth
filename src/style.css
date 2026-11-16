@@ -2183,7 +2183,7 @@ button {
 .tool-name {
   position: absolute;
   bottom: 4%;
-  font-size: max(0.75rem, calc(var(--cell) * 0.1));
+  font-size: max(0.8125rem, calc(var(--cell) * 0.1));
   font-weight: 800;
   color: #fff;
   background: rgba(61, 51, 38, 0.7);
@@ -8802,3 +8802,33 @@ button.fs-relic { font: inherit; color: var(--ink); cursor: pointer; }
 /* 市は市の日の朝に開いて、閉じたらその日は開かない：下の「市」のボタンはなくす */
 .tab[data-sheet="shop"] { display: none; }
 .tabs { grid-template-columns: repeat(2, 1fr); }
+
+/* 道具の育ち：上の細いゲージ（経験）と、鶏小屋・牛小屋の段の札 */
+.tool-xp {
+  position: absolute;
+  top: 7%;
+  left: 14%;
+  right: 14%;
+  height: 7px;
+  border-radius: 4px;
+  background: rgba(61, 51, 38, 0.55);
+  overflow: hidden;
+}
+.tool-xp i {
+  display: block;
+  height: 100%;
+  background: #ffd84a;
+  border-radius: 4px;
+}
+.tool-lv {
+  position: absolute;
+  top: 14%;
+  right: 6%;
+  font-size: 0.8125rem;
+  font-weight: 900;
+  color: #3d3326;
+  background: #ffd84a;
+  border-radius: 8px;
+  padding: 0 4px;
+  line-height: 1.3;
+}

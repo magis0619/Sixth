@@ -380,6 +380,15 @@ export const CONFIG = {
   /** 鶏小屋・牛小屋の毎晩の収入 */
   henhouseGold: 2,
   cowshedGold: 4,
+  /** 鶏小屋・牛小屋は働くほど育つ：毎晩と虫を食べるたびに経験1。animalLvNeed で1段上がる（animalLvMax まで） */
+  animalLvNeed: 7,
+  animalLvMax: 2,
+  /** 1段ごとの毎晩の収入の上乗せ */
+  henhouseLvGold: 1,
+  cowshedLvGold: 2,
+  /** かかし・鶏小屋がお邪魔を追い払うともらえるお金（大かかしは repelBigGold） */
+  repelGold: 1,
+  repelBigGold: 2,
   /** 市場の相場：週ごとに1品が高値・1品が安値。難しい marketFrom から */
   marketFrom: 2,
   /** 相場は一時停止中（false の間は出ない） */
