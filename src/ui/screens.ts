@@ -675,7 +675,7 @@ export function showDifficulty(): void {
     const tax = lv > 0 ? `<li class="dr-tax new">${art('bale')}<span>${L(`年貢 ×${(1.2 + 0.1 * lv).toFixed(1)}`, `Tax ×${(1.2 + 0.1 * lv).toFixed(1)}`)}</span><em>${lv === 1 ? 'NEW' : '↑'}</em></li>` : '';
     const cleared = meta.maxCleared >= lv;
     el.overlay.innerHTML = `
-      <div class="diff-screen" style="--dc:${color}" role="dialog" aria-label="${L('難しさを選ぶ', 'Choose difficulty')}">
+      <div class="diff-screen" data-sky="${lv}" style="--dc:${color}" role="dialog" aria-label="${L('難しさを選ぶ', 'Choose difficulty')}">
         <div class="ds-top">
           <button class="ds-back" id="diff-back" aria-label="${L('もどる', 'Back')}">←</button>
           <b class="ds-title">${L('難しさを選ぶ', 'Choose difficulty')}</b>
