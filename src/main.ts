@@ -1274,7 +1274,7 @@ async function spinMorning(): Promise<void> {
 }
 
 /** 置き終えたら市に戻る（演出の途中なら終わるのを待つ） */
-function backToMarket(tries = 12): void {
+function backToMarket(tries = 40): void {
   if (state.over || state.stock.length || !shopOpen(state) || openSheetName === 'shop') return;
   if (ui.busy || openSheetName || el.overlay.classList.contains('show')) {
     if (tries > 0) later(() => backToMarket(tries - 1), 300);
@@ -2472,6 +2472,10 @@ function clickAllowed(kind: 'plot' | 'reel'): boolean {
   suppressClick = null;
   return performance.now() > s.until;
 }
+
+// 新しく押し始めたら、前の操作で残った「次の click を無視」は捨てる
+// （最後の種を植えて畑が描き直されると、その click が届かずに残り、次のタップを飲み込んでいた）
+document.addEventListener('pointerdown', () => (suppressClick = null), true);
 
 /** 指の下にある畑のマス */
 function plotAt(x: number, y: number): number | null {

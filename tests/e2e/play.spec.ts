@@ -113,7 +113,11 @@ test('タイトルから始めて、植えて育てて売り、年貢まで進�
       const before = await page.locator('#gold-box').innerText();
       await ripe.click({ force: true });
       await settle(page);
-      await expect.poll(() => page.locator('#gold-box').innerText()).not.toBe(before);
+      // 演出の途中のタップは受け付けないので、売れていなければもう一度押す
+      await expect(async () => {
+        if ((await page.locator('#gold-box').innerText()) === before && (await ripe.count())) await ripe.click({ force: true, timeout: 1000 });
+        expect(await page.locator('#gold-box').innerText()).not.toBe(before);
+      }).toPass({ timeout: 15_000 });
     }
   }
   const day = await page.evaluate(() => JSON.parse(localStorage.getItem('hatake-slot:run') ?? 'null')?.day ?? null);
@@ -343,9 +347,14 @@ test('市で巣箱を買って置くと、市に自動で戻る。閉じたら�
   // 置く
   const spot = page.locator('#field .plot.target').first();
   await expect(spot).toHaveCount(1, { timeout: 5_000 });
+  // 市の板が閉じきってから（板の下のマスを押せるようになってから）置く
+  await expect.poll(() => spot.evaluate((n) => {
+    const r = n.getBoundingClientRect();
+    return !!document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest('.plot');
+  }), { timeout: 10_000 }).toBe(true);
   await spot.click({ force: true });
   // 市に戻る
-  await expect(page.locator('#sheet.open[data-pane="shop"]')).toHaveCount(1, { timeout: 5_000 });
+  await expect(page.locator('#sheet.open[data-pane="shop"]')).toHaveCount(1, { timeout: 15_000 });
   await page.click('#market-next', { force: true });
   await expect(page.locator('#sheet.open')).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('hatake-slot:run')!).marketClosed), { timeout: 15_000 }).toBe(true);
