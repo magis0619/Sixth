@@ -174,7 +174,7 @@ export const SYMBOLS: Record<SymbolId, SymbolDef> = {
   egg: { id: 'egg', name: '卵', emoji: '🥚', kind: 'auto', desc: 'スロットに3回出ると孵ってツバメになる', feverDesc: '大当たり×3', rarity: 'normal' },
   swallow: { id: 'swallow', name: 'ツバメ', emoji: '🐦', kind: 'auto', desc: '袋の虫を1枚追い出す（虫がいなければ+2）', feverDesc: '大当たり×3', rarity: 'normal' },
   koban: { id: 'koban', name: '小判', emoji: '🪙', kind: 'auto', desc: '+12（年貢を納めるたびに+3）', feverDesc: '大当たり×3', rarity: 'rare', base: 'coin' },
-  locust: { id: 'locust', name: 'イナゴ', emoji: '🦗', kind: 'auto', desc: '出るたびに1/2で袋に1匹増える・成長−1', feverDesc: '大群：増えるときは2匹', rarity: 'bad' },
+  locust: { id: 'locust', name: 'イナゴ', emoji: '🦗', kind: 'auto', desc: '出るたびに1/2で袋に1匹増える（畑はかじらない）', feverDesc: '大群：増えるときは2匹', rarity: 'bad' },
 };
 
 /** 絵柄袋・ショップでの表示順 */
@@ -868,7 +868,7 @@ if (EN) {
     tanuki: ['Tanuki', 'Steals ripe crops', 'Pack: takes 2'],
     frost: ['Frost', 'Freezes a plot for 3 days', 'Cold snap: freezes 2 plots'],
     mole: ['Mole', 'Pushes a crop into a nearby empty plot', 'Pack: pushes 2'],
-    locust: ['Locust', 'Each time it appears, 1/2 chance another joins your bag; growth −1', 'Plague: 2 join instead of 1'],
+    locust: ['Locust', 'Each time it appears, 1/2 chance another joins your bag (never eats crops)', 'Plague: 2 join instead of 1'],
     oniSeed: ['Ogre Tomato Seed', 'Plant 2–4 Ogre Tomatoes (price 12)', 'Breeding: Ogre Tomatoes planted today start +1'],
     heartSeed: ['Heart Berry Seed', 'Plant 3–5 Heart Berries (price 9)', 'Breeding: Heart Berries planted today start +1'],
     lanternSeed: ['Lantern Pumpkin Seed', 'Plant 1 Lantern Pumpkin (ripe in 4, price 60)', 'Breeding: Lantern Pumpkins planted today start +1'],

@@ -27,8 +27,8 @@ export function openSheet(name: SheetName): void {
 }
 
 export function closeSheet(): void {
-  // 市は開いて閉じたら、その日はもう開かない
-  if (openSheetName === 'shop' && state.day > 0 && isMarketDay(state.day) && !state.marketClosed) {
+  // 市は開いて閉じたら、その日はもう開かない（買った物を置きに出るときは閉じない。置き終わると市に戻る）
+  if (openSheetName === 'shop' && state.day > 0 && isMarketDay(state.day) && !state.marketClosed && !state.stock.length) {
     state.marketClosed = true;
     glog(state, `市を閉じた 所持${state.gold}`);
   }

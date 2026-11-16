@@ -113,7 +113,7 @@ const PEST_GUARD: Partial<Record<SymbolId, [ArtId, string]>> = {
   crow: ['scarecrow', L('かかしで守れる', 'Scarecrows guard')],
   bug: ['scarecrow', L('かかし・鶏小屋で守れる', 'Scarecrow / henhouse')],
   weed: ['scarecrow', L('かかしの周りに生えない', 'Not near scarecrows')],
-  locust: ['scarecrow', L('かかしで守れる', 'Scarecrows guard')],
+  locust: ['lock', L('市で消せる', 'Remove at market')],
   tanuki: ['scarecrow', L('かかしで守れる', 'Scarecrows guard')],
 };
 

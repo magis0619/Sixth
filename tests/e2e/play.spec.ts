@@ -319,3 +319,35 @@ test('手動の出目が今は使えないときは、タップしても次の�
   }
   expect(errors).toEqual([]);
 });
+
+test('市で巣箱を買って置くと、市に自動で戻る。閉じたらその日はもう開かない', async ({ page }) => {
+  const errors = await boot(page);
+  await start(page);
+  await firstDay(page);
+  // 3日目（水曜・市の日）の朝に書き換える
+  await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('hatake-slot:run')!);
+    Object.assign(s, { day: 3, morning: true, gold: 999, offer: ['addRain', 'addSun', 'addSeed'], weeklyPlaces: ['hive', 'scarecrow', 'compost'], marketClosed: false, stock: [], contractOffer: [] });
+    s.field = s.field.map(() => null);
+    localStorage.setItem('hatake-slot:run', JSON.stringify(s));
+  });
+  await page.reload();
+  await page.click('#title-resume', { force: true });
+  await page.evaluate(() => document.getElementById('spin')!.click());
+  const take = page.locator('#sheet.open #offer-shop [data-take]').first();
+  await expect(take).toBeInViewport({ timeout: 10_000 });
+  await take.click({ force: true });
+  await page.locator('#farm-shop [data-id="hive"]').click({ force: true });
+  await page.click('#market-next', { force: true });
+  await expect(page.locator('#sheet.open')).toHaveCount(0);
+  // 置く
+  const spot = page.locator('#field .plot.target').first();
+  await expect(spot).toHaveCount(1, { timeout: 5_000 });
+  await spot.click({ force: true });
+  // 市に戻る
+  await expect(page.locator('#sheet.open[data-pane="shop"]')).toHaveCount(1, { timeout: 5_000 });
+  await page.click('#market-next', { force: true });
+  await expect(page.locator('#sheet.open')).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('hatake-slot:run')!).marketClosed), { timeout: 15_000 }).toBe(true);
+  expect(errors).toEqual([]);
+});

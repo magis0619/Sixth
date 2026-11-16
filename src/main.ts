@@ -1254,6 +1254,16 @@ async function spinMorning(): Promise<void> {
   if (nextTax(state).daysLeft === 0) await explainOnce('ex:tax', taxCard(nextTax(state).amount), !!tut);
 }
 
+/** 置き終えたら市に戻る（演出の途中なら終わるのを待つ） */
+function backToMarket(tries = 12): void {
+  if (state.over || state.stock.length || !shopOpen(state) || openSheetName === 'shop') return;
+  if (ui.busy || openSheetName || el.overlay.classList.contains('show')) {
+    if (tries > 0) later(() => backToMarket(tries - 1), 300);
+    return;
+  }
+  openMarket();
+}
+
 /** 市を閉じた：朝なら（置く物がなければ）そのままリールを回す */
 function leaveMarket(): void {
   closeSheet();
@@ -1735,7 +1745,7 @@ async function resolveAutos(): Promise<void> {
         });
       }
     } else if (ev.type === 'locust') {
-      // イナゴ：袋の中で増える（袋の札が跳ねる）。育ち中の作物があれば成長を1つかじる
+      // イナゴ：袋の中で増える（袋の札が跳ねる）。畑はかじらない
       autoOutcome[i] = L(`袋+${ev.bred}`, `Bag +${ev.bred}`);
       sfx.bug();
       const chip = visibleOr(el.bag.querySelector('[data-sym="locust"]'), 'bag');
@@ -1960,6 +1970,8 @@ function onPlotTap(cell: number): void {
       burst(p.x, p.y + 14, ['💨', '✨'], 8, 46);
       shake(el.field, 3);
     }, 180);
+    // 市で買った物を置き終えた：市に自動で戻る（続けて買える。閉じたら朝はそのまま回す）
+    if (!state.stock.length && shopOpen(state) && isMarketDay(state.day) && !tut) later(() => backToMarket(), 650);
     return;
   }
   if (selected !== null) {

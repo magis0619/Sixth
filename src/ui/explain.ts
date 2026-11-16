@@ -118,8 +118,8 @@ const KIND_TAG = (sym: SymbolId): string => {
 
 /** 初めて出た絵柄のカード */
 /** お邪魔の狙う所・効き目（説明カードとお邪魔の窓で同じ言葉を使う） */
-export const PEST_TARGET: Partial<Record<SymbolId, string>> = { crow: L('一番高い実り', 'Best ripe crop'), bug: L('もうすぐ実る作物', 'Nearly ripe crop'), weed: L('作物の隣の空き', 'Gaps by crops'), locust: L('もうすぐ実る作物', 'Nearly ripe crop'), tanuki: L('一番高い実り', 'Best ripe crop') };
-export const PEST_EFFECT: Partial<Record<SymbolId, string>> = { crow: L('1/2で食べる', 'Eats 1/2'), bug: L('成長 −1', 'Growth −1'), weed: L('ふさいで広がる', 'Blocks, spreads'), locust: L('成長 −1・増える', '−1, breeds'), tanuki: L('盗む', 'Steals') };
+export const PEST_TARGET: Partial<Record<SymbolId, string>> = { crow: L('一番高い実り', 'Best ripe crop'), bug: L('もうすぐ実る作物', 'Nearly ripe crop'), weed: L('作物の隣の空き', 'Gaps by crops'), locust: L('袋（畑は無事）', 'Your bag (not crops)'), tanuki: L('一番高い実り', 'Best ripe crop') };
+export const PEST_EFFECT: Partial<Record<SymbolId, string>> = { crow: L('1/2で食べる', 'Eats 1/2'), bug: L('成長 −1', 'Growth −1'), weed: L('ふさいで広がる', 'Blocks, spreads'), locust: L('1/2で袋に+1', '1/2: +1 in bag'), tanuki: L('盗む', 'Steals') };
 
 /** 説明の1行：頭に絵、真ん中に何のことか、後ろに数字か一言（どの行も同じ幅） */
 const row = (ico: string, label: string, value: string): string => `<div class="ex-r"><span class="ex-r-ico">${ico}</span><span class="ex-r-k">${label}</span><b class="ex-r-v">${value}</b></div>`;

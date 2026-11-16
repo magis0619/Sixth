@@ -1384,19 +1384,10 @@ function resolveAutoRaw(state: GameState, reel: number, rng: Rng): AutoEvent | n
       return { type: 'bug', cell, warded: false, damage, hen: false };
     }
     case 'locust': {
-      // 出るたびに袋の中で増える（残しておくほど出やすくなる）。食べるのは育ち中の作物の成長1つ分
+      // 袋を荒らすだけ：出るたびに袋の中で増える（残しておくほど袋が薄まる）。畑はかじらない
       const bred = rng() < CONFIG.locustBreedChance ? CONFIG.locustBreed * r.power : 0;
       state.bag.locust += bred;
-      const targets = state.field.flatMap((c, i) => (c && c.growth > 0 && !isRipe(c) ? [i] : []));
-      if (!targets.length) return { type: 'locust', cell: null, damage: 0, bred };
-      const cell = pickWorst(targets, (i) => cropWorth(state, i), rng);
-      // かかしの周りでは食べられない
-      if (isGuarded(state, cell)) {
-        scared(state, cell);
-        return { type: 'locust', cell, damage: 0, bred };
-      }
-      state.field[cell]!.growth -= 1;
-      return { type: 'locust', cell, damage: 1, bred };
+      return { type: 'locust', cell: null, damage: 0, bred };
     }
     case 'weed': {
       if (rng() < 1 - Math.pow(0.5, lv(state, 'bugWard'))) return { type: 'weed', cells: [], warded: true };
@@ -2333,7 +2324,7 @@ export function resolveAuto(state: GameState, reel: number, rng: Rng): AutoEvent
     lstat(state, LOSS + 'カラス(値)', ev.eaten ? CROPS[ev.crop.kind].price : Math.round(CROPS[ev.crop.kind].price * 0.2));
   }
   if (ev.type === 'bug' && ev.cell !== null && !ev.warded) lstat(state, LOSS + '虫(成長)', ev.damage);
-  if (ev.type === 'locust' && ev.cell !== null) lstat(state, LOSS + 'イナゴ(成長)', 1);
+  if (ev.type === 'locust') lstat(state, LOSS + 'イナゴ(袋+)', ev.bred);
   if (ev.type === 'tanuki') lstat(state, LOSS + 'タヌキ(値)', ev.taken.reduce((a, x) => a + x.price, 0));
   if (ev.type === 'weed' && !ev.warded) lstat(state, LOSS + '雑草(マス)', ev.cells.length);
   let t = '';
@@ -2345,7 +2336,7 @@ export function resolveAuto(state: GameState, reel: number, rng: Rng): AutoEvent
     case 'tanuki': t = `盗んだ${ev.stolen} ${ev.taken.map((x) => cropName(x.crop)).join('・')}`; break;
     case 'frost': t = `凍った ${ev.cells.map(cellName).join('')}`; break;
     case 'mole': t = `押し出し${ev.moves.length}`; break;
-    case 'locust': t = `${ev.cell === null ? '作物なし' : `成長-1 ${cellName(ev.cell)}`}${ev.bred ? ` 袋で+${ev.bred}` : ''}`; break;
+    case 'locust': t = ev.bred ? `袋で+${ev.bred}（袋に${state.bag.locust}匹）` : '増えなかった'; break;
     case 'merchant': t = `売値×${ev.mult}`; break;
     case 'clover': t = `明日の金の種×${ev.boost}`; break;
     case 'egg': t = ev.hatched ? '孵ってツバメになった' : `孵化 ${ev.progress}/${CONFIG.eggHatch}`; break;
