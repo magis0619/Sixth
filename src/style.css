@@ -8691,7 +8691,7 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 .wd.tax.now.short, .wd.tax.short, .wd.now { background: none; box-shadow: none; }
 /* 真ん中の枠は高さを固定（農家を切り替えても、下の顔の列が動かない） */
 .fs-desc { min-height: 3em; display: flex; align-items: center; justify-content: center; }
-.fs-info { height: 200px; overflow-y: auto; align-content: start; }
+.fs-info { height: 264px; overflow: visible; align-content: start; }
 .fs-info-locked { display: flex; align-items: center; justify-content: center; background: rgba(255, 248, 231, 0.25); }
 .fs-info-locked .art { width: 64px; height: 64px; opacity: 0.6; }
 .fs-tap { margin: 0; font-size: 0.8125rem; font-weight: 800; color: var(--ink-soft); text-align: right; }

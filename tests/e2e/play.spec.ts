@@ -257,7 +257,10 @@ test('初めての人はチュートリアルで、横一列に植えて列で�
   await expect(page.locator('#sheet.open')).toHaveCount(1, { timeout: 15_000 });
   await expect(coach).toContainText('3つから1つ');
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('hatake-slot:run')!).offer)).toEqual(['addRain', 'addSun', 'addSeed']);
-  await page.locator('#offer-shop [data-take]').first().click({ force: true });
+  // 市の板がせり上がり終わるのを待ってから押す
+  const take = page.locator('#offer-shop [data-take]').first();
+  await expect(take).toBeInViewport({ timeout: 5_000 });
+  await take.click({ force: true });
   await expect(coach).toContainText('次へ', { timeout: 5_000 });
   await page.click('#market-next', { force: true });
   await expect(coach).toContainText('年貢', { timeout: 15_000 });
