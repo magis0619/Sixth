@@ -994,7 +994,8 @@ function renderUpgradeList(container: HTMLElement, items: typeof UPGRADES): void
     const affordable = canBuy(state, u.id);
     b.className = `item${affordable ? ' affordable' : ''}${available ? '' : ' soldout'}`;
     const ico = upgradeArt(u.id);
-    const pivot = u.id.startsWith('add') && isPivotAdd(state, u.id as AddUpgradeId);
+    // 「新しい作戦」の札は出さない
+    const pivot = false && u.id.startsWith('add') && isPivotAdd(state, u.id as AddUpgradeId);
     b.classList.toggle('pivot', pivot);
     const html = `<span class="ico">${ico}</span><span class="text"><span class="name">${u.name}${pivot ? `<span class="pivot-tag">${L('新しい作戦', 'New plan')}</span>` : ''}</span><span class="effect">${pivot ? CONFIG.pivotAdds[u.id]!.split(/：|: /)[1] : upgradeEffect(u.id)}</span></span>${costHtml(available ? price : null, affordable, u.id.startsWith('remove') && state.bag[UPGRADE_SYMBOL[u.id]!.symbol] > 0 ? CONFIG.marketDays.length ? L('次の市', 'Next') : L('来週', 'Next wk') : L('完了', 'Done'))}`;
     if (b.innerHTML !== html) b.innerHTML = html;
@@ -1028,7 +1029,7 @@ function renderFarmShop(): void {
   // 広げきったら「完了」は一番下へ（今週の品を上に）
   if (ep !== null) items.push(expandItem);
   PLACE_ORDER.filter((id) => state.weeklyPlaces.includes(id)).forEach((id) =>
-    items.push({ key: id, ico: art(PLACE_ART[id]), name: PLACES[id].name, effect: roomLeft(state, id) > 0 ? PLACES[id].desc : PLACES[id].kind === 'tool' ? L('置ける空きマスがない', 'No empty plot to place it') : L('敷けるマスがない', 'No plot to lay it on'), price: placePrice(state, id), ok: canBuyPlace(state, id), pivot: isPivotPlace(state, id) }),
+    items.push({ key: id, ico: art(PLACE_ART[id]), name: PLACES[id].name, effect: roomLeft(state, id) > 0 ? PLACES[id].desc : PLACES[id].kind === 'tool' ? L('置ける空きマスがない', 'No empty plot to place it') : L('敷けるマスがない', 'No plot to lay it on'), price: placePrice(state, id), ok: canBuyPlace(state, id), pivot: false }),
   );
   if (ep === null) items.push(expandItem);
   // 週が替わって品が入れ替わったら作り直す（数が同じでも、ボタンが前の品のまま押されないように）

@@ -195,7 +195,7 @@ for (const size of Object.keys(SIZES)) {
   {
     const { p, ctx, errs } = await page(size, rich);
     await p.click('#title-resume', f); await p.waitForTimeout(400); await snap(p, size, '10-rich');
-    for (const t of ['shop', 'bag', 'charms']) {
+    for (const t of ['bag', 'charms']) {
       await p.click(`.tab[data-sheet="${t}"]`, f); await snap(p, size, `11-${t}`);
       await p.evaluate(() => { const s = document.querySelector('.sheet'); s?.scrollTo(0, 99999); }); await snap(p, size, `11-${t}-bottom`);
       await p.click(t === 'shop' ? '#market-next' : '#sheet-close', f); await p.waitForTimeout(300);

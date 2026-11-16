@@ -107,6 +107,7 @@ export function loadRun(): GameState | null {
     s.premium ??= {};
     s.moonPhase ??= 3;
     s.eggProgress ??= 0;
+    s.marketClosed ??= false;
     s.notices ??= [];
     s.stats.crowEaten ??= 0;
     // スイカ・鍬・水路のつながり・相場・品評会を入れる前の保存データ

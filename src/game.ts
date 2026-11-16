@@ -127,6 +127,8 @@ export interface GameState {
   taxCut: number;
   /** この市でもう合体したか（1回の市で1種類まで） */
   mergedThisMarket: boolean;
+  /** 今日の市はもう閉じた（市は開いて閉じたら、その日はもう開かない） */
+  marketClosed: boolean;
   /** 大きな買い物（後半の市）を買った数 */
   premium: Partial<Record<PremiumId, number>>;
   /** 月の満ち欠け（袋の月の札すべてで共通）。0新月 → 1三日月 → 2半月 → 3満月。満月を使うと新月に戻る */
@@ -292,6 +294,7 @@ function freshGame(setup: GameSetup): GameState {
     contractDone: null,
     taxCut: 0,
     mergedThisMarket: false,
+    marketClosed: false,
     premium: {},
     moonPhase: 0,
     eggProgress: 0,
@@ -690,6 +693,7 @@ export function drawDay(state: GameState, rng: Rng): void {
 /** 朝：日付を進め、市の品・注文・週替わりを用意する。リールはまだ回さない（市の日はここで市を開く） */
 export function beginDay(state: GameState, rng: Rng): void {
   state.day++;
+  state.marketClosed = false;
   state.colorfulToday = false;
   state.priceMult = 1;
   state.morning = true;
@@ -770,7 +774,7 @@ export function isMarketDay(day: number): boolean {
 
 /** 今、買い物ができるか（市の日がない設定ならいつでも）。市が閉まる週は開かない */
 export function shopOpen(state: GameState): boolean {
-  if (state.contract === 'marketClosed') return false;
+  if (state.contract === 'marketClosed' || state.marketClosed) return false;
   return !CONFIG.marketDays.length || isMarketDay(state.day);
 }
 

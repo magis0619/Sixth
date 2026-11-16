@@ -8799,3 +8799,6 @@ button.fs-relic { font: inherit; color: var(--ink); cursor: pointer; }
 .ex-shape .ex-grid { grid-template-columns: repeat(5, 32px); gap: 4px; padding: 8px; }
 .ex-shape .ex-grid i { width: 32px; height: 32px; border-radius: 6px; }
 .ex-shape .ex-grid i b { font-size: 0.875rem; }
+/* 市は市の日の朝に開いて、閉じたらその日は開かない：下の「市」のボタンはなくす */
+.tab[data-sheet="shop"] { display: none; }
+.tabs { grid-template-columns: repeat(2, 1fr); }

@@ -1297,3 +1297,17 @@ describe('じょうろ・卵とツバメ・新しいお守り', () => {
     expect(cropPrice(u, newCrop('melon'))).toBe(Math.round(base * 0.75));
   });
 });
+
+describe('市は開いて閉じたら、その日はもう開かない', () => {
+  it('市を閉じると、その日は買い物できず、次の市の日にまた開く', () => {
+    const s = newGame({ shop: [], charmPool: [] });
+    s.day = 3;
+    s.gold = 999;
+    expect(canExpand(s)).toBe(true);
+    s.marketClosed = true;
+    expect(canExpand(s)).toBe(false);
+    s.day = 5;
+    beginDay(s, () => 0.5);
+    expect(s.marketClosed).toBe(false);
+  });
+});
