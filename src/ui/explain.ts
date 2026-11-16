@@ -245,3 +245,20 @@ export function mergeCard(sym: SymbolId, to: SymbolId, cost: number): string {
     <p class="ex-line">${L('袋が薄くなって、強い札が1枚に', 'A thinner bag and one strong card')}</p>
     <div class="ex-icons"><span>${art('coin')}<b>${cost}${L('（年貢の30%）', ' (30% of tax)')}</b></span><span>${art('bargain')}<b>${L('市で1回まで', 'Once per market')}</b></span></div>`;
 }
+
+/** 初めてのフィーバー：通常の効き目 → フィーバーで変わること → 大当たり（docs/ui-reading.md：同じ幅の行） */
+export function feverCard(sym: SymbolId, jackpot: number): string {
+  const d = SYMBOLS[sym];
+  const bad = d.rarity === 'bad';
+  const [name, effect] = d.feverDesc.includes('：') ? d.feverDesc.split('：') : ['', d.feverDesc];
+  const rows = [
+    row(art(sym as ArtId), L('ふだん', 'Normally'), d.kind === 'manual' && SEEDS[sym] ? L('植える', 'Plant') : bad ? L('お邪魔', 'Pest') : d.desc.length <= 10 ? d.desc : L('いつもの効き目', 'Usual effect')),
+    row(art('flame'), name || L('フィーバー', 'Fever'), effect.length <= 12 ? effect : L('効き目が変わる', 'Effect changes')),
+    ...(bad ? [row(art('warn'), L('お邪魔は', 'Pests'), L('効き目2倍', '×2 effect'))] : [row(art('coin'), L('大当たり', 'Jackpot'), `+${jackpot}`)]),
+  ];
+  return `<p class="ex-kicker">${L('はじめてのフィーバー', 'Your first fever')}</p>
+    <h2 class="ex-title">${L('同じ絵柄が3つ！', '3 of a kind!')}</h2>
+    <div class="ex-row ex-trio">${big(sym, 'small')}${big(sym, 'small')}${big(sym, 'small')}</div>
+    <div class="ex-rows">${rows.join('')}</div>
+    ${bad || effect.length <= 12 ? '' : `<p class="ex-note">${effect}</p>`}`;
+}

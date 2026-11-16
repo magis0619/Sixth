@@ -115,7 +115,7 @@ export function costHtml(price: number | null, affordable: boolean, doneText = L
   // 買うと次の年貢に足りなくなるときは、赤い注意を出す（買えなくはしない）
   const risk = affordable && state.day > 0 && state.gold - price < nextTax(state).amount;
   return affordable
-    ? `<span class="cost${risk ? ' tax-risk' : ''}"><b>${gold(price)}</b>${risk ? `<small>${L('年貢が足りなくなる', 'Tax at risk')}</small>` : ''}</span>`
+    ? `<span class="cost${risk ? ' tax-risk' : ''}"><b>${gold(price)}</b>${risk ? `<small>${L(`残り${state.gold - price}`, `Left ${state.gold - price}`)}</small>` : ''}</span>`
     : `<span class="cost"><b>${gold(price)}</b>${price > state.gold ? `<small>${L('あと', 'need ')}${price - state.gold}</small>` : ''}</span>`;
 }
 

@@ -107,6 +107,15 @@ async function showTaxProgress(): Promise<void> {
   });
 }
 
+/** お邪魔ごとの守り方（実際に使える物だけ。短く1行） */
+const PEST_GUARD: Partial<Record<SymbolId, [ArtId, string]>> = {
+  crow: ['scarecrow', L('かかしで守れる', 'Scarecrows guard')],
+  bug: ['scarecrow', L('かかし・鶏小屋で守れる', 'Scarecrow / henhouse')],
+  weed: ['scarecrow', L('かかしの周りに生えない', 'Not near scarecrows')],
+  locust: ['scarecrow', L('かかしで守れる', 'Scarecrows guard')],
+  tanuki: ['scarecrow', L('かかしで守れる', 'Scarecrows guard')],
+};
+
 /**
  * 年貢のあと、袋にお邪魔が入る：窓に文字で知らせ、カード（カラスの絵など）を見せる。
  * 「袋に入れる」を押すと、カードが絵柄袋へ飛んでいく
@@ -121,7 +130,8 @@ function showPestsJoin(added: SymbolId[]): Promise<void> {
       <div class="pest-cards">${kinds
         .map((sym) => {
           const n = added.filter((x) => x === sym).length;
-          return `<div class="pest-card" data-sym="${sym}"><span class="pc-art">${symHtml(sym)}</span><b>${SYMBOLS[sym].name}${n > 1 ? ` ×${n}` : ''}</b><span class="pc-desc">${SYMBOLS[sym].desc}</span></div>`;
+          const guard = PEST_GUARD[sym];
+          return `<div class="pest-card" data-sym="${sym}"><span class="pc-art">${symHtml(sym)}</span><b>${SYMBOLS[sym].name}${n > 1 ? ` ×${n}` : ''}</b><span class="pc-desc">${SYMBOLS[sym].desc}</span>${guard ? `<span class="pc-guard">${art(guard[0])}${guard[1]}</span>` : ''}</div>`;
         })
         .join('')}</div>
       <button class="primary" id="pest-ok">${L('袋に入れる', 'Into the bag')}</button>

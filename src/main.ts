@@ -24,7 +24,7 @@ import { applySettings, showSettings } from './ui/settings.ts';
 import { accept, reject } from './ui/states.ts';
 import { renderDanger, renderSky, setupScene } from './ui/scene.ts';
 import { blockLongPress, setupLongPress } from './ui/info.ts';
-import { comboCard, contractCard, explainOnce, markTutorialSymbols, marketCard, mergeCard, symbolCard, taxCard } from './ui/explain.ts';
+import { comboCard, contractCard, explainOnce, feverCard, markTutorialSymbols, marketCard, mergeCard, symbolCard, taxCard } from './ui/explain.ts';
 import { contractRibbon, contractSay, showContractDone, showContractOffer } from './ui/contract-ui.ts';
 import { CUTIN_MS, comboBanner, feverBanner, playCutIn, showCharmOffer, showTaxStamp, witherField } from './ui/shows.ts';
 
@@ -763,7 +763,25 @@ function shopItems(): typeof UPGRADES {
   });
 }
 
+/** 市の上の帯：所持金・次の年貢・年貢まで使える額（買う前に比べられるように） */
+function renderBudget(): void {
+  const stall = $('stall');
+  let bar = stall.querySelector<HTMLElement>('.budget-bar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.className = 'budget-bar';
+    stall.prepend(bar);
+  }
+  const t = nextTax(state);
+  const free = state.gold - t.amount;
+  const html = `<span class="bb-cell">${art('coin')}<small>${L('所持', 'Gold')}</small><b>${state.gold}</b></span>
+    <span class="bb-cell">${art('bale')}<small>${L(`年貢（${WEEKDAYS[CONFIG.taxPeriod - 1]}）`, 'Tax')}</small><b>${t.amount}</b></span>
+    <span class="bb-cell ${free >= 0 ? 'ok' : 'short'}">${art(free >= 0 ? 'bargain' : 'warn')}<small>${free >= 0 ? L('使える', 'Spendable') : L('年貢まで', 'To tax')}</small><b>${free >= 0 ? free : `−${-free}`}</b></span>`;
+  if (bar.innerHTML !== html) bar.innerHTML = html;
+}
+
 function renderShop(): void {
+  renderBudget();
   renderOfferShop();
   // 市を出るボタン：仕入れを選ぶまでは押せない（選ぶと押せるようになる）
   const next = $('market-next') as HTMLButtonElement;
@@ -1215,9 +1233,13 @@ async function spinMorning(): Promise<void> {
     for (const id of state.combos) await explainOnce(`ex:combo:${id}`, comboCard(id), !!tut);
   }
   if (state.fever.length) {
-    hintOnce('fever', `${art('flame')} ${L('同じ絵柄が<b>3つそろうとフィーバー</b>。<br>良い絵柄は特別な効果と<b>大当たり</b>、お邪魔は効果が<b>2倍</b>', 'Match <b>3 of the same symbol for a FEVER</b>.<br>Good symbols give a special effect and a <b>jackpot</b>; pests hit <b>twice as hard</b>')}`, 6000);
     await showFever();
-    await playFeverRoles(resolveFever(state, rng));
+    const feverEvents = resolveFever(state, rng);
+    await playFeverRoles(feverEvents);
+    // 初めてのフィーバー：その絵柄で何が起きたかを、通常 → フィーバー → 大当たりの行で（チュートリアルでは説明しない）
+    for (const ev of feverEvents) await explainOnce(`ex:fever:${symbolBase(ev.symbol)}`, feverCard(ev.symbol, ev.jackpot), !!tut);
+    const badFever = state.fever.find((s) => SYMBOLS[s].rarity === 'bad');
+    if (badFever) await explainOnce('ex:fever:bad', feverCard(badFever, 0), !!tut);
     if (state.charmOffer) {
       render();
       await showCharmOffer();
@@ -2556,7 +2578,6 @@ const TUT_STEPS: TutStep[] = [
   { text: `${art('bargain')} ${L('市が開いた！<br><b>3つから1つ</b>選ぼう（タダ）', 'The market is open!<br>Pick <b>1 of 3</b> (free)')}`, focus: () => [document.querySelector('.offer-sec')!], point: () => document.querySelector('#offer-shop [data-take] .cost'), done: () => state.day >= 3 && !state.offer.length },
   { text: L('<b>次へ</b>で市を出ると<br>リールが回る', 'Press <b>Next</b> to leave<br>and spin'), focus: () => [$('market-next')], spin: true, done: () => state.day >= 3 && !state.morning && !ui.busy },
   { text: `${art('bale')} ${L('<b>日曜の終わりに年貢</b><br>足りないと赤くなる', '<b>Tax at the end of Sunday</b><br>Turns red when short')}`, focus: () => [el.week, el.tax], button: L('次へ', 'Next') },
-  { text: `<span class="tut-fever">${symHtml('sun')}${symHtml('sun')}${symHtml('sun')}</span>${L('<b>3つそろうとフィーバー</b><br>大当たり！ お邪魔は2倍', '<b>3 of a kind = FEVER</b><br>Jackpot! Pests hit twice as hard')}`, focus: () => [el.reels], button: L('次へ', 'Next') },
   { text: L('あとは自由に！<br><b>年貢を7回</b>納めるとクリア', "You're on your own!<br>Pay the tax <b>7 times</b> to win"), focus: () => [], button: L('はじめる', "Let's go") },
 ];
 
