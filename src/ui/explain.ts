@@ -173,7 +173,17 @@ export function symbolCard(sym: SymbolId, fresh = true): string {
   if (seed) pic = `<div class="ex-row">${big(sym)}<span class="ex-arrow">▶</span>${big(FRUIT[seed.crop])}</div>`;
   else if (sym === 'egg') pic = `<div class="ex-row ex-moon">${(['egg', 'eggCrack1', 'eggCrack2'] as ArtId[]).map((a) => big(a, 'small')).join('<span class="ex-arrow">▶</span>')}<span class="ex-arrow">▶</span>${big('swallow', 'small')}</div>`;
   else if (sym === 'moon') pic = `<div class="ex-row ex-moon">${(['moonNew', 'moonCrescent', 'moonHalf'] as ArtId[]).map((a) => big(a, 'small')).join('<span class="ex-arrow">▶</span>')}<span class="ex-arrow">▶</span>${big('moon', 'small')}</div>`;
-  else pic = `<div class="ex-row">${big(sym, d.rarity === 'bad' ? 'bad' : '')}</div>`;
+  else {
+    // 畑のマスに効く札（雨・太陽・雷・蜂・じょうろ・肥料など）は、大きなマス目だけで分かる（行は出さない）
+    const shape = d.kind === 'manual' ? (symbolBase(sym) === 'fertilizer' && !symbolShape(state, sym) ? 'one' : symbolShape(state, sym)) : undefined;
+    if (shape && shape !== 'all') {
+      const [amt, mid] = symbolBase(sym) === 'fertilizer' ? ['×1.5'] : (AMOUNT[sym] ?? ['+1']);
+      return `<p class="ex-kicker">${fresh ? L('はじめての絵柄', 'New symbol') : L('絵柄', 'Symbol')}</p>
+        <h2 class="ex-title">${d.name}</h2>${KIND_TAG(sym)}
+        <div class="ex-row ex-shape">${big(sym)}<span class="ex-arrow">▶</span>${shapeGrid(shape, amt, mid)}</div>`;
+    }
+    pic = `<div class="ex-row">${big(sym, d.rarity === 'bad' ? 'bad' : '')}</div>`;
+  }
   return `<p class="ex-kicker">${fresh ? L('はじめての絵柄', 'New symbol') : L('絵柄', 'Symbol')}</p>
     <h2 class="ex-title">${d.name}</h2>${KIND_TAG(sym)}
     ${pic}

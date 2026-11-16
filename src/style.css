@@ -8795,3 +8795,7 @@ button.fs-relic { font: inherit; color: var(--ink); cursor: pointer; }
 .pc-line { display: flex; align-items: center; gap: 6px; font-size: 0.9375rem; font-weight: 800; color: var(--ink); }
 .pc-line .art { width: 1.4em; height: 1.4em; flex: none; }
 .pc-line.guard { color: #2f6b1c; }
+/* マス目の絵だけで見せる札（雨・太陽など）：マス目を大きく */
+.ex-shape .ex-grid { grid-template-columns: repeat(5, 32px); gap: 4px; padding: 8px; }
+.ex-shape .ex-grid i { width: 32px; height: 32px; border-radius: 6px; }
+.ex-shape .ex-grid i b { font-size: 0.875rem; }
