@@ -117,7 +117,7 @@ const KIND_TAG = (sym: SymbolId): string => {
 };
 
 /** 初めて出た絵柄のカード */
-export function symbolCard(sym: SymbolId): string {
+export function symbolCard(sym: SymbolId, fresh = true): string {
   const d = SYMBOLS[sym];
   const seed = SEEDS[sym];
   let pic = '';
@@ -143,7 +143,7 @@ export function symbolCard(sym: SymbolId): string {
     pic = `<div class="ex-row">${big(sym, d.rarity === 'bad' ? 'bad' : '')}</div>`;
   }
   const pestNote = d.rarity === 'bad' ? `<p class="ex-note">${art('bargain')} ${L('市で消せる', 'Remove it at the market')}</p>` : '';
-  return `<p class="ex-kicker">${L('はじめての絵柄', 'New symbol')}</p>
+  return `<p class="ex-kicker">${fresh ? L('はじめての絵柄', 'New symbol') : L('絵柄', 'Symbol')}</p>
     <h2 class="ex-title">${d.name}</h2>${KIND_TAG(sym)}
     ${pic}
     <p class="ex-line">${d.desc}</p>${pestNote}

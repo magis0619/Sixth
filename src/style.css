@@ -8687,3 +8687,31 @@ body:has(#overlay.show) :is(.machine, .machine *) {
   font-weight: 400;
 }
 .farm-screen .ds-go:disabled { background: #8a7f72; color: #3d3326; opacity: 0.7; box-shadow: 0 5px 0 #3d3326; }
+/* 日曜の外枠に残っていた古い赤い四角を消す（足りないときは札の中だけ赤くする） */
+.wd.tax.now.short, .wd.tax.short, .wd.now { background: none; box-shadow: none; }
+/* 真ん中の枠は高さを固定（農家を切り替えても、下の顔の列が動かない） */
+.fs-desc { min-height: 3em; display: flex; align-items: center; justify-content: center; }
+.fs-info { height: 200px; overflow-y: auto; align-content: start; }
+.fs-info-locked { display: flex; align-items: center; justify-content: center; background: rgba(255, 248, 231, 0.25); }
+.fs-info-locked .art { width: 64px; height: 64px; opacity: 0.6; }
+.fs-tap { margin: 0; font-size: 0.8125rem; font-weight: 800; color: var(--ink-soft); text-align: right; }
+button.fs-card { cursor: pointer; font: inherit; color: inherit; padding: 0; border: none; background: none; box-shadow: none; width: auto; }
+.fs-card-in {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  width: 46px;
+  padding: 4px 2px 2px;
+  background: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.2);
+}
+.fs-card-in .art { width: 32px; height: 32px; }
+.fs-card-in b { font-size: 0.8125rem; }
+.fs-card-in em { position: absolute; top: -8px; right: -8px; font-style: normal; font-size: 0.75rem; font-weight: 800; color: #fff; background: var(--role-manual); border: 2px solid var(--ink); border-radius: 999px; padding: 0 5px; }
+.fs-card-in.down { opacity: 0.55; }
+.fs-card-in.down em { background: #8a7a62; }
+.fs-card-in.bad { background: #fde7ec; }
+button.fs-relic { font: inherit; color: var(--ink); cursor: pointer; }

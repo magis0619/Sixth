@@ -1966,7 +1966,8 @@ export function upgradeAvailable(state: GameState, id: UpgradeId): boolean {
   // 毎日の仕入れのときは、ショップで足せる絵柄は満月だけ（ほかは仕入れで）
   if (change.delta > 0) return !CONFIG.dailyPick && state.weekly.includes(id as AddUpgradeId);
   // イナゴを消すのは週1回の数に入らない（増える速さに追いつけるように）
-  return state.bag[change.symbol] > 0 && (change.symbol === 'locust' || !removeLimitReached(state));
+  // お邪魔を消せるのは、イナゴも含めて市で1枚まで
+  return state.bag[change.symbol] > 0 && !removeLimitReached(state);
 }
 
 /** 今週はもうお邪魔を消せない */
@@ -1985,7 +1986,7 @@ function buyRaw(state: GameState, id: UpgradeId): boolean {
   state.bag[change.symbol] += change.delta;
   if (change.delta < 0) {
     state.removed[change.symbol] = (state.removed[change.symbol] ?? 0) + 1;
-    if (change.symbol !== 'locust') state.removedThisWeek++;
+    state.removedThisWeek++;
   }
   state.stats.purchases.push({ day: state.day, id });
   checkReady(state);

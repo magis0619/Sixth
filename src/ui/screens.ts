@@ -236,7 +236,7 @@ export function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
     const t = e.target as HTMLElement;
     if (t.closest('#help-overview')) void showExplain(overviewCard());
     const row = t.closest<HTMLElement>('[data-ex-sym]');
-    if (row) void showExplain(symbolCard(row.dataset.exSym as SymbolId));
+    if (row) void showExplain(symbolCard(row.dataset.exSym as SymbolId, false));
   });
   $('help-close').addEventListener('click', () => {
     el.overlay.classList.remove('show');
@@ -757,11 +757,11 @@ export function showFarmerScreen(dir = 0): void {
     const bag = SYMBOL_ORDER.flatMap((sym) => {
       const n = Math.max(0, CONFIG.initialBag[sym] + (f.bag[sym] ?? 0));
       const dd = f.bag[sym] ?? 0;
-      return n > 0 || dd < 0 ? [`<span class="fs-card${dd > 0 ? ' up' : dd < 0 ? ' down' : ''}${SYMBOLS[sym].rarity === 'bad' ? ' bad' : ''}">${art(sym as ArtId)}<b>×${n}</b>${dd ? `<em>${dd > 0 ? '+' : ''}${dd}</em>` : ''}</span>`] : [];
+      return n > 0 || dd < 0 ? [`<button class="fs-card" data-ex-sym="${sym}" aria-label="${SYMBOLS[sym].name}"><span class="fs-card-in${dd > 0 ? ' up' : dd < 0 ? ' down' : ''}${SYMBOLS[sym].rarity === 'bad' ? ' bad' : ''}">${art(sym as ArtId)}<b>×${n}</b>${dd ? `<em>${dd > 0 ? '+' : ''}${dd}</em>` : ''}</span></button>`] : [];
     }).join('');
     const extras = [
-      ...(Object.keys(f.charms) as CharmId[]).map((id) => `<span class="fs-relic">${art(id as ArtId)}<b>${CHARMS[id].name}</b></span>`),
-      ...f.stock.map((id) => `<span class="fs-relic">${art(PLACE_ART[id])}<b>${PLACES[id].name}</b></span>`),
+      ...(Object.keys(f.charms) as CharmId[]).map((id) => `<button class="fs-relic" data-ex-charm="${id}">${art(id as ArtId)}<b>${CHARMS[id].name}</b></button>`),
+      ...f.stock.map((id) => `<button class="fs-relic" data-ex-place="${id}">${art(PLACE_ART[id])}<b>${PLACES[id].name}</b></button>`),
     ].join('');
     const favor = [
       ...f.favor.filter((id) => !isCutAdd(id) && !CONFIG.rareOffers.includes(id)).map((id) => `<span class="fs-mini">${ADD_EMOJI[id]}</span>`),
@@ -786,11 +786,12 @@ export function showFarmerScreen(dir = 0): void {
         <h2 class="ds-name">${unlocked ? f.name : '？？？'}</h2>
         ${unlocked ? `<p class="fs-desc">${f.desc}</p>` : `<p class="fs-desc locked">${art('lock')} ${L(`「${DIFFICULTIES[f.unlockClear!].name}」をクリアで解放`, `Clear "${DIFFICULTIES[f.unlockClear!].name}" to unlock`)}</p>`}
         ${unlocked ? `<div class="ds-rules fs-info">
+          <p class="fs-tap">${L('札をタップで説明', 'Tap a card for details')}</p>
           <p class="fs-k">${L('最初の袋', 'Starting bag')}</p>
           <div class="fs-bag">${bag}</div>
           ${extras ? `<p class="fs-k">${L('持ってくる物', 'Brings')}</p><div class="fs-relics">${extras}</div>` : ''}
           ${favor ? `<p class="fs-k">${L('市に出やすい', 'Often at market')}</p><div class="fs-favor">${favor}</div>` : ''}
-        </div>` : ''}
+        </div>` : `<div class="ds-rules fs-info fs-info-locked">${art('lock')}</div>`}
         <div class="fs-roster">${list.map((x) => `<button class="fs-face${x.id === f.id ? ' on' : ''}${farmerUnlocked(meta, x.id) ? '' : ' locked'}" data-farmer="${x.id}" style="--c:${FARMER_COLOR[x.id] ?? '#5fae3c'}" aria-label="${farmerUnlocked(meta, x.id) ? x.name : '？？？'}">${farmerUnlocked(meta, x.id) ? art(x.art as ArtId) : art('lock')}</button>`).join('')}</div>
         <div class="ds-foot">
           <button class="primary ds-go" id="prep-start" ${unlocked ? '' : 'disabled'}>${saved && confirmNew ? L('次へ（続きは消えます）', 'Next (erases saved game)') : nextIsDiff ? `${L('難しさを選ぶ', 'Choose difficulty')} ▶` : L('はじめる！', 'Start!')}</button>
@@ -804,6 +805,20 @@ export function showFarmerScreen(dir = 0): void {
       sfx.select();
       paint(step);
     };
+    // 最初の袋の札・持ってくる物をタップすると、その説明（一枚絵）
+    el.overlay.querySelectorAll<HTMLElement>('[data-ex-sym]').forEach((b) => b.addEventListener('click', () => void showExplain(symbolCard(b.dataset.exSym as SymbolId, false))));
+    el.overlay.querySelectorAll<HTMLElement>('[data-ex-charm]').forEach((b) =>
+      b.addEventListener('click', () => {
+        const id = b.dataset.exCharm as CharmId;
+        void showExplain(`<p class="ex-kicker">${L('お守り', 'Charm')}</p><h2 class="ex-title">${CHARMS[id].name}</h2><div class="ex-row"><span class="ex-art">${art(id as ArtId)}</span></div><p class="ex-line">${CHARMS[id].desc(1)}</p>`);
+      }),
+    );
+    el.overlay.querySelectorAll<HTMLElement>('[data-ex-place]').forEach((b) =>
+      b.addEventListener('click', () => {
+        const id = b.dataset.exPlace as keyof typeof PLACES;
+        void showExplain(`<p class="ex-kicker">${L('畑の品', 'Farm item')}</p><h2 class="ex-title">${PLACES[id].name}</h2><div class="ex-row"><span class="ex-art">${art(PLACE_ART[id])}</span></div><p class="ex-line">${PLACES[id].desc}</p>`);
+      }),
+    );
     $('fs-prev').addEventListener('click', () => pick(-1));
     $('fs-next').addEventListener('click', () => pick(1));
     el.overlay.querySelectorAll<HTMLButtonElement>('[data-farmer]').forEach((b) =>
@@ -816,7 +831,7 @@ export function showFarmerScreen(dir = 0): void {
     screen.addEventListener('pointerdown', (e) => (diffSwipeX = e.clientX));
     screen.addEventListener('pointerup', (e) => {
       const dx = e.clientX - diffSwipeX;
-      if (Math.abs(dx) > 60 && !(e.target as HTMLElement).closest('.fs-roster')) pick(dx < 0 ? 1 : -1);
+      if (Math.abs(dx) > 60 && !(e.target as HTMLElement).closest('.fs-roster, .fs-info')) pick(dx < 0 ? 1 : -1);
     });
     $('prep-back').addEventListener('click', () => {
       sfx.cancel();
