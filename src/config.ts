@@ -305,7 +305,7 @@ export const CONFIG = {
   /** 初期の絵柄袋 */
   initialBag: {
     seed: 3, berrySeed: 0, pumpkinSeed: 0, melonSeed: 0, goldSeed: 0, rain: 2, sun: 1, thunder: 0, fertilizer: 0, bee: 0,
-    crow: 2, bug: 0, coin: 1, merchant: 0, clover: 0, moon: 0, weed: 0, tanuki: 0, frost: 0, watermelonSeed: 0, hoe: 0, mole: 0, locust: 0,
+    crow: 1, bug: 0, coin: 1, merchant: 0, clover: 0, moon: 0, weed: 0, tanuki: 0, frost: 0, watermelonSeed: 0, hoe: 0, mole: 0, locust: 0,
     oniSeed: 0, heartSeed: 0, lanternSeed: 0, boxSeed: 0, bigRain: 0, bigSun: 0, raijin: 0, queenBee: 0, superFert: 0, koban: 0, can: 0, egg: 0, swallow: 0,
   } as Record<SymbolId, number>,
   /** 合体に要る同じ絵柄の枚数（市で1回に1種類まで） */
