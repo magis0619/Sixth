@@ -2,7 +2,7 @@
 // 文字は1行まで。形・数字・矢印の絵で伝える。タップで閉じる。一度出たものは meta.hints に残して二度と出さない
 
 import { L } from '../i18n.ts';
-import { CHARMS, COMBOS, CONFIG, CROPS, type CharmId, SEEDS, type ShapeId, type SymbolId, SYMBOLS } from '../config.ts';
+import { CHARMS, COMBOS, CONFIG, CROPS, type CharmId, SEEDS, SHAPE_NAMES, type ShapeId, symbolBase, type SymbolId, SYMBOLS } from '../config.ts';
 import { symbolShape } from '../game.ts';
 import { art, type ArtId } from '../art.ts';
 import { sfx } from '../audio.ts';
@@ -78,7 +78,7 @@ export function showExplain(html: string): Promise<void> {
 const big = (id: ArtId, cls = ''): string => `<span class="ex-art ${cls}">${art(id)}</span>`;
 
 /** 効く形を5×5のマス目で。真ん中が選んだマス、色のマスに効く */
-function shapeGrid(shape: ShapeId, amount: string, center?: string): string {
+function shapeGrid(shape: ShapeId, amount: string, center?: string, mini = false): string {
   const on = (dx: number, dy: number): boolean => {
     switch (shape) {
       case 'all': return true;
@@ -100,7 +100,7 @@ function shapeGrid(shape: ShapeId, amount: string, center?: string): string {
       const mid = !x && !y;
       cells += `<i class="${hit ? 'on' : ''}${mid ? ' mid' : ''}">${hit ? `<b>${mid && center ? center : amount}</b>` : ''}</i>`;
     }
-  return `<span class="ex-grid">${cells}</span>`;
+  return `<span class="ex-grid${mini ? ' mini' : ''}">${cells}</span>`;
 }
 
 /** 手で使う成長系の、効く量（形のマスに書く数） */
@@ -117,37 +117,63 @@ const KIND_TAG = (sym: SymbolId): string => {
 };
 
 /** 初めて出た絵柄のカード */
+/** 説明の1行：頭に絵、真ん中に何のことか、後ろに数字か一言（どの行も同じ幅） */
+const row = (ico: string, label: string, value: string): string => `<div class="ex-r"><span class="ex-r-ico">${ico}</span><span class="ex-r-k">${label}</span><b class="ex-r-v">${value}</b></div>`;
+
+/** 札ごとの説明の行（docs/ui-reading.md：1行に1つ・短く・同じ幅） */
+function symbolRows(sym: SymbolId): string[] {
+  const d = SYMBOLS[sym];
+  const seed = SEEDS[sym];
+  if (seed) {
+    const crop = CROPS[seed.crop];
+    const counts = CONFIG.seedCountWeights.map((w) => w.count);
+    const n = seed.single ? '1' : `${Math.min(...counts) + seed.extra}〜${Math.max(...counts) + seed.extra}`;
+    return [
+      row(art(FRUIT[seed.crop]), L('植わる数', 'Plants'), L(`${n}個`, n)),
+      row(art('sprout'), L('実るまで', 'Ripens in'), L(`${crop.ripe}回`, `${crop.ripe}`)),
+      row(art('coin'), L('売値', 'Price'), `${crop.price}`),
+      ...(crop.big ? [row(art('expand'), L('大きさ', 'Size'), '2×2')] : []),
+    ];
+  }
+  if (sym === 'moon') return [row(art('moonHalf'), L('満ちる', 'Waxes'), L('出るたびに1つ', 'Each time')), row(art('moon'), L('満月で', 'Full moon'), L('畑全体 +1', 'Whole field +1'))];
+  if (sym === 'egg') return [row(art('eggCrack2'), L('孵るまで', 'Hatches in'), L(`${CONFIG.eggHatch}回`, `${CONFIG.eggHatch}`)), row(art('swallow'), L('生まれる', 'Becomes'), L('ツバメ', 'Swallow'))];
+  if (sym === 'swallow') return [row(art('bug'), L('袋の虫', 'Bag bugs'), L('1枚 追い出す', '−1')), row(art('coin'), L('虫がいない', 'No bugs'), '+2')];
+  if (sym === 'coin') return [row(art('coin'), L('お金', 'Gold'), `+${CONFIG.coinAmount}`)];
+  if (symbolBase(sym) === 'fertilizer') return [row(art('fertilizer'), L('売値', 'Price'), '×1.5')];
+  if (d.kind === 'manual') {
+    const shape = symbolShape(state, sym);
+    const [amt, mid] = AMOUNT[sym] ?? ['+1'];
+    return [
+      ...(shape ? [row(shapeGrid(shape, '', undefined, true), L('効く所', 'Area'), SHAPE_NAMES[shape])] : []),
+      row(art('sprout'), L('育つ', 'Growth'), mid ? `${amt}（${L('真ん中', 'center')}${mid}）` : amt),
+    ];
+  }
+  if (d.rarity === 'bad') {
+    const target: Partial<Record<SymbolId, string>> = { crow: L('一番高い実り', 'Best ripe crop'), bug: L('もうすぐ実る作物', 'Nearly ripe crop'), weed: L('作物の隣の空き', 'Gaps by crops'), locust: L('もうすぐ実る作物', 'Nearly ripe crop'), tanuki: L('一番高い実り', 'Best ripe crop') };
+    const effect: Partial<Record<SymbolId, string>> = { crow: L('1/2で食べる', 'Eats 1/2'), bug: L('成長 −1', 'Growth −1'), weed: L('ふさいで広がる', 'Blocks, spreads'), locust: L('成長 −1・増える', '−1, breeds'), tanuki: L('盗む', 'Steals') };
+    return [
+      row(art('warn'), L('狙う所', 'Targets'), target[sym] ?? '—'),
+      row(art(sym as ArtId), L('効き目', 'Effect'), effect[sym] ?? d.desc),
+      row(art('scarecrow'), L('守り', 'Guard'), sym === 'tanuki' || sym === 'crow' ? L('かかし', 'Scarecrow') : L('かかし・鶏小屋', 'Scarecrow, hen')),
+      row(art('bargain'), L('市で', 'Market'), L('消せる', 'Remove')),
+    ];
+  }
+  return [row(art(sym as ArtId), L('効き目', 'Effect'), d.desc)];
+}
+
 export function symbolCard(sym: SymbolId, fresh = true): string {
   const d = SYMBOLS[sym];
   const seed = SEEDS[sym];
+  // 大きな絵：種は袋 → 作物、月・卵は移り変わり、ほかは絵1つ
   let pic = '';
-  if (seed) {
-    // 種：袋 → 作物（何個・何日で実る・いくらで売れる）
-    const crop = CROPS[seed.crop];
-    const counts = CONFIG.seedCountWeights.map((w) => w.count);
-    const n = seed.single ? '×1' : `×${Math.min(...counts) + seed.extra}〜${Math.max(...counts) + seed.extra}`;
-    pic = `<div class="ex-row">${big(sym)}<span class="ex-arrow">▶</span>${big(FRUIT[seed.crop])}<b class="ex-num">${n}</b></div>
-      <div class="ex-facts"><span>${art('sprout')}<b>${crop.ripe}</b>${L('回で実る', ' to ripen')}</span><span>${art('coin')}<b>${crop.price}</b>${crop.big ? L('（2×2）', ' (2×2)') : ''}</span></div>`;
-  } else if (sym === 'egg') {
-    // 卵：スロットに出るたびにひびが入り、3回でツバメに
-    pic = `<div class="ex-row ex-moon">${(['egg', 'eggCrack1', 'eggCrack2'] as ArtId[]).map((a) => big(a, 'small')).join('<span class="ex-arrow">▶</span>')}<span class="ex-arrow">▶</span>${big('swallow')}</div>`;
-  } else if (sym === 'moon') {
-    // 月：出るたびに満ちて、満月のときだけ畑全体+1
-    pic = `<div class="ex-row ex-moon">${(['moonNew', 'moonCrescent', 'moonHalf'] as ArtId[]).map((a) => big(a, 'small')).join('<span class="ex-arrow">▶</span>')}<span class="ex-arrow">▶</span>${big('moon')}</div>
-      <div class="ex-row">${shapeGrid('all', '+1')}</div>`;
-  } else if (d.kind === 'manual' && (symbolShape(state, sym) || sym === 'fertilizer')) {
-    const shape = sym === 'fertilizer' ? 'one' : symbolShape(state, sym)!;
-    const [amt, mid] = sym === 'fertilizer' ? ['×1.5'] : (AMOUNT[sym] ?? ['+1']);
-    pic = `<div class="ex-row">${big(sym)}<span class="ex-arrow">▶</span>${shapeGrid(shape, amt, mid)}</div>`;
-  } else {
-    pic = `<div class="ex-row">${big(sym, d.rarity === 'bad' ? 'bad' : '')}</div>`;
-  }
-  const pestNote = d.rarity === 'bad' ? `<p class="ex-note">${art('bargain')} ${L('市で消せる', 'Remove it at the market')}</p>` : '';
+  if (seed) pic = `<div class="ex-row">${big(sym)}<span class="ex-arrow">▶</span>${big(FRUIT[seed.crop])}</div>`;
+  else if (sym === 'egg') pic = `<div class="ex-row ex-moon">${(['egg', 'eggCrack1', 'eggCrack2'] as ArtId[]).map((a) => big(a, 'small')).join('<span class="ex-arrow">▶</span>')}<span class="ex-arrow">▶</span>${big('swallow', 'small')}</div>`;
+  else if (sym === 'moon') pic = `<div class="ex-row ex-moon">${(['moonNew', 'moonCrescent', 'moonHalf'] as ArtId[]).map((a) => big(a, 'small')).join('<span class="ex-arrow">▶</span>')}<span class="ex-arrow">▶</span>${big('moon', 'small')}</div>`;
+  else pic = `<div class="ex-row">${big(sym, d.rarity === 'bad' ? 'bad' : '')}</div>`;
   return `<p class="ex-kicker">${fresh ? L('はじめての絵柄', 'New symbol') : L('絵柄', 'Symbol')}</p>
     <h2 class="ex-title">${d.name}</h2>${KIND_TAG(sym)}
     ${pic}
-    <p class="ex-line">${d.desc}</p>${pestNote}
-    <p class="ex-fever">${art('flame')} ${L('3つそろうと', '3 of a kind:')} ${d.feverDesc.split('：')[0]}</p>`;
+    <div class="ex-rows">${symbolRows(sym).join('')}</div>`;
 }
 
 /** 初めての組み合わせのカード：絵柄＋絵柄＝効果 */

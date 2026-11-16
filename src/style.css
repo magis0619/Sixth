@@ -8715,3 +8715,30 @@ button.fs-card { cursor: pointer; font: inherit; color: inherit; padding: 0; bor
 .fs-card-in.down em { background: #8a7a62; }
 .fs-card-in.bad { background: #fde7ec; }
 button.fs-relic { font: inherit; color: var(--ink); cursor: pointer; }
+
+/* ==== 説明カード：大きく、同じ幅の行に1つずつ（docs/ui-reading.md） ==== */
+.explain-card { width: min(440px, 100%); padding: 20px 18px 12px; }
+.explain-card .ex-title { font-size: 1.75rem; }
+.explain-card .ex-art { width: 120px; height: 120px; }
+.explain-card .ex-art.small { width: 64px; height: 64px; }
+.ex-rows { display: grid; gap: 8px; margin: 12px 0 4px; }
+.ex-r {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 4px 14px 4px 6px;
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  text-align: left;
+}
+.ex-r-ico { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; }
+.ex-r-ico .art { width: 40px; height: 40px; }
+.ex-r-k { font-size: 1rem; font-weight: 800; color: var(--ink-soft); }
+.ex-r-v { font-family: var(--font-pop); font-weight: 400; font-size: 1.375rem; color: var(--ink); white-space: nowrap; }
+.ex-grid.mini { grid-template-columns: repeat(5, 7px); gap: 1px; padding: 2px; border-width: 2px; border-radius: 5px; }
+.ex-grid.mini i { width: 7px; height: 7px; border-radius: 1px; }
+.ex-grid.mini i b { display: none; }
+.ex-grid.mini i.mid { outline-width: 1px; }
