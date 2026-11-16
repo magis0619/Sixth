@@ -7,7 +7,7 @@ import {
   takeOffer,
   buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, expand, expandPrice, canUse, cellAt, cellX, cellY, chooseCharm, fieldCells,
   isOpen, isRipe, newGame, nextTax, place, placePrice, pullWeed, resolveAllAuto, resolveFever, ripeGroup, sell, shapeCells,
-  startDay, takeContract, mergeable, mergeSymbol, upgradePrice, useSymbol, validTargets, type GameState,
+  startDay, takeContract, logSnapshot, mergeable, mergeSymbol, upgradePrice, useSymbol, validTargets, type GameState,
 } from '../src/game.ts';
 
 const runs = Number(process.argv[2] ?? 2000);
@@ -189,6 +189,8 @@ for (let n = 0; n < runs; n++) {
     if (process.env.MERGE === '1') { const m = mergeable(s); if (m.length) mergeSymbol(s, m[0]); }
     playDay(s);
   }
+  // LOG=ファイル で最後の1プレイのプレイログ（画面の書き出しと同じ中身）を書き出す
+  if (process.env.LOG && n === runs - 1) (await import('node:fs')).writeFileSync(process.env.LOG, [...logSnapshot(s), '---', ...s.log].join('\n'));
   days.push(s.day);
   taxes.push(s.taxesPaid);
   // DUMP=ファイル で1プレイごとの記録（持っていたお守り・置いた畑の品・袋）を書き出す

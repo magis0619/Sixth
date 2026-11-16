@@ -40,9 +40,10 @@ export function buildLogText(build: string): string {
   }
   if (!log.length) return '';
   return [
-    `# 畑スロット プレイログ v1`,
+    `# 畑スロット プレイログ v2`,
     `# 版=${build} 書き出し=${at} 画面=${typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : '-'}`,
     `# 読み方: 行頭=日と曜日（D8月＝8日目の月曜）。マスは(列,行)で左上が(1,1)。お金は所持金の数字`,
+    `# 毎朝: 畑の数（回す前）・袋（変わった日だけ）。市の日: 並んだ品と値段。日曜: 週のまとめ（収入・支出・被害の内訳）`,
     '## いまの様子',
     ...snapshot,
     `## 出来事（${log.length}行）`,

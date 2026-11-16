@@ -2,7 +2,7 @@
 
 import { EN, gold, L } from '../i18n.ts';
 import { CONFIG, type CropKind, CROPS, type PlaceId, SHAPE_NAMES, type SymbolId, SYMBOLS, UPGRADE_SYMBOL, type UpgradeId } from '../config.ts';
-import { bagTotal, type Crop, isMarketDay, nextTax, removeLimitReached } from '../game.ts';
+import { bagTotal, type Crop, glog, isMarketDay, nextTax, removeLimitReached } from '../game.ts';
 import { art, type ArtId } from '../art.ts';
 import { el, state } from './store.ts';
 
@@ -28,7 +28,10 @@ export function openSheet(name: SheetName): void {
 
 export function closeSheet(): void {
   // 市は開いて閉じたら、その日はもう開かない
-  if (openSheetName === 'shop' && state.day > 0 && isMarketDay(state.day)) state.marketClosed = true;
+  if (openSheetName === 'shop' && state.day > 0 && isMarketDay(state.day) && !state.marketClosed) {
+    state.marketClosed = true;
+    glog(state, `市を閉じた 所持${state.gold}`);
+  }
   openSheetName = null;
   el.sheet.classList.remove('open');
   el.sheetBackdrop.classList.remove('open');

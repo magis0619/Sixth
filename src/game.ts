@@ -137,6 +137,8 @@ export interface GameState {
   eggProgress: number;
   /** 開発用のプレイログ（1行1出来事。設定の「ログを書き出す」で取り出す） */
   log: string[];
+  /** 開発用：ログの集計（お金の出入り・被害）。週ごとと通し */
+  logStats?: { week: Record<string, number>; total: Record<string, number>; bag?: string };
   /** 買った回数（畑を広げる・道具ごと。価格が上がる） */
   bought: Partial<Record<PlaceId | 'expand', number>>;
   /** 鍬で耕したマス（次に植えた作物が成長+1） */
@@ -722,6 +724,7 @@ export function beginDay(state: GameState, rng: Rng): void {
     state.removedThisWeek = 0;
     state.weeklyPlaces = rollWeeklyPlaces(state, rng);
   }
+  logMarket(state);
 }
 
 /** リールを回す：袋から引いて、フィーバー・組み合わせを決める */
@@ -2166,6 +2169,79 @@ const LOG_MAX = 5000;
 export const cellName = (cell: number): string => `(${cellX(cell) + 1},${cellY(cell) + 1})`;
 const cropName = (c: Crop | null | undefined): string => (c ? CROPS[c.kind].name : '-');
 
+/** 集計に足す（収入はプラス、支出・被害は名前で分ける） */
+function lstat(state: GameState, key: string, n: number): void {
+  if (!n) return;
+  state.logStats ??= { week: {}, total: {} };
+  const st = state.logStats;
+  st.week[key] = (st.week[key] ?? 0) + n;
+  st.total[key] = (st.total[key] ?? 0) + n;
+}
+
+const IN = '収入:';
+const OUT = '支出:';
+const LOSS = '被害:';
+/** 集計を「収入+X（内訳） 支出-Y（内訳） 被害（内訳）」の1行に */
+function statLine(m: Record<string, number>): string {
+  const part = (pre: string): [number, string] => {
+    const e = Object.entries(m).filter(([k]) => k.startsWith(pre)).sort((a, b) => b[1] - a[1]);
+    return [e.reduce((a, [, v]) => a + v, 0), e.map(([k, v]) => `${k.slice(pre.length)}${v}`).join(' ')];
+  };
+  const [inn, ind] = part(IN);
+  const [out, outd] = part(OUT);
+  const [, lossd] = part(LOSS);
+  return `収入+${inn}（${ind || 'なし'}） 支出-${out}（${outd || 'なし'}）${lossd ? ` 被害（${lossd}）` : ''}`;
+}
+
+const GROW_SYMS: SymbolId[] = ['rain', 'sun', 'bee', 'thunder', 'can', 'moon', 'bigRain', 'bigSun', 'raijin', 'queenBee'];
+const PEST_SYMS: SymbolId[] = ['crow', 'bug', 'weed', 'tanuki', 'frost', 'mole', 'locust'];
+/** 袋を「種・育てる・お邪魔・ほか」の数と内訳で */
+function bagLine(state: GameState): string {
+  const has = SYMBOL_ORDER.filter((s) => state.bag[s] > 0);
+  const n = (f: (s: SymbolId) => boolean): number => has.filter(f).reduce((a, s) => a + state.bag[s], 0);
+  const seed = n((s) => !!SEEDS[s]);
+  const grow = n((s) => GROW_SYMS.includes(s));
+  const pest = n((s) => PEST_SYMS.includes(s));
+  return `袋${bagTotal(state.bag)}枚（種${seed} 育てる${grow} お邪魔${pest} ほか${bagTotal(state.bag) - seed - grow - pest}）: ${has.map((s) => `${SYMBOLS[s].name}${state.bag[s]}`).join(' ')}`;
+}
+
+/** 畑の数のまとめ（空き・育ち中・実り・雑草・霜） */
+function fieldLine(state: GameState): string {
+  let empty = 0, growing = 0, ripe = 0, weeds = 0, frost = 0, nearly = 0;
+  for (let y = 0; y < state.rows; y++)
+    for (let x = 0; x < state.cols; x++) {
+      const i = y * CONFIG.fieldCols + x;
+      const c = state.field[i];
+      if (state.weeds[i]) weeds++;
+      if (state.frost[i]) frost++;
+      if (!c) {
+        if (!state.weeds[i] && !state.tools[i]) empty++;
+        continue;
+      }
+      if (c.anchor !== undefined) continue;
+      if (isRipe(c)) ripe++;
+      else {
+        growing++;
+        if (CROPS[c.kind].ripe - c.growth === 1) nearly++;
+      }
+    }
+  return `畑 空き${empty} 育ち中${growing}（あと1:${nearly}） 実り${ripe}${weeds ? ` 雑草${weeds}` : ''}${frost ? ` 霜${frost}` : ''}`;
+}
+
+/** 市が開いたときの並びと値段 */
+export function logMarket(state: GameState): void {
+  if (!shopOpen(state) || !isMarketDay(state.day)) return;
+  const ups = (Object.keys(UPGRADE_SYMBOL) as UpgradeId[]).filter((id) => upgradeAvailable(state, id));
+  const name = (id: UpgradeId): string => SYMBOLS[UPGRADE_SYMBOL[id]!.symbol].name;
+  const add = ups.filter((id) => UPGRADE_SYMBOL[id]!.delta > 0).map((id) => `${name(id)}${upgradePrice(state, id)}`);
+  const rem = ups.filter((id) => UPGRADE_SYMBOL[id]!.delta < 0).map((id) => `${name(id)}${upgradePrice(state, id)}`);
+  const places = state.weeklyPlaces.map((id) => `${PLACES[id].name}${placePrice(state, id) ?? '×'}`);
+  const ex = expandPrice(state);
+  const prem = premiumShown(state) ? PREMIUM_ORDER.map((id) => `${PREMIUM[id].name}${premiumPrice(state, id) ?? '×'}`) : [];
+  const merge = mergeable(state).map((s) => `${SYMBOLS[s].name}→${SYMBOLS[MERGES[s]!].name}`);
+  glog(state, `市 所持${state.gold}${state.offer.length ? ` 仕入れ候補:${state.offer.map((o) => SYMBOLS[UPGRADE_SYMBOL[o]!.symbol].name).join('/')}` : ''}${add.length ? ` 足す:${add.join(' ')}` : ''}${rem.length ? ` 消す:${rem.join(' ')}` : ' 消す:なし'} 道具:${places.join(' ') || 'なし'}${ex !== null ? ` 広げる${ex}` : ''}${prem.length ? ` 大きな:${prem.join(' ')}` : ''}${merge.length ? ` 合体できる:${merge.join(' ')}(-${mergeCost(state)})` : ''}`);
+}
+
 export function glog(state: GameState, text: string): void {
   if (!state.log) state.log = [];
   const head = state.day > 0 ? `D${state.day}${WD_JA[weekDay(state.day) - 1]}` : 'D0';
@@ -2177,16 +2253,31 @@ export function endDay(state: GameState, rng: Rng): EndDayResult {
   const before = state.gold;
   const expiredNames = state.results.filter((r) => !r.used && SYMBOLS[r.symbol].kind === 'manual').map((r) => SYMBOLS[r.symbol].name);
   const res = endDayRaw(state, rng);
+  lstat(state, IN + '余った種', res.seedGold ?? 0);
+  if (state.nightIncome) lstat(state, IN + '夜の収入', state.nightIncome.wheel + state.nightIncome.fish + state.nightIncome.animals);
   if (state.day > 0) glog(state, `夜 所持${state.gold}${res.seedGold ? ` 余った種+${res.seedGold}` : ''}${expiredNames.length ? ` 使わず消えた:${expiredNames.join('・')}` : ''}${state.nightIncome && state.nightIncome.wheel + state.nightIncome.fish + state.nightIncome.animals ? ` 夜の収入+${state.nightIncome.wheel + state.nightIncome.fish + state.nightIncome.animals}` : ''}`);
   if (res.tax !== null) {
     glog(state, res.ok ? `年貢${state.taxesPaid}回目 ${res.tax}を払った（${before}→${state.gold}）${state.lastObstacles.length ? ` お邪魔+${state.lastObstacles.map((o) => SYMBOLS[o].name).join('・')}` : ''}${res.cleared ? ' ★クリア' : ''}` : `年貢 ${res.tax}が払えず終わり（所持${state.gold}）`);
+    if (state.logStats) {
+      glog(state, `週のまとめ ${statLine(state.logStats.week)}`);
+      state.logStats.week = {};
+    }
     if (state.charmOffer) glog(state, `お守り候補 ${state.charmOffer.map((id) => CHARMS[id].name).join('/')}`);
   }
   return res;
 }
 
 export function spinDay(state: GameState, rng: Rng): void {
+  const g0 = state.gold;
+  const bl = bagLine(state);
+  state.logStats ??= { week: {}, total: {} };
+  if (state.logStats.bag !== bl) {
+    glog(state, bl);
+    state.logStats.bag = bl;
+  }
+  glog(state, fieldLine(state));
   spinDayRaw(state, rng);
+  lstat(state, IN + '回した時', state.gold - g0);
   const r = state.results.map((x) => `${SYMBOLS[x.symbol].name}${x.total > 1 ? `×${x.total}` : ''}${x.fog === 'lost' ? '(霧で使えない)' : ''}`).join(' / ');
   glog(state, `回す 所持${state.gold} 出目: ${r}${state.fever.length ? ` フィーバー:${state.fever.map((f) => SYMBOLS[f].name).join('・')}` : ''}${state.combos.length ? ` 組み合わせ:${state.combos.map((c) => CHARMS[c].name).join('・')}` : ''}`);
 }
@@ -2194,6 +2285,7 @@ export function spinDay(state: GameState, rng: Rng): void {
 export function mergeSymbol(state: GameState, sym: SymbolId): boolean {
   const cost = mergeCost(state);
   const ok = mergeSymbolRaw(state, sym);
+  if (ok) lstat(state, OUT + '合体', cost);
   if (ok) glog(state, `合体 ${SYMBOLS[sym].name}×${CONFIG.mergeNeed}→${SYMBOLS[MERGES[sym]!].name} -${cost}`);
   return ok;
 }
@@ -2215,26 +2307,41 @@ export function takeOffer(state: GameState, id: AddUpgradeId): boolean {
 export function pullWeed(state: GameState, cell: number): boolean {
   const cost = weedCost(state);
   const ok = pullWeedRaw(state, cell);
+  if (ok) lstat(state, OUT + '草むしり', cost);
   if (ok) glog(state, `草むしり ${cellName(cell)} -${cost}`);
   return ok;
 }
 
 export function resolveFever(state: GameState, rng: Rng): FeverEvent[] {
+  const g0 = state.gold;
   const ev = resolveFeverRaw(state, rng);
+  lstat(state, IN + 'フィーバー', state.gold - g0);
   ev.forEach((e) => glog(state, `フィーバー ${SYMBOLS[e.symbol].name}×${e.count} 役:${e.role} 大当たり+${e.jackpot}${e.role === 'honey' ? ` はちみつ+${e.amount}` : ''}`));
   return ev;
 }
 
 export function resolveAuto(state: GameState, reel: number, rng: Rng): AutoEvent | null {
   const sym = state.results[reel]?.symbol;
+  const g0 = state.gold;
   const ev = resolveAutoRaw(state, reel, rng);
   if (!ev || !sym) return ev;
+  const dg = state.gold - g0;
+  if (dg > 0) lstat(state, IN + SYMBOLS[sym].name, dg);
+  if (dg < 0) lstat(state, LOSS + SYMBOLS[sym].name + 'のお金', -dg);
+  if (ev.type === 'crow' && ev.crop && (ev.eaten || ev.pecked)) {
+    lstat(state, LOSS + 'カラス(個)', ev.eaten ? 1 : 0);
+    lstat(state, LOSS + 'カラス(値)', ev.eaten ? CROPS[ev.crop.kind].price : Math.round(CROPS[ev.crop.kind].price * 0.2));
+  }
+  if (ev.type === 'bug' && ev.cell !== null && !ev.warded) lstat(state, LOSS + '虫(成長)', ev.damage);
+  if (ev.type === 'locust' && ev.cell !== null) lstat(state, LOSS + 'イナゴ(成長)', 1);
+  if (ev.type === 'tanuki') lstat(state, LOSS + 'タヌキ(値)', ev.taken.reduce((a, x) => a + x.price, 0));
+  if (ev.type === 'weed' && !ev.warded) lstat(state, LOSS + '雑草(マス)', ev.cells.length);
   let t = '';
   switch (ev.type) {
     case 'coin': t = `+${ev.amount}`; break;
-    case 'crow': t = ev.cell === null ? '狙う作物なし' : ev.guarded ? `かかしで追い払った ${cellName(ev.cell)}` : ev.eaten ? `${cropName(ev.crop)}を食べた ${cellName(ev.cell)}` : `外れ ${cellName(ev.cell)}`; break;
+    case 'crow': t = ev.cell === null ? '狙う作物なし' : ev.guarded ? `かかしで追い払った ${cellName(ev.cell)}` : ev.eaten ? `${cropName(ev.crop)}を食べた ${cellName(ev.cell)}（売値${ev.crop ? CROPS[ev.crop.kind].price : 0}）` : ev.pecked ? `${cropName(ev.crop)}をつついた −20% ${cellName(ev.cell)}` : `外れ ${cellName(ev.cell)}`; break;
     case 'bug': t = ev.cell === null ? '作物なし' : ev.warded ? `防いだ ${cellName(ev.cell)}` : `成長-${ev.damage} ${cellName(ev.cell)}`; break;
-    case 'weed': t = ev.warded ? '防いだ' : `生えた ${ev.cells.map(cellName).join('')}`; break;
+    case 'weed': t = ev.warded ? '防いだ' : ev.cells.length ? `生えた ${ev.cells.map(cellName).join('')}` : '生える所なし'; break;
     case 'tanuki': t = `盗んだ${ev.stolen} ${ev.taken.map((x) => cropName(x.crop)).join('・')}`; break;
     case 'frost': t = `凍った ${ev.cells.map(cellName).join('')}`; break;
     case 'mole': t = `押し出し${ev.moves.length}`; break;
@@ -2250,7 +2357,9 @@ export function resolveAuto(state: GameState, reel: number, rng: Rng): AutoEvent
 
 export function useSymbol(state: GameState, reel: number, cell: number | null): number[] | null {
   const sym = state.results[reel]?.symbol;
+  const g0 = state.gold;
   const res = useSymbolRaw(state, reel, cell);
+  if (res && sym) lstat(state, IN + SYMBOLS[sym].name, state.gold - g0);
   if (res && sym) glog(state, SEEDS[sym] ? `植える ${CROPS[SEEDS[sym]!.crop].name} ${cell === null ? '' : cellName(cell)}` : `使う ${SYMBOLS[sym].name} ${cell === null ? '畑全体' : cellName(cell)} 効いたマス${res.length}`);
   return res;
 }
@@ -2258,6 +2367,9 @@ export function useSymbol(state: GameState, reel: number, cell: number | null): 
 export function sell(state: GameState, cell: number, single = false): SellResult | null {
   const res = sellRaw(state, cell, single);
   if (res) {
+    lstat(state, IN + (res.line ? '列で売る' : single ? '大商い' : '単品'), res.total - res.orderReward - res.bumper);
+    lstat(state, IN + '注文', res.orderReward);
+    lstat(state, IN + '大豊作', res.bumper);
     const kinds = [...new Set(res.cells.map((c) => CROPS[c.kind].name))].join('・');
     glog(state, `売る ${kinds}×${res.size} ${res.line ? `列×${Math.round(res.mult * 100) / 100}` : single ? '大商い' : '単品'} +${res.total}${res.orderReward ? ` 注文達成+${res.orderReward}` : ''}${res.bumper ? ` 大豊作+${res.bumper}` : ''}`);
   }
@@ -2267,6 +2379,7 @@ export function sell(state: GameState, cell: number, single = false): SellResult
 export function buy(state: GameState, id: UpgradeId): boolean {
   const price = upgradePrice(state, id);
   const ok = buyRaw(state, id);
+  if (ok) lstat(state, OUT + (UPGRADE_SYMBOL[id]!.delta < 0 ? '消す' : '足す'), price);
   if (ok) glog(state, `市で買う ${UPGRADE_SYMBOL[id]!.delta < 0 ? '消す' : '足す'}:${SYMBOLS[UPGRADE_SYMBOL[id]!.symbol].name} -${price}`);
   return ok;
 }
@@ -2280,6 +2393,7 @@ export function chooseCharm(state: GameState, id: CharmId): boolean {
 export function expand(state: GameState): boolean {
   const price = expandPrice(state);
   const ok = expandRaw(state);
+  if (ok) lstat(state, OUT + '広げる', price ?? 0);
   if (ok) glog(state, `畑を広げる ${state.cols}×${state.rows} -${price}`);
   return ok;
 }
@@ -2287,6 +2401,7 @@ export function expand(state: GameState): boolean {
 export function buyPlace(state: GameState, id: PlaceId): boolean {
   const price = placePrice(state, id);
   const ok = buyPlaceRaw(state, id);
+  if (ok) lstat(state, OUT + '道具', price ?? 0);
   if (ok) glog(state, `市で買う ${PLACES[id].name} -${price}`);
   return ok;
 }
@@ -2304,6 +2419,7 @@ export function logSnapshot(state: GameState): string[] {
   out.push(`袋(${bagTotal(state.bag)}枚): ${SYMBOL_ORDER.filter((s) => state.bag[s] > 0).map((s) => `${SYMBOLS[s].name}${state.bag[s]}`).join(' ')}`);
   const rt = rateRun(state);
   out.push(`評価: ${rt.rank}（${rt.score}点） ${rt.parts.map((p) => `${p.label}${p.value}(${p.detail})`).join(' ')}`);
+  if (state.logStats) out.push(`通しの集計: ${statLine(state.logStats.total)}`);
   out.push(`お守り: ${CHARM_ORDER.filter((c) => state.charms[c] > 0).map((c) => `${CHARMS[c].name}${state.charms[c]}`).join(' ') || 'なし'}`);
   if (state.contract) out.push(`週契約: ${CONTRACTS[state.contract].name}`);
   if (state.stock.length) out.push(`置き待ち: ${state.stock.map((p) => PLACES[p].name).join(' ')}`);
@@ -2404,6 +2520,7 @@ export function buyPremium(state: GameState, id: PremiumId): boolean {
   state.gold -= price;
   state.premium = { ...state.premium, [id]: (state.premium?.[id] ?? 0) + 1 };
   if (id === 'reel') state.reels = Math.min(CONFIG.maxReels, state.reels + 1);
+  lstat(state, OUT + '大きな買い物', price);
   glog(state, `大きな買い物 ${PREMIUM[id].name} -${price}`);
   return true;
 }
