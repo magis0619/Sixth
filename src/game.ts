@@ -2241,6 +2241,8 @@ export function resolveAuto(state: GameState, reel: number, rng: Rng): AutoEvent
     case 'locust': t = `${ev.cell === null ? '作物なし' : `成長-1 ${cellName(ev.cell)}`}${ev.bred ? ` 袋で+${ev.bred}` : ''}`; break;
     case 'merchant': t = `売値×${ev.mult}`; break;
     case 'clover': t = `明日の金の種×${ev.boost}`; break;
+    case 'egg': t = ev.hatched ? '孵ってツバメになった' : `孵化 ${ev.progress}/${CONFIG.eggHatch}`; break;
+    case 'swallow': t = ev.removed ? `${SYMBOLS[ev.removed].name}を追い出した` : `+${ev.amount}`; break;
   }
   glog(state, `自動 ${SYMBOLS[sym].name}: ${t}`);
   return ev;
