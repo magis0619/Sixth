@@ -37,10 +37,11 @@ async function settle(page: Page): Promise<'play' | 'over' | 'clear'> {
   for (let k = 0; k < 150; k++) {
     if (await page.locator('#overlay.show #restart').count()) return 'over';
     if (await page.locator('#overlay.show #clear-continue').count()) return 'clear';
-    // 年貢のあと：お邪魔が袋に入る窓
-    if (await page.locator('#overlay.show #pest-ok').count()) { await page.click('#pest-ok', { force: true }).catch(() => {}); await page.waitForTimeout(1000); continue; }
+    // お守りの3択が出ていれば1つ選ぶ（お邪魔の窓より先に見る）
     const card = page.locator('#overlay.show .charm-card:not([disabled])').first();
-    if (await card.count()) { await card.click({ force: true, timeout: 1000 }).catch(() => {}); continue; }
+    if (await card.count()) { await card.click({ force: true, timeout: 1000 }).catch(() => {}); await page.waitForTimeout(300); continue; }
+    // 年貢のあと：お邪魔が袋に入る窓（見えているときだけ押す）
+    if (await page.locator('#overlay.show .pest-modal #pest-ok:visible').count()) { await page.click('#pest-ok', { timeout: 1000 }).catch(() => {}); await page.waitForTimeout(1000); continue; }
     // 市の日：仕入れを1つ選んでから市を閉じる
     const take = page.locator('#sheet.open #offer-shop [data-take]').first();
     if (await take.count()) { await take.click({ force: true, timeout: 1000 }).catch(() => {}); await page.waitForTimeout(400); continue; }

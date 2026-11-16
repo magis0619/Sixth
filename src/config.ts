@@ -35,7 +35,11 @@ export type SymbolId =
   | 'raijin'
   | 'queenBee'
   | 'superFert'
-  | 'koban';
+  | 'koban'
+  // じょうろ・卵（孵化するとツバメ）
+  | 'can'
+  | 'egg'
+  | 'swallow';
 
 export type UpgradeId =
   | 'addSeed'
@@ -53,6 +57,8 @@ export type UpgradeId =
   | 'addThunder'
   | 'addWatermelonSeed'
   | 'addHoe'
+  | 'addCan'
+  | 'addEgg'
   | 'removeCrow'
   | 'removeBug'
   | 'removeWeed'
@@ -96,7 +102,11 @@ export type CharmId =
   | 'bumperHarvest'
   | 'crowReturn'
   | 'lastStraw'
-  | 'exhibition';
+  | 'exhibition'
+  // 曰く付きのお守り（追加）
+  | 'crowFriend'
+  | 'greedy'
+  | 'earlyCrop';
 
 /**
  * 一旦減らした要素（試し中）。ここに並べたものはゲームに出ない（仕入れ・ショップ・お邪魔・お守り・組み合わせ・図鑑）。
@@ -160,13 +170,16 @@ export const SYMBOLS: Record<SymbolId, SymbolDef> = {
   raijin: { id: 'raijin', name: '雷神', emoji: '⚡', kind: 'manual', shape: 'row', desc: '横一列 成長+3', feverDesc: '大雷：全作物の成長＋1', rarity: 'rare', base: 'thunder' },
   queenBee: { id: 'queenBee', name: '女王蜂', emoji: '🐝', kind: 'manual', shape: 'xline', desc: '斜めの線いっぱい 成長+1', feverDesc: 'はちみつ：作物1つにつき＋4', rarity: 'rare', base: 'bee' },
   superFert: { id: 'superFert', name: '極上の肥料', emoji: '🧪', kind: 'manual', shape: 'plus', desc: '十字の5マスの作物の売値×1.5', feverDesc: '堆肥：畑の全作物に肥料', rarity: 'rare', base: 'fertilizer' },
+  can: { id: 'can', name: 'じょうろ', emoji: '🚿', kind: 'manual', shape: 'one', desc: '1マス 成長+2', feverDesc: '大当たり×3', rarity: 'normal' },
+  egg: { id: 'egg', name: '卵', emoji: '🥚', kind: 'auto', desc: 'スロットに3回出ると孵ってツバメになる', feverDesc: '大当たり×3', rarity: 'normal' },
+  swallow: { id: 'swallow', name: 'ツバメ', emoji: '🐦', kind: 'auto', desc: '袋の虫を1枚追い出す（虫がいなければ+2）', feverDesc: '大当たり×3', rarity: 'normal' },
   koban: { id: 'koban', name: '小判', emoji: '🪙', kind: 'auto', desc: '+12（年貢を納めるたびに+3）', feverDesc: '大当たり×3', rarity: 'rare', base: 'coin' },
   locust: { id: 'locust', name: 'イナゴ', emoji: '🦗', kind: 'auto', desc: '出るたびに1/2で袋に1匹増える・成長−1', feverDesc: '大群：増えるときは2匹', rarity: 'bad' },
 };
 
 /** 絵柄袋・ショップでの表示順 */
 export const SYMBOL_ORDER: SymbolId[] = [
-  'seed', 'oniSeed', 'berrySeed', 'heartSeed', 'pumpkinSeed', 'lanternSeed', 'melonSeed', 'watermelonSeed', 'boxSeed', 'goldSeed', 'rain', 'bigRain', 'sun', 'bigSun', 'thunder', 'raijin', 'hoe', 'fertilizer', 'superFert', 'bee', 'queenBee', 'coin', 'koban', 'merchant', 'clover', 'moon', 'crow', 'bug', 'weed', 'tanuki', 'frost', 'mole', 'locust',
+  'seed', 'oniSeed', 'berrySeed', 'heartSeed', 'pumpkinSeed', 'lanternSeed', 'melonSeed', 'watermelonSeed', 'boxSeed', 'goldSeed', 'rain', 'bigRain', 'sun', 'bigSun', 'thunder', 'raijin', 'hoe', 'fertilizer', 'superFert', 'bee', 'queenBee', 'coin', 'koban', 'can', 'egg', 'swallow', 'merchant', 'clover', 'moon', 'crow', 'bug', 'weed', 'tanuki', 'frost', 'mole', 'locust',
 ];
 
 // ---- 作物 ----
@@ -293,13 +306,15 @@ export const CONFIG = {
   initialBag: {
     seed: 3, berrySeed: 0, pumpkinSeed: 0, melonSeed: 0, goldSeed: 0, rain: 2, sun: 1, thunder: 0, fertilizer: 0, bee: 0,
     crow: 2, bug: 0, coin: 1, merchant: 0, clover: 0, moon: 0, weed: 0, tanuki: 0, frost: 0, watermelonSeed: 0, hoe: 0, mole: 0, locust: 0,
-    oniSeed: 0, heartSeed: 0, lanternSeed: 0, boxSeed: 0, bigRain: 0, bigSun: 0, raijin: 0, queenBee: 0, superFert: 0, koban: 0,
+    oniSeed: 0, heartSeed: 0, lanternSeed: 0, boxSeed: 0, bigRain: 0, bigSun: 0, raijin: 0, queenBee: 0, superFert: 0, koban: 0, can: 0, egg: 0, swallow: 0,
   } as Record<SymbolId, number>,
   /** 合体に要る同じ絵柄の枚数（市で1回に1種類まで） */
   /** 市の日（水・土）に売ると売値がこの倍率 */
   marketDaySell: 1.25,
   /** 植えきれなかった種は、夜に1つこの額で売れる */
   seedSellGold: 1,
+  /** 卵が孵るまでに、スロットに出る回数 */
+  eggHatch: 3,
   mergeNeed: 5,
   /** 合体のお金：その週の年貢の割合（最低 mergeCostMin） */
   mergeCostRate: 0.3,
@@ -413,6 +428,8 @@ export const CONFIG = {
   /** 強化の価格 */
   upgradePrices: {
     addSeed: 8,
+    addCan: 10,
+    addEgg: 12,
     addBerrySeed: 8,
     addPumpkinSeed: 14,
     addRain: 8,
@@ -523,6 +540,8 @@ export const CONFIG = {
 };
 
 export const UPGRADES: { id: UpgradeId; name: string; emoji: string; desc: string }[] = [
+  { id: 'addCan', name: 'じょうろを足す', emoji: '🚿', desc: '絵柄袋にじょうろ（1マス 成長+2）を1枚追加' },
+  { id: 'addEgg', name: '卵を足す', emoji: '🥚', desc: '絵柄袋に卵を1枚追加。スロットに3回出るとツバメになる' },
   { id: 'addSeed', name: 'トマトの種を足す', emoji: '🍅', desc: '絵柄袋にトマトの種を1枚追加' },
   { id: 'addBerrySeed', name: '苺の種を足す', emoji: '🍓', desc: '絵柄袋に苺の種を1枚追加' },
   { id: 'addPumpkinSeed', name: 'かぼちゃの種を足す', emoji: '🎃', desc: '絵柄袋にかぼちゃの種を1枚追加' },
@@ -550,6 +569,8 @@ export const UPGRADES: { id: UpgradeId; name: string; emoji: string; desc: strin
 /** 強化と、それが増減させる絵柄 */
 export const UPGRADE_SYMBOL: Partial<Record<UpgradeId, { symbol: SymbolId; delta: number }>> = {
   addSeed: { symbol: 'seed', delta: 1 },
+  addCan: { symbol: 'can', delta: 1 },
+  addEgg: { symbol: 'egg', delta: 1 },
   addBerrySeed: { symbol: 'berrySeed', delta: 1 },
   addPumpkinSeed: { symbol: 'pumpkinSeed', delta: 1 },
   addRain: { symbol: 'rain', delta: 1 },
@@ -623,6 +644,9 @@ export const CHARM_CURSE: Partial<Record<CharmId, { text: (n: number) => string;
   rancher: { text: (n) => `作物の売値−${10 * n}%` },
   bigGame: { text: (n) => `列の倍率−${(0.2 * n).toFixed(1)}` },
   taxRelief: { text: (n) => `市の値段+${30 * n}%` },
+  crowFriend: { text: () => '虫の効き目が2倍' },
+  greedy: { text: () => '単品は売れない（列か大物だけ）' },
+  earlyCrop: { text: () => '作物の売値−25%' },
 };
 
 /** お守り。年貢を納めるたびに charmChoices 個から1つ選ぶ。同じものは重ねて効果アップ */
@@ -661,6 +685,9 @@ export const CHARMS: Record<CharmId, CharmDef> = {
   bumperHarvest: { id: 'bumperHarvest', tier: 'rare', name: '大豊作', emoji: '🌾', desc: () => '畑いっぱいの作物を一度に売った！（1回だけの大当たり）', max: 1, special: { kind: 'event', hint: '畑いっぱいを一度に売ると…？' } },
   crowReturn: { id: 'crowReturn', tier: 'rare', name: 'カラス返し', emoji: '🪃', desc: () => 'カラスが来るたび +3', max: 1, special: { kind: 'event', hint: 'カラスにたくさん食べられると…？' } },
   lastStraw: { id: 'lastStraw', tier: 'rare', name: '首の皮', emoji: '🧵', desc: () => '次の年貢が半分', max: 1, special: { kind: 'event', hint: '年貢をギリギリで…？' } },
+  crowFriend: { id: 'crowFriend', tier: 'uncommon', name: 'カラスの友', emoji: '🐦', desc: () => 'カラスが作物を食べず、来るたびに+3', max: 1 },
+  greedy: { id: 'greedy', tier: 'uncommon', name: '欲張り', emoji: '💰', desc: () => '列の倍率+0.2', max: 1 },
+  earlyCrop: { id: 'earlyCrop', tier: 'rare', name: '早生', emoji: '🌱', desc: () => '植えた作物は1段階育った状態から（1回早く実る）', max: 1 },
   exhibition: { id: 'exhibition', tier: 'rare', name: '品評会', emoji: '🏅', desc: () => '作物の売値+20%', max: 1, special: { kind: 'event', hint: '作物を全種類売ると…？' } },
 };
 
@@ -776,10 +803,12 @@ export const META = {
   clearBonus: 20,
   /** 最初から解放されている「足す」強化 */
   // 最初から並ぶ札（はじめての人が雨・太陽だけにならないように。上級の物だけポイントで解放）
-  startUnlocked: ['addSun', 'addRain', 'addSeed', 'addBerrySeed', 'addPumpkinSeed', 'addFertilizer', 'addBee'] as AddUpgradeId[],
+  startUnlocked: ['addSun', 'addRain', 'addSeed', 'addBerrySeed', 'addPumpkinSeed', 'addFertilizer', 'addBee', 'addCan', 'addEgg'] as AddUpgradeId[],
   /** 「足す」強化の解放ポイントと、ショップに並べるコスト */
   adds: {
     addSun: { unlock: 0, cost: 2 },
+    addCan: { unlock: 0, cost: 1 },
+    addEgg: { unlock: 0, cost: 2 },
     addRain: { unlock: 0, cost: 1 },
     addSeed: { unlock: 20, cost: 1 },
     addBerrySeed: { unlock: 15, cost: 1 },
@@ -849,6 +878,9 @@ if (EN) {
     raijin: ['Thunder God', 'Row: growth +3', 'Great thunder: all crops +1'],
     queenBee: ['Queen Bee', 'Full diagonals: growth +1', 'Honey: +4g per crop'],
     superFert: ['Premium Fertilizer', 'Crops in a plus (5): price ×1.5', 'Compost: fertilize every crop'],
+    can: ['Watering Can', '1 plot: growth +2', 'Jackpot ×3'],
+    egg: ['Egg', 'Hatches into a swallow after appearing 3 times', 'Jackpot ×3'],
+    swallow: ['Swallow', 'Drives 1 bug out of your bag (+2g if none)', 'Jackpot ×3'],
     koban: ['Gold Koban', '+12g (+3g per tax paid)', 'Jackpot ×3'],
   };
   (Object.keys(sym) as SymbolId[]).forEach((id) => {
@@ -891,7 +923,7 @@ if (EN) {
   const up: Partial<Record<UpgradeId, string>> = {
     addSeed: 'Tomato Seed', addBerrySeed: 'Strawberry Seed', addPumpkinSeed: 'Pumpkin Seed', addRain: 'Rain', addSun: 'Sun', addFertilizer: 'Fertilizer',
     addGoldSeed: 'Golden Seed', addMelonSeed: 'Melon Seed', addThunder: 'Thunder', addWatermelonSeed: 'Watermelon Seed', addHoe: 'Hoe', addBee: 'Bee',
-    addMerchant: 'Merchant', addClover: 'Clover', addMoon: 'Moon',
+    addMerchant: 'Merchant', addClover: 'Clover', addMoon: 'Moon', addCan: 'Watering Can', addEgg: 'Egg',
     removeCrow: 'Crow', removeBug: 'Bug', removeWeed: 'Weed', removeTanuki: 'Tanuki', removeFrost: 'Frost', removeMole: 'Mole', removeLocust: 'Locust',
   };
   UPGRADES.forEach((u) => {
@@ -905,7 +937,7 @@ if (EN) {
     gentleRain: () => '+1 crow in your bag', aging: () => 'Crows eat ripe crops more (×1.5)', seedSack: (n) => `Tax +${10 * n}%`,
     sunBlessing: () => '+2 crows in your bag', queenHive: () => '+2 bugs in your bag', scarecrow: (n) => `Tax +${5 * n}%`, bumper: (n) => `Tax +${10 * n}%`,
     bugWard: () => 'Singles sell for half again', artisan: () => 'Tax +20%', rancher: (n) => `Crop prices −${10 * n}%`, bigGame: (n) => `Line multiplier −${(0.2 * n).toFixed(1)}`,
-    taxRelief: (n) => `Market prices +${30 * n}%`,
+    taxRelief: (n) => `Market prices +${30 * n}%`, crowFriend: () => 'Bugs hit twice as hard', greedy: () => 'Singles can’t be sold (lines or big crops only)', earlyCrop: () => 'Crop prices −25%',
   };
   (Object.keys(curse) as CharmId[]).forEach((id) => CHARM_CURSE[id] && (CHARM_CURSE[id]!.text = curse[id]!));
   const charm: Partial<Record<CharmId, [string, (n: number) => string, string?]>> = {
@@ -942,6 +974,9 @@ if (EN) {
     bumperHarvest: ['Big Harvest', () => 'Sold a full field at once! (one-time jackpot)', 'Sell a full field at once…?'],
     crowReturn: ['Crow Payback', () => '+3g whenever a crow comes', 'If crows eat a lot…?'],
     lastStraw: ['By a Thread', () => 'Next tax is halved', 'Pay a tax with almost nothing left…?'],
+    crowFriend: ['Crow Friend', () => 'Crows never eat crops; +3g each visit'],
+    greedy: ['Greedy', () => 'Line multiplier +0.2'],
+    earlyCrop: ['Early Crop', () => 'Planted crops start 1 stage grown'],
     exhibition: ['Fair Prize', () => 'Crop prices +20%', 'Sell every kind of crop…?'],
   };
   (Object.keys(charm) as CharmId[]).forEach((id) => {

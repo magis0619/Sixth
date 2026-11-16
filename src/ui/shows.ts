@@ -292,6 +292,9 @@ export const FEVER_FX: Record<SymbolId, { ico: ArtId | null; text: string }> = {
   superFert: { ico: 'fertilizer', text: L('全部に肥料', 'Fertilize all') },
   queenBee: { ico: 'coin', text: L('作物ごと +4', '+4 per crop') },
   koban: { ico: 'coin', text: L('大当たり×3', 'Jackpot ×3') },
+  can: { ico: 'coin', text: L('大当たり×3', 'Jackpot ×3') },
+  egg: { ico: 'coin', text: L('大当たり×3', 'Jackpot ×3') },
+  swallow: { ico: 'coin', text: L('大当たり×3', 'Jackpot ×3') },
 };
 
 /** フィーバーの札：絵柄ごとに1枚。良い絵柄には大当たりの金貨の印 */

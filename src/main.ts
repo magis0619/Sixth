@@ -1728,8 +1728,39 @@ async function resolveAutos(): Promise<void> {
         bumpPips(ev.cell, (state.field[ev.cell]?.growth ?? 0) + 1, state.field[ev.cell]?.growth ?? 0);
       }
       renderBag();
+    } else if (ev.type === 'egg') {
+      // 卵：温まる（あと何回で孵るか）。孵ったらツバメが袋へ飛んでいく
+      if (ev.hatched) {
+        autoOutcome[i] = L('孵った！', 'Hatched!');
+        sfx.rare();
+        burst(from.x, from.y, ['✨', '🪶', '⭐'], 14, 80);
+        floatText(from.x, from.y - 40, `${symHtml('swallow')} ${L('ツバメが生まれた', 'A swallow hatched')}`, { cls: 'good', size: 0.9 });
+        const chip = visibleOr(el.bag.querySelector('[data-sym="swallow"]'), 'bag');
+        flyTo(from, chip, symHtml('swallow'), 1, () => pop(chip, 1.3));
+        renderBag();
+      } else {
+        autoOutcome[i] = L(`孵化 ${ev.progress}/${CONFIG.eggHatch}`, `Hatch ${ev.progress}/${CONFIG.eggHatch}`);
+        sfx.pon();
+        pop(reels[i], 1.06);
+      }
+      // 卵にひびが入っていく（孵ったらツバメ）
+      const cellSym = reels[i].querySelector('.cell-sym');
+      if (cellSym) cellSym.innerHTML = art(ev.hatched ? 'swallow' : ev.progress >= 2 ? 'eggCrack2' : 'eggCrack1');
+    } else if (ev.type === 'swallow') {
+      // ツバメ：袋の虫を追い出す
+      if (ev.removed) {
+        autoOutcome[i] = L('虫を追い出した', 'Bug out');
+        sfx.shoo();
+        const chip = visibleOr(el.bag.querySelector(`[data-sym="${ev.removed}"]`), 'bag');
+        flyTo(center(chip), reels[i], symHtml(ev.removed), 1, () => burst(from.x, from.y, ['🪶', '✨'], 8, 50));
+        renderBag();
+      } else {
+        autoOutcome[i] = `+${gold(ev.amount)}`;
+        sfx.coin();
+        floatText(from.x, from.y - 30, money(ev.amount), { cls: 'gold', size: 0.8 });
+      }
     } else if (ev.cell === null) {
-      autoOutcome[i] = L('空振り', 'Miss');
+      autoOutcome[i] = state.charms.crowFriend > 0 ? L('仲良し', 'Friend') : L('空振り', 'Miss');
       sfx.crow();
     } else if (ev.pecked) {
       // 重い作物はつつくだけ：売値−20%
@@ -1967,6 +1998,10 @@ function onPlotTap(cell: number): void {
       });
       afterGrowth(affected, `+${CONFIG.beeGrowth * power}`);
       if (left > 0 && selected === null) say(L('使える場所なし', 'Nowhere to use it'));
+    } else if (kind === 'can') {
+      sfx.rain();
+      rainShower([plot]);
+      afterGrowth(affected, `+${2 * power}`);
     } else if (kind === 'thunder') {
       sfx.crt();
       flash('#fff6c0', 220);

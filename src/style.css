@@ -8460,3 +8460,133 @@ body:has(#overlay.show) :is(.machine, .machine *) {
   z-index: 2;
 }
 .badge-peck svg { width: 100%; height: 100%; }
+
+/* ==== 難しさを選ぶ（画面いっぱい） ==== */
+#overlay:has(.diff-screen) { padding: 0; }
+.diff-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: max(14px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  background:
+    radial-gradient(circle at 50% 34%, color-mix(in srgb, var(--dc) 55%, #fff8e7) 0, color-mix(in srgb, var(--dc) 75%, #2a1d10) 55%, #22180f 100%);
+  color: #fff8e7;
+  overflow-y: auto;
+  transition: background 0.4s;
+}
+.ds-top { display: grid; grid-template-columns: 44px 1fr auto; align-items: center; width: min(460px, 100%); gap: 8px; }
+.ds-back { width: 44px; height: 44px; border-radius: 50%; border: 3px solid var(--ink); background: var(--cloth); color: var(--ink); font-size: 1.25rem; font-weight: 800; }
+.ds-title { font-family: var(--font-pop); font-weight: 400; font-size: 1.25rem; text-align: center; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35); }
+.ds-farmer { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: rgba(255, 248, 231, 0.92); color: var(--ink); border: 2px solid var(--ink); border-radius: 999px; font-size: 0.875rem; font-weight: 800; }
+.ds-farmer .art { width: 1.6em; height: 1.6em; }
+/* レベルのチップ（Balatro のステークのように並べる） */
+.ds-chips { display: flex; gap: 8px; margin-top: 4px; }
+.ds-chip {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--c);
+  color: #fff;
+  border: 3px solid var(--ink);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+  font-family: var(--font-pop);
+  font-size: 1.1rem;
+  opacity: 0.7;
+}
+.ds-chip .art { width: 70%; height: 70%; }
+.ds-chip.on { opacity: 1; transform: scale(1.18); outline: 3px solid #fff8e7; outline-offset: 2px; }
+.ds-chip.locked { background: #4a4038; }
+.ds-chip.cleared::after { content: '✓'; position: absolute; margin: -26px -26px 0 0; width: 18px; height: 18px; border-radius: 50%; background: #4e9230; color: #fff; font-size: 0.7rem; line-height: 18px; border: 2px solid var(--ink); }
+.ds-chip { position: relative; }
+/* 大きな紋章 */
+.ds-stage { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 8px; }
+.ds-arrow {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 3px solid var(--ink);
+  background: var(--cloth);
+  color: var(--ink);
+  font-size: 1.25rem;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.35);
+}
+.ds-arrow:disabled { opacity: 0.3; }
+.ds-emblem {
+  position: relative;
+  width: min(52vw, 200px);
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--dc) 40%, #fff), var(--dc) 60%, color-mix(in srgb, var(--dc) 70%, #000));
+  border: 6px solid var(--ink);
+  box-shadow: 0 10px 0 rgba(0, 0, 0, 0.35), inset 0 -10px 0 rgba(0, 0, 0, 0.15);
+}
+.ds-emblem.in-r { animation: ds-in-r 0.35s cubic-bezier(.3, 1.4, .5, 1); }
+.ds-emblem.in-l { animation: ds-in-l 0.35s cubic-bezier(.3, 1.4, .5, 1); }
+@keyframes ds-in-r { from { transform: translateX(40px) scale(0.85); opacity: 0; } }
+@keyframes ds-in-l { from { transform: translateX(-40px) scale(0.85); opacity: 0; } }
+.ds-ring { position: absolute; inset: 12px; border-radius: 50%; border: 4px dashed rgba(255, 255, 255, 0.55); }
+.ds-num { font-family: var(--font-pop); font-size: min(26vw, 104px); line-height: 1; color: #fff; text-shadow: 0 5px 0 rgba(0, 0, 0, 0.35); display: flex; }
+.ds-num .art { width: min(26vw, 100px); height: min(26vw, 100px); }
+.ds-emblem.locked { background: radial-gradient(circle at 35% 30%, #7a6f64, #4a4038 60%, #2a231d); }
+.ds-cleared {
+  position: absolute;
+  bottom: -14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 12px;
+  background: var(--gold);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 800;
+  rotate: -4deg;
+}
+.ds-cleared .art { width: 1.3em; height: 1.3em; }
+.ds-name { margin: 10px 0 0; font-family: var(--font-pop); font-weight: 400; font-size: 1.9rem; text-shadow: 0 3px 0 rgba(0, 0, 0, 0.35); }
+/* 縛りの一覧（前のレベルの分も積み重なる） */
+.ds-rules {
+  width: min(460px, 100%);
+  padding: 12px 14px;
+  background: rgba(255, 248, 231, 0.95);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  box-shadow: 0 5px 0 rgba(0, 0, 0, 0.35);
+}
+.ds-stack { margin: 0 0 6px; font-size: 0.875rem; font-weight: 800; color: var(--ink-soft); }
+.ds-plain { margin: 0; font-size: 1rem; font-weight: 800; display: flex; align-items: center; gap: 6px; }
+.ds-plain .art { width: 1.6em; height: 1.6em; }
+.ds-rules ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.ds-rules li { display: flex; align-items: center; gap: 8px; font-size: 1rem; font-weight: 700; }
+.ds-rules li .art { width: 1.8em; height: 1.8em; flex: none; }
+.ds-rules li span { flex: 1; }
+.ds-rules li.new { color: #c93c2b; }
+.ds-rules li em { font-style: normal; font-size: 0.8125rem; font-weight: 800; color: #fff; background: #c93c2b; border-radius: 999px; padding: 1px 8px; }
+.ds-rules li.dr-tax { color: var(--ink); }
+.ds-foot { width: min(460px, 100%); margin-top: auto; display: grid; gap: 8px; }
+.ds-lock { margin: 0; text-align: center; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.ds-lock .art { width: 1.4em; height: 1.4em; }
+.ds-go { width: 100%; font-size: 1.25rem; padding: 14px; }
+.ds-go:disabled { opacity: 0.45; }
+.diff-screen .ds-go {
+  background: var(--gold);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  box-shadow: 0 5px 0 var(--ink);
+  font-family: var(--font-pop);
+  font-weight: 400;
+}
+.diff-screen .ds-go:disabled { background: #8a7f72; color: #3d3326; opacity: 0.7; box-shadow: 0 5px 0 #3d3326; }
+.ds-rules li.dr-tax { color: #c93c2b; }

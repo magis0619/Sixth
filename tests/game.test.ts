@@ -1243,3 +1243,57 @@ describe('肥料とつつき', () => {
     expect(cropPrice(s, s.field[at(1, 1)]!)).toBe(Math.round(base * 0.8));
   });
 });
+
+describe('じょうろ・卵とツバメ・新しいお守り', () => {
+  const g = () => {
+    const s = newGame({ shop: [], charmPool: [] });
+    s.day = 2;
+    return s;
+  };
+  it('じょうろは1マスに+2', () => {
+    const s = g();
+    s.field[at(1, 1)] = newCrop('melon');
+    s.field[at(0, 1)] = newCrop('melon');
+    s.results = [reel('can')];
+    useSymbol(s, 0, at(1, 1));
+    expect(s.field[at(1, 1)]!.growth).toBe(2);
+    expect(s.field[at(0, 1)]!.growth).toBe(0);
+  });
+  it('卵は3回出ると孵ってツバメに。ツバメは袋の虫を追い出す', () => {
+    const s = g();
+    s.bag.egg = 1;
+    for (let k = 0; k < 3; k++) {
+      s.results = [reel('egg')];
+      resolveAuto(s, 0, () => 0.5);
+    }
+    expect(s.bag.egg).toBe(0);
+    expect(s.bag.swallow).toBe(1);
+    s.bag.bug = 2;
+    s.results = [reel('swallow')];
+    resolveAuto(s, 0, () => 0.5);
+    expect(s.bag.bug).toBe(1);
+  });
+  it('カラスの友：カラスは食べずに+3、虫は2倍。欲張り：列+0.2・単品は売れない。早生：1段階育って植わり、売値−25%', () => {
+    const s = g();
+    s.charms.crowFriend = 1;
+    ripe(s, 'corn', [at(0, 0)]);
+    s.results = [reel('crow')];
+    const before = s.gold;
+    resolveAuto(s, 0, () => 0.1);
+    expect(s.field[at(0, 0)]).not.toBe(null);
+    expect(s.gold - before).toBe(3);
+    const t = g();
+    t.charms.greedy = 1;
+    ripe(t, 'tomato', [at(0, 0)]);
+    expect(sell(t, at(0, 0))).toBe(null);
+    ripe(t, 'tomato', [at(1, 0), at(2, 0)]);
+    expect(multSteps(t, at(0, 0))[0].x).toBeCloseTo(CONFIG.lineMult + 0.2);
+    const u = g();
+    const base = cropPrice(u, newCrop('melon'));
+    u.charms.earlyCrop = 1;
+    u.results = [reel('seed', 1)];
+    useSymbol(u, 0, at(0, 0));
+    expect(u.field[at(0, 0)]!.growth).toBe(1);
+    expect(cropPrice(u, newCrop('melon'))).toBe(Math.round(base * 0.75));
+  });
+});

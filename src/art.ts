@@ -929,8 +929,50 @@ const PHASE_ART = {
   moonHalf: `${moonDisk(`<path d="M32 9A23 23 0 0 1 32 55Z" fill="#ffe98a"/><path d="M32 9V55" fill="none" stroke="#e9c556" stroke-width="2"/><circle cx="43" cy="22" r="2.5" fill="#f0d272"/><circle cx="41" cy="40" r="3.5" fill="#f0d272"/>`)}${sparkle(10, 12, 4, '#fff')}`,
 };
 
+/** 卵とひびの入った卵（孵化の途中） */
+const eggD = 'M32 6C44 6 52 24 52 38C52 51 43 58 32 58C21 58 12 51 12 38C12 24 20 6 32 6Z';
+const eggBase = `${ground(59, 16)}${face(eggD, ['#fff6e6', '#e8d6b4', '#ffffff'], 26, 28, 0.88)}<circle cx="24" cy="30" r="2.2" fill="#d9b98a"/><circle cx="38" cy="22" r="1.6" fill="#d9b98a"/><circle cx="40" cy="40" r="2.4" fill="#d9b98a"/>${hl(22, 20, 2.6, 6, -20, 0.8)}`;
+const crack = (d: string) => `<path d="${d}" fill="none" stroke="${INK}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>`;
+const swallowBody = `
+  ${face('M10 30Q20 18 34 22L58 12L48 28Q44 40 30 42Q16 42 10 30Z', ['#3f5f9f', '#2d4679', '#6f8fcf'], 30, 28, 0.86)}
+  ${face('M14 32Q24 44 36 38Q30 48 18 46Q12 40 14 32Z', ['#fff8e7', '#e6d9c0', '#ffffff'], 22, 40, 0.84, S2)}
+  <path d="M30 42L22 58L34 46L42 58L38 40Z" fill="#2d4679" ${S2}/>
+  ${face(E(16, 28, 8, 7), ['#3f5f9f', '#2d4679', '#6f8fcf'], 14, 26, 0.86, S2)}
+  <path d="M10 30Q12 33 16 33" fill="${C.red[0]}" ${S2}/>
+  ${eye(15, 26, 1.8)}
+  <path d="M4 28L9 27L8 30Z" fill="${INK}"/>`;
+const CARD_ART = {
+  can: `
+    ${ground(59, 18)}
+    ${face('M14 26H44L42 54Q42 58 38 58H20Q16 58 16 54Z', ['#5aa9e6', '#3a86c8', '#c4e6ff'], 26, 40, 0.88)}
+    <path d="M44 32L58 18L61 21L48 40Z" fill="#3a86c8" ${S}/>
+    <path d="M18 26Q29 10 40 26" fill="none" ${S}/>
+    <ellipse cx="29" cy="26" rx="15" ry="3.5" fill="#2d6aa8" ${S2}/>
+    ${drop(56, 26, 0.55)}${drop(61, 32, 0.45)}
+    ${hl(21, 36, 1.8, 8, 0, 0.7)}`,
+  egg: eggBase,
+  eggCrack1: `${eggBase}${crack('M18 30L24 34L28 29L33 34')}`,
+  eggCrack2: `${eggBase}${crack('M14 32L21 36L26 30L32 36L38 30L44 35L50 31')}${crack('M32 36L30 44')}`,
+  swallow: swallowBody,
+  crowFriend: `<g transform="translate(-2 6) scale(0.8)">${SYMBOL_ART.crow}</g>
+    <path d="M48 10C44 4 36 8 40 14L48 22L56 14C60 8 52 4 48 10Z" fill="${C.pink[0]}" ${S2}/>`,
+  greedy: `
+    ${face('M14 30Q14 18 32 18Q50 18 50 30L54 52Q54 58 48 58H16Q10 58 10 52Z', C.tan, 26, 40, 0.88)}
+    <path d="M22 20Q32 12 42 20" fill="none" ${S}/>
+    <path d="M24 18L28 10H36L40 18" fill="${C.tan[1]}" ${S2}/>
+    ${coinSmall(32, 40, 9)}
+    ${sparkle(52, 12, 5, C.gold[0])}${sparkle(10, 16, 4, C.gold[0])}`,
+  earlyCrop: `
+    ${line('M32 60V30', C.leaf[1], 4)}
+    ${face('M32 40C26 41 16 39 13 28C22 25 31 30 32 40Z', C.leaf, 18, 31, 0.84)}
+    ${face('M32 36C38 37 48 34 51 23C42 21 33 26 32 36Z', [C.leaf[2], C.leaf[0]], 46, 26, 0.84)}
+    <g transform="translate(34 0) scale(0.45)">${tomato}</g>
+    <path d="M8 12L16 8M6 20L14 18M10 28L16 26" fill="none" stroke="${C.gold[1]}" stroke-width="2.6" stroke-linecap="round"/>`,
+};
+
 const MERGE_ART = {
   ...PHASE_ART,
+  ...CARD_ART,
   oniTomato,
   heartBerry,
   lanternPumpkin,

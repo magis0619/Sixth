@@ -583,7 +583,6 @@ export function showPrep(): void {
         <div class="prep-sign"><span class="rope l"></span><span class="rope r"></span>
           <b>${art('bargain')} ${L('開店準備', 'Opening the stall')}</b>
         </div>
-        ${maxDifficulty(meta) > 0 ? `<div class="diff-row">${DIFFICULTIES.slice(0, maxDifficulty(meta) + 1).map((d, k) => `<button class="diff-chip${meta.difficulty === k ? ' on' : ''}" data-diff="${k}">${d.name}</button>`).join('')}</div>${diffSummary(meta.difficulty)}` : ''}
         ${CONFIG.farmers ? farmerCards() : `<div class="prep-cart${used > cap ? ' over' : ''}">
           <span class="cart-label">${L('荷台', 'Cart')}<b>${used} / ${cap}</b></span>
           <div class="cart-bed">${cart}</div>
@@ -591,7 +590,7 @@ export function showPrep(): void {
         </div>
         <div class="prep-shelf">${adds}</div>`}
         <div class="prep-actions">
-          <button class="primary prep-go" id="prep-start">${saved ? (confirmNew ? L('はじめる（続きは消えます）', 'Start (erases saved game)') : L('はじめる', 'Start')) : L('はじめる！', 'Start!')}</button>
+          <button class="primary prep-go" id="prep-start">${saved && confirmNew ? L('次へ（続きは消えます）', 'Next (erases saved game)') : maxDifficulty(meta) > 0 ? `${L('難しさを選ぶ', 'Choose difficulty')} ▶` : L('はじめる！', 'Start!')}</button>
           <button class="link-back" id="prep-back">← ${L('もどる', 'Back')}</button>
         </div>`);
     el.overlay.classList.add('show');
@@ -630,11 +629,104 @@ export function showPrep(): void {
         return;
       }
       sfx.select();
-      hooks.startGame();
+      // 難しさを解放していれば、難しさの画面へ（農家選びと分ける）
+      if (maxDifficulty(meta) > 0) showDifficulty();
+      else hooks.startGame();
     });
     $('prep-back').addEventListener('click', () => {
       sfx.cancel();
       showTitle();
+    });
+  };
+  paint();
+}
+
+// ---- 難しさを選ぶ（画面いっぱい）----
+// 参考：Slay the Spire のアセンション（左右で切り替え、前のレベルの縛りが積み重なる）、
+// Balatro のステーク（色の付いたチップの列と大きな札）、Hades の罰の契約（縛りを絵と一言で）
+
+const DIFF_COLOR = ['#5fae3c', '#3a86c8', '#e0a40a', '#e8743b', '#c93c2b', '#6a3d8f'];
+/** レベルごとに加わる縛り（年貢の倍率は、そのレベルの値を1つだけ見せる） */
+const DIFF_RULES: { ico: ArtId; text: string }[][] = [
+  [],
+  // 難しい1は年貢だけ（年貢の行で見せる）
+  [],
+  [{ ico: 'bargain', text: L('市の値段×1.3', 'Market prices ×1.3') }],
+  [{ ico: 'crow', text: L('お邪魔が早く多く来る', 'Pests come earlier and more') }],
+  [{ ico: 'coin', text: L('単品は×0.3でしか売れない', 'Singles sell for ×0.3') }],
+  [{ ico: 'locust', text: L('増えるイナゴが袋にいる', 'Multiplying locusts in your bag') }],
+];
+
+let diffSwipeX = 0;
+export function showDifficulty(): void {
+  const max = maxDifficulty(meta);
+  const farmer = FARMERS.find((f) => f.id === meta.farmer) ?? FARMERS[0];
+  const paint = (dir = 0) => {
+    const lv = meta.difficulty;
+    const locked = lv > max;
+    const color = DIFF_COLOR[lv];
+    const rules = DIFF_RULES.slice(1, lv + 1).flatMap((list, k) => list.map((r) => ({ ...r, isNew: k + 1 === lv })));
+    // 年貢は1行で、そのレベルの倍率を見せる（上がったレベルでは NEW）
+    const tax = lv > 0 ? `<li class="dr-tax new">${art('bale')}<span>${L(`年貢 ×${(1.2 + 0.1 * lv).toFixed(1)}`, `Tax ×${(1.2 + 0.1 * lv).toFixed(1)}`)}</span><em>${lv === 1 ? 'NEW' : '↑'}</em></li>` : '';
+    const cleared = meta.maxCleared >= lv;
+    el.overlay.innerHTML = `
+      <div class="diff-screen" style="--dc:${color}" role="dialog" aria-label="${L('難しさを選ぶ', 'Choose difficulty')}">
+        <div class="ds-top">
+          <button class="ds-back" id="diff-back" aria-label="${L('もどる', 'Back')}">←</button>
+          <b class="ds-title">${L('難しさを選ぶ', 'Choose difficulty')}</b>
+          <span class="ds-farmer">${art(farmer.art as ArtId)}${farmer.name}</span>
+        </div>
+        <div class="ds-chips">${DIFFICULTIES.map((d, k) => `<button class="ds-chip${k === lv ? ' on' : ''}${k > max ? ' locked' : ''}${meta.maxCleared >= k ? ' cleared' : ''}" data-lv="${k}" style="--c:${DIFF_COLOR[k]}" aria-label="${d.name}">${k > max ? art('lock') : k === 0 ? art('sprout') : `<b>${k}</b>`}</button>`).join('')}</div>
+        <div class="ds-stage">
+          <button class="ds-arrow l" id="diff-prev" ${lv === 0 ? 'disabled' : ''} aria-label="${L('やさしく', 'Easier')}">◀</button>
+          <div class="ds-emblem${locked ? ' locked' : ''}${dir ? (dir > 0 ? ' in-r' : ' in-l') : ''}">
+            <span class="ds-ring"></span>
+            <span class="ds-num">${locked ? art('lock') : lv === 0 ? art('sprout') : lv}</span>
+            ${cleared ? `<span class="ds-cleared">${art('trophy')}${L('クリア済み', 'Cleared')}</span>` : ''}
+          </div>
+          <button class="ds-arrow r" id="diff-next" ${lv >= DIFFICULTIES.length - 1 ? 'disabled' : ''} aria-label="${L('むずかしく', 'Harder')}">▶</button>
+        </div>
+        <h2 class="ds-name">${DIFFICULTIES[lv].name}</h2>
+        <div class="ds-rules">
+          ${lv === 0 ? `<p class="ds-plain">${art('sprout')} ${L('縛りなし。まずはここから', 'No extra rules. Start here')}</p>` : `<p class="ds-stack">${L('前の難しさの縛りも、すべて続く', 'All earlier rules stay in effect')}</p><ul>${tax}${rules.map((r) => `<li class="${r.isNew ? 'new' : ''}">${art(r.ico)}<span>${r.text}</span>${r.isNew ? `<em>${L('NEW', 'NEW')}</em>` : ''}</li>`).join('')}</ul>`}
+        </div>
+        <div class="ds-foot">
+          ${locked ? `<p class="ds-lock">${art('lock')} ${L(`「${DIFFICULTIES[lv - 1].name}」をクリアで解放`, `Clear "${DIFFICULTIES[lv - 1].name}" to unlock`)}</p>` : ''}
+          <button class="primary ds-go" id="diff-start" ${locked ? 'disabled' : ''}>${L('はじめる！', 'Start!')}</button>
+        </div>
+      </div>`;
+    el.overlay.classList.add('show');
+    const go = (d: number) => {
+      const next = Math.max(0, Math.min(DIFFICULTIES.length - 1, meta.difficulty + d));
+      if (next === meta.difficulty) return;
+      meta.difficulty = next;
+      saveMeta(meta);
+      sfx.select();
+      paint(d);
+    };
+    $('diff-prev').addEventListener('click', () => go(-1));
+    $('diff-next').addEventListener('click', () => go(1));
+    el.overlay.querySelectorAll<HTMLButtonElement>('[data-lv]').forEach((b) => b.addEventListener('click', () => go(Number(b.dataset.lv) - meta.difficulty)));
+    // 左右にはらって切り替え
+    const screen = el.overlay.querySelector<HTMLElement>('.diff-screen')!;
+    screen.addEventListener('pointerdown', (e) => (diffSwipeX = e.clientX));
+    screen.addEventListener('pointerup', (e) => {
+      const dx = e.clientX - diffSwipeX;
+      if (Math.abs(dx) > 60) go(dx < 0 ? 1 : -1);
+    });
+    $('diff-back').addEventListener('click', () => {
+      sfx.cancel();
+      // 解放していない難しさのままでは戻さない
+      if (meta.difficulty > max) {
+        meta.difficulty = max;
+        saveMeta(meta);
+      }
+      showPrep();
+    });
+    $('diff-start').addEventListener('click', () => {
+      if (meta.difficulty > max) return;
+      sfx.select();
+      hooks.startGame();
     });
   };
   paint();
