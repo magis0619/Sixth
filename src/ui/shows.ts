@@ -8,6 +8,7 @@ import { sfx } from '../audio.ts';
 import { burst, center, coinRain, flash, floatText, flyTo, isCalm, later, pop, shake, slamText, sleep, speedLines, vibrate } from '../fx.ts';
 import { el, hooks, rng, state } from './store.ts';
 import { say, symHtml, visibleOr } from './view.ts';
+import { PEST_EFFECT, PEST_TARGET } from './explain.ts';
 
 /** 年貢が払えず終わるとき、畑が枯れていく */
 export async function witherField(): Promise<void> {
@@ -126,12 +127,17 @@ function showPestsJoin(added: SymbolId[]): Promise<void> {
   el.overlay.innerHTML = `
     <div class="modal pest-modal" role="dialog" aria-label="${L('お邪魔が袋に入る', 'Pests join your bag')}">
       <h2>${art('warn')} ${L('お邪魔が袋に入る', 'Pests join your bag')}</h2>
-      <p class="pest-lead">${L(`年貢のあとは、袋にお邪魔が${added.length}枚増える`, `After each tax, ${added.length} pest${added.length > 1 ? 's join' : ' joins'} your bag`)}</p>
+      <p class="pest-lead">${L(`袋にお邪魔が${added.length}枚増える`, `${added.length} pest${added.length > 1 ? 's join' : ' joins'} your bag`)}</p>
       <div class="pest-cards">${kinds
         .map((sym) => {
           const n = added.filter((x) => x === sym).length;
           const guard = PEST_GUARD[sym];
-          return `<div class="pest-card" data-sym="${sym}"><span class="pc-art">${symHtml(sym)}</span><b>${SYMBOLS[sym].name}${n > 1 ? ` ×${n}` : ''}</b><span class="pc-desc">${SYMBOLS[sym].desc}</span>${guard ? `<span class="pc-guard">${art(guard[0])}${guard[1]}</span>` : ''}</div>`;
+          // 横長の札：左に絵、右に名前と3行（狙う所・効き目・守り）。長い説明文は出さない
+          return `<div class="pest-card wide" data-sym="${sym}"><span class="pc-art">${symHtml(sym)}</span>
+            <span class="pc-body"><b>${SYMBOLS[sym].name}${n > 1 ? ` ×${n}` : ''}</b>
+              <span class="pc-line">${art('warn')}${PEST_TARGET[sym] ?? ''}</span>
+              <span class="pc-line">${art(sym as ArtId)}${PEST_EFFECT[sym] ?? SYMBOLS[sym].desc}</span>
+              ${guard ? `<span class="pc-line guard">${art(guard[0])}${guard[1]}</span>` : ''}</span></div>`;
         })
         .join('')}</div>
       <button class="primary" id="pest-ok">${L('袋に入れる', 'Into the bag')}</button>

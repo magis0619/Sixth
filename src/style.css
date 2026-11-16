@@ -8775,3 +8775,23 @@ button.fs-relic { font: inherit; color: var(--ink); cursor: pointer; }
 .pip { width: max(12px, calc(var(--cell) * 0.15)); height: max(12px, calc(var(--cell) * 0.15)); }
 /* 曜日の市・年貢の印を少し大きく */
 .wd-plate i { width: 20px; height: 20px; right: -8px; bottom: -7px; }
+
+/* お邪魔の窓：横長の札（左に絵、右に名前と3行）。縦に並べる */
+.pest-modal .pest-cards { display: grid; grid-template-columns: 1fr; gap: 8px; width: 100%; }
+.pest-card.wide {
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: none;
+  padding: 10px 12px;
+  text-align: left;
+}
+.pest-card.wide .pc-art { display: flex; width: 76px; height: 76px; margin: 0; }
+.pest-card.wide .pc-art .art { width: 100%; height: 100%; }
+.pc-body { display: grid; gap: 4px; }
+.pc-body > b { font-size: 1.25rem; }
+.pc-line { display: flex; align-items: center; gap: 6px; font-size: 0.9375rem; font-weight: 800; color: var(--ink); }
+.pc-line .art { width: 1.4em; height: 1.4em; flex: none; }
+.pc-line.guard { color: #2f6b1c; }
