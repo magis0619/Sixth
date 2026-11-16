@@ -2367,7 +2367,7 @@ export function resolveAuto(state: GameState, reel: number, rng: Rng): AutoEvent
   let t = '';
   switch (ev.type) {
     case 'coin': t = `+${ev.amount}`; break;
-    case 'crow': t = ev.cell === null ? '狙う作物なし' : ev.guarded ? `かかしで追い払った ${cellName(ev.cell)}` : ev.eaten ? `${cropName(ev.crop)}を食べた ${cellName(ev.cell)}（売値${ev.crop ? CROPS[ev.crop.kind].price : 0}）` : ev.pecked ? `${cropName(ev.crop)}をつついた −20% ${cellName(ev.cell)}` : `外れ ${cellName(ev.cell)}`; break;
+    case 'crow': t = ev.cell === null ? (state.charms.crowFriend > 0 ? `カラスの友で食べない +${ev.toll}` : '狙う作物なし') : ev.guarded ? `かかしで追い払った ${cellName(ev.cell)}` : ev.eaten ? `${cropName(ev.crop)}を食べた ${cellName(ev.cell)}（売値${ev.crop ? CROPS[ev.crop.kind].price : 0}）` : ev.pecked ? `${cropName(ev.crop)}をつついた −20% ${cellName(ev.cell)}` : `外れ ${cellName(ev.cell)}`; break;
     case 'bug': t = ev.cell === null ? '作物なし' : ev.warded ? `防いだ ${cellName(ev.cell)}` : `成長-${ev.damage} ${cellName(ev.cell)}`; break;
     case 'weed': t = ev.warded ? '防いだ' : ev.cells.length ? `生えた ${ev.cells.map(cellName).join('')}` : '生える所なし'; break;
     case 'tanuki': t = `盗んだ${ev.stolen} ${ev.taken.map((x) => cropName(x.crop)).join('・')}`; break;
