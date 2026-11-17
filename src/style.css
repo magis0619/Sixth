@@ -3,7 +3,7 @@
 
 :root {
   --ink: #3d3326;
-  --ink-soft: #7a6a55;
+  --ink-soft: #6b5b47;
   --cloth: #fff8e7;
   --cloth-deep: #f6ead0;
   --stitch: rgba(150, 110, 70, 0.45);
@@ -20,13 +20,13 @@
   --gold: #f5c518;
   --gold-dark: #c99a00;
   --gold-soft: #fff1b8;
-  --role-manual: #4fa83a;
+  --role-manual: #357a24;
   --role-good: #3f8fd8;
   --role-bad: #9a1f4a;
-  --tier-common: #b9b2a5;
-  --tier-uncommon: #2bb3a3;
+  --tier-common: #6f6556;
+  --tier-uncommon: #1d7a6f;
   --tier-rare: #f2b705;
-  --danger: #d64545;
+  --danger: #c23434;
   --accent: #e8743b;
   --pink: #ff5fa2;
   /* --cell は main.ts の fitLayout が画面の高さに合わせて上書きする */
@@ -118,7 +118,7 @@ button {
 }
 
 .stat small {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   color: var(--ink-soft);
   align-self: flex-end;
   margin-bottom: 3px;
@@ -191,7 +191,7 @@ button {
   text-shadow: none;
   border-radius: 999px;
   padding: 1px 9px;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
 }
 
 .tax.warn {
@@ -217,7 +217,7 @@ button {
 }
 
 .st {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   border-radius: 8px;
   padding: 3px 10px;
@@ -415,25 +415,25 @@ button {
 
 .price b {
   position: relative;
-  font-size: max(0.78rem, calc(var(--cell) * 0.17));
+  font-size: max(0.8125rem, calc(var(--cell) * 0.17));
   line-height: 1;
   letter-spacing: -0.03em;
   text-shadow: 0 1px 0 #fff3b0;
 }
 
 .price.d3 b {
-  font-size: max(0.75rem, calc(var(--cell) * 0.135));
+  font-size: max(0.8125rem, calc(var(--cell) * 0.135));
 }
 
 .price.d4 b {
-  font-size: max(0.75rem, calc(var(--cell) * 0.11));
+  font-size: max(0.8125rem, calc(var(--cell) * 0.11));
 }
 
 .badge-fert {
   position: absolute;
   bottom: 5%;
   left: 5%;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   background: #fff;
   color: #6a3fa0;
@@ -446,7 +446,7 @@ button {
   top: 5%;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   color: #4a3200;
   background: var(--gold-soft);
@@ -471,7 +471,7 @@ button {
   background: var(--pink);
   color: #fff;
   border-radius: 8px;
-  font-size: max(0.75rem, calc(var(--cell) * 0.12));
+  font-size: max(0.8125rem, calc(var(--cell) * 0.12));
   font-weight: 800;
   padding: 0 6px;
   box-shadow: 0 2px 0 #b8336f;
@@ -625,7 +625,7 @@ button {
 
 /* 出目の下の札。役割の色で塗り、文字でも状態を書く */
 .tag {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   color: #fff;
   background: var(--role);
@@ -727,7 +727,7 @@ button {
   max-width: 92%;
   background: rgba(61, 51, 38, 0.88);
   color: #fff8e7;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   text-align: center;
   border-radius: 8px;
@@ -759,7 +759,7 @@ button {
 
 .spin small {
   display: block;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   opacity: 0.85;
 }
 
@@ -831,7 +831,7 @@ button {
   position: absolute;
   top: -8px;
   right: 2px;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   background: var(--wood-darker);
   color: #fff;
   border-radius: 8px;
@@ -922,7 +922,7 @@ button {
 }
 
 .sheet-lead {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   color: var(--ink-soft);
   margin: 0 0 10px;
 }
@@ -960,13 +960,13 @@ button {
 }
 
 .item .effect {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   color: var(--ink-soft);
 }
 
 .item .cost {
   grid-column: 1 / 3;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   border-radius: 8px;
   padding: 3px 6px;
@@ -1005,7 +1005,7 @@ button {
   background: #fff;
   border-radius: 12px;
   padding: 4px 8px 4px 6px;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   box-shadow: inset 0 0 0 2px var(--cloth-deep), 0 2px 0 rgba(110, 66, 36, 0.25);
 }
@@ -1019,7 +1019,7 @@ button {
   margin-left: auto;
   color: var(--ink-soft);
   font-weight: 500;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
 }
 
 .chip.bad {
@@ -1058,7 +1058,7 @@ button {
 
 .charm small {
   display: block;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   color: var(--ink-soft);
 }
 
@@ -1158,14 +1158,14 @@ button {
 .modal ol {
   margin: 0;
   padding-left: 1.4em;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   max-height: 140px;
   overflow: auto;
 }
 
 .modal .sub {
   text-align: center;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   color: var(--ink-soft);
   margin: 8px 0;
 }
@@ -1236,7 +1236,7 @@ button {
 
 .points-earned small {
   display: block;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   color: var(--ink-soft);
 }
 
@@ -1362,12 +1362,12 @@ button {
 }
 
 .charm-card small {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   color: var(--ink-soft);
 }
 
 .charm-card .lv {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   background: var(--role-manual);
   color: #fff;
   border-radius: 8px;
@@ -1378,7 +1378,7 @@ button {
   position: absolute;
   top: 8px;
   right: 10px;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   border-radius: 8px;
   padding: 1px 8px;
@@ -1436,12 +1436,12 @@ button {
 
 .prep-modal .points small {
   display: block;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   color: var(--ink-soft);
 }
 
 .prep-modal .cap {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   background: var(--role-manual);
   color: #fff;
   border-radius: 8px;
@@ -1478,16 +1478,16 @@ button {
 }
 
 .prep-item b {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
 }
 
 .prep-item small {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   color: var(--ink-soft);
 }
 
 .prep-item .cost {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   background: var(--cloth-deep);
   border-radius: 8px;
@@ -1582,7 +1582,7 @@ button {
 
 .dex-row small {
   display: block;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   color: var(--ink-soft);
 }
 
@@ -1591,7 +1591,7 @@ button {
 }
 
 .dex-row .tag-k {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   background: var(--tier-common);
   color: #fff;
@@ -1600,7 +1600,7 @@ button {
 }
 
 .dex-row .own {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   color: var(--ink-soft);
   white-space: nowrap;
 }
@@ -1784,7 +1784,7 @@ button {
     max-width: 150px;
   }
   .machine .tag {
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
   }
   .machine .spin {
     font-size: 1.75rem;
@@ -1811,7 +1811,7 @@ button {
   background: var(--cloth);
   border-radius: 8px;
   padding: 4px 10px;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   box-shadow: 0 2px 0 rgba(110, 66, 36, 0.3), inset 0 0 0 2px #fff;
 }
 
@@ -1847,7 +1847,7 @@ button {
 
 .order-reward {
   font-weight: 800;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   white-space: nowrap;
   color: #6b4a00;
   background: var(--gold-soft);
@@ -1865,7 +1865,7 @@ button {
   position: absolute;
   top: 5%;
   left: 5%;
-  font-size: max(0.8rem, calc(var(--cell) * 0.17));
+  font-size: max(0.8125rem, calc(var(--cell) * 0.17));
   display: flex;
   background: rgba(255, 250, 240, 0.85);
   border-radius: 50%;
@@ -1893,7 +1893,7 @@ button {
 .plot .pull {
   position: absolute;
   bottom: 5%;
-  font-size: max(0.75rem, calc(var(--cell) * 0.11));
+  font-size: max(0.8125rem, calc(var(--cell) * 0.11));
   font-weight: 800;
   background: rgba(255, 250, 240, 0.9);
   border-radius: 8px;
@@ -1924,7 +1924,7 @@ button {
   white-space: nowrap;
   align-items: center;
   gap: 2px;
-  font-size: max(0.75rem, calc(var(--cell) * 0.11));
+  font-size: max(0.8125rem, calc(var(--cell) * 0.11));
   font-weight: 800;
   color: #1f5f8f;
   background: #eef8ff;
@@ -1945,7 +1945,7 @@ button {
   position: absolute;
   top: -8px;
   right: 8px;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   color: #fff;
   background: var(--tier-uncommon);
@@ -1956,7 +1956,7 @@ button {
 /* ---- スロットの演出（リーチ・カットイン・フリーズ） ---- */
 .modal .secondary small {
   display: block;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 500;
   opacity: 0.7;
 }
@@ -2163,7 +2163,7 @@ button {
   background: rgba(61, 51, 38, 0.75);
   color: #fff;
   border-radius: 8px;
-  font-size: max(0.75rem, calc(var(--cell) * 0.1));
+  font-size: max(0.8125rem, calc(var(--cell) * 0.1));
   font-weight: 800;
   padding: 0 5px;
   white-space: nowrap;
@@ -2207,7 +2207,7 @@ button {
   position: absolute;
   top: 4%;
   right: 4%;
-  font-size: max(0.8rem, calc(var(--cell) * 0.2));
+  font-size: max(0.8125rem, calc(var(--cell) * 0.2));
   line-height: 1;
 }
 
@@ -2297,7 +2297,7 @@ button {
 }
 
 .mult-chip small {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
 }
 
@@ -2661,7 +2661,7 @@ body::before {
   color: #3d3326;
   border-radius: 8px;
   padding: 0 6px;
-  font-size: max(0.75rem, calc(var(--cell) * 0.13));
+  font-size: max(0.8125rem, calc(var(--cell) * 0.13));
   font-weight: 800;
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
 }
@@ -2674,7 +2674,7 @@ body::before {
   color: #fff;
   border-radius: 8px;
   padding: 0 5px;
-  font-size: max(0.75rem, calc(var(--cell) * 0.12));
+  font-size: max(0.8125rem, calc(var(--cell) * 0.12));
   font-weight: 800;
 }
 
@@ -2695,7 +2695,7 @@ body::before {
   color: #3d3326;
   border-radius: 8px;
   padding: 0 6px 0 2px;
-  font-size: max(0.75rem, calc(var(--cell) * 0.12));
+  font-size: max(0.8125rem, calc(var(--cell) * 0.12));
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
   top: 5%;
   left: 5%;
@@ -2714,7 +2714,7 @@ body::before {
 
 .plot.tile-compost .empty,
 .plot.tile-water .empty {
-  font-size: max(0.78rem, calc(var(--cell) * 0.16));
+  font-size: max(0.8125rem, calc(var(--cell) * 0.16));
   font-weight: 800;
   color: #fff;
 }
@@ -2755,7 +2755,7 @@ body::before {
   flex-direction: column;
   align-items: center;
   gap: 1px;
-  font-size: max(0.8rem, calc(var(--cell) * 0.17));
+  font-size: max(0.8125rem, calc(var(--cell) * 0.17));
   font-weight: 800;
   color: #fff;
   text-shadow: 0 2px 0 rgba(0, 0, 0, 0.55);
@@ -2820,13 +2820,13 @@ body::before {
 }
 
 .shop .item .effect {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   line-height: 1.35;
 }
 
 .shop .weekly-tag {
   position: static;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   padding: 1px 6px;
 }
 
@@ -2849,7 +2849,7 @@ body::before {
 }
 
 .shop .item .cost small {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
 }
 
@@ -2880,7 +2880,7 @@ body::before {
 }
 
 .shop-title small {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 500;
   color: var(--ink-soft);
 }
@@ -2913,7 +2913,7 @@ body::before {
 }
 
 .prep-item b {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   white-space: nowrap;
 }
 
@@ -2934,7 +2934,7 @@ body::before {
 
 .prep-item.locked b,
 .prep-item.locked small {
-  color: #9a8b74;
+  color: #6e6250;
 }
 
 .prep-item.locked.unlockable,
@@ -2956,7 +2956,7 @@ body::before {
 }
 
 .prep-cap small {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   opacity: 0.8;
 }
@@ -2983,7 +2983,7 @@ body::before {
   left: 50%;
   right: auto;
   transform: translateX(-50%);
-  font-size: max(0.8rem, calc(var(--cell) * 0.17));
+  font-size: max(0.8125rem, calc(var(--cell) * 0.17));
 }
 
 .plot.ripe[class*='crop-'] .badge-tile {
@@ -3000,7 +3000,7 @@ body::before {
   top: max(1px, env(safe-area-inset-top));
   left: 6px;
   z-index: 60;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   line-height: 1;
   font-weight: 800;
   color: rgba(61, 51, 38, 0.7);
@@ -3157,7 +3157,7 @@ body::before {
   background: #fffdf7;
   border-radius: 12px;
   padding: 8px 10px;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   position: relative;
 }
@@ -3175,7 +3175,7 @@ body::before {
   top: -10px;
   right: -6px;
   font-style: normal;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   background: var(--pink);
   color: #fff;
   border-radius: 8px;
@@ -3286,7 +3286,7 @@ body::before {
   padding: 6px 10px;
   background: #fffdf7;
   font-weight: 800;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3294,7 +3294,7 @@ body::before {
 }
 
 .diff-chip small {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   color: var(--ink-soft);
 }
@@ -3314,7 +3314,7 @@ body::before {
   color: #fff;
   border-radius: 8px;
   padding: 0 8px;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   margin-right: 4px;
 }
 
@@ -3357,7 +3357,7 @@ body::before {
 
 .prep-item.todo b,
 .prep-item.todo small {
-  color: #9a8b74;
+  color: #6e6250;
 }
 
 
@@ -3370,7 +3370,7 @@ body::before {
   color: #8a5a00;
   border-radius: 8px;
   padding: 0 8px 0 4px;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   margin-right: 6px;
 }
@@ -3464,7 +3464,7 @@ body::before {
 
 .hud-tax .tax-ok {
   margin-left: 4px;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   color: #2f7a22;
 }
@@ -3478,7 +3478,7 @@ body::before {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   color: #8a5a00;
   white-space: nowrap;
@@ -3490,7 +3490,7 @@ body::before {
   color: #fff;
   border-radius: 8px;
   padding: 0 6px;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
 }
 
 .hud-tax.warn {
@@ -3635,7 +3635,7 @@ body::before {
 }
 
 .lcd small {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   opacity: 0.85;
 }
 
@@ -3803,7 +3803,7 @@ body::before {
 
 .info-pop .sub {
   color: var(--ink-soft);
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
 }
 
 .info-head {
@@ -3819,7 +3819,7 @@ body::before {
 .info-head em {
   margin-left: auto;
   font-style: normal;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   background: #3b2412;
   color: #fff;
@@ -3859,7 +3859,7 @@ body::before {
   display: flex;
   align-items: center;
   gap: 3px;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   color: var(--ink-soft);
 }
@@ -3874,13 +3874,13 @@ body::before {
 }
 
 .hud-tax .tax-when {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
 }
 
 .hud-tax .tax-mark {
   margin-left: auto;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   color: #fff;
   border-radius: 8px;
@@ -3963,7 +3963,7 @@ body::before {
 }
 
 .order-tag small {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   opacity: 0.9;
 }
 
@@ -4145,7 +4145,7 @@ body::before {
 }
 
 .spin-go small {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   opacity: 0.9;
 }
@@ -4189,7 +4189,7 @@ body::before {
 }
 
 .order-tag small {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   opacity: 1;
   border-right: 2px solid rgba(74, 42, 16, 0.3);
@@ -4207,7 +4207,7 @@ body::before {
 }
 
 .order-tag .order-reward {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   color: #7a4a00;
   background: rgba(255, 240, 200, 0.55);
@@ -4633,7 +4633,7 @@ body::before {
   background: rgba(255, 250, 235, 0.92);
   color: #3f7a1e;
   font-weight: 800;
-  font-size: max(0.75rem, calc(var(--cell) * 0.17));
+  font-size: max(0.8125rem, calc(var(--cell) * 0.17));
   box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
 }
 
@@ -4685,7 +4685,7 @@ body::before {
   border-radius: 8px;
   background: #fff8e7;
   box-shadow: 0 2px 0 #c9a46a, inset 0 0 0 2px #e8cf9e;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   color: var(--ink);
 }
@@ -4785,7 +4785,7 @@ body::before {
 }
 
 .stall-head small {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   color: #8a7a5c;
 }
@@ -4822,9 +4822,11 @@ body::before {
   color: #5aae35;
 }
 
-/* ショップはタブを切り替えても引き出しの高さが変わらないよう、高さを固定する */
+/* 市は画面の上の方まで開く（上にすき間を少しだけ残して、引き出しだと分かるように）。
+   タブを切り替えても高さが変わらないよう、高さを固定する */
 .sheet[data-pane='shop'] {
-  height: 72dvh;
+  height: calc(100dvh - 20px - env(safe-area-inset-top));
+  max-height: none;
 }
 
 
@@ -4867,7 +4869,7 @@ body::before {
 
 .machine > .reach-call small {
   display: block;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   color: #ffe08a;
 }
@@ -4879,7 +4881,7 @@ body::before {
 }
 
 .pivot-tag {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   color: #fff;
   background: #e8a33a;
@@ -4894,7 +4896,7 @@ body::before {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  font-size: max(0.75rem, calc(var(--cell) * 0.14));
+  font-size: max(0.8125rem, calc(var(--cell) * 0.14));
 }
 
 .badge-line .mk,
@@ -4926,7 +4928,7 @@ body::before {
 }
 
 .odds b {
-  color: #3f8a26;
+  color: #357520;
 }
 
 /* 植える前の列の予告：ここに植えると列になる */
@@ -4943,7 +4945,7 @@ body::before {
   background: var(--pink);
   color: #fff;
   font-weight: 800;
-  font-size: max(0.75rem, calc(var(--cell) * 0.15));
+  font-size: max(0.8125rem, calc(var(--cell) * 0.15));
   box-shadow: 0 2px 0 #b8336f;
   white-space: nowrap;
   animation: line-hint-bob 0.9s ease-in-out infinite;
@@ -4988,7 +4990,7 @@ body::before {
 }
 
 .coach p b {
-  color: #c93c2b;
+  color: #a8301f;
 }
 
 .coach .art,
@@ -5022,7 +5024,7 @@ body::before {
   background: none;
   color: #8a7a5c;
   font: inherit;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   text-decoration: underline;
   cursor: pointer;
 }
@@ -5234,7 +5236,7 @@ body::before {
 }
 
 .pick-label {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   color: #fff;
   background: #e8a33a;
   border-radius: 8px;
@@ -5247,7 +5249,7 @@ body::before {
 }
 
 .pick-what {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   color: #8a5a10;
 }
 
@@ -5287,7 +5289,7 @@ body::before {
   border-radius: 8px;
   background: #e8a33a;
   color: #fff;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   white-space: nowrap;
   box-shadow: 0 2px 0 #b07415;
@@ -5403,7 +5405,7 @@ body {
 
 .hud-menu button small {
   display: block;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   opacity: 0.7;
 }
@@ -5434,7 +5436,7 @@ body {
 
 .set-row small {
   display: block;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 500;
   color: #8a7a5c;
 }
@@ -5495,7 +5497,7 @@ body {
 }
 
 .credits small {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
 }
 
 .records {
@@ -5684,7 +5686,7 @@ html[lang='en'] .prep-item b {
 .prep-sign small {
   display: block;
   margin-top: 2px;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   opacity: 0.92;
 }
@@ -5722,7 +5724,7 @@ html[lang='en'] .prep-item b {
   right: 10px;
   display: flex;
   justify-content: space-between;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   color: #fff3dc;
   text-shadow: 0 1px 0 var(--wood-darker);
@@ -5812,7 +5814,7 @@ html[lang='en'] .prep-item b {
 }
 
 .setup-modal .prep-item.tag b {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
 }
 
 /* 値札の穴 */
@@ -5864,7 +5866,7 @@ html[lang='en'] .prep-item b {
   color: #c0392b;
   background: rgba(255, 255, 255, 0.85);
   font-family: var(--font-pop);
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   rotate: 12deg;
   animation: stamp-in 0.25s cubic-bezier(0.3, 1.6, 0.5, 1);
 }
@@ -5879,7 +5881,7 @@ html[lang='en'] .prep-item b {
   justify-content: center;
   gap: 4px;
   margin: 10px 0 0;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   color: var(--ink-soft);
 }
@@ -5947,7 +5949,7 @@ html[lang='en'] .prep-item b {
   justify-content: center;
   gap: 4px;
   margin: -2px 0 12px;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
 }
 
@@ -5992,7 +5994,7 @@ html[lang='en'] .prep-item b {
   background: #c0392b;
   color: #fff;
   font-style: normal;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   line-height: 1;
   box-shadow: 0 1px 0 #7a1f15;
@@ -6007,7 +6009,7 @@ html[lang='en'] .prep-item b {
   padding: 2px 8px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.16);
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
 }
 
 .go-dead .art {
@@ -6056,21 +6058,21 @@ html[lang='en'] .prep-item b {
 .cart-label,
 .diff-summary,
 .modal .secondary small {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
 }
 
 /* 畑のマスの上の小さな札は、マスに収まる範囲で大きく */
 .badge-fert,
 .badge-gold {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
 }
 
 .prep-item .cost {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
 }
 
 .tag-stamp {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
 }
 
 .pick-shape .art,
@@ -7039,7 +7041,7 @@ html.hurry .hurry-edge {
 
 .help-tabs button {
   padding: 7px 2px;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   white-space: nowrap;
   min-width: 0;
 }
@@ -7559,7 +7561,7 @@ body:has(#overlay.show) :is(.machine, .machine *) {
   padding: 1px 6px;
   border: 2px dashed var(--stitch);
   border-radius: 8px;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
 }
 .fm-favor svg { width: 20px; height: 20px; }
@@ -7627,7 +7629,7 @@ body:has(#overlay.show) :is(.machine, .machine *) {
   flex: none;
   min-width: 2.4em;
   text-align: center;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   color: #fff;
   background: var(--ink-soft);
@@ -7669,7 +7671,7 @@ body:has(#overlay.show) :is(.machine, .machine *) {
   cursor: pointer;
 }
 .hint-card p { margin: 0; font-size: 0.875rem; font-weight: 800; line-height: 1.5; }
-.hint-card p b { color: #c93c2b; }
+.hint-card p b { color: #a8301f; }
 .hint-card p .art, .hint-card p svg { width: 1.4em; height: 1.4em; vertical-align: -0.35em; }
 .hc-badge { flex: none; width: 26px; height: 26px; display: flex; }
 .hc-badge svg { width: 100%; height: 100%; }
@@ -7690,7 +7692,7 @@ body:has(#overlay.show) :is(.machine, .machine *) {
   top: -10px;
   left: 10px;
   padding: 0 6px;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   background: var(--cloth);
   color: var(--ink-soft);
@@ -7735,7 +7737,7 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 .coach-guide { flex: none; width: 56px; height: 56px; display: flex; }
 .coach .coach-guide .art, .coach .coach-guide svg { width: 100%; height: 100%; }
 .coach p { margin: 0; font-size: 1.25rem; font-weight: 800; line-height: 1.45; word-break: keep-all; overflow-wrap: anywhere; }
-.coach p b { color: #c93c2b; }
+.coach p b { color: #a8301f; }
 .coach p .art, .coach p svg { width: 1.3em; height: 1.3em; vertical-align: -0.3em; }
 .coach-dots { display: flex; justify-content: center; gap: 5px; margin: 8px 0 2px; }
 .coach-dots i { width: 8px; height: 8px; border-radius: 50%; background: #e3d9c4; }
@@ -7839,7 +7841,7 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 }
 .wd-plate i svg { width: 100%; height: 100%; opacity: 1; filter: none; }
 /* 過ぎた日：くすんだ札に緑の済み印 */
-.wd.past .wd-plate { background: #e6dccb; color: #9a8b74; }
+.wd.past .wd-plate { background: #e6dccb; color: #6e6250; }
 .wd.past .wd-plate::after {
   content: '';
   position: absolute;
@@ -7870,8 +7872,8 @@ body:has(#overlay.show) :is(.machine, .machine *) {
   z-index: 2;
 }
 /* 日曜（年貢）：赤い縁。お金が足りないと赤く */
-.wd.tax .wd-plate { border-color: #c93c2b; }
-.wd.tax .wd-plate b { color: #c93c2b; }
+.wd.tax .wd-plate { border-color: #a8301f; }
+.wd.tax .wd-plate b { color: #a8301f; }
 .wd.tax.short .wd-plate { background: #ffd9d2; }
 .wd.tax.now .wd-plate b { color: var(--ink); }
 .wd.tax.now.short .wd-plate { background: #ff8a7a; }
@@ -7896,7 +7898,7 @@ body:has(#overlay.show) :is(.machine, .machine *) {
     z-index: 2;
   }
   .wd-plate { width: 26px; height: 26px; border-width: 2px; }
-  .wd-plate b { font-size: 0.75rem; }
+  .wd-plate b { font-size: 0.8125rem; }
   .wd-plate i { width: 14px; height: 14px; right: -5px; bottom: -5px; }
   .wd.now::before { top: -9px; }
 }
@@ -7914,7 +7916,7 @@ body:has(#overlay.show) :is(.machine, .machine *) {
   padding: 3px 4px;
   border: 3px solid var(--ink);
   border-radius: 999px;
-  background: #c93c2b;
+  background: #a8301f;
   color: #fff;
   box-shadow: 2px 2px 0 var(--ink);
 }
@@ -7944,7 +7946,7 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 .ct-ico .art { width: 100%; height: 100%; }
 .ct-name { grid-area: name; font-size: 1.0625rem; padding-right: 54px; }
 .ct-rule { grid-area: rule; font-size: 0.9375rem; line-height: 1.45; }
-.ct-rule b { color: #c93c2b; }
+.ct-rule b { color: #a8301f; }
 .ct-stars {
   position: absolute;
   top: 8px;
@@ -7986,7 +7988,7 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 
 /* 日曜：果たした */
 .contract-done { text-align: center; }
-.contract-done h2 { justify-content: center; color: #c93c2b; }
+.contract-done h2 { justify-content: center; color: #a8301f; }
 .ct-done-card {
   position: relative;
   display: inline-flex;
@@ -8032,7 +8034,7 @@ body:has(#overlay.show) :is(.machine, .machine *) {
   min-height: 28px;
   margin: 0 -2px;
   padding: 2px 4px 2px 4px;
-  background: #c93c2b;
+  background: #a8301f;
   color: #fff;
   border: 2px solid var(--ink);
   border-radius: 8px;
@@ -8045,8 +8047,8 @@ body:has(#overlay.show) :is(.machine, .machine *) {
   padding: 0 6px;
   border-radius: 6px;
   background: #fff;
-  color: #c93c2b;
-  font-size: 0.75rem;
+  color: #a8301f;
+  font-size: 0.8125rem;
   font-weight: 800;
   line-height: 1.6;
 }
@@ -8106,13 +8108,13 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 @media (max-height: 480px) and (orientation: landscape) {
   .week.has-contract { top: 4px; transform: translate(-50%, 0); }
   .wk-ribbon { min-height: 20px; }
-  .rb-name { font-size: 0.75rem; }
+  .rb-name { font-size: 0.8125rem; }
 }
 
 /* ==== 合体（同じ札4枚→1枚） ==== */
 .merge-rule {
   margin-left: auto;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   color: var(--wood-dark);
   background: var(--gold-soft);
@@ -8228,7 +8230,7 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 }
 .ex-grid i.on { background: #8fcf5c; }
 .ex-grid i.mid { outline: 3px solid var(--gold); outline-offset: -1px; }
-.ex-grid i b { font-size: 0.6875rem; color: #fff; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5); }
+.ex-grid i b { font-size: 0.8125rem; color: #fff; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5); }
 .ex-facts { display: flex; justify-content: center; gap: 14px; margin: -2px 0 8px; font-size: 1rem; }
 .ex-facts span { display: inline-flex; align-items: center; gap: 4px; }
 .ex-facts .art { width: 1.6em; height: 1.6em; }
@@ -8289,7 +8291,7 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 }
 .ov-week b { font-family: var(--font-pop); font-weight: 400; }
 .ov-week .art { position: absolute; right: -4px; bottom: -4px; width: 18px; height: 18px; background: #fff; border-radius: 50%; border: 2px solid var(--ink); }
-.ov-week .tx { border-color: #c93c2b; }
+.ov-week .tx { border-color: #a8301f; }
 .ov-legend { display: flex; flex-direction: column; gap: 2px; margin: 8px 0; font-size: 0.875rem; text-align: left; }
 .ov-legend .art { width: 1.3em; height: 1.3em; vertical-align: -0.3em; }
 .ov-goal {
@@ -8305,7 +8307,7 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 }
 .ov-goal .art { grid-row: 1 / 3; width: 44px; height: 44px; }
 .ov-goal b { font-size: 1rem; }
-.ov-goal span { font-size: 0.8125rem; color: #c93c2b; font-weight: 700; }
+.ov-goal span { font-size: 0.8125rem; color: #a8301f; font-weight: 700; }
 .help-overview { margin-bottom: 10px; }
 .dex-row[data-ex-sym] { cursor: pointer; }
 /* 横持ち：説明カードを横に広げて詰める（下が切れないように） */
@@ -8392,7 +8394,7 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 .rt-stamp span { font-size: 0.8125rem; font-weight: 800; }
 .rank-S { --rt: #d9a400; }
 .rank-S .rt-stamp { background: #fff5c8; }
-.rank-A { --rt: #c93c2b; }
+.rank-A { --rt: #a8301f; }
 .rank-B { --rt: #3a86c8; }
 .rank-C { --rt: #4e9230; }
 .rank-D { --rt: #8a7a62; }
@@ -8410,14 +8412,14 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 .ex-icons { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin: 6px 0; }
 .ex-icons span { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: #fff; border: 2px solid var(--ink); border-radius: 999px; font-size: 0.875rem; }
 .ex-icons .art { width: 1.5em; height: 1.5em; }
-.ex-ribbon { display: flex; align-items: center; gap: 6px; margin: 4px auto 8px; padding: 3px 10px; width: 80%; background: #c93c2b; color: #fff; border: 3px solid var(--ink); border-radius: 999px; font-family: var(--font-pop); }
+.ex-ribbon { display: flex; align-items: center; gap: 6px; margin: 4px auto 8px; padding: 3px 10px; width: 80%; background: #a8301f; color: #fff; border: 3px solid var(--ink); border-radius: 999px; font-family: var(--font-pop); }
 .ex-ribbon i { flex: 1; height: 0; border-top: 3px solid #fff; }
 .ex-stack { display: flex; }
 .ex-stack .art { width: 40px; height: 40px; margin-left: -16px; }
 .ex-stack .art:first-child { margin-left: 0; }
 
 /* 曰く付きの代償（赤） */
-.charm-card .curse, .charm .curse, p.curse { display: block; color: #c93c2b; font-weight: 800; font-style: normal; }
+.charm-card .curse, .charm .curse, p.curse { display: block; color: #a8301f; font-weight: 800; font-style: normal; }
 .charm-card .curse .art, p.curse .art { width: 1.1em; height: 1.1em; vertical-align: -0.2em; }
 .charm-skip {
   display: block;
@@ -8438,9 +8440,9 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 .charm-card > small:not(.curse) { grid-column: 2; }
 .charm-card > small.curse { grid-column: 1 / -1; grid-row: 3; margin-top: 4px; padding-top: 4px; border-top: 2px dashed #f0c4bc; font-size: 0.875rem; }
 /* 買うと年貢に足りなくなる値札 */
-.item .cost.tax-risk { background: #ffe0dc; border-color: #c93c2b; }
-.item .cost.tax-risk small { color: #c93c2b; font-weight: 800; }
-.rt-progress { grid-column: 1 / -1; grid-row: 2; margin: 0; font-size: 0.875rem; font-weight: 800; color: #c93c2b; }
+.item .cost.tax-risk { background: #ffe0dc; border-color: #a8301f; }
+.item .cost.tax-risk small { color: #a8301f; font-weight: 800; }
+.rt-progress { grid-column: 1 / -1; grid-row: 2; margin: 0; font-size: 0.875rem; font-weight: 800; color: #a8301f; }
 .rt-progress .art { width: 1.2em; height: 1.2em; vertical-align: -0.25em; }
 .ex-moon { gap: 4px; }
 .ex-moon .ex-art.small { width: 48px; height: 48px; }
@@ -8455,7 +8457,7 @@ body:has(#overlay.show) :is(.machine, .machine *) {
   padding: 2px;
   display: flex;
   background: #ffe0dc;
-  border: 2px solid #c93c2b;
+  border: 2px solid #a8301f;
   border-radius: 50%;
   z-index: 2;
 }
@@ -8502,7 +8504,7 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 .ds-chip .art { width: 70%; height: 70%; }
 .ds-chip.on { opacity: 1; transform: scale(1.18); outline: 3px solid #fff8e7; outline-offset: 2px; }
 .ds-chip.locked { background: #4a4038; }
-.ds-chip.cleared::after { content: '✓'; position: absolute; margin: -26px -26px 0 0; width: 18px; height: 18px; border-radius: 50%; background: #4e9230; color: #fff; font-size: 0.7rem; line-height: 18px; border: 2px solid var(--ink); }
+.ds-chip.cleared::after { content: '✓'; position: absolute; margin: -26px -26px 0 0; width: 18px; height: 18px; border-radius: 50%; background: #4e9230; color: #fff; font-size: 0.8125rem; line-height: 18px; border: 2px solid var(--ink); }
 .ds-chip { position: relative; }
 /* 大きな紋章 */
 .ds-stage { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 8px; }
@@ -8571,8 +8573,8 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 .ds-rules li { display: flex; align-items: center; gap: 8px; font-size: 1rem; font-weight: 700; }
 .ds-rules li .art { width: 1.8em; height: 1.8em; flex: none; }
 .ds-rules li span { flex: 1; }
-.ds-rules li.new { color: #c93c2b; }
-.ds-rules li em { font-style: normal; font-size: 0.8125rem; font-weight: 800; color: #fff; background: #c93c2b; border-radius: 999px; padding: 1px 8px; }
+.ds-rules li.new { color: #a8301f; }
+.ds-rules li em { font-style: normal; font-size: 0.8125rem; font-weight: 800; color: #fff; background: #a8301f; border-radius: 999px; padding: 1px 8px; }
 .ds-rules li.dr-tax { color: var(--ink); }
 .ds-foot { width: min(460px, 100%); margin-top: auto; display: grid; gap: 8px; }
 .ds-lock { margin: 0; text-align: center; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px; }
@@ -8589,7 +8591,7 @@ body:has(#overlay.show) :is(.machine, .machine *) {
   font-weight: 400;
 }
 .diff-screen .ds-go:disabled { background: #8a7f72; color: #3d3326; opacity: 0.7; box-shadow: 0 5px 0 #3d3326; }
-.ds-rules li.dr-tax { color: #c93c2b; }
+.ds-rules li.dr-tax { color: #a8301f; }
 
 /* ==== 開店準備：農家を選ぶ（画面いっぱい・難しさの画面と同じ作り） ==== */
 #overlay:has(.farm-screen) { padding: 0; }
@@ -8651,7 +8653,7 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 }
 .fs-card .art { width: 32px; height: 32px; }
 .fs-card b { font-size: 0.8125rem; }
-.fs-card em { position: absolute; top: -8px; right: -8px; font-style: normal; font-size: 0.75rem; font-weight: 800; color: #fff; background: var(--role-manual); border: 2px solid var(--ink); border-radius: 999px; padding: 0 5px; }
+.fs-card em { position: absolute; top: -8px; right: -8px; font-style: normal; font-size: 0.8125rem; font-weight: 800; color: #fff; background: var(--role-manual); border: 2px solid var(--ink); border-radius: 999px; padding: 0 5px; }
 .fs-card.down { opacity: 0.55; }
 .fs-card.down em { background: #8a7a62; }
 .fs-card.bad { background: #fde7ec; }
@@ -8710,7 +8712,7 @@ button.fs-card { cursor: pointer; font: inherit; color: inherit; padding: 0; bor
 }
 .fs-card-in .art { width: 32px; height: 32px; }
 .fs-card-in b { font-size: 0.8125rem; }
-.fs-card-in em { position: absolute; top: -8px; right: -8px; font-style: normal; font-size: 0.75rem; font-weight: 800; color: #fff; background: var(--role-manual); border: 2px solid var(--ink); border-radius: 999px; padding: 0 5px; }
+.fs-card-in em { position: absolute; top: -8px; right: -8px; font-style: normal; font-size: 0.8125rem; font-weight: 800; color: #fff; background: var(--role-manual); border: 2px solid var(--ink); border-radius: 999px; padding: 0 5px; }
 .fs-card-in.down { opacity: 0.55; }
 .fs-card-in.down em { background: #8a7a62; }
 .fs-card-in.bad { background: #fde7ec; }
@@ -8761,7 +8763,7 @@ button.fs-relic { font: inherit; color: var(--ink); cursor: pointer; }
 .bb-cell b { font-family: var(--font-pop); font-weight: 400; font-size: 1.375rem; line-height: 1.1; }
 .bb-cell.ok { background: #eaf8dc; }
 .bb-cell.short { background: #ffe0dc; }
-.bb-cell.short b { color: #c93c2b; }
+.bb-cell.short b { color: #a8301f; }
 /* お邪魔の窓：守り方の1行 */
 .pest-card .pc-guard { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; padding: 2px 10px 2px 4px; background: #eaf8dc; border: 2px solid #4e9230; border-radius: 999px; font-size: 0.875rem; font-weight: 800; color: #2f6b1c; }
 .pest-card .pc-guard .art { width: 1.5em; height: 1.5em; }
@@ -8899,3 +8901,20 @@ button.fs-relic { font: inherit; color: var(--ink); cursor: pointer; }
 }
 /* 暗い段の字は今まで通り明るく */
 .diff-screen:is([data-sky='3'], [data-sky='4'], [data-sky='5']) { color: #fff8e7; }
+
+/* ==== 色の差（docs/ui-reading.md：文字と地の差は4.5:1以上）の直し ==== */
+.badge-line { background: #c42a75; box-shadow: 0 2px 0 #8e1d55; }
+.pick-label { background: #a85a0c; }
+.help-tabs button.on { background: #95572a; }
+.ex-grid i b { color: var(--ink); text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6); }
+.prep-item.locked b, .prep-item.locked small { color: #6e6250; }
+.set-row .seg button:not(.on) { color: #675a42; }
+.stall-empty { color: #357520; }
+.shop .item .cost small { color: #8f2418; }
+.rank-D { --rt: #6b5b47; }
+.ct-stars.s2 { color: #8a6600; }
+
+/* 市は背が高いので、中身が少ないときも「次へ」を下にそろえる */
+.sheet[data-pane='shop'] { display: flex; flex-direction: column; }
+.sheet[data-pane='shop'] .sheet-pane[data-pane='shop']:not([hidden]) { flex: 1 0 auto; display: flex; flex-direction: column; }
+.sheet[data-pane='shop'] .market-foot { margin-top: auto; }

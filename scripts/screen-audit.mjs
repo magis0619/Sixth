@@ -11,10 +11,28 @@ const SIZES = {
   land: { viewport: { width: 932, height: 430 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 },
   pc: { viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 },
 };
-const b = await pw.chromium.launch();
+// PW_CHROME=ブラウザの場所 で、入っている Playwright と版の違うブラウザでも動かせる
+const b = await pw.chromium.launch(process.env.PW_CHROME ? { executablePath: process.env.PW_CHROME, args: ['--no-sandbox'] } : {});
 const report = [];
 
 function detect() {
+  /** 文字色と、その下の地の色の差。地をたどって、絵や半透明しかなければ null */
+  function contrastOf(e, s) {
+    const rgb = (c) => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return null; const v = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return { r: v[0], g: v[1], b: v[2], a: v[3] ?? 1 }; };
+    const lum = ({ r, g, b }) => { const f = (x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+    const fg = rgb(s.color);
+    if (!fg || fg.a < 0.5 || +s.opacity < 1) return null;
+    for (let n = e; n && n !== document.documentElement; n = n.parentElement) {
+      const cs = getComputedStyle(n);
+      if (+cs.opacity < 1) return null;
+      if (cs.backgroundImage !== 'none') return null;
+      const bg = rgb(cs.backgroundColor);
+      if (bg && bg.a >= 0.95) { const a = lum(fg), b = lum(bg); contrastOf.last = `${s.color}/${cs.backgroundColor}@${n.className && typeof n.className === 'string' ? n.className.split(' ')[0] : n.tagName}`; return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05); }
+      if (bg && bg.a > 0.05) return null;
+    }
+    return null;
+  }
+
   const W = innerWidth, H = innerHeight;
   const issues = [];
   const name = (e) => (e.id ? '#' + e.id : '') + (typeof e.className === 'string' && e.className ? '.' + e.className.trim().split(/\s+/).slice(0, 2).join('.') : '') || e.tagName;
@@ -33,6 +51,14 @@ function detect() {
     if (t && t.length >= 2 && t.length <= 6 && !e.children.length && r.height > parseFloat(s.fontSize) * 2.2 && r.width < parseFloat(s.fontSize) * 2.5) issues.push(`折り返し ${name(e)} 「${t}」`);
     const own = [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
     if (own && (s.overflow === 'hidden' || s.textOverflow === 'ellipsis' || s.overflowX === 'hidden') && e.scrollWidth > e.clientWidth + 1) issues.push(`文字切れ ${name(e)} 「${e.textContent.trim().slice(0, 14)}」`);
+    // docs/ui-reading.md の決まり：補足でも13px以上
+    if (own && parseFloat(s.fontSize) > 0 && parseFloat(s.fontSize) < 12.9) issues.push(`小さい字 ${name(e)} ${parseFloat(s.fontSize)}px 「${t.slice(0, 10)}」`);
+    // 文字と地の色の差（4.5:1、大きい字は3:1）。地が絵（グラデーション）なら測らない
+    if (own) {
+      const ratio = contrastOf(e, s);
+      const large = parseFloat(s.fontSize) >= 24 || (parseFloat(s.fontSize) >= 18.6 && +s.fontWeight >= 700);
+      if (ratio !== null && ratio < (large ? 3 : 4.5)) issues.push(`色の差が小さい ${name(e)} ${ratio.toFixed(1)}:1 「${t.slice(0, 10)}」 ${contrastOf.last}`);
+    }
   }
   // モーダルが画面に入りきるか（中でスクロールできればよい）
   if (modal) {
