@@ -4,7 +4,7 @@ import { L } from '../i18n.ts';
 import {
   ACHIEVE_ADDS, PLACES, CHARM_ORDER, FARMERS, COMBOS, CUT, isCutAdd, type CharmId, type SymbolId, PAUSED_CHARMS, CHARM_TIER_NAMES, CHARMS, CONFIG, DIFFICULTIES, FEEDBACK_URL, META, SHARE_URL, SYMBOL_ORDER, SYMBOLS, THUNDER_LINES, UPGRADES,
 } from '../config.ts';
-import { nextTax, rateRun } from '../game.ts';
+import { difficultyTaxMult, nextTax, rateRun, taxPlan } from '../game.ts';
 import {
   awardPoints, buyCapacity, capacity, farmerUnlocked, isAchieveAdd, loadoutCost, maxDifficulty, nextCapacityPrice, recordRun, saveMeta, toggleLoadout, unlockAdd, unlockCharm,
 } from '../meta.ts';
@@ -669,7 +669,16 @@ export function showDifficulty(): void {
     const color = DIFF_COLOR[lv];
     const rules = DIFF_RULES.slice(1, lv + 1).flatMap((list, k) => list.map((r) => ({ ...r, isNew: k + 1 === lv })));
     // 年貢は1行で、そのレベルの倍率を見せる（上がったレベルでは NEW）
-    const tax = lv > 0 ? `<li class="dr-tax new">${art('bale')}<span>${L(`年貢 ×${(1.2 + 0.1 * lv).toFixed(1)}`, `Tax ×${(1.2 + 0.1 * lv).toFixed(1)}`)}</span><em>${lv === 1 ? 'NEW' : '↑'}</em></li>` : '';
+    const tax = lv > 0 ? `<li class="dr-tax new">${art('bale')}<span>${L(`年貢 ×${difficultyTaxMult(lv).toFixed(1)}`, `Tax ×${difficultyTaxMult(lv).toFixed(1)}`)}</span><em>${lv === 1 ? 'NEW' : '↑'}</em></li>` : '';
+    // 年貢のグラフ：クリアまでの7回。いちばん難しい段を天井にして、段を上げると棒が伸びて見えるように
+    const plan = taxPlan(lv);
+    const top = Math.max(...taxPlan(DIFFICULTIES.length - 1));
+    const taxChart = `<div class="ds-tax" aria-label="${L('年貢の額', 'Tax amounts')}">
+      <p class="dt-head">${art('bale')}<b>${L('年貢', 'Tax')}</b><span>${L(`${plan.length}回でクリア`, `${plan.length} to win`)}</span></p>
+      <div class="dt-bars">${plan
+        .map((v, i) => `<div class="dt-col"><b>${v}</b><span class="dt-track"><i class="dt-bar" style="height:${((v / top) * 100).toFixed(1)}%"></i></span><small>${i + 1}</small></div>`)
+        .join('')}</div>
+    </div>`;
     const cleared = meta.maxCleared >= lv;
     el.overlay.innerHTML = `
       <div class="diff-screen" data-sky="${lv}" style="--dc:${color}" role="dialog" aria-label="${L('難しさを選ぶ', 'Choose difficulty')}">
@@ -692,6 +701,7 @@ export function showDifficulty(): void {
         <div class="ds-rules">
           ${lv === 0 ? `<p class="ds-plain">${art('sprout')} ${L('縛りなし。まずはここから', 'No extra rules. Start here')}</p>` : `<p class="ds-stack">${L('前の難しさの縛りも、すべて続く', 'All earlier rules stay in effect')}</p><ul>${tax}${rules.map((r) => `<li class="${r.isNew ? 'new' : ''}">${art(r.ico)}<span>${r.text}</span>${r.isNew ? `<em>${L('NEW', 'NEW')}</em>` : ''}</li>`).join('')}</ul>`}
         </div>
+        ${taxChart}
         <div class="ds-foot">
           ${locked ? `<p class="ds-lock">${art('lock')} ${L(`「${DIFFICULTIES[lv - 1].name}」をクリアで解放`, `Clear "${DIFFICULTIES[lv - 1].name}" to unlock`)}</p>` : ''}
           <button class="primary ds-go" id="diff-start" ${locked ? 'disabled' : ''}>${L('はじめる！', 'Start!')}</button>

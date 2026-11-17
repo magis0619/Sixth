@@ -8942,3 +8942,24 @@ button.fs-relic { font: inherit; color: var(--ink); cursor: pointer; }
 /* 市の畑の品：効き目を1行に1つ、頭に絵 */
 .item .effect .fx-row { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
 .item .effect .fx-row .art { width: 1.25em; height: 1.25em; flex: none; }
+
+/* 難しさの画面：年貢の棒グラフ（7回分）。棒は段の色 */
+.ds-tax {
+  width: min(460px, 100%);
+  padding: 8px 12px 6px;
+  background: rgba(255, 248, 231, 0.95);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  box-shadow: 0 5px 0 rgba(0, 0, 0, 0.35);
+}
+.dt-head { margin: 0 0 4px; display: flex; align-items: center; gap: 6px; font-size: 1rem; }
+.dt-head .art { width: 1.5em; height: 1.5em; }
+.dt-head span { margin-left: auto; font-size: 0.8125rem; font-weight: 800; color: var(--ink-soft); }
+.dt-bars { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; align-items: end; }
+.dt-col { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.dt-col b { font-size: 0.8125rem; font-weight: 800; line-height: 1.1; }
+.dt-col small { font-size: 0.8125rem; font-weight: 800; color: var(--ink-soft); }
+.dt-track { position: relative; width: 100%; height: 64px; }
+.dt-track i { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 6px 6px 2px 2px; }
+.dt-bar { background: var(--dc); border: 2px solid var(--ink); }

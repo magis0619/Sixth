@@ -579,6 +579,16 @@ export function taxAmount(index: number): number {
   return amount;
 }
 
+/** 難しい1〜5：年貢×1.3・1.4・1.5・1.6・1.7（ふつうは×1） */
+export function difficultyTaxMult(difficulty: number): number {
+  return difficulty >= 1 ? 1.2 + 0.1 * difficulty : 1;
+}
+
+/** 難しさごとの、クリアまでの年貢の額（お守りの増減なし）。難しさの画面のグラフ用 */
+export function taxPlan(difficulty: number): number[] {
+  return Array.from({ length: CONFIG.winTaxes }, (_, i) => Math.round(taxAmount(i) * difficultyTaxMult(difficulty)));
+}
+
 export interface TaxInfo {
   dueDay: number;
   daysLeft: number;
@@ -595,8 +605,7 @@ export function nextTax(state: GameState): TaxInfo {
   const relief = Math.min(0.3, 0.1 * lv(state, 'taxRelief'));
   // 曰く付きのお守りの代償：大きな種袋・豊作は1つ+10%、からくり職人は+20%
   const curse = 1 + 0.1 * state.charms.seedSack + 0.1 * state.charms.bumper + 0.2 * state.charms.artisan + 0.05 * state.charms.scarecrow;
-  // 難しい1〜5：年貢×1.3・1.4・1.5・1.6・1.7
-  const half = (state.halfTax ? 0.5 : 1) * (state.difficulty >= 1 ? 1.2 + 0.1 * state.difficulty : 1);
+  const half = (state.halfTax ? 0.5 : 1) * difficultyTaxMult(state.difficulty);
   return { dueDay, daysLeft: dueDay - state.day, amount: Math.round(taxAmount(index) * (1 - relief) * curse * (1 - (state.taxCut ?? 0)) * half), index };
 }
 
