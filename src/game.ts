@@ -579,9 +579,10 @@ export function taxAmount(index: number): number {
   return amount;
 }
 
-/** 難しい1〜5：年貢×1.3・1.4・1.5・1.6・1.7（ふつうは×1） */
+/** 難しさごとの年貢の倍率（CONFIG.difficultyTaxMult） */
 export function difficultyTaxMult(difficulty: number): number {
-  return difficulty >= 1 ? 1.2 + 0.1 * difficulty : 1;
+  const m = CONFIG.difficultyTaxMult;
+  return m[Math.max(0, Math.min(m.length - 1, difficulty))];
 }
 
 /** 難しさごとの、クリアまでの年貢の額（お守りの増減なし）。難しさの画面のグラフ用 */

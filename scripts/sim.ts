@@ -1,5 +1,7 @@
 // ボットで遊ばせてバランスを確認する。
-// npm run sim -- [回数] [starter|full|addX,addY…] [smart|random]   （FOCUS=1 で買い物を絞る）
+// npm run sim -- [回数] [starter|full|addX,addY…] [player|smart|random]   （FOCUS=1 で買い物を絞る）
+//   player: プレイヤー程度に考える（scripts/player-bot.ts）。STOPCLEAR=1 でクリアしたら止める
+//   試し：DIFF=難しさ / TAX=年貢の表 / DMULT=難しさごとの年貢の倍率 / REELUP=2,4（その回数の年貢でリール+1）/ SEEDW=トマトの種の出やすさ
 //   smart: 列を狙って置き、列がそろうまで待つ / random: 置き場所・使う場所・買い物を適当に決め、実ったらすぐ売る
 
 import { CHARMS, CHARM_ORDER, CONFIG, FARMERS, CROPS, META, PLACES, SEEDS, SYMBOLS, type CropKind, type PlaceId, type UpgradeId } from '../src/config.ts';
@@ -9,11 +11,14 @@ import {
   isOpen, isRipe, newGame, nextTax, place, placePrice, pullWeed, resolveAllAuto, resolveFever, ripeGroup, sell, shapeCells,
   startDay, takeContract, logSnapshot, mergeable, mergeSymbol, upgradePrice, useSymbol, validTargets, type GameState,
 } from '../src/game.ts';
+import { pickCharm, pickOffer, playerDay } from './player-bot.ts';
 
 const runs = Number(process.argv[2] ?? 2000);
 const mode = process.argv[3] ?? 'full';
 const bot = process.argv[4] ?? 'smart';
-const smart = bot === 'smart';
+// player はプレイヤー程度に考えるボット（scripts/player-bot.ts）
+const player = bot === 'player';
+const smart = bot === 'smart' || player;
 const pick = <T>(a: T[]): T => a[Math.floor(Math.random() * a.length)];
 
 // 絵柄袋を薄めすぎないよう、良い絵柄は枚数に上限を設けて買う
@@ -160,6 +165,12 @@ const setup = mode === 'full'
       // FARMER=berry などで農家を選ぶ（市に出やすい品も農家のもの）
       farmer: process.env.FARMER ?? 'basic',
     };
+// TAX=10,40,90,... で年貢の表を差し替えて試す（7回目まで。8回目以降は最後の値から伸びる）
+if (process.env.TAX) (CONFIG as { taxSchedule: number[] }).taxSchedule = process.env.TAX.split(',').map(Number);
+// 試し（ゲームには入れていない）：SEEDW=6 でトマトの種の出やすさ、REELS=4 で最初のリールの数
+if (process.env.SEEDW) (CONFIG.offerWeights as Record<string, number>).addSeed = Number(process.env.SEEDW);
+// DMULT=1,1.1,1.2,... で難しさごとの年貢の倍率を差し替えて試す
+if (process.env.DMULT) (CONFIG as { difficultyTaxMult: number[] }).difficultyTaxMult = process.env.DMULT.split(',').map(Number);
 // DAILY=0 で前の「週替わりの3品をショップで買う」と比べる
 if (process.env.DAILY === '0') (CONFIG as { dailyPick: boolean }).dailyPick = false;
 console.log(`mode=${mode} bot=${bot} daily=${CONFIG.dailyPick}`);
@@ -167,10 +178,14 @@ const days: number[] = [];
 const dump: unknown[] = [];
 const taxes: number[] = [];
 const goldAtTax: number[][] = [];
+const weekly: number[][] = [];
 for (let n = 0; n < runs; n++) {
   const s = newGame(setup);
-  while (!s.over && s.day < 200) {
+  if (process.env.REELS) s.reels = Number(process.env.REELS);
+  while (!s.over && s.day < 200 && !(process.env.STOPCLEAR && s.taxesPaid >= CONFIG.winTaxes)) {
     if (s.day > 0 && s.day % CONFIG.taxPeriod === 0) (goldAtTax[s.day / CONFIG.taxPeriod - 1] ??= []).push(s.gold);
+    // 試し：REELUP=2,4 で、その回数の年貢を納めたらリール+1
+    if (process.env.REELUP) s.reels = Math.max(s.reels, 3 + process.env.REELUP.split(',').map(Number).filter((k) => s.taxesPaid >= k).length);
     const r = startDay(s, Math.random);
     if (!r.ok) break;
     resolveFever(s, Math.random);
@@ -178,8 +193,17 @@ for (let n = 0; n < runs; n++) {
     if (s.contractOffer.length) takeContract(s, pick(s.contractOffer));
     if (s.contractDone) s.contractDone = null;
     // RANDCHARM=1 はお守りをでたらめに選ぶ（どのお守りが強いかを比べる用）
-    if (s.charmOffer) chooseCharm(s, smart && !process.env.RANDCHARM ? (s.charmOffer.find((id) => !CHARMS[id].special) ?? s.charmOffer[0]) : pick(s.charmOffer));
+    if (s.charmOffer) {
+      if (player && !process.env.RANDCHARM) pickCharm(s);
+      else chooseCharm(s, smart && !process.env.RANDCHARM ? (s.charmOffer.find((id) => !CHARMS[id].special) ?? s.charmOffer[0]) : pick(s.charmOffer));
+    }
     resolveAllAuto(s, Math.random);
+    if (player) {
+      const o = pickOffer(s);
+      if (o) takeOffer(s, o as never);
+      playerDay(s);
+      continue;
+    }
     // 毎日の仕入れ：買い物の優先順で欲しい物があれば取る。なければ見送る（袋を薄めない）
     const want = PRIORITY.find((id) => s.offer.includes(id as never) && wants(s, id));
     if (want) takeOffer(s, want as never);
@@ -193,6 +217,11 @@ for (let n = 0; n < runs; n++) {
   if (process.env.LOG && n === runs - 1) (await import('node:fs')).writeFileSync(process.env.LOG, [...logSnapshot(s), '---', ...s.log].join('\n'));
   days.push(s.day);
   taxes.push(s.taxesPaid);
+  // 週ごとの稼ぎ（生きていた週だけ）
+  for (let w = 0; w * CONFIG.taxPeriod < s.day; w++) {
+    const sum = s.stats.earnedByDay.slice(w * CONFIG.taxPeriod + 1, (w + 1) * CONFIG.taxPeriod + 1).reduce((a: number, b) => a + (b ?? 0), 0);
+    (weekly[w] ??= []).push(sum);
+  }
   // DUMP=ファイル で1プレイごとの記録（持っていたお守り・置いた畑の品・袋）を書き出す
   if (process.env.DUMP) dump.push({ taxes: s.taxesPaid, got: s.stats.charms, buys: s.stats.purchases, charms: Object.fromEntries(Object.entries(s.charms).filter(([, v]) => v > 0)), bought: s.bought, bag: Object.fromEntries(Object.entries(s.bag).filter(([, v]) => v > 0)), cols: s.cols, rows: s.rows });
 }
@@ -203,4 +232,5 @@ const passed = (k: number) => ((taxes.filter((t) => t >= k).length / runs) * 100
 console.log(`runs=${runs} クリア率=${passed(CONFIG.winTaxes)}%`);
 console.log(`到達日数 p10=${pct(days, 0.1)} p50=${pct(days, 0.5)} p90=${pct(days, 0.9)}`);
 console.log(`年貢の通過率 ${CONFIG.taxSchedule.map((a, i) => `${i + 1}回目(${a})=${passed(i + 1)}%`).join(' ')}`);
+console.log(`週の稼ぎp50 ${weekly.slice(0, 8).map((g) => `${pct(g, 0.5)}(${g.length})`).join(' / ')}`);
 console.log(`年貢日の所持金p50 ${goldAtTax.slice(0, 8).map((g) => pct(g, 0.5)).join(' / ')}`);

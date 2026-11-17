@@ -15,4 +15,4 @@
 - 単体テスト：`npx vitest run`
 - 通しのテスト：`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers npx playwright test`
 - 画面の点検：`npx vite build && npm run audit -- <出力先> p430`（先に `vite preview --port 4173` を起動）
-- 自動プレイ：`npm run sim -- 400 starter smart`
+- 自動プレイ：`STOPCLEAR=1 DIFF=0 npm run sim -- 300 starter player`（player＝プレイヤー程度に考えるボット。DIFF＝難しさ。TAX・DMULT・REELUP・SEEDW で年貢やルールを差し替えて試せる）
