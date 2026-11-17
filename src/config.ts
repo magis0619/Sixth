@@ -433,6 +433,8 @@ export const CONFIG = {
   sameCropMult: 1.3,
   // 交差のおまけは一旦なし（3×3に全部植えるだけで最大になっていた）
   crossBonus: 0,
+  /** 長い列ほど高い：そのマスを通る一番長い列の長さで、列の倍率にさらに掛ける（4つで合わせて×1.5、5つで×1.8） */
+  longLineMult: { 4: 1.15, 5: 1.4 } as Record<number, number>,
 
   /** 強化の価格 */
   upgradePrices: {

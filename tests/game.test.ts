@@ -93,6 +93,19 @@ describe('列の収穫', () => {
     expect(cellMultiplier(s, at(0, 0))).toBeCloseTo(CONFIG.lineMult * CONFIG.sameCropMult * (1 + CONFIG.crossBonus));
   });
 
+  it('長い列ほど高い：4つで×1.5、5つで×1.8（列×1.3にさらに掛ける）', () => {
+    const s = game();
+    s.cols = 5;
+    ripe(s, 'tomato', [at(0, 0), at(1, 0), at(2, 0), at(3, 0)]);
+    ripe(s, 'strawberry', [at(4, 1)]);
+    expect(multSteps(s, at(1, 0)).map((x) => x.label)).toEqual(['列', '4つの列', '同じ作物']);
+    expect(cellMultiplier(s, at(1, 0)) / CONFIG.sameCropMult).toBeCloseTo(1.3 * 1.15);
+    ripe(s, 'strawberry', [at(4, 0)]);
+    // 5つ目は別の作物：長さは5、同じ作物ではない
+    expect(multSteps(s, at(1, 0)).map((x) => x.label)).toEqual(['列', '5つの列']);
+    expect(cellMultiplier(s, at(1, 0))).toBeCloseTo(CONFIG.lineMult * 1.4);
+  });
+
   it('列を売るとまとめて売れて、所持金に入る', () => {
     const s = game();
     ripe(s, 'tomato', [at(0, 0), at(1, 0), at(2, 0)]);

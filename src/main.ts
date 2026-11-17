@@ -1034,6 +1034,9 @@ function showExpanded(): void {
 }
 
 /** 畑のショップ：道具・特別なマス */
+/** 長い列の倍率（同じ作物の上乗せなし、四捨五入して1桁） */
+const longTotal = (len: number): number => Math.round(CONFIG.lineMult * CONFIG.longLineMult[len] * 10) / 10;
+
 /** 市の畑の品の効き目：1行に1つ、行の頭に絵（docs/ui-reading.md） */
 const PLACE_ROWS: Record<PlaceId, [ArtId, string][]> = {
   scarecrow: [['crow', L('周り8マスを守る', 'Guards 8 around')], ['coin', L('追い払うと+1', '+1 per shoo')]],
@@ -1058,7 +1061,13 @@ function renderFarmShop(): void {
     key: 'expand',
     ico: art('expand'),
     name: L('畑を広げる', 'Expand field'),
-    effect: ep === null ? L(`これ以上は広げられない（${CONFIG.fieldCols}×${CONFIG.fieldRows}）`, `Already at max (${CONFIG.fieldCols}×${CONFIG.fieldRows})`) : `${state.cols}×${state.rows} → ${nextCols}×${nextRows}`,
+    effect: ep === null
+      ? L(`これ以上は広げられない（${CONFIG.fieldCols}×${CONFIG.fieldRows}）`, `Already at max (${CONFIG.fieldCols}×${CONFIG.fieldRows})`)
+      : `<span class="fx-row">${art('expand')}<span>${state.cols}×${state.rows} → ${nextCols}×${nextRows}</span></span>` +
+        // 広げると、初めて4つ・5つの列が作れるようになる
+        (Math.max(nextCols, nextRows) > Math.max(state.cols, state.rows) && CONFIG.longLineMult[Math.max(nextCols, nextRows)]
+          ? `<span class="fx-row">${art('tomato')}<span>${L(`${Math.max(nextCols, nextRows)}つの列 ×${longTotal(Math.max(nextCols, nextRows))}`, `${Math.max(nextCols, nextRows)}-long line ×${longTotal(Math.max(nextCols, nextRows))}`)}</span></span>`
+          : ''),
     price: ep,
     ok: canExpand(state),
   };
@@ -2285,6 +2294,8 @@ function sellCrop(cell: number): void {
   render();
   // 単品で売った：並べると高いことを1回だけ
   if (!res.line && res.steps.some((st) => st.x < 1)) hintOnce('single', `${MARK_SINGLE} ${L('並んでいない作物は<b>半値</b>。縦・横・斜めに3つ並べてから売ると高い', 'Crops not in a line sell at <b>half price</b>. Line up 3 first to sell high')}`);
+  // 長い列ほど高い：畑が4列以上になって列で売ったら、1回だけ知らせる
+  if (res.line && (state.cols >= 4 || state.rows >= 4)) hintOnce('longline', `${MARK_LINE} ${L(`<b>4つ並べる＝×${fmtMult(longTotal(4))}</b>　5つ＝×${fmtMult(longTotal(5))}`, `<b>4 in a line = ×${fmtMult(longTotal(4))}</b> · 5 = ×${fmtMult(longTotal(5))}`)}`, 6000);
   // 注文達成：お客さんからまとめて代金（列で売ったときは、列の演出が終わってから）
   const orderDone = () => {
     if (!res.orderReward) return;

@@ -1837,6 +1837,9 @@ export function multSteps(state: GameState, cell: number): { label: string; x: n
   const runs = runsThrough(state, cell);
   if (!runs.length) return [{ label: L('単品', 'Single'), x: singleMult(state) }];
   const steps = [{ label: L('列', 'Line'), x: lineMult(state) }];
+  // 長い列ほど高い（4つ・5つ）
+  const long = longLineMult(Math.max(...runs.map((r) => r.length)));
+  if (long > 1) steps.push({ label: L(`${Math.max(...runs.map((r) => r.length))}つの列`, `${Math.max(...runs.map((r) => r.length))}-long`), x: long });
   if (inSameCropLine(state, cell)) {
     steps.push({ label: L('同じ作物', 'Same crop'), x: CONFIG.sameCropMult });
     // トマト祭り：トマトだけの列はさらに上乗せ
@@ -1845,6 +1848,11 @@ export function multSteps(state: GameState, cell: number): { label: string; x: n
   }
   if (runs.length > 1 && CONFIG.crossBonus > 0) steps.push({ label: L(`${runs.length}本が交差`, `${runs.length} lines cross`), x: 1 + CONFIG.crossBonus * (runs.length - 1) });
   return steps;
+}
+
+/** 長い列の上乗せ（3つは×1。畑の最大は5なので5で頭打ち） */
+export function longLineMult(len: number): number {
+  return CONFIG.longLineMult[Math.min(len, 5)] ?? 1;
 }
 
 /** 単品の倍率（難しい4では安い） */
@@ -2189,7 +2197,7 @@ export function plantLineMult(state: GameState, cell: number, kind: CropKind): n
     if (run.length >= MIN_RUN) runs.push(run);
   }
   if (!runs.length) return 0;
-  let m = lineMult(state);
+  let m = lineMult(state) * longLineMult(Math.max(...runs.map((r) => r.length)));
   if (runs.some((r) => r.every((k) => cropBase(k) === cropBase(kind)))) m *= CONFIG.sameCropMult;
   if (runs.length > 1) m *= 1 + CONFIG.crossBonus * (runs.length - 1);
   return m;

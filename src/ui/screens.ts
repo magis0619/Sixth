@@ -169,6 +169,8 @@ export function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
       <li>${art('bee')}<span>${L('蜂＝斜め', 'Bee = diagonals')}</span></li>
       <li>${art('moon')}<span>${L('満月＝畑全体', 'Full moon = whole field')}</span></li>
       <li>${art('tomato')}${art('tomato')}${art('tomato')}<span>${L('3つ並べて売る＝×1.3', '3 in a row = ×1.3')}</span></li>
+      <li>${art('tomato')}${art('tomato')}${art('tomato')}${art('tomato')}<span>${L(`4つ＝×${Math.round(CONFIG.lineMult * CONFIG.longLineMult[4] * 10) / 10}`, `4 in a row = ×${Math.round(CONFIG.lineMult * CONFIG.longLineMult[4] * 10) / 10}`)}</span></li>
+      <li>${art('tomato')}${art('tomato')}${art('tomato')}${art('tomato')}${art('tomato')}<span>${L(`5つ＝×${Math.round(CONFIG.lineMult * CONFIG.longLineMult[5] * 10) / 10}`, `5 in a row = ×${Math.round(CONFIG.lineMult * CONFIG.longLineMult[5] * 10) / 10}`)}</span></li>
       <li>${art('tomato')}<span>${L('並ばない単品＝半値', 'Singles = half price')}</span></li>
       <li>${art('flame')}<span>${L('同じ絵柄3つ＝フィーバー', '3 of a symbol = FEVER')}</span></li>
       <li>${art('bale')}<span>${L(`${CONFIG.taxPeriod}日ごとに年貢`, `Tax every ${CONFIG.taxPeriod} days`)}</span></li>
