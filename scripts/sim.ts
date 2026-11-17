@@ -1,6 +1,7 @@
 // ボットで遊ばせてバランスを確認する。
 // npm run sim -- [回数] [starter|full|addX,addY…] [player|smart|random]   （FOCUS=1 で買い物を絞る）
 //   player: プレイヤー程度に考える（scripts/player-bot.ts）。STOPCLEAR=1 でクリアしたら止める
+//   LOOPSTATS=1 で1日の中身（種・育てる・お邪魔の出目、植えた・育った・売った量、空きマス）を週ごとに出す
 //   試し：DIFF=難しさ / TAX=年貢の表 / DMULT=難しさごとの年貢の倍率 / REELUP=2,4（その回数の年貢でリール+1）/ SEEDW=トマトの種の出やすさ
 //   smart: 列を狙って置き、列がそろうまで待つ / random: 置き場所・使う場所・買い物を適当に決め、実ったらすぐ売る
 
@@ -179,6 +180,7 @@ const dump: unknown[] = [];
 const taxes: number[] = [];
 const goldAtTax: number[][] = [];
 const weekly: number[][] = [];
+const loop: Record<string, number>[] = [];
 for (let n = 0; n < runs; n++) {
   const s = newGame(setup);
   if (process.env.REELS) s.reels = Number(process.env.REELS);
@@ -215,6 +217,34 @@ for (let n = 0; n < runs; n++) {
   }
   // LOG=ファイル で最後の1プレイのプレイログ（画面の書き出しと同じ中身）を書き出す
   if (process.env.LOG && n === runs - 1) (await import('node:fs')).writeFileSync(process.env.LOG, [...logSnapshot(s), '---', ...s.log].join('\n'));
+  // LOOPSTATS=1：1日の中身を数える（ログの行から）
+  if (process.env.LOOPSTATS) {
+    for (const line of s.log) {
+      const m = line.match(/^D(\d+)/);
+      if (!m) continue;
+      const w = Math.floor((Number(m[1]) - 1) / CONFIG.taxPeriod);
+      const b = (loop[w] ??= { days: 0, seedReels: 0, growReels: 0, pestReels: 0, planted: 0, sold: 0, expiredSeed: 0, expiredGrow: 0, empty: 0, cells: 0, growPts: 0 });
+      if (line.includes(' 回す ')) {
+        b.days++;
+        const out = line.split('出目: ')[1]?.split(' フィーバー')[0].split(' 組み合わせ')[0].split(' / ') ?? [];
+        for (const x of out) {
+          const name = x.replace(/×\d+.*/, '');
+          if (name.includes('種')) b.seedReels++;
+          else if (['雨', '太陽', '雷', '蜂', 'じょうろ', '月', '大雨', '真夏の太陽', '雷神', '女王蜂'].includes(name)) b.growReels++;
+          else if (['カラス', '虫', '雑草', 'タヌキ', 'イナゴ', '霜', 'モグラ'].includes(name)) b.pestReels++;
+        }
+      }
+      if (line.includes(' 植える ')) b.planted++;
+      const gp = line.match(/ 使う (雨|太陽|雷|蜂|じょうろ|月|大雨|真夏の太陽|雷神|女王蜂) .*効いたマス(\d+)/);
+      if (gp) b.growPts += Number(gp[2]) * (gp[1] === '雷' || gp[1] === 'じょうろ' ? 2 : 1);
+      const sold = line.match(/ 売る .*×(\d+) /);
+      if (sold) b.sold += Number(sold[1]);
+      const exp = line.split('使わず消えた:')[1];
+      if (exp) for (const x of exp.split(' ')[0].split('・')) { if (x.includes('種')) b.expiredSeed++; else b.expiredGrow++; }
+      const f = line.match(/ 畑 空き(\d+) 育ち中(\d+).*実り(\d+)/);
+      if (f) { b.empty += Number(f[1]); b.cells += Number(f[1]) + Number(f[2]) + Number(f[3]); }
+    }
+  }
   days.push(s.day);
   taxes.push(s.taxesPaid);
   // 週ごとの稼ぎ（生きていた週だけ）
@@ -232,5 +262,13 @@ const passed = (k: number) => ((taxes.filter((t) => t >= k).length / runs) * 100
 console.log(`runs=${runs} クリア率=${passed(CONFIG.winTaxes)}%`);
 console.log(`到達日数 p10=${pct(days, 0.1)} p50=${pct(days, 0.5)} p90=${pct(days, 0.9)}`);
 console.log(`年貢の通過率 ${CONFIG.taxSchedule.map((a, i) => `${i + 1}回目(${a})=${passed(i + 1)}%`).join(' ')}`);
+if (process.env.LOOPSTATS) {
+  console.log('週 | 種の出目/日 | 育てる出目/日 | お邪魔の出目/日 | 植えた個数/日 | 育った量/日 | 売った個数/日 | 消えた種/日 | 消えた育てる/日 | 朝の空きマス率');
+  loop.slice(0, 7).forEach((b, w) => {
+    const d = b.days || 1;
+    const f = (x: number) => (x / d).toFixed(2);
+    console.log(`${w + 1} | ${f(b.seedReels)} | ${f(b.growReels)} | ${f(b.pestReels)} | ${f(b.planted)} | ${f(b.growPts)} | ${f(b.sold)} | ${f(b.expiredSeed)} | ${f(b.expiredGrow)} | ${((b.empty / (b.cells || 1)) * 100).toFixed(0)}%`);
+  });
+}
 console.log(`週の稼ぎp50 ${weekly.slice(0, 8).map((g) => `${pct(g, 0.5)}(${g.length})`).join(' / ')}`);
 console.log(`年貢日の所持金p50 ${goldAtTax.slice(0, 8).map((g) => pct(g, 0.5)).join(' / ')}`);
