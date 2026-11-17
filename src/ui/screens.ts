@@ -54,7 +54,7 @@ export function showGameOver(endedAfterClear = false): void {
         <span>${art('bale')}<b>${state.taxesPaid}</b>${L('回', ' paid')}</span>
         <span>${art('coin')}<b>${state.stats.totalEarned}</b>${L('', 'g')}</span>
       </div>
-      ${ratingHtml()}
+      ${rateRun(state).score > 0 ? ratingHtml() : ''}
       ${reviewHtml(endedAfterClear, t.amount)}
       <div class="points-earned">${art('sprout')} <b>+${earned}pt</b><span>${L('計', 'Total')} ${meta.points}pt</span></div>
       ${newly.length ? `<div class="newly">${art('sparkle')} ${L('解放', 'Unlocked')}：${newly.map((x) => `<b>${x}</b>`).join('')}</div>` : ''}
@@ -98,22 +98,24 @@ function reviewHtml(endedAfterClear: boolean, taxAmount: number): string {
     if ((v ?? 0) > (days[bestDay] ?? 0)) bestDay = d;
   });
   if (days[bestDay]) rows.push(`<li>${art('coin')} ${L(`一番稼いだ日：<b>${bestDay}日目 +${days[bestDay]}</b>`, `Best day: <b>day ${bestDay}, +${days[bestDay]}g</b>`)}</li>`);
-  rows.push(`<li>${art('tomato')} ${L(`列で売った：<b>${state.stats.lineHarvests}回</b>・取られた作物：<b>${state.stats.cropsEaten}個</b>`, `Lines sold: <b>${state.stats.lineHarvests}</b> · crops lost: <b>${state.stats.cropsEaten}</b>`)}</li>`);
+  // 1行に1つ
+  rows.push(`<li>${art('tomato')} ${L(`列で売った <b>${state.stats.lineHarvests}回</b>`, `Lines sold <b>${state.stats.lineHarvests}</b>`)}</li>`);
+  if (state.stats.cropsEaten) rows.push(`<li>${art('crow')} ${L(`取られた作物 <b>${state.stats.cropsEaten}個</b>`, `Crops lost <b>${state.stats.cropsEaten}</b>`)}</li>`);
   // 次に試すこと：その回の遊び方から、一番効きそうな1つ（上から順に当てはまったもの）
   const short = Math.max(0, taxAmount - state.gold);
   const boughtPlaces = Object.entries(state.bought).some(([k, n]) => k !== 'expand' && (n ?? 0) > 0);
   const tip =
     state.stats.lineHarvests === 0
-      ? L('作物を3つ並べて売ると ×1.3。並べずに売ると半値', 'Sell 3 crops in a line for ×1.3. Singles sell at half price')
+      ? L('3つ並べて売ると×1.3', 'Sell 3 in a line: ×1.3')
       : state.stats.cropsEaten >= 5
-        ? L('カラスには、市で「カラスを消す」か、かかし（周り8マスを守る）', 'Against crows: remove them at the market, or place a scarecrow (guards 8 plots around)')
+        ? L('カラスにはかかし', 'Scarecrows stop crows')
         : (state.stats.expired ?? 0) >= 6
-          ? L('使わずに消えた出目が多かった。雨・太陽は、育ち中の作物があるうちに使い切ろう', 'Many reels went unused. Use rain and sun while you have growing crops')
+          ? L('雨・太陽は使い切ろう', 'Use up rain and sun')
           : !boughtPlaces && state.day >= 10
-            ? L('市で鶏小屋や巣箱を買うと、毎晩お金や売値が増える', 'Buy a henhouse or beehive at the market for nightly gold or higher prices')
+            ? L('市で巣箱を買ってみよう', 'Try a beehive')
             : !state.cleared && short > 0 && short <= taxAmount * 0.2
-              ? L('あと少し！ 日曜の前に実った作物を売り切っておこう', 'So close! Sell your ripe crops before Sunday')
-              : L('同じ作物だけの列は、さらに ×1.3', 'Lines of a single crop get another ×1.3');
+              ? L('日曜の前に売り切ろう', 'Sell out before Sunday')
+              : L('同じ作物の列はさらに×1.3', 'Same-crop lines: ×1.3 more');
   return `<ul class="review">${rows.join('')}</ul><p class="tip">${art('sparkle')} ${L('次は', 'Next time')}：${tip}</p>`;
 }
 
@@ -161,16 +163,23 @@ export function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
     <button class="set-row help-overview" id="help-overview"><span>${art('calendar')} ${L('全体の流れを一枚絵で見る', 'See the whole game in one picture')}</span></button>
     <ul class="help-list icons">
       <li>${art('calendar')}<span>${L('1回転＝1日', 'One spin = one day')}</span></li>
-      <li>${art('seed')}<span>${L('光る出目 → マスをタップ', 'Tap a glowing reel → tap a plot')}</span></li>
-      <li>${art('rain')}<span>${L('雨＝縦横十字', 'Rain = cross')}　${art('sun')}${L('太陽＝縦一列', 'Sun = column')}　${art('bee')}${L('蜂＝斜め', 'Bee = diagonals')}　${art('moon')}${L('満月＝全体', 'Moon = all')}</span></li>
-      <li>${art('tomato')}${art('tomato')}${art('tomato')}<span>${L('縦・横・斜めに3つ＝高く売れる（単品は½）', '3 in a row (any direction) sell high; singles are ½')}</span></li>
-      <li>${art('flame')}<span>${L('同じ絵柄が3つそろうとフィーバー：良い絵柄は特別な効果と大当たり、お邪魔は効果2倍', 'Match 3 of a symbol for a FEVER: good ones give a bonus and jackpot, pests hit twice as hard')}</span></li>
-      <li>${art('bale')}<span>${L(`${CONFIG.taxPeriod}日ごとに年貢。払えないと終わり／${CONFIG.winTaxes}回でクリア`, `Tax every ${CONFIG.taxPeriod} days. Can't pay = game over / pay ${CONFIG.winTaxes} to win`)}</span></li>
-      <li>${art('coinPurse')}<span>${L('年貢のあと：お守り1つ＋お邪魔が増える', 'After each tax: pick a charm, and pests join your bag')}</span></li>
-      <li>${art('seed')}<span>${L(`市：毎週${CONFIG.marketDays.join('・')}日目。絵柄を3つから1つタダで（必ず）＋畑の品・お邪魔を消す・広げる`, `Market: days ${CONFIG.marketDays.join(' & ')} of each week. Take 1 of 3 symbols free (required), plus tools, pest removal, expansion`)}</span></li>
-      ${CONFIG.marketDays.length ? '' : `<li>${art('bargain')}<span>${L('ショップ：道具・畑を広げる・お邪魔を消す', 'Shop: tools, bigger field, pest removal')}</span></li>`}
-      ${CUT.places.includes('water') ? `<li>${art('henhouse')}<span>${L('鶏小屋・牛小屋：毎晩お金', 'Henhouse / cowshed: nightly gold')}</span></li>` : `<li>${art('waterwheel')}<span>${L('水路：3つ並べると水車・4方を囲むと釣り堀（毎晩お金）', 'Water: 3 in a row = waterwheel, enclose a plot = fishing pond (nightly gold)')}</span></li>`}
-      <li>${art('sprout')}<span>${L('遊ぶほどポイント → 解放', 'Play to earn points → unlocks')}</span></li>
+      <li>${art('seed')}<span>${L('光る出目 → マスをタップ', 'Glowing reel → tap a plot')}</span></li>
+      <li>${art('rain')}<span>${L('雨＝縦横十字', 'Rain = cross')}</span></li>
+      <li>${art('sun')}<span>${L('太陽＝縦一列', 'Sun = column')}</span></li>
+      <li>${art('bee')}<span>${L('蜂＝斜め', 'Bee = diagonals')}</span></li>
+      <li>${art('moon')}<span>${L('満月＝畑全体', 'Full moon = whole field')}</span></li>
+      <li>${art('tomato')}${art('tomato')}${art('tomato')}<span>${L('3つ並べて売る＝×1.3', '3 in a row = ×1.3')}</span></li>
+      <li>${art('tomato')}<span>${L('並ばない単品＝半値', 'Singles = half price')}</span></li>
+      <li>${art('flame')}<span>${L('同じ絵柄3つ＝フィーバー', '3 of a symbol = FEVER')}</span></li>
+      <li>${art('bale')}<span>${L(`${CONFIG.taxPeriod}日ごとに年貢`, `Tax every ${CONFIG.taxPeriod} days`)}</span></li>
+      <li>${art('warn')}<span>${L('払えないと終わり', "Can't pay = game over")}</span></li>
+      <li>${art('trophy')}<span>${L(`${CONFIG.winTaxes}回納めたらクリア`, `Pay ${CONFIG.winTaxes} times to win`)}</span></li>
+      <li>${art('gift')}<span>${L('年貢のあと お守りを1つ', 'After tax: pick a charm')}</span></li>
+      <li>${art('crow')}<span>${L('年貢のあと お邪魔が増える', 'After tax: pests join')}</span></li>
+      ${CONFIG.marketDays.length ? `<li>${art('bargain')}<span>${L(`${CONFIG.marketDays.map((d) => '月火水木金土日'[d - 1]).join('・')}は市`, 'Wed & Sat: market')}</span></li>
+      <li>${art('seed')}<span>${L('市で絵柄を1つタダで', 'Market: 1 free symbol')}</span></li>` : `<li>${art('bargain')}<span>${L('ショップで道具・広げる', 'Shop: tools, expand')}</span></li>`}
+      ${CUT.places.includes('water') ? `<li>${art('henhouse')}<span>${L('鶏小屋・牛小屋＝毎晩お金', 'Hen/cow sheds = nightly gold')}</span></li>` : `<li>${art('waterwheel')}<span>${L('水路3つ＝水車', '3 water = waterwheel')}</span></li>`}
+      <li>${art('sprout')}<span>${L('遊ぶほど解放', 'Play more to unlock')}</span></li>
     </ul>`;
   // まだ出会っていない絵柄・組み合わせ・お守りは秘密（影と「？？？」）
   const secret = (ico: string) => `<div class="dex-row locked"><span class="e silhouette">${ico}</span><div><b>？？？</b></div></div>`;
@@ -211,23 +220,11 @@ export function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
   el.overlay.innerHTML = `
     <div class="modal help-modal" role="dialog" aria-label="${L('遊び方と図鑑', 'How to play')}">
       <div class="help-tabs">${tabs.map(([k, label]) => `<button class="${k === tab ? 'on' : ''}" data-tab="${k}">${label}</button>`).join('')}</div>
-      <div class="help-body">${tab === 'rules' ? rules : tab === 'symbols' ? symbols : tab === 'combos' ? `<p class="combo-lead">${L(`同じ日のスロットにそろうと、その日だけ起きる（見つけた ${found.length} / ${comboIds.length}）`, `When these appear together on the reels, they trigger for the day (found ${found.length} / ${comboIds.length})`)}</p>${combos}` : charms}</div>
-      <button class="secondary" id="tutorial-again">${L('チュートリアルをもう一度', 'Replay the tutorial')}</button>
-      <button class="secondary" id="calm-toggle">${L('演出控えめ', 'Calm effects')}：${isCalm() ? L('オン', 'On') : L('オフ', 'Off')}</button>
+      <div class="help-body">${tab === 'rules' ? rules : tab === 'symbols' ? symbols : tab === 'combos' ? `<p class="combo-lead">${L('3つそろった日だけ起きる', 'Works on the day all 3 appear')}</p><p class="combo-lead">${L(`見つけた ${found.length} / ${comboIds.length}`, `Found ${found.length} / ${comboIds.length}`)}</p>${combos}` : charms}</div>
       <button class="primary" id="help-close">${L('閉じる', 'Close')}</button>
     </div>`;
   el.overlay.classList.add('show');
-  $('tutorial-again').addEventListener('click', (e) => {
-    meta.tutorialDone = false;
-    saveMeta(meta);
-    (e.currentTarget as HTMLElement).firstChild!.textContent = L('チュートリアル：次に始めるときに出ます', 'Tutorial: shows in your next game');
-    sfx.select();
-  });
-  $('calm-toggle').addEventListener('click', (e) => {
-    const on = toggleCalm();
-    (e.currentTarget as HTMLElement).firstChild!.textContent = `${L('演出控えめ', 'Calm effects')}：${on ? L('オン', 'On') : L('オフ', 'Off')}`;
-    sfx.select();
-  });
+  // チュートリアルをもう一度・演出控えめは、設定にまとめた（遊び方の画面には置かない）
   el.overlay.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((b) =>
     b.addEventListener('click', () => showHelp(b.dataset.tab as HelpTab, onClose)),
   );

@@ -295,7 +295,7 @@ function renderStatus(): void {
   if (bad.length) chips.push(`<span class="st danger">${art('warn')} ${bad.map((s) => L(`${SYMBOLS[s].name}の群れ`, `${SYMBOLS[s].name} swarm`)).join(L('・', ', '))}</span>`);
   state.combos.forEach((id) => chips.push(`<span class="st combo">${art(id)} ${CHARMS[id].name}</span>`));
   // 市の日は高く売れる
-  if (state.day > 0 && isMarketDay(state.day) && state.contract !== 'marketClosed') chips.push(`<span class="st market-day">${art('bargain')} ${L('市の日 売値', 'Market day prices')} ×${CONFIG.marketDaySell}</span>`);
+  // 市の日の売値は曜日の板（今日の札の下）に出す
   if (state.priceMult > 1) chips.push(`<span class="st merchant">${art('merchant')} ${L('今日の売値', "Today's prices")} ×${fmtMult(state.priceMult)}</span>`);
   if (state.cloverBoost > 1) chips.push(`<span class="st clover">${art('clover')} ${L('明日は金の種が出やすい', 'Golden seeds likelier tomorrow')}（×${fmtMult(state.cloverBoost)}）</span>`);
   // セット効果：そろっている間だけ
@@ -391,7 +391,9 @@ function renderWeek(): void {
       const market = CONFIG.marketDays.includes(d) && state.contract !== 'marketClosed';
       const mark = d === CONFIG.taxPeriod ? art('bale') : market ? art('bargain') : '';
       const cls = `wd${d === today ? ' now' : d < today ? ' past' : ''}${d === CONFIG.taxPeriod ? ' tax' : ''}${market ? ' market' : ''}${d === CONFIG.taxPeriod && state.gold < t.amount ? ' short' : ''}`;
-      return `<span class="${cls}"><span class="wd-plate"><b>${w}</b>${mark ? `<i>${mark}</i>` : ''}</span></span>`;
+      // 市の日の今日は、札の下に売値の倍率を下げる（畑の上に別の帯を出さない）
+      const sell = d === today && market && state.day > 0 ? `<em class="wd-sell">${L('売値', 'Sell')}×${CONFIG.marketDaySell}</em>` : '';
+      return `<span class="${cls}"><span class="wd-plate"><b>${w}</b>${mark ? `<i>${mark}</i>` : ''}</span>${sell}</span>`;
     }).join('') + contractRibbon(),
   );
   el.week.classList.toggle('has-contract', !!state.contract);
@@ -708,9 +710,9 @@ function renderField(): void {
         else cls.push('single');
         // 金貨の上に数字（「金」の字は入れない）。桁が多いほど字を小さく
         html += `<span class="price d${String(price).length}">${art('coinBlank')}<b>${price}</b></span>`;
-        // 倍率は文字ではなく印と数字で：並んだ点＝列、1つの点＝単品
+        // 倍率の札は列（と大物）のときだけ。単品は金貨の数字がもう半値なので札は出さない（1マスに乗せる物を減らす）
         if (def.big) html += `<span class="badge-line">${L('大物', 'Big')}</span>`;
-        else html += inLine ? `<span class="badge-line">${MARK_LINE}×${fmtMult(mult)}</span>` : `<span class="badge-single">${MARK_SINGLE}×${fmtMult(singleMult(state))}</span>`;
+        else if (inLine) html += `<span class="badge-line">${MARK_LINE}×${fmtMult(mult)}</span>`;
         label = L(`${def.name} 実、タップで${price}で売る${def.big ? '' : inLine ? '（列ごと）' : '（単品は半値）'}`, `${def.name}, ripe: tap to sell for ${price}g${def.big ? '' : inLine ? ' (whole line)' : ' (single: half price)'}`);
       } else {
         html += `<span class="pips">${Array.from({ length: def.ripe }, (_, k) => `<i class="pip${k < crop.growth ? ' on' : ''}"></i>`).join('')}</span>`;
@@ -1032,6 +1034,21 @@ function showExpanded(): void {
 }
 
 /** 畑のショップ：道具・特別なマス */
+/** 市の畑の品の効き目：1行に1つ、行の頭に絵（docs/ui-reading.md） */
+const PLACE_ROWS: Record<PlaceId, [ArtId, string][]> = {
+  scarecrow: [['crow', L('周り8マスを守る', 'Guards 8 around')], ['coin', L('追い払うと+1', '+1 per shoo')]],
+  bigScarecrow: [['crow', L('2マス以内を守る', 'Guards 2 away')], ['coin', L('追い払うと+2', '+2 per shoo')]],
+  well: [['sprout', L('上下左右 毎晩+1', '4 sides +1 nightly')]],
+  goldenWell: [['sprout', L('周り8マス 毎晩+1', '8 around +1 nightly')]],
+  hive: [['coin', L('周り8マス 売値+20%', '8 around price +20%')], ['strawberry', L('苺が毎晩育つ', 'Strawberries grow nightly')]],
+  queenHive: [['coin', L('周り8マス 売値+50%', '8 around price +50%')], ['strawberry', L('苺が毎晩育つ', 'Strawberries grow nightly')]],
+  henhouse: [['coin', L('毎晩+2', '+2 nightly')], ['bug', L('周りの虫・モグラを防ぐ', 'Stops bugs & moles')]],
+  cowshed: [['coin', L('毎晩+4', '+4 nightly')], ['water', L('隣に水路で+2', '+2 next to water')]],
+  compost: [['coin', L('売値×2', 'Price ×2')]],
+  water: [['sprout', L('毎晩+1', '+1 nightly')], ['waterwheel', L('3つ並べて水車', '3 in a row: wheel')]],
+};
+const placeRowsHtml = (id: PlaceId): string => PLACE_ROWS[id].map(([ico, t]) => `<span class="fx-row">${art(ico)}<span>${t}</span></span>`).join('');
+
 function renderFarmShop(): void {
   const items: { key: string; ico: string; name: string; effect: string; price: number | null; ok: boolean; pivot?: boolean }[] = [];
   const ep = expandPrice(state);
@@ -1048,7 +1065,7 @@ function renderFarmShop(): void {
   // 広げきったら「完了」は一番下へ（今週の品を上に）
   if (ep !== null) items.push(expandItem);
   PLACE_ORDER.filter((id) => state.weeklyPlaces.includes(id)).forEach((id) =>
-    items.push({ key: id, ico: art(PLACE_ART[id]), name: PLACES[id].name, effect: roomLeft(state, id) > 0 ? PLACES[id].desc : PLACES[id].kind === 'tool' ? L('置ける空きマスがない', 'No empty plot to place it') : L('敷けるマスがない', 'No plot to lay it on'), price: placePrice(state, id), ok: canBuyPlace(state, id), pivot: false }),
+    items.push({ key: id, ico: art(PLACE_ART[id]), name: PLACES[id].name, effect: roomLeft(state, id) > 0 ? placeRowsHtml(id) : PLACES[id].kind === 'tool' ? L('置ける空きマスがない', 'No empty plot to place it') : L('敷けるマスがない', 'No plot to lay it on'), price: placePrice(state, id), ok: canBuyPlace(state, id), pivot: false }),
   );
   if (ep === null) items.push(expandItem);
   // 週が替わって品が入れ替わったら作り直す（数が同じでも、ボタンが前の品のまま押されないように）

@@ -8918,3 +8918,27 @@ button.fs-relic { font: inherit; color: var(--ink); cursor: pointer; }
 .sheet[data-pane='shop'] { display: flex; flex-direction: column; }
 .sheet[data-pane='shop'] .sheet-pane[data-pane='shop']:not([hidden]) { flex: 1 0 auto; display: flex; flex-direction: column; }
 .sheet[data-pane='shop'] .market-foot { margin-top: auto; }
+
+/* 市の日：今日の札の下に「売値×1.25」の札を下げる */
+.wd { position: relative; }
+.wd-sell {
+  position: absolute;
+  left: 50%;
+  top: calc(100% - 4px);
+  translate: -50% 0;
+  z-index: 2;
+  white-space: nowrap;
+  font-style: normal;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  line-height: 1.4;
+  padding: 0 7px;
+  color: var(--ink);
+  background: var(--gold-soft);
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+}
+
+/* 市の畑の品：効き目を1行に1つ、頭に絵 */
+.item .effect .fx-row { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+.item .effect .fx-row .art { width: 1.25em; height: 1.25em; flex: none; }
