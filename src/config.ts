@@ -521,9 +521,9 @@ export const CONFIG = {
   // 4回目からは中盤以後として×1.3（185→240・280→365・380→495・475→620・570→740）
   // 序盤（1〜3回目）も、1週目の稼ぎに合わせて上げた（5・25・80 → 10・45・110）
   // 交差のおまけをなくして稼ぎが減ったので、4回目以降をなだらかに（240→190 など）。1回ごとにおよそ×1.3〜1.6
-  taxSchedule: [10, 45, 110, 190, 290, 400, 510, 620],
+  taxSchedule: [10, 40, 80, 120, 160, 200, 240, 290],
   /** 難しさごとの年貢の倍率（ふつう〜難しい5） */
-  difficultyTaxMult: [1, 1.3, 1.4, 1.5, 1.6, 1.7],
+  difficultyTaxMult: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
   taxGrowth: 1.5,
   /** この回数の年貢を納めるとクリア（その後はエンドレス） */
   winTaxes: 7,
@@ -766,11 +766,11 @@ export const TOOL_EVOLVE: Partial<Record<PlaceId, { to: PlaceId; need: number; w
 /** 難しいモードの段階。1つ下をクリアすると次が開く。厳しさは積み重なる */
 export const DIFFICULTIES = [
   { name: 'ふつう', desc: '' },
-  { name: '難しい1', desc: '年貢×1.3' },
-  { name: '難しい2', desc: 'ショップ×1.3・年貢×1.4' },
-  { name: '難しい3', desc: 'お邪魔が早く多い・年貢×1.5' },
-  { name: '難しい4', desc: '単品×0.3・年貢×1.6' },
-  { name: '難しい5', desc: '増えるイナゴ・年貢×1.7' },
+  { name: '難しい1', desc: '年貢×1.1' },
+  { name: '難しい2', desc: 'ショップ×1.3・年貢×1.2' },
+  { name: '難しい3', desc: 'お邪魔が早く多い・年貢×1.3' },
+  { name: '難しい4', desc: '単品×0.3・年貢×1.4' },
+  { name: '難しい5', desc: '増えるイナゴ・年貢×1.5' },
 ];
 
 /** 農家：最初の袋（いつもの袋からの増減）・最初のお守り・最初に持っている畑の品・市に出やすい品（2倍） */
@@ -1014,7 +1014,7 @@ if (EN) {
     rain: 'The center of rain gets +1 more (Gentle Rain). Build around rain',
   };
   FARMERS.forEach((f) => Object.assign(f, { name: farmer[f.id][0], desc: farmer[f.id][1] }, farmerTip[f.id] ? { tip: farmerTip[f.id] } : {}));
-  const diff = [['Normal', ''], ['Hard 1', 'Tax ×1.3'], ['Hard 2', 'Shop ×1.3 · Tax ×1.4'], ['Hard 3', 'Pests earlier and more · Tax ×1.5'], ['Hard 4', 'Singles ×0.3 · Tax ×1.6'], ['Hard 5', 'Multiplying locusts · Tax ×1.7']];
+  const diff = [['Normal', ''], ['Hard 1', 'Tax ×1.1'], ['Hard 2', 'Shop ×1.3 · Tax ×1.2'], ['Hard 3', 'Pests earlier and more · Tax ×1.3'], ['Hard 4', 'Singles ×0.3 · Tax ×1.4'], ['Hard 5', 'Multiplying locusts · Tax ×1.5']];
   DIFFICULTIES.forEach((d, i) => Object.assign(d, { name: diff[i][0], desc: diff[i][1] }));
   Object.assign(ACHIEVE_ADDS.addMelonSeed!, { hint: 'Clear the game once…?', done: 'First clear' });
   Object.assign(ACHIEVE_ADDS.addThunder!, { hint: 'Sell lots of lines…?', done: 'Sell 100 lines in total' });

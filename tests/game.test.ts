@@ -180,7 +180,7 @@ describe('年貢と難しさ', () => {
     s.halfTax = true;
     expect(nextTax(s).amount).toBe(Math.round(taxAmount(0) * 0.5));
     const h = newGame({ shop: ['addSun'], charmPool: [], difficulty: 1 });
-    expect(nextTax(h).amount).toBe(Math.round(taxAmount(0) * 1.3));
+    expect(nextTax(h).amount).toBe(Math.round(taxAmount(0) * CONFIG.difficultyTaxMult[1]));
   });
 
   it('難しい2でショップが高く、難しい3でお邪魔が早く多い', () => {
@@ -1018,7 +1018,7 @@ describe('週契約', () => {
     s.day = 2 * CONFIG.taxPeriod;
     endDay(s, () => 0.5);
     expect(s.taxCut).toBe(0.3);
-    expect(nextTax(s).amount).toBe(Math.round(taxAmount(2) * 0.7 * 1.4));
+    expect(nextTax(s).amount).toBe(Math.round(taxAmount(2) * 0.7 * CONFIG.difficultyTaxMult[2]));
   });
   it('虫の大発生：毎朝虫が入り、日曜に全部いなくなる。壊れたリールは週が終わると戻る', () => {
     const s = monday(3);
