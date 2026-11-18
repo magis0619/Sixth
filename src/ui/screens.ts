@@ -4,7 +4,7 @@ import { L } from '../i18n.ts';
 import {
   ACHIEVE_ADDS, PLACES, CHARM_ORDER, FARMERS, COMBOS, CUT, isCutAdd, type CharmId, type SymbolId, PAUSED_CHARMS, CHARM_TIER_NAMES, CHARMS, CONFIG, DIFFICULTIES, FEEDBACK_URL, META, SHARE_URL, SYMBOL_ORDER, SYMBOLS, THUNDER_LINES, UPGRADES,
 } from '../config.ts';
-import { difficultyTaxMult, nextTax, rateRun, taxPlan } from '../game.ts';
+import { difficultyTaxMult, nextTax, placePrice, rateRun, taxPlan } from '../game.ts';
 import {
   awardPoints, buyCapacity, capacity, farmerUnlocked, isAchieveAdd, loadoutCost, maxDifficulty, nextCapacityPrice, recordRun, saveMeta, toggleLoadout, unlockAdd, unlockCharm,
 } from '../meta.ts';
@@ -21,16 +21,122 @@ import { FEVER_FX } from './shows.ts';
 import { explainOnce, overviewCard, showExplain, symbolCard } from './explain.ts';
 
 /** 結果画面。cleared=true はクリア後にここで終えたとき */
-/** 評価：大きな判子のランクと、4つの数字の棒 */
-function ratingHtml(): string {
+
+/** ランクの境目（rateRun と同じ）。次のランクまでの点の差を見せるため */
+const RANK_STEPS: [string, number][] = [['S', 85], ['A', 70], ['B', 55], ['C', 40]];
+
+/** 一番稼いだ日（stats.earnedByDay から） */
+function bestDay(): { day: number; gold: number } {
+  const days = state.stats.earnedByDay;
+  let day = 0;
+  days.forEach((v, d) => {
+    if ((v ?? 0) > (days[day] ?? 0)) day = d;
+  });
+  return { day, gold: days[day] ?? 0 };
+}
+
+/**
+ * 結果画面の中身（上から A 結果 → B 総合評価 → C 経営成績 → D ハイライト → E アドバイス）。
+ * 点数・ランク・年貢・ポイントの計算はしない（rateRun・nextTax・awardPoints の値を並べるだけ）
+ */
+function resultBody(kind: 'fail' | 'clear' | 'endless', opts: { taxAmount: number; isNew: boolean; earned: number; newly: string[]; total?: boolean }): string {
+  const st = state.stats;
   const r = rateRun(state);
-  return `<div class="rating rank-${r.rank}">
-    <div class="rt-stamp"><b>${r.rank}</b><span>${r.score}${L('点', 'pts')}</span></div>
-    ${r.progress < 100 ? `<p class="rt-progress">${art('bale')} ${L(`進み具合 ${state.taxesPaid}/${CONFIG.winTaxes}（点数に掛かる）`, `Progress ${state.taxesPaid}/${CONFIG.winTaxes} (scales the score)`)}</p>` : ''}
-    <ul class="rt-parts">${r.parts
-      .map((p) => `<li><span class="rt-label">${p.label}</span><span class="rt-bar"><i style="width:${p.value}%"></i></span><b>${p.value}</b><small>${p.detail}</small></li>`)
-      .join('')}</ul>
-  </div>`;
+  const short = Math.max(0, opts.taxAmount - state.gold);
+  const failed = kind === 'fail' || kind === 'endless';
+  // A：プレイ結果
+  const badge = kind === 'clear' ? `${art('trophy')}<b>${L('クリア', 'Cleared')}</b>` : kind === 'endless' ? `${art('trophy')}<b>${L('クリア済み', 'Cleared')}</b>` : `${art('warn')}<b>${L('失敗', 'Failed')}</b>`;
+  const title = kind === 'clear' ? L('クリア！', 'You win!') : kind === 'endless' ? L('エンドレス終了', 'Endless over') : L('年貢が払えなかった…', "Couldn't pay the tax…");
+  const money = failed
+    ? `<div class="rs-money">
+        <p><span>${art('bale')}${L('必要な年貢', 'Tax due')}</span><b>${opts.taxAmount}</b></p>
+        <p><span>${art('coin')}${L('持っていたお金', 'Your gold')}</span><b>${state.gold}</b></p>
+        <p class="neg"><span>${art('warn')}${L('足りなかった', 'Short by')}</span><b>−${short}</b></p>
+      </div>`
+    : `<div class="rs-money">
+        <p><span>${art('coin')}${L('稼いだ合計', 'Total earned')}</span><b>${st.totalEarned}</b></p>
+        <p><span>${art('bale')}${L('納めた年貢', 'Taxes paid')}</span><b>${st.taxTotal ?? 0}</b></p>
+        <p class="pos"><span>${art('sparkle')}${L('手元に残った', 'Left over')}</span><b>${state.gold}</b></p>
+      </div>`;
+  const result = `<section class="rs-sec rs-result ${failed ? 'is-fail' : 'is-clear'}">
+      <p class="rs-badge">${badge}</p>
+      <h2 class="rs-title">${title}</h2>
+      <div class="rs-pills">
+        <span>${art('calendar')}${L(`<b>${state.day}</b>日目`, `Day <b>${state.day}</b>`)}${opts.isNew ? `<em>${L('最高', 'Best')}</em>` : ''}</span>
+        <span>${art('bale')}${L(`年貢 <b>${state.taxesPaid}</b>/${CONFIG.winTaxes}回`, `Tax <b>${state.taxesPaid}</b>/${CONFIG.winTaxes}`)}</span>
+      </div>
+      ${money}
+    </section>`;
+  // 1回も年貢を納めずに終わったとき（最初の週など）は、評価の数字が育っていないので出さない
+  const showRating = r.score > 0 && state.taxesPaid > 0;
+  // B：総合評価（腕前の平均 × 進み具合 ＝ 総合）
+  const skill = Math.round(r.parts.reduce((n, p) => n + p.value, 0) / r.parts.length);
+  const next = RANK_STEPS.filter(([, at]) => at > r.score).pop();
+  const total = `<section class="rs-sec">
+      <h3 class="rs-h">${L('総合評価', 'Overall')}</h3>
+      <div class="rs-total rank-${r.rank}">
+        <div class="rs-stamp"><b>${r.rank}</b><span>${r.score}${L('点', 'pts')}</span></div>
+        <div class="rs-calc">
+          <p><span>${L('腕前（4つの平均）', 'Skill (avg of 4)')}</span><b>${skill}${L('点', '')}</b></p>
+          <p><span>${L(`進み具合 ${state.taxesPaid}/${CONFIG.winTaxes}`, `Progress ${state.taxesPaid}/${CONFIG.winTaxes}`)}</span><b>×${Math.round((0.2 + 0.008 * r.progress) * 100)}%</b></p>
+          <p class="eq"><span>${L('総合', 'Total')}</span><b>${r.score}${L('点', '')}</b></p>
+          ${next ? `<p class="next">${L(`${next[0]}まで あと${next[1] - r.score}点`, `${next[1] - r.score} more for ${next[0]}`)}</p>` : ''}
+        </div>
+      </div>
+    </section>`;
+  // C：経営成績（4つを縦に。根拠の数字を文で）
+  const sold = st.cropsSold;
+  const lineCrops = st.lineCrops ?? 0;
+  const manual = st.manualTotal ?? 0;
+  const ratio = st.taxTotal ? (st.totalEarned / st.taxTotal).toFixed(1) : null;
+  const why: Record<string, [ArtId, string]> = {
+    line: ['tomato', sold ? L(`${sold}個中 ${lineCrops}個を列で`, `${lineCrops} of ${sold} in lines`) : L('まだ売っていない', 'Nothing sold yet')],
+    use: ['seed', L(`${manual}回中 ${st.expired}回が使わず消えた`, `${st.expired} of ${manual} went unused`)],
+    guard: ['crow', st.cropsEaten ? L(`${st.cropsEaten}個 取られた`, `${st.cropsEaten} lost`) : L('1つも取られなかった', 'None lost')],
+    margin: ['coin', ratio ? L(`年貢の${ratio}倍 稼いだ（2.5倍で満点）`, `Earned ${ratio}× the tax (2.5× is full marks)`) : L('まだ年貢を納めていない', 'No tax paid yet')],
+  };
+  const low = Math.min(...r.parts.map((p) => p.value));
+  const parts = `<section class="rs-sec">
+      <h3 class="rs-h">${L('経営成績', 'Farm report')}</h3>
+      ${r.parts
+        .map((p) => `<div class="rs-part${p.value === low && low < 100 ? ' low' : ''}"><p><span>${art(why[p.key][0])}${p.label}</span><b>${p.value}<small>${L('点', '')}</small></b></p><i><u style="width:${p.value}%"></u></i><small>${why[p.key][1]}</small></div>`)
+        .join('')}
+    </section>`;
+  // D：今回のハイライト
+  const best = bestDay();
+  const tile = (ico: ArtId, label: string, value: string) => `<div>${art(ico)}<small>${label}</small><b>${value}</b></div>`;
+  const highlights = `<section class="rs-sec">
+      <h3 class="rs-h">${L('今回のハイライト', 'Highlights')}</h3>
+      <div class="rs-hi">
+        ${tile('coin', L('一番稼いだ日', 'Best day'), best.gold ? L(`${best.day}日目 +${best.gold}`, `Day ${best.day} +${best.gold}`) : '—')}
+        ${tile('tomato', L('列で売った', 'Lines sold'), L(`${st.lineHarvests}回`, `${st.lineHarvests}`))}
+        ${tile('crow', L('取られた作物', 'Crops lost'), L(`${st.cropsEaten}個`, `${st.cropsEaten}`))}
+        ${tile('bale', L('年貢を納めた', 'Taxes paid'), L(`${state.taxesPaid}回`, `${state.taxesPaid}`))}
+      </div>
+    </section>`;
+  // E：次へのアドバイス（このプレイの数字から、最大3つ）
+  const tips: [ArtId, string, string][] = [];
+  const add = (t: [ArtId, string, string]) => tips.length < 3 && !tips.some((x) => x[1] === t[1]) && tips.push(t);
+  const scare = placePrice(state, 'scarecrow') ?? PLACES.scarecrow.price ?? 20;
+  const tipFor: Record<string, () => [ArtId, string, string] | null> = {
+    line: () => (sold - lineCrops > 0 ? ['tomato', L(`単品で${sold - lineCrops}個売った`, `Sold ${sold - lineCrops} as singles`), L('3つ並べて×1.3、4つで×1.5', '3 in a row ×1.3, 4 ×1.5')] : null),
+    use: () => (st.expired > 0 ? ['seed', L(`出目が${st.expired}回消えた`, `${st.expired} reels went unused`), L('種が少ないと、雨・太陽が余る', 'Few seeds leave rain and sun idle')] : null),
+    guard: () => (st.cropsEaten > 0 ? ['crow', L(`作物を${st.cropsEaten}個取られた`, `Lost ${st.cropsEaten} crops`), L(`かかし（${scare}）で周り8マスを守れる`, `A scarecrow (${scare}) guards 8 plots`)] : null),
+    margin: () => (ratio ? ['coin', L(`稼ぎは年貢の${ratio}倍`, `Earned ${ratio}× the tax`), L('長い列・堆肥で売値を上げよう', 'Long lines and compost raise prices')] : null),
+  };
+  // 負けたときは不足額を先に、そのあと一番低い成績から順に
+  if (failed && short > 0) add(['coin', L(`あと${short}足りなかった`, `${short} short`), L(`最後の週に1日+${Math.ceil(short / CONFIG.taxPeriod)}で届いた`, `+${Math.ceil(short / CONFIG.taxPeriod)} a day in the last week would have done it`)]);
+  [...r.parts].sort((x, y) => x.value - y.value).forEach((p) => p.value < 90 && tipFor[p.key]() && add(tipFor[p.key]()!));
+  if (st.lineHarvests === 0) add(['tomato', L('列で売っていない', 'No lines sold'), L('3つ並べて売ると×1.3', 'Sell 3 in a line: ×1.3')]);
+  if (!tips.length) add(['sparkle', L('同じ作物の列はさらに×1.3', 'Same-crop lines: ×1.3 more'), L('1種類にそろえると高く売れる', 'Stick to one crop for higher prices')]);
+  const advice = `<section class="rs-sec rs-tips">
+      <h3 class="rs-h">${L('次へのアドバイス', 'Next time')}</h3>
+      ${tips.map(([ico, head, sub]) => `<p>${art(ico)}<span><b>${head}</b><small>${sub}</small></span></p>`).join('')}
+    </section>`;
+  const points = `<p class="rs-pt">${art('sprout')}<b>+${opts.earned}pt</b>${opts.total === false ? '' : `<span>${L('計', 'Total')} ${meta.points}pt</span>`}</p>
+    ${opts.newly.length ? `<p class="rs-newly">${art('sparkle')}${L('解放', 'Unlocked')}：${opts.newly.map((x) => `<b>${x}</b>`).join('')}</p>` : ''}
+    ${FEEDBACK_URL ? `<p class="rs-feedback"><a href="${FEEDBACK_URL}" target="_blank" rel="noopener">${art('mail')}${L('感想を送る', 'Send feedback')}</a></p>` : ''}`;
+  return `<div class="rs">${result}${showRating ? total + parts : ''}${highlights}${advice}${points}</div>`;
 }
 
 export function showGameOver(endedAfterClear = false): void {
@@ -45,26 +151,16 @@ export function showGameOver(endedAfterClear = false): void {
   const earned = awardPoints(meta, state);
   track('result', state, { end: endedAfterClear ? 'clear' : 'tax', tax: t.amount, points: earned, difficulty: state.difficulty });
   const newly = recordRun(meta, state, true);
+  const kind = endedAfterClear ? 'clear' : state.cleared ? 'endless' : 'fail';
   el.overlay.innerHTML = `
-    <div class="modal over-modal" role="dialog" aria-label="${L('ゲームオーバー', 'Game over')}">
-      <div class="big">${art(state.cleared ? 'trophy' : 'hut')}</div>
-      <h2>${endedAfterClear ? L('クリア！', 'You win!') : state.cleared ? L('エンドレス終了', 'Endless over') : L('年貢が払えなかった…', "Couldn't pay the tax…")}</h2>
-      <div class="over-stats">
-        <span>${art('calendar')}${L(`<b>${state.day}</b>日`, `Day <b>${state.day}</b>`)}${isNew ? `<em>${L('最高！', 'Best!')}</em>` : ''}</span>
-        <span>${art('bale')}<b>${state.taxesPaid}</b>${L('回', ' paid')}</span>
-        <span>${art('coin')}<b>${state.stats.totalEarned}</b>${L('', 'g')}</span>
-      </div>
-      ${rateRun(state).score > 0 ? ratingHtml() : ''}
-      ${reviewHtml(endedAfterClear, t.amount)}
-      <div class="points-earned">${art('sprout')} <b>+${earned}pt</b><span>${L('計', 'Total')} ${meta.points}pt</span></div>
-      ${newly.length ? `<div class="newly">${art('sparkle')} ${L('解放', 'Unlocked')}：${newly.map((x) => `<b>${x}</b>`).join('')}</div>` : ''}
-      <div class="share-row">
-        <button class="secondary" id="share">${typeof navigator.share === 'function' ? `${art('share')}${L('シェア', 'Share')}` : `${art('copy')}${L('コピー', 'Copy')}`}</button>
-        ${FEEDBACK_URL ? `<a class="secondary" href="${FEEDBACK_URL}" target="_blank" rel="noopener">${art('mail')}${L('感想', 'Feedback')}</a>` : ''}
-      </div>
-      <div class="over-actions">
-        <button class="primary" id="retry" disabled>${L('もう一度', 'Play again')}</button>
-        <button class="secondary" id="restart" disabled>${L('タイトルへ', 'Title')}</button>
+    <div class="modal over-modal result-modal" role="dialog" aria-label="${L('結果', 'Result')}">
+      ${resultBody(kind, { taxAmount: t.amount, isNew, earned, newly })}
+      <div class="rs-foot">
+        <button class="rs-main" id="retry" disabled>${L('もう一度', 'Play again')}</button>
+        <div class="rs-sub">
+          <button id="restart" disabled>${L('タイトルへ', 'Title')}</button>
+          <button id="share">${typeof navigator.share === 'function' ? `${art('share')}${L('シェア', 'Share')}` : `${art('copy')}${L('コピー', 'Copy')}`}</button>
+        </div>
       </div>
     </div>`;
   el.overlay.classList.add('show');
@@ -83,40 +179,6 @@ export function showGameOver(endedAfterClear = false): void {
   });
   $('share').addEventListener('click', () => void shareResult(endedAfterClear));
   hooks.render();
-}
-
-/** 振り返り：どこまで届いたか・一番稼いだ日・列の数と、次に試すとよいことをひと言 */
-function reviewHtml(endedAfterClear: boolean, taxAmount: number): string {
-  const rows: string[] = [];
-  if (!state.cleared && !endedAfterClear) {
-    const short = Math.max(0, taxAmount - state.gold);
-    rows.push(`<li class="short">${art('bale')} ${L(`年貢まで <b>あと${short}</b> 足りなかった`, `Tax short by <b>${short}g</b>`)}</li>`);
-  }
-  const days = state.stats.earnedByDay;
-  let bestDay = 0;
-  days.forEach((v, d) => {
-    if ((v ?? 0) > (days[bestDay] ?? 0)) bestDay = d;
-  });
-  if (days[bestDay]) rows.push(`<li>${art('coin')} ${L(`一番稼いだ日：<b>${bestDay}日目 +${days[bestDay]}</b>`, `Best day: <b>day ${bestDay}, +${days[bestDay]}g</b>`)}</li>`);
-  // 1行に1つ
-  rows.push(`<li>${art('tomato')} ${L(`列で売った <b>${state.stats.lineHarvests}回</b>`, `Lines sold <b>${state.stats.lineHarvests}</b>`)}</li>`);
-  if (state.stats.cropsEaten) rows.push(`<li>${art('crow')} ${L(`取られた作物 <b>${state.stats.cropsEaten}個</b>`, `Crops lost <b>${state.stats.cropsEaten}</b>`)}</li>`);
-  // 次に試すこと：その回の遊び方から、一番効きそうな1つ（上から順に当てはまったもの）
-  const short = Math.max(0, taxAmount - state.gold);
-  const boughtPlaces = Object.entries(state.bought).some(([k, n]) => k !== 'expand' && (n ?? 0) > 0);
-  const tip =
-    state.stats.lineHarvests === 0
-      ? L('3つ並べて売ると×1.3', 'Sell 3 in a line: ×1.3')
-      : state.stats.cropsEaten >= 5
-        ? L('カラスにはかかし', 'Scarecrows stop crows')
-        : (state.stats.expired ?? 0) >= 6
-          ? L('雨・太陽は使い切ろう', 'Use up rain and sun')
-          : !boughtPlaces && state.day >= 10
-            ? L('市で巣箱を買ってみよう', 'Try a beehive')
-            : !state.cleared && short > 0 && short <= taxAmount * 0.2
-              ? L('日曜の前に売り切ろう', 'Sell out before Sunday')
-              : L('同じ作物の列はさらに×1.3', 'Same-crop lines: ×1.3 more');
-  return `<ul class="review">${rows.join('')}</ul><p class="tip">${art('sparkle')} ${L('次は', 'Next time')}：${tip}</p>`;
 }
 
 export function restart(): void {
@@ -260,14 +322,12 @@ export function showClear(): Promise<boolean> {
   flash('#ffe680', 700);
   vibrate([60, 40, 60, 40, 200]);
   el.overlay.innerHTML = `
-    <div class="modal clear-modal" role="dialog" aria-label="${L('クリア', 'Win')}">
-      <div class="big">${art('trophy')}</div>
-      <h2>${L('クリア！', 'You win!')}</h2>
-      <div class="record">${L(`${state.day}日目でクリア / 総収入 ${state.stats.totalEarned}`, `Won on day ${state.day} / earned ${state.stats.totalEarned}g`)}</div>
-      ${ratingHtml()}
-      <p class="sub">+${META.clearBonus}pt</p>
-      <button class="primary" id="clear-continue" disabled>${L('エンドレスへ', 'Keep going (endless)')}</button>
-      <button class="secondary" id="clear-end" disabled>${L('ここで終える', 'Finish here')}</button>
+    <div class="modal clear-modal result-modal" role="dialog" aria-label="${L('クリア', 'Win')}">
+      ${resultBody('clear', { taxAmount: 0, isNew: false, earned: META.clearBonus, newly: [], total: false })}
+      <div class="rs-foot">
+        <button class="rs-main" id="clear-continue" disabled>${L('エンドレスへ', 'Keep going (endless)')}</button>
+        <div class="rs-sub one"><button id="clear-end" disabled>${L('ここで終える', 'Finish here')}</button></div>
+      </div>
     </div>`;
   el.overlay.classList.add('show');
   window.setTimeout(() => el.overlay.querySelectorAll<HTMLButtonElement>('button').forEach((b) => (b.disabled = false)), 900);
