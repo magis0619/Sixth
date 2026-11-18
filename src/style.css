@@ -8985,3 +8985,22 @@ button.fs-relic { font: inherit; color: var(--ink); cursor: pointer; }
 .dc-chip:disabled { opacity: 0.45; }
 .dc-chip.armed { background: #ffe0dc; border-color: var(--danger); }
 .line-hint.same { background: #a85a0c; }
+
+/* 市の品：左の絵を大きく。品の名前は1つだけで左にそろえ、その右に説明の行を並べる */
+.stall .shop .item:not(.merge-item) {
+  grid-template-columns: 52px 1fr 60px;
+  column-gap: 8px;
+  align-items: center;
+}
+.stall .shop .item:not(.merge-item) .ico { font-size: 3rem; }
+.stall .shop .item:not(.merge-item) .ico .art, .stall .shop .item:not(.merge-item) .ico svg { width: 50px; height: 50px; }
+.stall .shop .item:not(.merge-item) .text {
+  display: grid;
+  grid-template-columns: minmax(3.5rem, max-content) 1fr;
+  column-gap: 12px;
+  align-items: center;
+}
+.stall .shop .item .name { font-size: 0.9375rem; line-height: 1.25; }
+.stall .shop .item .effect { min-width: 0; }
+.stall .shop .item .effect .fx-row { white-space: normal; align-items: flex-start; }
+.stall .shop .item .effect .fx-row .art { margin-top: 1px; }

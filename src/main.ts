@@ -983,7 +983,7 @@ function renderOfferShop(): void {
       const after = { ...state.bag, [sym]: state.bag[sym] + 1 };
       return `<button class="item affordable offer-item${isRareOffer(id) ? ' rare-offer' : ''}" data-take="${id}"><span class="ico">${symHtml(sym)}</span>
         <span class="text"><span class="name">${def.name}${def.shape ? `<span class="oc-shape">${shapeIcon(def.shape)}</span>` : ''}${isRareOffer(id) ? `<span class="pivot-tag">${L('レア', 'Rare')}</span>` : ''}</span>
-        <span class="effect">${def.desc}　${bagPct(state.bag, sym)}% → <b>${bagPct(after, sym)}%</b></span></span>
+        <span class="effect"><span class="fx-row"><span>${def.desc}</span></span><span class="fx-row">${art('seed')}<span>${bagPct(state.bag, sym)}% → <b>${bagPct(after, sym)}%</b></span></span></span></span>
         <span class="cost free"><b>${L('タダ', 'Free')}</b></span></button>`;
     })
     .join('');

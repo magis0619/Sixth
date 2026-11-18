@@ -355,6 +355,8 @@ test('市で巣箱を買って置くと、市に自動で戻る。閉じたら�
   await spot.click({ force: true });
   // 市に戻る
   await expect(page.locator('#sheet.open[data-pane="shop"]')).toHaveCount(1, { timeout: 15_000 });
+  // 市の板がせり上がり終わってから押す
+  await expect(page.locator('#market-next')).toBeInViewport({ timeout: 5_000 });
   await page.click('#market-next', { force: true });
   await expect(page.locator('#sheet.open')).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('hatake-slot:run')!).marketClosed), { timeout: 15_000 }).toBe(true);

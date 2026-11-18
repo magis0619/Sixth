@@ -2598,8 +2598,8 @@ export function rateRun(state: GameState): Rating {
 
 export type PremiumId = 'statue' | 'reel';
 export const PREMIUM: Record<PremiumId, { name: string; desc: string; price: number; growth: number; max: number; art: string }> = {
-  statue: { name: L('豊穣の像', 'Harvest Statue'), desc: L('作物の売値+10%（ずっと・重ねられる）', 'Crop prices +10% (permanent, stacks)'), price: 120, growth: 1.6, max: 3, art: 'trophy' },
-  reel: { name: L('からくりリール', 'Clockwork Reel'), desc: L('リール+1（ずっと）', 'Reel +1 (permanent)'), price: 240, growth: 1, max: 1, art: 'artisan' },
+  statue: { name: L('豊穣の像', 'Harvest Statue'), desc: L('売値+10%', 'Prices +10%'), price: 120, growth: 1.6, max: 3, art: 'trophy' },
+  reel: { name: L('からくりリール', 'Clockwork Reel'), desc: L('リール+1', 'Reel +1'), price: 240, growth: 1, max: 1, art: 'artisan' },
 };
 export const PREMIUM_ORDER: PremiumId[] = ['statue', 'reel'];
 /** 大きな買い物が並ぶのは、この回数の年貢を納めたあと（4週目）から */
