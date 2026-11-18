@@ -188,6 +188,13 @@ for (let n = 0; n < runs; n++) {
     if (s.day > 0 && s.day % CONFIG.taxPeriod === 0) (goldAtTax[s.day / CONFIG.taxPeriod - 1] ??= []).push(s.gold);
     // 試し：REELUP=2,4 で、その回数の年貢を納めたらリール+1
     if (process.env.REELUP) s.reels = Math.max(s.reels, 3 + process.env.REELUP.split(',').map(Number).filter((k) => s.taxesPaid >= k).length);
+    // 試し：NIGHTGROW=k で毎晩、育ち中の作物 k マスが+1（もうすぐ実る物から）。NIGHTGROW=tax なら k＝納めた回数
+    if (process.env.NIGHTGROW && s.day > 0) {
+      const k = process.env.NIGHTGROW === 'tax' ? s.taxesPaid : Number(process.env.NIGHTGROW);
+      fieldCells(s).filter((c) => s.field[c] && !isRipe(s.field[c]) && s.field[c]!.anchor === undefined)
+        .sort((a, b) => (CROPS[s.field[b]!.kind].ripe - s.field[b]!.growth) - (CROPS[s.field[a]!.kind].ripe - s.field[a]!.growth))
+        .reverse().slice(0, k).forEach((c) => s.field[c]!.growth++);
+    }
     const r = startDay(s, Math.random);
     if (!r.ok) break;
     resolveFever(s, Math.random);
