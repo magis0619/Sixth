@@ -118,7 +118,7 @@ export function showSettings(onClose?: () => void): void {
         <button class="set-row danger" id="set-reset"><span>${L('データを消す', 'Erase data')}</span></button>
         <div class="credits">
           <b>${L('畑スロット', 'Farm Slots')}</b>
-          <small>${L('書体', 'Fonts')}：Mochiy Pop One、M PLUS Rounded 1c（SIL Open Font License）</small>
+          <small>${L('書体', 'Fonts')}：Zen Maru Gothic、M PLUS Rounded 1c（SIL Open Font License）</small>
           <small>${L('版', 'Version')}：${__BUILD__}・${L(`年貢${CONFIG.winTaxes}回でクリア`, `Win by paying ${CONFIG.winTaxes} taxes`)}</small>
         </div>
         <button class="primary" id="set-close">${L('閉じる', 'Close')}</button>
