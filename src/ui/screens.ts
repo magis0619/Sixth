@@ -7,7 +7,7 @@ import {
 } from '../config.ts';
 import { difficultyTaxMult, nextTax, placePrice, rateRun, taxPlan } from '../game.ts';
 import {
-  awardPoints, buyCapacity, capacity, farmerUnlocked, isAchieveAdd, loadoutCost, maxDifficulty, nextCapacityPrice, recordRun, saveMeta, toggleLoadout, unlockAdd, unlockCharm,
+  awardPoints, capacity, farmerUnlocked, isAchieveAdd, loadoutCost, maxDifficulty, recordRun, saveMeta, toggleLoadout, unlockAdd, unlockCharm,
 } from '../meta.ts';
 import { art, type ArtId } from '../art.ts';
 import { sfx, unlockAudio } from '../audio.ts';
@@ -224,23 +224,36 @@ export function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
   const tabs: [HelpTab, string][] = [['rules', L('遊び方', 'How to play')], ['symbols', L('絵柄', 'Symbols')], ['combos', L('組み合わせ', 'Combos')], ['charms', L('お守り', 'Charms')]];
   const rules = `
     <button class="set-row help-overview" id="help-overview"><span>${art('calendar')} ${L('全体の流れを一枚絵で見る', 'See the whole game in one picture')}</span></button>
+    <h4 class="help-k">${L('1日', 'A day')}</h4>
     <ul class="help-list icons">
       <li>${art('calendar')}<span>${L('1回転＝1日', 'One spin = one day')}</span></li>
       <li>${art('seed')}<span>${L('光る出目 → マスをタップ', 'Glowing reel → tap a plot')}</span></li>
+    </ul>
+    <h4 class="help-k">${L('育てる', 'Grow')}</h4>
+    <ul class="help-list icons">
       <li>${art('rain')}<span>${L('雨＝縦横十字', 'Rain = cross')}</span></li>
       <li>${art('sun')}<span>${L('太陽＝縦一列', 'Sun = column')}</span></li>
       <li>${art('bee')}<span>${L('蜂＝斜め', 'Bee = diagonals')}</span></li>
       <li>${art('moon')}<span>${L('満月＝畑全体', 'Full moon = whole field')}</span></li>
+    </ul>
+    <h4 class="help-k">${L('売る', 'Sell')}</h4>
+    <ul class="help-list icons">
       <li>${art('tomato')}${art('tomato')}${art('tomato')}<span>${L('3つ並べて売る＝×1.3', '3 in a row = ×1.3')}</span></li>
       <li>${art('tomato')}${art('tomato')}${art('tomato')}${art('tomato')}<span>${L(`4つ＝×${Math.round(CONFIG.lineMult * CONFIG.longLineMult[4] * 10) / 10}`, `4 in a row = ×${Math.round(CONFIG.lineMult * CONFIG.longLineMult[4] * 10) / 10}`)}</span></li>
       <li>${art('tomato')}${art('tomato')}${art('tomato')}${art('tomato')}${art('tomato')}<span>${L(`5つ＝×${Math.round(CONFIG.lineMult * CONFIG.longLineMult[5] * 10) / 10}`, `5 in a row = ×${Math.round(CONFIG.lineMult * CONFIG.longLineMult[5] * 10) / 10}`)}</span></li>
       <li>${art('tomato')}<span>${L('並ばない単品＝半値', 'Singles = half price')}</span></li>
       <li>${art('flame')}<span>${L('同じ絵柄3つ＝フィーバー', '3 of a symbol = FEVER')}</span></li>
+    </ul>
+    <h4 class="help-k">${L('年貢', 'Tax')}</h4>
+    <ul class="help-list icons">
       <li>${art('bale')}<span>${L(`${CONFIG.taxPeriod}日ごとに年貢`, `Tax every ${CONFIG.taxPeriod} days`)}</span></li>
       <li>${art('warn')}<span>${L('払えないと終わり', "Can't pay = game over")}</span></li>
       <li>${art('trophy')}<span>${L(`${CONFIG.winTaxes}回納めたらクリア`, `Pay ${CONFIG.winTaxes} times to win`)}</span></li>
       <li>${art('gift')}<span>${L('年貢のあと お守りを1つ', 'After tax: pick a charm')}</span></li>
       <li>${art('crow')}<span>${L('年貢のあと お邪魔が増える', 'After tax: pests join')}</span></li>
+    </ul>
+    <h4 class="help-k">${L('市と畑の品', 'Market & farm items')}</h4>
+    <ul class="help-list icons">
       ${CONFIG.marketDays.length ? `<li>${art('bargain')}<span>${L(`${CONFIG.marketDays.map((d) => '月火水木金土日'[d - 1]).join('・')}は市`, 'Wed & Sat: market')}</span></li>
       <li>${art('seed')}<span>${L('市で絵柄を1つタダで', 'Market: 1 free symbol')}</span></li>` : `<li>${art('bargain')}<span>${L('ショップで道具・広げる', 'Shop: tools, expand')}</span></li>`}
       ${CUT.places.includes('water') ? `<li>${art('henhouse')}<span>${L('鶏小屋・牛小屋＝毎晩お金', 'Hen/cow sheds = nightly gold')}</span></li>` : `<li>${art('waterwheel')}<span>${L('水路3つ＝水車', '3 water = waterwheel')}</span></li>`}
@@ -257,6 +270,8 @@ export function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
       <span class="dex-fever">${art('flame')}${FEVER_FX[id].ico ? art(FEVER_FX[id].ico!) : ''}${FEVER_FX[id].text}</span></div>
       <span class="own">${art('seed')}×${state.bag[id]}</span></div>`;
   }).join('');
+  const symIds = SYMBOL_ORDER.filter((id) => !CUT.symbols.includes(id) || state.bag[id] > 0);
+  const symSeen = symIds.filter((id) => meta.seenSymbols.includes(id) || state.bag[id] > 0).length;
   // 組み合わせ：同じ日のスロットにそろうと起きること。たまたまそろったものから明かす
   const comboIds = Object.keys(COMBOS) as CharmId[];
   const found = comboIds.filter((id) => meta.discovered.includes(id));
@@ -272,11 +287,14 @@ export function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
     })
     .join('');
   // お守り（組み合わせは別の欄）
-  const charms = CHARM_ORDER.filter((id) => !PAUSED_CHARMS.includes(id) && CHARMS[id].special?.kind !== 'combo').map((id) => {
+  const charmIds = CHARM_ORDER.filter((id) => !PAUSED_CHARMS.includes(id) && CHARMS[id].special?.kind !== 'combo');
+  const charmSeen = charmIds.filter((id) => meta.discovered.includes(id) || meta.seenCharms.includes(id) || state.charms[id]).length;
+  const foundLine = (n: number, all: number) => `<p class="help-found">${L('見つけた', 'Found')} <b>${n}</b> / ${all}</p>`;
+  const charms = charmIds.map((id) => {
     const c = CHARMS[id];
     if (!meta.discovered.includes(id) && !meta.seenCharms.includes(id) && !state.charms[id]) return secret(art(id));
     const locked = id in META.charmUnlock && !meta.unlockedCharms.includes(id);
-    return `<div class="dex-row tier-${c.tier}${locked ? ' locked' : ''}"><span class="e">${art(id)}</span>
+    return `<div class="dex-row tier-${c.tier}${locked ? ' needs-unlock' : ''}"><span class="e">${art(id)}</span>
       <div><b>${c.name}</b> <span class="tag-k">${CHARM_TIER_NAMES[c.tier]}</span>
       <small>${c.desc(1)}${Number.isFinite(c.max) ? L(`（最大${c.max}個）`, ` (max ${c.max})`) : ''}</small>
       ${locked ? `<small class="fv">${art('lock')} ${L('解放', 'Unlock')} ${META.charmUnlock[id]}pt</small>` : ''}</div>
@@ -285,7 +303,7 @@ export function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
   el.overlay.innerHTML = `
     <div class="modal help-modal" role="dialog" aria-label="${L('遊び方と図鑑', 'How to play')}">
       <div class="help-tabs">${tabs.map(([k, label]) => `<button class="${k === tab ? 'on' : ''}" data-tab="${k}">${label}</button>`).join('')}</div>
-      <div class="help-body">${tab === 'rules' ? rules : tab === 'symbols' ? symbols : tab === 'combos' ? `<p class="combo-lead">${L('3つそろった日だけ起きる', 'Works on the day all 3 appear')}</p><p class="combo-lead">${L(`見つけた ${found.length} / ${comboIds.length}`, `Found ${found.length} / ${comboIds.length}`)}</p>${combos}` : charms}</div>
+      <div class="help-body">${tab === 'rules' ? rules : tab === 'symbols' ? `${foundLine(symSeen, symIds.length)}${symbols}` : tab === 'combos' ? `${foundLine(found.length, comboIds.length)}<p class="combo-lead">${L('3つそろった日だけ起きる', 'Works on the day all 3 appear')}</p>${combos}` : `${foundLine(charmSeen, charmIds.length)}${charms}`}</div>
       <button class="primary" id="help-close">${L('閉じる', 'Close')}</button>
     </div>`;
   el.overlay.classList.add('show');
@@ -450,21 +468,21 @@ export function leaveTitle(): void {
   el.overlay.classList.remove('title');
 }
 
-/** 図鑑：達成で解放されるもの。未達成は影絵と短いヒント */
-export function collection(): string {
+/** 図鑑：達成で解放されるもの。未達成は影絵と短いヒント。[カードのhtml, 達成した数, 全部の数] */
+export function collection(): [string, number, number] {
+  const items: [boolean, string][] = [];
   const item = (done: boolean, ico: string, name: string, hint: string) =>
-    `<div class="prep-item${done ? ' on' : ' todo'}"><span class="e${done ? '' : ' silhouette'}">${ico}</span><b>${done ? name : '？？？'}</b><small>${done ? '✓' : hint}</small></div>`;
-  const specials = CHARM_ORDER.filter((id) => CHARMS[id].special && !PAUSED_CHARMS.includes(id)).map((id) =>
-    item(meta.discovered.includes(id), art(id), CHARMS[id].name, CHARMS[id].special!.hint),
-  );
-  const adds = (Object.keys(ACHIEVE_ADDS) as (keyof typeof ACHIEVE_ADDS)[]).filter((id) => !isCutAdd(id)).map((id) => {
-    const done = meta.unlockedAdds.includes(id);
-    const hint = id === 'addThunder' ? `${L('列', 'Lines')} ${Math.min(meta.lines, THUNDER_LINES)}/${THUNDER_LINES}` : ACHIEVE_ADDS[id]!.hint;
-    return item(done, ADD_EMOJI[id], shortName(id), hint);
+    items.push([done, `<div class="ul-ach${done ? ' done' : ''}"><span class="ico${done ? '' : ' silhouette'}">${ico}</span><span class="text"><b>${done ? name : '？？？'}</b><span class="effect">${done ? L('解放した', 'Unlocked') : hint}</span></span>${done ? `<span class="ul-badge">✓</span>` : ''}</div>`]);
+  CHARM_ORDER.filter((id) => CHARMS[id].special && !PAUSED_CHARMS.includes(id)).forEach((id) => item(meta.discovered.includes(id), art(id), CHARMS[id].name, CHARMS[id].special!.hint));
+  (Object.keys(ACHIEVE_ADDS) as (keyof typeof ACHIEVE_ADDS)[]).filter((id) => !isCutAdd(id)).forEach((id) => {
+    const hint = id === 'addThunder' ? `${L('列で売る', 'Lines sold')} ${Math.min(meta.lines, THUNDER_LINES)}/${THUNDER_LINES}` : ACHIEVE_ADDS[id]!.hint;
+    item(meta.unlockedAdds.includes(id), ADD_EMOJI[id], shortName(id), hint);
   });
-  const levels = DIFFICULTIES.slice(1).map((d, k) => item(maxDifficulty(meta) >= k + 1, art('skull'), d.name, L(`${DIFFICULTIES[k].name}をクリア`, `Clear ${DIFFICULTIES[k].name}`)));
-  const skin = item(meta.skins.includes('gold'), art('coin'), L('金色のスロット', 'Golden slot machine'), L('初めてクリアすると…？', 'Clear the game once…?'));
-  return [...specials, ...adds, ...levels, skin].join('');
+  DIFFICULTIES.slice(1).forEach((d, k) => item(maxDifficulty(meta) >= k + 1, art('skull'), d.name, L(`${DIFFICULTIES[k].name}をクリア`, `Clear ${DIFFICULTIES[k].name}`)));
+  item(meta.skins.includes('gold'), art('coin'), L('金色のスロット', 'Golden slot machine'), L('初めてクリアすると…？', 'Clear the game once…?'));
+  // 達成したものは後ろへ（まだのものと、その条件を先に）
+  const sorted = [...items.filter((x) => !x[0]), ...items.filter((x) => x[0])];
+  return [sorted.map((x) => x[1]).join(''), items.filter((x) => x[0]).length, items.length];
 }
 
 export function skinItems(): string {
@@ -482,43 +500,36 @@ export function applySkin(): void {
 export function showUnlock(): void {
   leaveTitle();
   const paint = () => {
-    const capPrice = nextCapacityPrice(meta);
-    const adds = (Object.keys(META.adds) as (keyof typeof META.adds)[])
+    // ポイントで解放する品：まだの物は「絵・名前・効き目1行・値札」の行、解放した物は小さな札にまとめる
+    type Buy = { attr: string; ico: string; name: string; effect: string; price: number; done: boolean };
+    const row = (it: Buy) => {
+      const can = meta.points >= it.price;
+      return `<button class="ul-item${can ? ' affordable' : ''}" ${it.attr} ${can ? '' : 'disabled'}><span class="ico">${it.ico}</span>
+        <span class="text"><b>${it.name}</b><span class="effect">${it.effect}</span></span>
+        <span class="cost">${can ? '' : art('lock')}<b>${it.price}</b><small>pt</small></span></button>`;
+    };
+    const section = (ico: ArtId, title: string, note: string, list: Buy[]) => {
+      const todo = list.filter((it) => !it.done);
+      const done = list.filter((it) => it.done);
+      return `<section class="ul-sec"><h3>${art(ico)}<span>${title}</span><span class="cat-note">${note}</span><span class="ul-count">${done.length}/${list.length}</span></h3>
+        ${todo.length ? `<div class="ul-list">${todo.map(row).join('')}</div>` : `<p class="ul-all">${art('trophy')} ${L('全部解放した', 'All unlocked')}</p>`}
+        ${done.length ? `<div class="ul-done"><span class="ul-done-k">${L('解放済み', 'Unlocked')}</span>${done.map((it) => `<span class="ul-chip">${it.ico}<b>${it.name}</b></span>`).join('')}</div>` : ''}
+      </section>`;
+    };
+    const adds: Buy[] = (Object.keys(META.adds) as (keyof typeof META.adds)[])
       .filter((id) => !CONFIG.rareOffers.includes(id) && !isAchieveAdd(id) && !isCutAdd(id))
-      .map((id) => {
-        const def = META.adds[id];
-        if (meta.unlockedAdds.includes(id)) {
-          return `<div class="prep-item on"><span class="e">${ADD_EMOJI[id]}</span><b>${shortName(id)}</b><small>✓</small></div>`;
-        }
-        const can = meta.points >= def.unlock;
-        return `<button class="prep-item locked${can ? ' unlockable' : ''}" data-unlock="${id}" ${can ? '' : 'disabled'}>
-          <span class="e">${ADD_EMOJI[id]}</span><b>${shortName(id)}</b><small>${can ? '' : art('lock')}${def.unlock}pt</small></button>`;
-      })
-      .join('');
-    const charms = (Object.keys(META.charmUnlock) as (keyof typeof META.charmUnlock)[])
-      .map((id) => {
-        const c = CHARMS[id];
-        const price = META.charmUnlock[id]!;
-        if (meta.unlockedCharms.includes(id)) {
-          return `<div class="prep-item on"><span class="e">${art(id as ArtId)}</span><b>${c.name}</b><small>✓</small></div>`;
-        }
-        const can = meta.points >= price;
-        return `<button class="prep-item locked${can ? ' unlockable' : ''}" data-charm="${id}" ${can ? '' : 'disabled'}>
-          <span class="e">${art(id as ArtId)}</span><b>${c.name}</b><small>${can ? '' : art('lock')}${price}pt</small></button>`;
-      })
-      .join('');
-    setModal('unlock', 'prep-modal', L('強化の解放', 'Unlocks'), `
-        <h2>${art('lock')} ${L('解放', 'Unlocks')}</h2>
-        <div class="points"><b>${meta.points}pt</b></div>
-        <h3>${art('seed')} ${L('絵柄', 'Symbols')}</h3>
-        <div class="prep-grid">${adds}</div>
-        <h3>${art('sunBlessing')} ${L('レアのお守り', 'Rare charms')}</h3>
-        <div class="prep-grid">${charms}</div>
-        <h3>${art('star')} ${L('達成で解放', 'Achievements')}</h3>
-        <div class="prep-grid">${collection()}</div>
-        ${meta.skins.length ? `<h3>${art('artisan')} ${L('見た目', 'Looks')}</h3><div class="prep-grid">${skinItems()}</div>` : ''}
-        <h3>${art('bargain')} ${L('並べられる数', 'Shop capacity')}</h3>
-        ${capPrice !== null ? `<button class="secondary prep-cap" id="prep-cap" ${meta.points < capPrice ? 'disabled' : ''}>${L('コスト上限', 'Cost limit')} ${capacity(meta)} → ${capacity(meta) + META.capacityStep}<small>${capPrice}pt</small></button>` : `<p class="sub">${L('コスト上限', 'Cost limit')} ${capacity(meta)}${L('（最大）', ' (max)')}</p>`}
+      .map((id) => ({ attr: `data-unlock="${id}"`, ico: ADD_EMOJI[id], name: shortName(id), effect: SYMBOLS[UPGRADE_SYMBOL[id]!.symbol].desc, price: META.adds[id].unlock, done: meta.unlockedAdds.includes(id) }));
+    const charms: Buy[] = (Object.keys(META.charmUnlock) as (keyof typeof META.charmUnlock)[])
+      .map((id) => ({ attr: `data-charm="${id}"`, ico: art(id as ArtId), name: CHARMS[id].name, effect: CHARMS[id].desc(1), price: META.charmUnlock[id]!, done: meta.unlockedCharms.includes(id) }));
+    const [ach, achDone, achAll] = collection();
+    setModal('unlock', 'prep-modal unlock-modal', L('強化の解放', 'Unlocks'), `
+        <div class="ul-head"><h2>${art('lock')} ${L('解放', 'Unlocks')}</h2><span class="ul-pts"><small>${L('所持', 'Have')}</small><b>${meta.points}</b><small>pt</small></span></div>
+        <div class="ul-body">
+          ${section('seed', L('絵柄', 'Symbols'), L('市に並ぶ', 'Appear at market'), adds)}
+          ${section('sunBlessing', L('レアのお守り', 'Rare charms'), L('年貢のあとに出る', 'Offered after tax'), charms)}
+          <section class="ul-sec"><h3>${art('star')}<span>${L('達成で解放', 'Achievements')}</span><span class="ul-count">${achDone}/${achAll}</span></h3><div class="ul-achs">${ach}</div></section>
+          ${meta.skins.length ? `<section class="ul-sec"><h3>${art('artisan')}<span>${L('見た目', 'Looks')}</span></h3><div class="prep-grid">${skinItems()}</div></section>` : ''}
+        </div>
         <div class="prep-actions"><button class="secondary" id="unlock-back">← ${L('もどる', 'Back')}</button></div>`);
     el.overlay.classList.add('show');
     const unlocked = (b: HTMLElement) => {
@@ -546,11 +557,6 @@ export function showUnlock(): void {
         paint();
       }),
     );
-    document.getElementById('prep-cap')?.addEventListener('click', () => {
-      if (!buyCapacity(meta)) return;
-      sfx.buy();
-      paint();
-    });
     $('unlock-back').addEventListener('click', () => {
       sfx.cancel();
       showTitle();

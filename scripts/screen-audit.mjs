@@ -285,7 +285,7 @@ for (const size of Object.keys(SIZES)) {
     await p.click('#title-resume', f); await p.waitForTimeout(900);
     const take = p.locator('[data-take="addRain"]');
     if (await take.count()) { await take.click(f); await p.waitForTimeout(1200); }
-    await p.evaluate(() => document.querySelector('.merge-sec')?.scrollIntoView({ block: 'center' }));
+    await p.evaluate(() => document.querySelector('.merge-sub')?.scrollIntoView({ block: 'center' }));
     await snap(p, size, '27-merge');
     const m = p.locator('[data-merge="rain"]');
     if (await m.count()) { await m.click(f); await p.waitForTimeout(1600); }

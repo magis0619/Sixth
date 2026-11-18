@@ -9212,3 +9212,62 @@ button.fs-relic { font: inherit; color: var(--ink); cursor: pointer; }
   color: var(--ink); background: #ffcc33; border: 2px solid var(--ink); border-radius: 999px;
   box-shadow: 0 2px 0 var(--ink); rotate: 4deg;
 }
+
+/* ==== 解放：所持ポイントを大きく上に残す。品は「絵・名前と効き目1行・値札」の行、解放済みは小さな札 ==== */
+.modal.unlock-modal { display: flex; flex-direction: column; height: calc(100dvh - 32px); max-height: none; overflow: hidden; padding: 14px 14px 0; }
+.ul-head { display: flex; align-items: center; gap: 8px; padding-bottom: 8px; border-bottom: 2px dashed var(--stitch); }
+.ul-head h2 { margin: 0; font-size: 1.25rem; display: flex; align-items: center; gap: 6px; }
+.ul-head h2 .art { width: 1.2em; height: 1.2em; }
+.ul-pts { margin-left: auto; display: inline-flex; align-items: baseline; gap: 4px; padding: 2px 14px; background: #ffcc33; border: 3px solid var(--ink); border-radius: 999px; box-shadow: 0 3px 0 var(--ink); }
+.ul-pts small { font-size: 0.8125rem; font-weight: 800; }
+.ul-pts b { font-family: var(--font-pop); font-weight: 400; font-size: 1.5rem; line-height: 1.2; }
+.ul-body { flex: 1; min-height: 0; overflow-y: auto; padding: 10px 2px 12px; display: grid; gap: 12px; align-content: start; }
+.ul-sec { background: #fff; border: 2px solid var(--ink); border-radius: 14px; padding: 8px 12px 10px; }
+.ul-sec h3 { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; padding-bottom: 4px; font-size: 1rem; border-bottom: 2px solid rgba(61, 51, 38, 0.6); }
+.ul-sec h3 > .art { width: 1.3em; height: 1.3em; }
+.ul-sec .cat-note { font-size: 0.8125rem; font-weight: 800; color: var(--ink-soft); }
+.ul-count { margin-left: auto; font-family: var(--font-pop); font-weight: 400; font-size: 1rem; }
+.ul-list { display: grid; }
+.ul-item { display: grid; grid-template-columns: 44px 1fr auto; align-items: center; column-gap: 10px; width: 100%; padding: 8px 0; font: inherit; color: var(--ink); text-align: left; background: none; border: none; border-bottom: 2px dashed rgba(61, 51, 38, 0.3); border-radius: 0; box-shadow: none; cursor: pointer; }
+.ul-item:last-child { border-bottom: none; }
+.ul-item .ico .art, .ul-item .ico svg { width: 42px; height: 42px; }
+.ul-item .text { display: grid; gap: 1px; min-width: 0; }
+.ul-item .text b { font-size: 0.9375rem; }
+.ul-item .effect { font-size: 0.8125rem; line-height: 1.35; color: var(--ink-soft); }
+.ul-item .cost { display: inline-flex; align-items: baseline; gap: 2px; padding: 4px 10px; background: #fff8e7; border: 2px solid var(--ink); border-radius: 10px; box-shadow: 0 3px 0 var(--ink); white-space: nowrap; }
+.ul-item .cost b { font-family: var(--font-pop); font-weight: 400; font-size: 1.25rem; line-height: 1; }
+.ul-item .cost small { font-size: 0.8125rem; font-weight: 800; }
+.ul-item .cost .art { width: 1em; height: 1em; align-self: center; }
+.ul-item.affordable .cost { background: #ffcc33; }
+.ul-item:disabled { cursor: default; opacity: 1; }
+.ul-item:disabled .ico { opacity: 0.5; }
+.ul-all { margin: 4px 0; display: flex; align-items: center; gap: 6px; font-size: 0.9375rem; font-weight: 800; color: #2f6b1c; }
+.ul-all .art { width: 1.3em; height: 1.3em; }
+.ul-done { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 6px; padding-top: 6px; border-top: 2px dashed rgba(61, 51, 38, 0.3); }
+.ul-done-k { font-size: 0.8125rem; font-weight: 800; color: #2f6b1c; margin-right: 2px; }
+.ul-chip { display: inline-flex; align-items: center; gap: 2px; padding: 1px 8px 1px 2px; font-size: 0.8125rem; font-weight: 800; background: #e3f5d3; border: 2px solid #4e9230; border-radius: 999px; }
+.ul-chip .art, .ul-chip svg { width: 20px; height: 20px; }
+.ul-achs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.ul-ach { position: relative; display: grid; grid-template-columns: 30px 1fr; align-items: center; column-gap: 6px; padding: 6px 8px; background: #fff8e7; border: 2px dashed rgba(61, 51, 38, 0.45); border-radius: 12px; }
+.ul-ach .ico .art, .ul-ach .ico svg { width: 28px; height: 28px; }
+.ul-ach .text { display: grid; min-width: 0; }
+.ul-ach .text b { font-size: 0.875rem; }
+.ul-ach .effect { font-size: 0.8125rem; line-height: 1.3; color: var(--ink-soft); }
+.ul-ach.done { background: #e3f5d3; border: 2px solid #4e9230; }
+.ul-badge { position: absolute; top: -8px; right: -6px; width: 22px; height: 22px; display: grid; place-items: center; font-size: 0.8125rem; font-weight: 800; color: #fff; background: #3d7a24; border: 2px solid var(--ink); border-radius: 50%; }
+.unlock-modal .prep-actions { margin: 0 -14px; padding: 10px 14px 14px; border-top: 2px dashed var(--stitch); background: var(--cloth); }
+
+/* ==== 遊び方と図鑑：窓は画面の高さいっぱい。タブは選んだものが黄色、見つけた数を上に ==== */
+.modal.help-modal { display: flex; flex-direction: column; height: calc(100dvh - 32px); max-height: none; overflow: hidden; }
+.help-modal .help-body { flex: 1; min-height: 0; max-height: none; overflow-y: auto; }
+.help-modal .help-tabs { grid-template-columns: repeat(4, 1fr); }
+.help-modal .help-tabs button { min-height: 44px; font-size: 0.9375rem; color: var(--ink); background: #fff; border: 2px solid var(--ink); border-radius: 12px; box-shadow: 0 2px 0 var(--ink); }
+.help-modal .help-tabs button.on { background: #ffcc33; color: var(--ink); translate: 0 -2px; box-shadow: 0 4px 0 var(--ink); }
+.help-k { margin: 12px 0 2px; padding: 0 4px; font-size: 0.8125rem; font-weight: 800; color: #a85a0c; }
+.help-k:first-of-type { margin-top: 6px; }
+.help-found { margin: 0 0 6px; font-size: 0.9375rem; font-weight: 800; text-align: center; }
+.help-found b { font-family: var(--font-pop); font-weight: 400; font-size: 1.375rem; color: #a85a0c; }
+.help-modal #help-close { margin-top: 10px; min-height: 52px; }
+/* 見たけれどまだ解放していないお守り：文字は読める濃さのまま、絵だけ薄く・鍵の札 */
+.dex-row.needs-unlock .e { opacity: 0.55; }
+.dex-row.needs-unlock .fv { display: inline-flex; align-items: center; gap: 3px; margin-top: 2px; padding: 0 8px; font-size: 0.8125rem; font-weight: 800; color: var(--ink); background: #fff8e7; border: 2px solid var(--ink); border-radius: 999px; }
