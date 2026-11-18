@@ -146,8 +146,8 @@ export interface SymbolDef {
 
 // feverDesc：同じ絵柄が3つ以上そろったときの「役」。良い絵柄の役には必ず金貨の大当たりが付く
 export const SYMBOLS: Record<SymbolId, SymbolDef> = {
-  seed: { id: 'seed', name: 'トマトの種', emoji: '🍅', kind: 'manual', desc: 'トマトを2〜4個植える', feverDesc: '品種改良：今日植えるトマトは1段階育った状態から', rarity: 'normal' },
-  berrySeed: { id: 'berrySeed', name: '苺の種', emoji: '🍓', kind: 'manual', desc: '苺を3〜5個植える', feverDesc: '品種改良：今日植える苺は1段階育った状態から', rarity: 'normal' },
+  seed: { id: 'seed', name: 'トマトの種', emoji: '🍅', kind: 'manual', desc: 'トマトを3〜5個植える', feverDesc: '品種改良：今日植えるトマトは1段階育った状態から', rarity: 'normal' },
+  berrySeed: { id: 'berrySeed', name: '苺の種', emoji: '🍓', kind: 'manual', desc: '苺を4〜6個植える', feverDesc: '品種改良：今日植える苺は1段階育った状態から', rarity: 'normal' },
   pumpkinSeed: { id: 'pumpkinSeed', name: 'かぼちゃの種', emoji: '🎃', kind: 'manual', desc: 'かぼちゃを1個植える', feverDesc: '品種改良：今日植えるかぼちゃは1段階育った状態から', rarity: 'normal' },
   melonSeed: { id: 'melonSeed', name: 'メロンの種', emoji: '🍈', kind: 'manual', desc: 'メロンを1個植える', feverDesc: '品種改良：今日植えるメロンは1段階育った状態から', rarity: 'rare' },
   watermelonSeed: { id: 'watermelonSeed', name: 'スイカの種', emoji: '🍉', kind: 'manual', desc: 'スイカを1個植える（2×2マス）', feverDesc: '品種改良：今日植えるスイカは1段階育った状態から', rarity: 'rare' },
@@ -170,8 +170,8 @@ export const SYMBOLS: Record<SymbolId, SymbolDef> = {
   frost: { id: 'frost', name: '霜', emoji: '❄️', kind: 'auto', desc: '3日凍らせる', feverDesc: '群れ：2マスが凍る', rarity: 'bad' },
   mole: { id: 'mole', name: 'モグラ', emoji: '🐀', kind: 'auto', desc: '作物を隣の空きマスへ押し出す', feverDesc: '群れ：2つ押し出す', rarity: 'bad' },
   // ---- 合体した絵柄（同じ札5枚が1枚になる） ----
-  oniSeed: { id: 'oniSeed', name: '鬼トマトの種', emoji: '🍅', kind: 'manual', desc: '鬼トマト（売値12）を2〜4個植える', feverDesc: '品種改良：今日植える鬼トマトは1段階育った状態から', rarity: 'rare', base: 'seed' },
-  heartSeed: { id: 'heartSeed', name: 'ハート苺の種', emoji: '🍓', kind: 'manual', desc: 'ハート苺（売値9）を3〜5個植える', feverDesc: '品種改良：今日植えるハート苺は1段階育った状態から', rarity: 'rare', base: 'berrySeed' },
+  oniSeed: { id: 'oniSeed', name: '鬼トマトの種', emoji: '🍅', kind: 'manual', desc: '鬼トマト（売値12）を3〜5個植える', feverDesc: '品種改良：今日植える鬼トマトは1段階育った状態から', rarity: 'rare', base: 'seed' },
+  heartSeed: { id: 'heartSeed', name: 'ハート苺の種', emoji: '🍓', kind: 'manual', desc: 'ハート苺（売値9）を4〜6個植える', feverDesc: '品種改良：今日植えるハート苺は1段階育った状態から', rarity: 'rare', base: 'berrySeed' },
   lanternSeed: { id: 'lanternSeed', name: 'ランタンかぼちゃの種', emoji: '🎃', kind: 'manual', desc: 'ランタンかぼちゃ（4日で実る・売値60）を1個植える', feverDesc: '品種改良：今日植えるランタンかぼちゃは1段階育った状態から', rarity: 'rare', base: 'pumpkinSeed' },
   boxSeed: { id: 'boxSeed', name: '箱スイカの種', emoji: '🍉', kind: 'manual', desc: '箱スイカ（5日で実る・売値220）を1個植える（2×2マス）', feverDesc: '品種改良：今日植える箱スイカは1段階育った状態から', rarity: 'rare', base: 'watermelonSeed' },
   bigRain: { id: 'bigRain', name: '大雨', emoji: '🌧️', kind: 'manual', shape: 'cross', desc: '縦横十字 成長+1（真ん中は+2）', feverDesc: '虹：全作物の成長＋1', rarity: 'rare', base: 'rain' },
@@ -327,6 +327,8 @@ export const CONFIG = {
   marketDaySell: 1.25,
   /** 植えきれなかった種は、夜に1つこの額で売れる */
   seedSellGold: 1,
+  /** 使わずに終わった育てる出目（雨・太陽など）も、1枚につきこの額（捨てる損を減らす） */
+  spareReelGold: 1,
   /** 卵が孵るまでに、スロットに出る回数 */
   eggHatch: 3,
   mergeNeed: 5,
@@ -424,9 +426,10 @@ export const CONFIG = {
   cloverMultiplier: 3,
   /** 種1枚で植えられる数とその重み（1個:50%・2個:35%・3個:15%）。金の種は常に1個 */
   seedCountWeights: [
-    { count: 2, weight: 40 },
+    // 種切れで畑が空きやすかったので、植える数を1つ増やした（2〜4 → 3〜5）
     { count: 3, weight: 40 },
-    { count: 4, weight: 20 },
+    { count: 4, weight: 40 },
+    { count: 5, weight: 20 },
   ],
 
   /** ゾロ目：同じ絵柄がこの数以上そろうとフィーバー。良い絵柄は役＋大当たり、カラス・虫は「群れ」で効果2倍 */
@@ -922,8 +925,8 @@ export const THUNDER_LINES = 100;
 // ---- 英語表示：名前と説明を差し替える ----
 if (EN) {
   const sym: Partial<Record<SymbolId, [string, string, string]>> = {
-    seed: ['Tomato Seed', 'Plant 2–4 tomatoes', 'Breeding: tomatoes planted today start one stage grown'],
-    berrySeed: ['Strawberry Seed', 'Plant 3–5 strawberries', 'Breeding: strawberries planted today start one stage grown'],
+    seed: ['Tomato Seed', 'Plant 3–5 tomatoes', 'Breeding: tomatoes planted today start one stage grown'],
+    berrySeed: ['Strawberry Seed', 'Plant 4–6 strawberries', 'Breeding: strawberries planted today start one stage grown'],
     pumpkinSeed: ['Pumpkin Seed', 'Plant 1 pumpkin', 'Breeding: pumpkins planted today start one stage grown'],
     melonSeed: ['Melon Seed', 'Plant 1 melon', 'Breeding: melons planted today start one stage grown'],
     watermelonSeed: ['Watermelon Seed', 'Plant 1 watermelon (2×2)', 'Breeding: watermelons planted today start one stage grown'],
@@ -945,8 +948,8 @@ if (EN) {
     frost: ['Frost', 'Freezes a plot for 3 days', 'Cold snap: freezes 2 plots'],
     mole: ['Mole', 'Pushes a crop into a nearby empty plot', 'Pack: pushes 2'],
     locust: ['Locust', 'Each time it appears, 1/2 chance another joins your bag (never eats crops)', 'Plague: 2 join instead of 1'],
-    oniSeed: ['Ogre Tomato Seed', 'Plant 2–4 Ogre Tomatoes (price 12)', 'Breeding: Ogre Tomatoes planted today start +1'],
-    heartSeed: ['Heart Berry Seed', 'Plant 3–5 Heart Berries (price 9)', 'Breeding: Heart Berries planted today start +1'],
+    oniSeed: ['Ogre Tomato Seed', 'Plant 3–5 Ogre Tomatoes (price 12)', 'Breeding: Ogre Tomatoes planted today start +1'],
+    heartSeed: ['Heart Berry Seed', 'Plant 4–6 Heart Berries (price 9)', 'Breeding: Heart Berries planted today start +1'],
     lanternSeed: ['Lantern Pumpkin Seed', 'Plant 1 Lantern Pumpkin (ripe in 4, price 60)', 'Breeding: Lantern Pumpkins planted today start +1'],
     boxSeed: ['Square Melon Seed', 'Plant 1 Square Melon (2×2, ripe in 5, price 220)', 'Breeding: Square Melons planted today start +1'],
     bigRain: ['Downpour', 'Cross: growth +1 (center +2)', 'Rainbow: all crops +1'],

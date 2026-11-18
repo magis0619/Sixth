@@ -646,7 +646,9 @@ function endDayRaw(state: GameState, rng: Rng): EndDayResult {
   const expired = state.results.filter((r) => !r.used && SYMBOLS[r.symbol].kind === 'manual').length;
   state.stats.expired = (state.stats.expired ?? 0) + expired;
   // 植えきれなかった種は、1つ1金で売れる（あふれた種がむだにならないように）
-  const seedGold = state.results.reduce((n, r) => n + (SEEDS[r.symbol] && r.fog !== 'lost' ? Math.max(0, r.left) : 0), 0) * CONFIG.seedSellGold;
+  // 使わずに終わった手動の出目（雨・太陽など）も、1枚 spareReelGold で小銭になる
+  const spare = state.results.filter((r) => !SEEDS[r.symbol] && !r.used && SYMBOLS[r.symbol].kind === 'manual' && r.fog !== 'lost').length * CONFIG.spareReelGold;
+  const seedGold = state.results.reduce((n, r) => n + (SEEDS[r.symbol] && r.fog !== 'lost' ? Math.max(0, r.left) : 0), 0) * CONFIG.seedSellGold + spare;
   if (seedGold) earn(state, seedGold);
   // 熟成：実ったまま日をまたいだ作物の売値が上がる
   if (state.day > 0 && lv(state, 'aging') > 0) {
@@ -2410,9 +2412,9 @@ export function endDay(state: GameState, rng: Rng): EndDayResult {
   const before = state.gold;
   const expiredNames = state.results.filter((r) => !r.used && SYMBOLS[r.symbol].kind === 'manual').map((r) => SYMBOLS[r.symbol].name);
   const res = endDayRaw(state, rng);
-  lstat(state, IN + '余った種', res.seedGold ?? 0);
+  lstat(state, IN + '余った出目', res.seedGold ?? 0);
   if (state.nightIncome) lstat(state, IN + '夜の収入', state.nightIncome.wheel + state.nightIncome.fish + state.nightIncome.animals);
-  if (state.day > 0) glog(state, `夜 所持${state.gold}${res.seedGold ? ` 余った種+${res.seedGold}` : ''}${expiredNames.length ? ` 使わず消えた:${expiredNames.join('・')}` : ''}${state.nightIncome && state.nightIncome.wheel + state.nightIncome.fish + state.nightIncome.animals ? ` 夜の収入+${state.nightIncome.wheel + state.nightIncome.fish + state.nightIncome.animals}` : ''}`);
+  if (state.day > 0) glog(state, `夜 所持${state.gold}${res.seedGold ? ` 余った出目+${res.seedGold}` : ''}${expiredNames.length ? ` 使わず消えた:${expiredNames.join('・')}` : ''}${state.nightIncome && state.nightIncome.wheel + state.nightIncome.fish + state.nightIncome.animals ? ` 夜の収入+${state.nightIncome.wheel + state.nightIncome.fish + state.nightIncome.animals}` : ''}`);
   if (res.tax !== null) {
     glog(state, res.ok ? `年貢${state.taxesPaid}回目 ${res.tax}を払った（${before}→${state.gold}）${state.lastObstacles.length ? ` お邪魔+${state.lastObstacles.map((o) => SYMBOLS[o].name).join('・')}` : ''}${res.cleared ? ' ★クリア' : ''}` : `年貢 ${res.tax}が払えず終わり（所持${state.gold}）`);
     if (state.logStats) {

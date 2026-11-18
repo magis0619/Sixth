@@ -1298,14 +1298,14 @@ describe('かかし・余った種・仕入れ', () => {
     resolveAuto(w, 0, () => 0.9);
     expect(w.weeds.some(Boolean)).toBe(false);
   });
-  it('植えきれなかった種は1つ1金で売れる', () => {
+  it('植えきれなかった種は1つ1金、使わなかった雨などの出目も1枚1金', () => {
     const s = newGame({ shop: [], charmPool: [] });
     s.day = 2;
     s.results = [reel('seed', 3), reel('rain')];
     const before = s.gold;
     const r = endDay(s, () => 0.9);
-    expect(r.seedGold).toBe(3);
-    expect(s.gold - before).toBe(3);
+    expect(r.seedGold).toBe(3 + CONFIG.spareReelGold);
+    expect(s.gold - before).toBe(3 + CONFIG.spareReelGold);
   });
   it('市の仕入れには最初からトマトの種が候補に入る', () => {
     const s = newGame({ shop: ['addRain', 'addSun'], charmPool: [] });
