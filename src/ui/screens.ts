@@ -939,12 +939,13 @@ export function showFarmerScreen(dir = 0): void {
     const stockAll = [...f.stock, ...perks.flatMap((p) => p.stock ?? [])];
     // 増える・減る：農家で変わる札だけを、名前と数で（緑と赤の札）
     const deltas = (Object.keys(bagD) as SymbolId[]).filter((sym) => bagD[sym]);
-    const chip = (sym: SymbolId, d: number) => `<button class="fs-chip ${d > 0 ? 'up' : 'down'}" data-ex-sym="${sym}">${art(sym as ArtId)}<b>${SYMBOLS[sym].name}</b><em>${d > 0 ? '+' : '−'}${Math.abs(d)}</em></button>`;
+    // 変わる札：絵と「+1/−1」だけ（名前はタップで出る説明に任せる）
+    const chip = (sym: SymbolId, d: number) => `<button class="fs-chip ${d > 0 ? 'up' : 'down'}" data-ex-sym="${sym}" aria-label="${SYMBOLS[sym].name}">${art(sym as ArtId)}<em>${d > 0 ? '+' : '−'}${Math.abs(d)}</em></button>`;
     const ups = [
       ...deltas.filter((sym) => bagD[sym]! > 0).map((sym) => chip(sym, bagD[sym]!)),
-      ...(goldD ? [`<span class="fs-chip up">${art('coin')}<b>${L('所持金', 'Gold')}</b><em>+${goldD}</em></span>`] : []),
-      ...(Object.keys(f.charms) as CharmId[]).map((id) => `<button class="fs-chip up" data-ex-charm="${id}">${art(id as ArtId)}<b>${CHARMS[id].name}</b></button>`),
-      ...stockAll.map((id) => `<button class="fs-chip up" data-ex-place="${id}">${art(PLACE_ART[id])}<b>${PLACES[id].name}</b></button>`),
+      ...(goldD ? [`<span class="fs-chip up" aria-label="${L('所持金', 'Gold')}">${art('coin')}<em>+${goldD}</em></span>`] : []),
+      ...(Object.keys(f.charms) as CharmId[]).map((id) => `<button class="fs-chip up" data-ex-charm="${id}" aria-label="${CHARMS[id].name}">${art(id as ArtId)}<em>+1</em></button>`),
+      ...stockAll.map((id) => `<button class="fs-chip up" data-ex-place="${id}" aria-label="${PLACES[id].name}">${art(PLACE_ART[id])}<em>+1</em></button>`),
     ].join('');
     const downs = deltas.filter((sym) => bagD[sym]! < 0).map((sym) => chip(sym, bagD[sym]!)).join('');
     // 最初の袋：全部の札を小さな札で（タップで説明）
@@ -956,8 +957,9 @@ export function showFarmerScreen(dir = 0): void {
     }).join('');
     // 市に出やすい：絵と名前（いつも並ぶ物は「いつも」）
     const favor = [
-      ...(f.favorPlaces ?? []).map((id) => `<span class="fs-fav">${art(PLACE_ART[id])}<b>${PLACES[id].name}</b><em>${L('いつも', 'always')}</em></span>`),
-      ...f.favor.filter((id) => !isCutAdd(id) && !CONFIG.rareOffers.includes(id)).map((id) => `<span class="fs-fav">${ADD_EMOJI[id]}<b>${SYMBOLS[UPGRADE_SYMBOL[id]!.symbol].name}</b></span>`),
+      // 絵だけ。いつも並ぶ物は金の縁
+      ...(f.favorPlaces ?? []).map((id) => `<button class="fs-fav always" data-ex-place="${id}" aria-label="${PLACES[id].name}（${L('いつも', 'always')}）">${art(PLACE_ART[id])}</button>`),
+      ...f.favor.filter((id) => !isCutAdd(id) && !CONFIG.rareOffers.includes(id)).map((id) => `<button class="fs-fav" data-ex-sym="${UPGRADE_SYMBOL[id]!.symbol}" aria-label="${SYMBOLS[UPGRADE_SYMBOL[id]!.symbol].name}">${ADD_EMOJI[id]}</button>`),
     ].join('');
     const g = FARMER_GOAL[f.id];
     el.overlay.innerHTML = `
@@ -980,10 +982,12 @@ export function showFarmerScreen(dir = 0): void {
         ${unlocked ? `<p class="fs-desc">${f.desc}</p>` : `<p class="fs-desc locked">${art('lock')} ${L(`「${DIFFICULTIES[f.unlockClear!].name}」をクリアで解放`, `Clear "${DIFFICULTIES[f.unlockClear!].name}" to unlock`)}</p>`}
         ${unlocked ? `<div class="ds-rules fs-info">
           ${g ? `<p class="fs-goal">${art(g.ico)}<b>${g.goal}</b></p><p class="fs-build"><span>${L('得意', 'Best')}：${L(`${g.build}ビルド`, g.build)}</span>${f.mastery?.length ? `<b class="fs-mastery">${L('腕前', 'Mastery')}${masteryStars(lvM, f.mastery.length)}</b>` : ''}</p>` : ''}
-          ${ups || downs ? `<div class="fs-delta"><span class="fs-k">${L('変わる', 'Changes')}</span>${ups}${downs}</div>` : ''}
-          <p class="fs-k">${L(`最初の袋（${bagN}枚）`, `Starting bag (${bagN})`)}<span class="fs-tap">${L('タップで説明', 'Tap for details')}</span></p>
-          <div class="fs-bag">${bag}</div>
-          ${favor ? `<p class="fs-k">${L('市に出やすい', 'Often at market')}</p><div class="fs-favor">${favor}</div>` : ''}
+          <div class="fs-rows">
+            ${ups || downs ? `<span class="fs-k">${L('変わる', 'Changes')}</span><div class="fs-line">${ups}${downs}</div>` : ''}
+            <span class="fs-k">${L('袋', 'Bag')}<small>${L(`${bagN}枚`, `${bagN}`)}</small></span><div class="fs-line">${bag}</div>
+            ${favor ? `<span class="fs-k">${L('市', 'Market')}</span><div class="fs-line">${favor}</div>` : ''}
+          </div>
+          <p class="fs-tap">${L('札をタップで説明', 'Tap a card for details')}</p>
         </div>` : `<div class="ds-rules fs-info fs-info-locked">${art('lock')}</div>`}
         <div class="fs-roster">${list.map((x) => `<button class="fs-face${x.id === f.id ? ' on' : ''}${farmerUnlocked(meta, x.id) ? '' : ' locked'}" data-farmer="${x.id}" style="--c:${FARMER_COLOR[x.id] ?? '#5fae3c'}" aria-label="${farmerUnlocked(meta, x.id) ? x.name : '？？？'}">${farmerUnlocked(meta, x.id) ? art(x.art as ArtId) : art('lock')}</button>`).join('')}</div>
         <div class="ds-foot">

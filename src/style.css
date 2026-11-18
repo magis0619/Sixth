@@ -9327,3 +9327,21 @@ h2, .ds-name, .title-start, .ds-go, .market-foot button, .rs-main { letter-spaci
 #gold, .hud-tax b, .bb-cell b, .cost, .cost b, .price, .ul-pts b, .ul-item .cost b, .rs-money b, .records b, .fx-roll { font-variant-numeric: tabular-nums; }
 /* 数字のあとの単位（日目・回・個）は細く小さめに（太い小さな漢字は「回」が「◎」に見えるので） */
 .u { font-style: normal; font-weight: 500; font-size: 0.85em; margin-left: 1px; }
+
+/* ==== 農家の説明：見出し（左）と札（右）を同じ幅の2列にそろえる。札は絵と数だけ ==== */
+.fs-rows { display: grid; grid-template-columns: 3.4em 1fr; column-gap: 8px; row-gap: 8px; align-items: center; margin-top: 4px; }
+.fs-rows .fs-k { margin: 0; display: flex; flex-direction: column; line-height: 1.15; font-size: 0.9375rem; font-weight: 700; color: var(--ink-soft); }
+.fs-rows .fs-k small { font-size: 0.875rem; font-weight: 500; }
+.fs-line { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.fs-line .fs-chip, .fs-line .fs-mini-card, .fs-line .fs-fav { height: 34px; box-sizing: border-box; }
+.fs-line .fs-chip { padding: 0 9px 0 4px; gap: 2px; }
+.fs-line .fs-chip .art, .fs-line .fs-mini-card .art { width: 24px; height: 24px; }
+.fs-line .fs-chip em { font-size: 1rem; }
+.fs-line .fs-mini-card { padding: 0 7px 0 3px; }
+.fs-line .fs-fav { display: inline-grid; place-items: center; width: 34px; padding: 0; font: inherit; background: #fff; border: 2px solid var(--ink); border-radius: 10px; cursor: pointer; box-shadow: none; }
+.fs-line .fs-fav .art, .fs-line .fs-fav svg { width: 26px; height: 26px; }
+.fs-line .fs-fav.always { background: #fff3c4; border-color: #b07a00; box-shadow: inset 0 0 0 2px #ffcc33; }
+.fs-info > .fs-tap { margin: 6px 0 0; text-align: right; font-size: 0.875rem; color: var(--ink-soft); }
+/* 札が2段になっても、見出しは1段目の札の高さにそろえる */
+.fs-rows { align-items: start; }
+.fs-rows .fs-k { min-height: 34px; justify-content: center; }
