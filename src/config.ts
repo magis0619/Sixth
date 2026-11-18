@@ -363,11 +363,12 @@ export const CONFIG = {
    * from 回目の年貢から、pool の中から count 枚（表の最後の行より先はエンドレスでも同じ）
    */
   obstacleSchedule: [
-    // カラスは中盤から多め（同じ名前を重ねるほど出やすい）。かかしで守る相手にする
+    // 同じ名前を重ねるほど出やすい。霜・モグラを外したので、カラスは序盤1/3・中盤から3/7（約4割）にそろえ直した
+    //（前は霜・モグラが抜けた分カラスが5〜6割になり、袋がカラスだらけになっていた）
     { from: 1, count: 1, pool: ['bug', 'weed', 'crow'] },
-    { from: 3, count: 1, pool: ['bug', 'weed', 'crow', 'crow', 'frost', 'tanuki', 'mole'] },
-    { from: 5, count: 2, pool: ['bug', 'weed', 'crow', 'crow', 'crow', 'frost', 'tanuki', 'mole'] },
-    { from: 7, count: 3, pool: ['bug', 'weed', 'crow', 'crow', 'crow', 'frost', 'tanuki', 'mole'] },
+    { from: 3, count: 1, pool: ['bug', 'weed', 'crow', 'tanuki'] },
+    { from: 5, count: 2, pool: ['bug', 'bug', 'weed', 'weed', 'crow', 'crow', 'crow', 'tanuki'] },
+    { from: 7, count: 3, pool: ['bug', 'bug', 'weed', 'weed', 'crow', 'crow', 'crow', 'tanuki'] },
   ] as { from: number; count: number; pool: SymbolId[] }[],
   /** タヌキは単体で凶悪なので、年貢のあとに増えるのは難しいこの段階から。増えるときはほかのお邪魔と一緒にしない */
   tanukiFrom: 4,
