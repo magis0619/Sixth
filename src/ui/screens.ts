@@ -730,14 +730,17 @@ export function showDifficulty(): void {
     const lv = meta.difficulty;
     const locked = lv > max;
     const color = DIFF_COLOR[lv];
-    const rules = DIFF_RULES.slice(1, lv + 1).flatMap((list, k) => list.map((r) => ({ ...r, isNew: k + 1 === lv })));
-    // 年貢は1行で、そのレベルの倍率を見せる（上がったレベルでは NEW）
-    const tax = lv > 0 ? `<li class="dr-tax new">${art('bale')}<span>${L(`年貢 ×${difficultyTaxMult(lv).toFixed(1)}`, `Tax ×${difficultyTaxMult(lv).toFixed(1)}`)}</span><em>${lv === 1 ? 'NEW' : '↑'}</em></li>` : '';
+    // この難しさで増える縛り（NEW）と、前から続く縛りを分けて見せる
+    const newRules = DIFF_RULES[lv] ?? [];
+    const oldRules = DIFF_RULES.slice(1, lv).flat();
+    const mult = (k: number) => difficultyTaxMult(k).toFixed(1);
+    // 年貢は段ごとに上がる：NEW の行に「前→今」
+    const tax = lv > 0 ? `<li class="dr-tax new">${art('bale')}<span>${L(`年貢 ×${mult(lv - 1)} → <b>×${mult(lv)}</b>`, `Tax ×${mult(lv - 1)} → <b>×${mult(lv)}</b>`)}</span><em>NEW</em></li>` : '';
     // 年貢のグラフ：クリアまでの7回。いちばん難しい段を天井にして、段を上げると棒が伸びて見えるように
     const plan = taxPlan(lv);
     const top = Math.max(...taxPlan(DIFFICULTIES.length - 1));
     const taxChart = `<div class="ds-tax" aria-label="${L('年貢の額', 'Tax amounts')}">
-      <p class="dt-head">${art('bale')}<b>${L('年貢', 'Tax')}</b><span>${L(`${plan.length}回でクリア`, `${plan.length} to win`)}</span></p>
+      <p class="dt-head">${art('bale')}<b>${L('年貢の額', 'Tax amounts')}</b></p>
       <div class="dt-bars">${plan
         .map((v, i) => `<div class="dt-col"><b>${v}</b><span class="dt-track"><i class="dt-bar" style="height:${((v / top) * 100).toFixed(1)}%"></i></span><small>${i + 1}</small></div>`)
         .join('')}</div>
@@ -757,12 +760,17 @@ export function showDifficulty(): void {
             <span class="ds-ring"></span>
             <span class="ds-num">${locked ? art('lock') : lv === 0 ? art('sprout') : lv}</span>
             ${cleared ? `<span class="ds-cleared">${art('trophy')}${L('クリア済み', 'Cleared')}</span>` : ''}
+            ${lv > 0 && !locked ? `<span class="ds-mult">${art('bale')}<small>${L('年貢', 'Tax')}</small><b>×${mult(lv)}</b></span>` : ''}
           </div>
           <button class="ds-arrow r" id="diff-next" ${lv >= DIFFICULTIES.length - 1 ? 'disabled' : ''} aria-label="${L('むずかしく', 'Harder')}">▶</button>
         </div>
         <h2 class="ds-name">${DIFFICULTIES[lv].name}</h2>
         <div class="ds-rules">
-          ${lv === 0 ? `<p class="ds-plain">${art('sprout')} ${L('縛りなし。まずはここから', 'No extra rules. Start here')}</p>` : `<p class="ds-stack">${L('前の難しさの縛りも、すべて続く', 'All earlier rules stay in effect')}</p><ul>${tax}${rules.map((r) => `<li class="${r.isNew ? 'new' : ''}">${art(r.ico)}<span>${r.text}</span>${r.isNew ? `<em>${L('NEW', 'NEW')}</em>` : ''}</li>`).join('')}</ul>`}
+          <p class="ds-goal">${art('trophy')}<b>${L(`年貢を${plan.length}回納めたらクリア`, `Pay tax ${plan.length} times to win`)}</b></p>
+          ${lv === 0
+            ? `<p class="ds-plain">${art('sprout')} ${L('縛りなし。まずはここから', 'No extra rules. Start here')}</p>`
+            : `<p class="ds-k new">${L('この難しさで増える', 'New at this level')}</p><ul>${tax}${newRules.map((r) => `<li class="new">${art(r.ico)}<span>${r.text}</span><em>NEW</em></li>`).join('')}</ul>
+              ${oldRules.length ? `<p class="ds-k">${L('前から続く', 'Still in effect')}</p><ul class="ds-old">${oldRules.map((r) => `<li>${art(r.ico)}<span>${r.text}</span></li>`).join('')}</ul>` : ''}`}
         </div>
         ${taxChart}
         <div class="ds-foot">
