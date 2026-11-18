@@ -165,7 +165,7 @@ export function setupLongPress(): void {
     if (!u) return null;
     return symbolInfo(UPGRADE_SYMBOL[u.id]!.symbol, `<p class="sub">${u.name}：${upgradeEffect(u.id)}</p>`);
   });
-  longPress(el.farmShop, '[data-id]', (t) => {
+  longPress($('stall'), '.farm-list [data-id]', (t) => {
     const id = t.dataset.id!;
     if (id === 'expand') return `${infoHead(art('expand'), L('畑を広げる', 'Expand field'))}<p>${L('列→行の順に1つ広がる（最大5×5）', 'Adds a column, then a row (up to 5×5)')}</p>`;
     const d = PLACES[id as PlaceId];

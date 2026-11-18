@@ -842,6 +842,15 @@ function renderShop(): void {
   renderMergeShop();
   renderPremiumShop();
   renderDiscardShop();
+  syncStallSecs();
+}
+
+/** 分類の段：中に品が1つもなければ段ごと隠す（お邪魔の段は「いない！」の1行があれば出す） */
+function syncStallSecs(): void {
+  document.querySelectorAll<HTMLElement>('#stall .stall-sec[data-cat]').forEach((sec) => {
+    const parts = [...sec.querySelectorAll<HTMLElement>('.shop, .stall-sub, .stall-empty')].filter((e) => !e.hidden && !e.closest('[hidden]:not(.stall-sec)'));
+    sec.hidden = !parts.some((e) => e.classList.contains('stall-empty') || e.querySelector('.item, .dc-chip'));
+  });
 }
 
 /** 要らない札を捨てる（市で1回・捨てるたびに高くなる）。1回目のタップで選び、もう一度で捨てる */
@@ -849,7 +858,7 @@ let discardArmed: SymbolId | null = null;
 function renderDiscardShop(): void {
   const box = $('discard-shop');
   const shown = shopOpen(state) && state.day > 0 && !tut;
-  (box.closest('.stall-sec') as HTMLElement).hidden = !shown;
+  (box.closest('.stall-sub') as HTMLElement).hidden = !shown;
   if (!shown) return;
   const price = discardPrice(state);
   setHtml($('discard-price'), state.discardedThisMarket ? L('この市はもう捨てた', 'Done this market') : `${art('coin')}${price}・${L('市で1回', 'once per market')}`);
@@ -891,7 +900,7 @@ function onDiscard(b: HTMLButtonElement): void {
 function renderPremiumShop(): void {
   const box = $('premium-shop');
   const shown = premiumShown(state) && shopOpen(state);
-  (box.closest('.stall-sec') as HTMLElement).hidden = !shown;
+  box.hidden = !shown;
   if (!shown) return;
   const html = PREMIUM_ORDER.map((id) => {
     const p = PREMIUM[id];
@@ -933,7 +942,7 @@ function onBuyPremium(b: HTMLButtonElement): void {
 function renderMergeShop(): void {
   const box = $('merge-shop');
   const list = mergeable(state);
-  (box.closest('.stall-sec') as HTMLElement).hidden = !list.length;
+  (box.closest('.stall-sub') as HTMLElement).hidden = !list.length;
   if (list.length) void explainOnce('ex:merge', mergeCard(list[0], MERGES[list[0]]!, mergeCost(state)), !!tut);
   const cost = mergeCost(state);
   const key = `${list.join(",")}|${state.mergedThisMarket}|${cost}|${state.gold}`;
@@ -1005,10 +1014,11 @@ function renderOfferShop(): void {
       const sym = UPGRADE_SYMBOL[id]!.symbol;
       const def = SYMBOLS[sym];
       const after = { ...state.bag, [sym]: state.bag[sym] + 1 };
-      return `<button class="item affordable offer-item${isRareOffer(id) ? ' rare-offer' : ''}" data-take="${id}"><span class="ico">${symHtml(sym)}</span>
-        <span class="text"><span class="name">${def.name}${def.shape ? `<span class="oc-shape">${shapeIcon(def.shape)}</span>` : ''}${isRareOffer(id) ? `<span class="pivot-tag">${L('レア', 'Rare')}</span>` : ''}</span>
-        <span class="effect"><span class="fx-row"><span>${def.desc}</span></span><span class="fx-row">${art('seed')}<span>${bagPct(state.bag, sym)}% → <b>${bagPct(after, sym)}%</b></span></span></span></span>
-        <span class="cost free"><b>${L('タダ', 'Free')}</b></span></button>`;
+      // 横に3枚並べるカード：絵・名前・効き目・袋の割合・選ぶ
+      return `<button class="item affordable offer-item${isRareOffer(id) ? ' rare-offer' : ''}" data-take="${id}">${isRareOffer(id) ? `<span class="pivot-tag">${L('レア', 'Rare')}</span>` : ''}<span class="ico">${symHtml(sym)}</span>
+        <span class="name">${def.name}${def.shape ? `<span class="oc-shape">${shapeIcon(def.shape)}</span>` : ''}</span>
+        <span class="effect">${def.desc}</span><span class="odds">${art('seed')}${bagPct(state.bag, sym)}→<b>${bagPct(after, sym)}%</b></span>
+        <span class="cost free"><b>${L('選ぶ', 'Pick')}</b></span></button>`;
     })
     .join('');
   if (box.dataset.key !== state.offer.join(',')) {
@@ -1123,13 +1133,42 @@ const PLACE_ROWS: Record<PlaceId, [ArtId, string][]> = {
 };
 const placeRowsHtml = (id: PlaceId): string => PLACE_ROWS[id].map(([ico, t]) => `<span class="fx-row">${art(ico)}<span>${t}</span></span>`).join('');
 
+/** 畑の品の分類：何に効くか（市の段の見出し） */
+type FarmCat = 'grow' | 'earn' | 'guard';
+const PLACE_CAT: Record<PlaceId, FarmCat> = {
+  sprinkler: 'grow', reservoir: 'grow', windmill: 'grow', well: 'grow', goldenWell: 'grow', water: 'grow',
+  compost: 'earn', hive: 'earn', queenHive: 'earn', henhouse: 'earn', cowshed: 'earn',
+  scarecrow: 'guard', bigScarecrow: 'guard',
+};
+const ring = (n: number) => (dx: number, dy: number) => Math.max(Math.abs(dx), Math.abs(dy)) <= n;
+/** 効く範囲（置いた所から見て）。ないものは置いたマスだけに効く */
+const PLACE_RANGE: Partial<Record<PlaceId, (dx: number, dy: number) => boolean>> = {
+  scarecrow: ring(1), bigScarecrow: ring(2), goldenWell: ring(1), hive: ring(1), queenHive: ring(1), henhouse: ring(1),
+  well: (dx, dy) => Math.abs(dx) + Math.abs(dy) === 1,
+  sprinkler: (_dx, dy) => dy === 0,
+  reservoir: (dx) => dx === 0,
+  windmill: (dx, dy) => dx === 0 || dy === 0,
+};
+/** 5×5の小さなマス目で効く範囲を見せる（真ん中が置く所） */
+function rangeGrid(id: PlaceId): string {
+  const f = PLACE_RANGE[id];
+  const cells = Array.from({ length: 25 }, (_, k) => {
+    const dx = (k % 5) - 2;
+    const dy = Math.floor(k / 5) - 2;
+    return `<i class="${!dx && !dy ? (f ? 'me' : 'me on') : f?.(dx, dy) ? 'on' : ''}"></i>`;
+  }).join('');
+  return `<span class="rng" aria-hidden="true">${cells}</span>`;
+}
+
 function renderFarmShop(): void {
-  const items: { key: string; ico: string; name: string; effect: string; price: number | null; ok: boolean; pivot?: boolean }[] = [];
+  type FarmItem = { key: string; cat: FarmCat; ico: string; name: string; effect: string; price: number | null; ok: boolean; rng: string };
+  const items: FarmItem[] = [];
   const ep = expandPrice(state);
   const nextCols = state.cols <= state.rows ? state.cols + 1 : state.cols;
   const nextRows = state.cols <= state.rows ? state.rows : state.rows + 1;
-  const expandItem = {
+  const expandItem: FarmItem = {
     key: 'expand',
+    cat: 'grow',
     ico: art('expand'),
     name: L('畑を広げる', 'Expand field'),
     effect: ep === null
@@ -1141,42 +1180,54 @@ function renderFarmShop(): void {
           : ''),
     price: ep,
     ok: canExpand(state),
+    rng: '',
   };
-  // 広げきったら「完了」は一番下へ（今週の品を上に）
-  if (ep !== null) items.push(expandItem);
   PLACE_ORDER.filter((id) => state.weeklyPlaces.includes(id)).forEach((id) =>
-    items.push({ key: id, ico: art(PLACE_ART[id]), name: PLACES[id].name, effect: roomLeft(state, id) > 0 ? placeRowsHtml(id) : PLACES[id].kind === 'tool' ? L('置ける空きマスがない', 'No empty plot to place it') : L('敷けるマスがない', 'No plot to lay it on'), price: placePrice(state, id), ok: canBuyPlace(state, id), pivot: false }),
+    items.push({ key: id, cat: PLACE_CAT[id], ico: art(PLACE_ART[id]), name: PLACES[id].name, effect: roomLeft(state, id) > 0 ? placeRowsHtml(id) : PLACES[id].kind === 'tool' ? L('置ける空きマスがない', 'No empty plot to place it') : L('敷けるマスがない', 'No plot to lay it on'), price: placePrice(state, id), ok: canBuyPlace(state, id), rng: rangeGrid(id) }),
   );
-  if (ep === null) items.push(expandItem);
-  // 週が替わって品が入れ替わったら作り直す（数が同じでも、ボタンが前の品のまま押されないように）
-  const key = items.map((it) => it.key).join(',');
-  if (el.farmShop.dataset.key !== key || el.farmShop.children.length !== items.length) {
-    el.farmShop.dataset.key = key;
-    el.farmShop.innerHTML = '';
-    items.forEach((it) => {
-      const b = document.createElement('button');
-      b.className = 'item';
-      b.dataset.id = it.key;
-      b.addEventListener('click', () => onBuyFarm(it.key as PlaceId | 'expand'));
-      el.farmShop.appendChild(b);
+  // 畑を広げるは「畑を強化する」の最後（広げきったら完了の札で）
+  items.push(expandItem);
+  const lists: Record<FarmCat, HTMLElement> = { grow: el.farmShop, earn: $('farm-earn'), guard: $('farm-guard') };
+  (Object.keys(lists) as FarmCat[]).forEach((cat) => {
+    const box = lists[cat];
+    const list = items.filter((it) => it.cat === cat);
+    // 週が替わって品が入れ替わったら作り直す（数が同じでも、ボタンが前の品のまま押されないように）
+    const key = list.map((it) => it.key).join(',');
+    if (box.dataset.key !== key || box.children.length !== list.length) {
+      box.dataset.key = key;
+      box.innerHTML = '';
+      list.forEach((it) => {
+        const b = document.createElement('button');
+        b.className = 'item';
+        b.dataset.id = it.key;
+        b.addEventListener('click', () => onBuyFarm(it.key as PlaceId | 'expand'));
+        box.appendChild(b);
+      });
+    }
+    list.forEach((it, i) => {
+      const b = box.children[i] as HTMLButtonElement;
+      b.className = `item${it.ok ? ' affordable' : ''}${it.price === null ? ' soldout' : ''}${it.rng ? ' has-rng' : ''}`;
+      // 買って置き待ちの品は、名前の横に緑の札
+      const waiting = state.stock.filter((s) => s === it.key).length;
+      const badge = waiting ? `<span class="stock-badge">${L(`置き待ち ${waiting}`, `To place ${waiting}`)}</span>` : '';
+      const html = `<span class="ico">${it.ico}</span><span class="text"><span class="name">${it.name}${badge}</span><span class="effect">${it.effect}</span></span>${it.rng}${costHtml(it.price, it.ok)}`;
+      if (b.innerHTML !== html) b.innerHTML = html;
     });
-  }
-  items.forEach((it, i) => {
-    const b = el.farmShop.children[i] as HTMLButtonElement;
-    b.className = `item${it.ok ? ' affordable' : ''}${it.price === null ? ' soldout' : ''}${it.pivot ? ' pivot' : ''}`;
-    const html = `<span class="ico">${it.ico}</span><span class="text"><span class="name">${it.name}${it.pivot ? `<span class="pivot-tag">${L('新しい作戦', 'New plan')}</span>` : ''}</span><span class="effect">${it.effect}</span></span>${costHtml(it.price, it.ok)}`;
-    if (b.innerHTML !== html) b.innerHTML = html;
   });
+  syncStallSecs();
 }
+
+/** 市の畑の品のボタン（3つの段のどれか） */
+const farmCard = (key: string): HTMLElement | null => document.querySelector(`#stall .farm-list [data-id="${key}"]`);
 
 function onBuyFarm(key: PlaceId | 'expand'): void {
   unlockAudio();
   if (ui.busy || state.over || holdMarket()) return;
   if (tut) {
-    reject(el.farmShop.querySelector(`[data-id="${key}"]`), L('チュートリアルのあとで', 'After the tutorial'));
+    reject(farmCard(key), L('チュートリアルのあとで', 'After the tutorial'));
     return;
   }
-  const card = el.farmShop.querySelector(`[data-id="${key}"]`) as HTMLElement;
+  const card = farmCard(key) as HTMLElement;
   if (key === 'expand') {
     const price = expandPrice(state);
     if (price === null || !expand(state)) {

@@ -341,7 +341,7 @@ test('市で巣箱を買って置くと、市に自動で戻る。閉じたら�
   const take = page.locator('#sheet.open #offer-shop [data-take]').first();
   await expect(take).toBeInViewport({ timeout: 10_000 });
   await take.click({ force: true });
-  await page.locator('#farm-shop [data-id="hive"]').click({ force: true });
+  await page.locator('#stall .farm-list [data-id="hive"]').click({ force: true });
   await page.click('#market-next', { force: true });
   await expect(page.locator('#sheet.open')).toHaveCount(0);
   // 置く

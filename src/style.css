@@ -9101,3 +9101,56 @@ button.fs-relic { font: inherit; color: var(--ink); cursor: pointer; }
 /* 景色の帯をなくして空いた高さ：スロットを下（親指の届く所）に寄せ、リールを少し大きく */
 #app > .machine { margin-top: auto; }
 :root { --reel-h: clamp(76px, 13vh, 124px); }
+
+/* ==== 市：分類の段・効く範囲のマス目・横並びの「タダで1つ」 ==== */
+/* 所持・年貢・使えるの帯は、下へ送っても上に残す */
+.stall .budget-bar { position: sticky; top: -2px; z-index: 4; margin: 0 -2px 10px; padding: 4px 2px 6px; background: var(--cloth); }
+.stall-head .cat-note, .sub-head .cat-note { margin-left: auto; font-size: 0.8125rem; font-weight: 800; color: var(--ink-soft); white-space: nowrap; }
+.stall-head { display: flex; align-items: center; gap: 6px; font-size: 1rem; }
+/* 同じ段の中で品の並びが2つに分かれるとき（収益の段の像・リール）は点線でつなぐ */
+.stall-sec .shop + .shop:not([hidden]) { border-top: 2px dashed rgba(61, 51, 38, 0.3); }
+.stall-sub { margin-top: 8px; padding-top: 8px; border-top: 2px solid rgba(61, 51, 38, 0.6); }
+.sub-head { display: flex; align-items: center; gap: 6px; margin: 0 0 4px; font-size: 0.9375rem; font-weight: 800; }
+.sub-head .tab-ico .art { width: 1.4em; height: 1.4em; }
+
+/* 品の行：絵 | 名前と効き目 | 範囲 | 値札 */
+.stall .farm-list .item.has-rng { grid-template-columns: 50px 1fr 44px 60px; }
+.stall .shop.farm-list .item:not(.merge-item) .text, .stall #premium-shop .item .text { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; }
+.stall .shop.farm-list .item .effect { font-size: 0.8125rem; }
+@media (min-width: 400px) { .stall .shop.farm-list .item .effect .fx-row { white-space: nowrap; } }
+.stall #premium-shop .item .effect { font-size: 0.8125rem; }
+.rng { display: grid; grid-template-columns: repeat(5, 8px); gap: 1px; justify-self: center; }
+.rng i { width: 8px; height: 8px; border-radius: 1px; background: #e2d8c4; }
+.rng i.on { background: #4e9230; }
+.rng i.me { background: var(--ink); }
+.rng i.me.on { background: #2f6b1c; outline: 2px solid var(--ink); outline-offset: -1px; }
+/* 置き待ち：買った品に緑の札 */
+.stock-badge { display: inline-block; margin-left: 6px; padding: 0 8px; font-size: 0.8125rem; font-weight: 800; line-height: 1.5; color: #fff; background: #3d7a24; border: 2px solid var(--ink); border-radius: 999px; vertical-align: 1px; }
+/* 買えない品：絵と範囲だけ薄く（文字は読める濃さのまま） */
+.stall .shop .item:not(.affordable):not(.offer-item) .ico,
+.stall .shop .item:not(.affordable) .rng { opacity: 0.5; }
+.stall .shop .item:not(.affordable):not(.offer-item) .name { color: var(--ink-soft); }
+
+/* タダで1つ：3枚を横に */
+.offer-sec .stall-head { font-size: 1.125rem; }
+.stall .shop.offer-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.stall .shop.offer-row .item.offer-item {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 8px 4px 8px;
+  background: #fff; border: 3px solid var(--ink); border-radius: 14px;
+  box-shadow: 0 3px 0 var(--ink);
+  text-align: center;
+}
+.stall .shop.offer-row .item.offer-item.rare-offer { background: #fff3c4; }
+.stall .shop.offer-row .item.offer-item:last-child { border-bottom: 3px solid var(--ink); }
+.stall .shop.offer-row .offer-item .ico { font-size: 2.5rem; rotate: 0deg; }
+.stall .shop.offer-row .offer-item .ico .art, .stall .shop.offer-row .offer-item .ico svg { width: 44px; height: 44px; }
+.stall .shop.offer-row .offer-item .name { display: inline-flex; align-items: center; gap: 2px; font-size: 0.9375rem; font-weight: 800; line-height: 1.2; }
+.stall .shop.offer-row .offer-item .effect { font-size: 0.8125rem; line-height: 1.3; color: var(--ink); flex: 1; }
+.stall .shop.offer-row .offer-item .odds { display: inline-flex; align-items: center; gap: 2px; font-size: 0.8125rem; font-weight: 800; color: var(--ink-soft); }
+.stall .shop.offer-row .offer-item .odds .art { width: 1.1em; height: 1.1em; }
+.stall .shop.offer-row .offer-item .odds b { color: var(--ink); }
+.stall .shop.offer-row .offer-item .pivot-tag { position: absolute; top: -10px; left: 50%; translate: -50% 0; margin: 0; }
+.stall .shop.offer-row .offer-item .cost.free { margin-top: 4px; min-width: 72%; padding: 3px 10px; background: #ffcc33; }
+.stall .shop.offer-row .offer-item .cost.free b { font-size: 1rem; }
