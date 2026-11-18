@@ -539,3 +539,27 @@ export function dropIn(el: Element): void {
     { duration: 420, easing: 'ease-out' },
   );
 }
+
+/** ひらひら舞う：上から（up なら下から）揺れながら流れる。葉っぱ・星・ハート・ちょうちょ */
+export function flutter(chars: string[], count = 24, up = false): void {
+  const n = calm ? Math.min(count, 8) : count;
+  const W = window.innerWidth;
+  const H = window.innerHeight;
+  for (let i = 0; i < n; i++) {
+    const x = Math.random() * W;
+    const el = spawn(glyph(chars[i % chars.length]), 'fx-particle', x, up ? H + 30 : -30);
+    el.style.fontSize = `${1.1 + Math.random() * 0.9}rem`;
+    const sway = 30 + Math.random() * 50;
+    const dy = (up ? -1 : 1) * (H + 80);
+    el.animate(
+      [
+        { transform: 'translate(-50%, 0) rotate(0deg)', opacity: 0 },
+        { transform: `translate(calc(-50% + ${sway}px), ${dy * 0.25}px) rotate(25deg)`, opacity: 1, offset: 0.2 },
+        { transform: `translate(calc(-50% - ${sway}px), ${dy * 0.55}px) rotate(-20deg)`, opacity: 1, offset: 0.55 },
+        { transform: `translate(calc(-50% + ${sway * 0.6}px), ${dy * 0.8}px) rotate(15deg)`, opacity: 0.9, offset: 0.8 },
+        { transform: `translate(-50%, ${dy}px) rotate(0deg)`, opacity: 0 },
+      ],
+      { duration: 2200 + Math.random() * 1400, delay: Math.random() * 700, easing: 'linear', fill: 'backwards' },
+    ).onfinish = () => el.remove();
+  }
+}

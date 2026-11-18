@@ -1,3 +1,4 @@
+import { activeLineFx, lineFxBits, playLineFx } from './ui/linefx.ts';
 import { applyStaticLang, EN, gold, L } from './i18n.ts';
 import './style.css';
 import {
@@ -2481,6 +2482,8 @@ function sellCrop(cell: number): void {
 async function playLineHarvest(res: SellResult, centers: { x: number; y: number }[], p: { x: number; y: number }, landSale: () => void): Promise<void> {
   const level = Math.min(res.lines, 4);
   const slow = slowFactor(level - 1);
+  // 解放で選んだ列の演出（見た目だけ）
+  const fx = activeLineFx();
   const f = center(el.field);
   // 売った実は畑から消えるので、跳ねるまでその場に残して見せる
   // 大きさは先にまとめて読む（足すたびに読むと、そのたびに配置し直しになる）
@@ -2517,7 +2520,7 @@ async function playLineHarvest(res: SellResult, centers: { x: number; y: number 
         pop(el.field.children[c], 1.2);
         // 1つずつの額は短めに見せて、合計が出る前に消す（真ん中の数字と重ならないように）
         floatText(q.x, q.y - 10, money(each), { cls: 'gold', size: Math.min(1.4, 0.75 + each / 30), dur: 650 });
-        burst(q.x, q.y, ['✨', '🌟'], 6, 50);
+        burst(q.x, q.y, lineFxBits(fx), 6, 50);
         flyTo(q, el.goldBox, art(FRUIT[kind]), 1, () => {
           sfx.coin();
           pop(el.goldBox, 1.3);
@@ -2536,7 +2539,8 @@ async function playLineHarvest(res: SellResult, centers: { x: number; y: number 
   scanlines(Math.min(1, amount / 250));
   vibrate(level >= 2 ? [40, 30, 120] : [30, 20, 60]);
   if (level >= 2) confetti(20 + level * 20);
-  if (level >= 3) coinRain(30 + level * 10);
+  if (level >= 3 && fx !== 'coins') coinRain(30 + level * 10);
+  playLineFx(fx, level, f);
   await rollNumber(f.x, f.y, amount, { prefix: '+', size: 0.9 + level * 0.15, hold: 500 + level * 150 });
   if (res.bumper) await bigHarvestFinale(res.bumper);
 }

@@ -7,7 +7,7 @@ import {
 } from '../config.ts';
 import { difficultyTaxMult, nextTax, placePrice, rateRun, taxPlan } from '../game.ts';
 import {
-  awardPoints, buyComboHint, buyMastery, capacity, masteryPrice, nextComboHint, farmerUnlocked, isAchieveAdd, loadoutCost, maxDifficulty, recordRun, saveMeta, toggleLoadout, unlockAdd, unlockCharm,
+  awardPoints, buyComboHint, buyLineFx, buyMastery, capacity, masteryPrice, nextComboHint, farmerUnlocked, isAchieveAdd, loadoutCost, maxDifficulty, recordRun, saveMeta, toggleLoadout, unlockAdd, unlockCharm,
 } from '../meta.ts';
 import { art, type ArtId } from '../art.ts';
 import { sfx, unlockAudio } from '../audio.ts';
@@ -19,6 +19,7 @@ import { clearRun, loadBest, loadRun, saveBest } from './save.ts';
 import { stopHeartbeat } from './scene.ts';
 import { showSettings } from './settings.ts';
 import { FEVER_FX } from './shows.ts';
+import { activeLineFx, playLineFx } from './linefx.ts';
 import { explainOnce, overviewCard, showExplain, symbolCard } from './explain.ts';
 
 /** 結果画面。cleared=true はクリア後にここで終えたとき */
@@ -544,12 +545,21 @@ export function showUnlock(): void {
       ? row({ attr: 'data-hint', ico: art('question'), name: L('組み合わせのヒント', 'Combo hint'), effect: L(`まだの組み合わせの絵柄を1つ見せる（残り${comboAll - meta.discovered.filter((id) => id in COMBOS).length - meta.comboHints.length}）`, `Reveal one symbol of an unfound combo`), price: META.comboHintPrice, done: false })
       : '';
     const hinted = meta.comboHints.filter((id) => !meta.discovered.includes(id));
+    // 列の演出（見た目だけ）：まだの物は値札の行、解放した物は「使う」を選ぶ札
+    const fxRows = META.lineFx.filter((f) => !meta.lineFx.includes(f.id)).map((f) => row({ attr: `data-linefx="${f.id}"`, ico: art(f.ico as ArtId), name: f.name, effect: f.desc, price: f.price, done: false })).join('');
+    const fxOwned = META.lineFx.filter((f) => meta.lineFx.includes(f.id));
+    const fxPick = (id: string, ico: string, label: string) => `<button class="ul-pick${meta.lineFxOn === id ? ' on' : ''}" data-fxon="${id}">${ico}<b>${label}</b></button>`;
+    const fxSec = `<section class="ul-sec"><h3>${art('sparkle')}<span>${L('列の演出', 'Line effects')}</span><span class="cat-note">${L('見た目だけ', 'Looks only')}</span><span class="ul-count">${fxOwned.length}/${META.lineFx.length}</span></h3>
+      ${fxRows ? `<div class="ul-list">${fxRows}</div>` : `<p class="ul-all">${art('trophy')} ${L('全部解放した', 'All unlocked')}</p>`}
+      ${fxOwned.length ? `<p class="ul-done-k ul-picks-k">${L('使う演出（タップで見られる）', 'Use (tap to preview)')}</p><div class="ul-picks">${fxPick('', art('puff'), L('なし', 'None'))}${fxOwned.map((f) => fxPick(f.id, art(f.ico as ArtId), f.name)).join('')}${fxOwned.length >= 2 ? fxPick('random', art('question'), L('おまかせ', 'Random')) : ''}</div>` : ''}
+    </section>`;
     const [ach, achDone, achAll] = collection();
     setModal('unlock', 'prep-modal unlock-modal', L('強化の解放', 'Unlocks'), `
         <div class="ul-head"><h2>${art('lock')} ${L('解放', 'Unlocks')}</h2><span class="ul-pts"><small>${L('所持', 'Have')}</small><b>${meta.points}</b><small>pt</small></span></div>
         <div class="ul-body">
           ${section('seed', L('絵柄', 'Symbols'), L('市に並ぶ', 'Appear at market'), adds)}
           ${section('sunBlessing', L('お守り', 'Charms'), L('年貢のあとに出る', 'Offered after tax'), charms)}
+          ${fxSec}
           ${masteries.length ? section('farmMaster', L('農家の腕前', 'Farmer mastery'), L('始めに足される', 'Added at start'), masteries) : ''}
           <section class="ul-sec"><h3>${art('question')}<span>${L('組み合わせのヒント', 'Combo hints')}</span><span class="ul-count">${meta.comboHints.length}</span></h3>
             ${hintRow ? `<div class="ul-list">${hintRow}</div>` : `<p class="ul-all">${art('trophy')} ${L('全部わかった', 'All known')}</p>`}
@@ -574,6 +584,28 @@ export function showUnlock(): void {
     el.overlay.querySelectorAll<HTMLButtonElement>('[data-mastery]').forEach((b) =>
       b.addEventListener('click', () => {
         if (buyMastery(meta, b.dataset.mastery!)) unlocked(b);
+      }),
+    );
+    // 列の演出：解放したらその場で見せる。選んだ演出もタップで見せる
+    const preview = (id: string | null) => {
+      const r = el.overlay.querySelector('.ul-body')?.getBoundingClientRect();
+      playLineFx(id, 2, r ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : undefined);
+    };
+    el.overlay.querySelectorAll<HTMLButtonElement>('[data-linefx]').forEach((b) =>
+      b.addEventListener('click', () => {
+        const id = b.dataset.linefx!;
+        if (!buyLineFx(meta, id)) return;
+        unlocked(b);
+        preview(id);
+      }),
+    );
+    el.overlay.querySelectorAll<HTMLButtonElement>('[data-fxon]').forEach((b) =>
+      b.addEventListener('click', () => {
+        meta.lineFxOn = b.dataset.fxon!;
+        saveMeta(meta);
+        sfx.select();
+        paint();
+        preview(activeLineFx());
       }),
     );
     el.overlay.querySelector<HTMLButtonElement>('[data-hint]')?.addEventListener('click', (e) => {

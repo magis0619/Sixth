@@ -44,6 +44,9 @@ export interface MetaState {
   comboHints: CharmId[];
   /** 農家ごとの腕前の段（0〜3） */
   mastery: Record<string, number>;
+  /** 解放した列の演出と、使う演出（'' なし・'random' おまかせ） */
+  lineFx: string[];
+  lineFxOn: string;
 }
 
 const KEY = 'hatake-slot:meta';
@@ -72,6 +75,8 @@ function fresh(): MetaState {
     clears: 0,
     comboHints: [],
     mastery: {},
+    lineFx: [],
+    lineFxOn: '',
   };
 }
 
@@ -170,6 +175,17 @@ export function buyMastery(meta: MetaState, farmer: string): boolean {
   if (price === null || meta.points < price || !farmerUnlocked(meta, farmer)) return false;
   meta.points -= price;
   meta.mastery[farmer] = (meta.mastery[farmer] ?? 0) + 1;
+  saveMeta(meta);
+  return true;
+}
+
+/** 列の演出を解放する（解放したらそれを使う） */
+export function buyLineFx(meta: MetaState, id: string): boolean {
+  const def = META.lineFx.find((f) => f.id === id);
+  if (!def || meta.lineFx.includes(id) || meta.points < def.price) return false;
+  meta.points -= def.price;
+  meta.lineFx.push(id);
+  meta.lineFxOn = id;
   saveMeta(meta);
   return true;
 }

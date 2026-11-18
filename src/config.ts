@@ -882,6 +882,15 @@ export const META = {
   charmUnlock: { sunBlessing: 50, bumper: 50, seedSack: 40, autumnHarvest: 40, thunderGod: 40, moonViewing: 40, declutter: 40, farmMaster: 50, bigSpender: 60 } as Partial<Record<CharmId, number>>,
   /** 組み合わせのヒント（まだの組み合わせの絵柄を1つ見せる）の値段 */
   comboHintPrice: 20,
+  /** 列の演出（見た目だけ。遊びは変わらない）：名前・絵・ひと言・値段 */
+  lineFx: [
+    { id: 'leaves', name: '若葉の風', ico: 'leafBit', desc: '葉っぱが舞う', price: 60 },
+    { id: 'coins', name: '金貨の雨', ico: 'coin', desc: '金貨が降る', price: 80 },
+    { id: 'stars', name: '星くず', ico: 'star', desc: '星がきらきら降る', price: 100 },
+    { id: 'hearts', name: 'ハートの雨', ico: 'heart', desc: 'ハートがふわふわ降る', price: 100 },
+    { id: 'butterflies', name: 'ちょうちょ', ico: 'butterfly', desc: 'ちょうちょが飛び立つ', price: 120 },
+    { id: 'fireworks', name: '打ち上げ花火', ico: 'sparkle', desc: '花火が上がる', price: 150 },
+  ] as const,
   /** 農家の腕前を1段上げる値段（段1・段2・段3） */
   masteryPrices: [60, 120, 200],
   /** ショップに並べられるコストの上限と、その拡張 */

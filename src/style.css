@@ -9315,3 +9315,11 @@ button.fs-relic { font: inherit; color: var(--ink); cursor: pointer; }
 /* 大きな字（看板・名前・大きなボタン）は少し詰める（Zen Maru のかなは全角の幅で、大きいとすき間が目立つ）。本文はそのまま */
 .title-logo h1 { letter-spacing: 0; }
 h2, .ds-name, .title-start, .ds-go, .market-foot button, .rs-main { letter-spacing: -0.03em; }
+
+/* ==== 解放：列の演出の「使う」札（選んだ物は黄色） ==== */
+.ul-picks-k { margin: 8px 0 4px; padding-top: 6px; border-top: 2px dashed rgba(61, 51, 38, 0.3); }
+.ul-picks { display: flex; flex-wrap: wrap; gap: 6px; }
+.ul-pick { display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 2px 12px 2px 6px; font: inherit; font-size: 0.875rem; color: var(--ink); background: #fff; border: 2px solid var(--ink); border-radius: 999px; box-shadow: 0 2px 0 var(--ink); cursor: pointer; width: auto; }
+.ul-pick .art, .ul-pick svg { width: 24px; height: 24px; }
+.ul-pick b { font-weight: 700; }
+.ul-pick.on { background: #ffcc33; translate: 0 -2px; box-shadow: 0 4px 0 var(--ink); }
