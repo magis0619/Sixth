@@ -122,7 +122,8 @@ export function costHtml(price: number | null, affordable: boolean, doneText = L
   const risk = affordable && state.day > 0 && state.gold - price < nextTax(state).amount;
   return affordable
     ? `<span class="cost${risk ? ' tax-risk' : ''}"><b>${gold(price)}</b>${risk ? `<small>${L(`残り${state.gold - price}`, `Left ${state.gold - price}`)}</small>` : ''}</span>`
-    : `<span class="cost"><b>${gold(price)}</b>${price > state.gold ? `<small>${L('あと', 'need ')}${price - state.gold}</small>` : ''}</span>`;
+    : // 足りないときは紙の札だけで伝える（「あと○○」は札が縦に長くなるので出さない）
+      `<span class="cost"><b>${gold(price)}</b></span>`;
 }
 
 export function bagPct(bag: Record<SymbolId, number>, id: SymbolId): number {

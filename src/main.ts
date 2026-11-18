@@ -2091,6 +2091,18 @@ function onPlotTap(cell: number): void {
     if (!state.stock.length && shopOpen(state) && isMarketDay(state.day) && !tut) later(() => backToMarket(), 650);
     return;
   }
+  // 雑草のマスは、出目を選んでいても抜くのが先（抜くつもりで雨を降らせてしまわないように）
+  if (state.weeds[cell]) {
+    if (!pullWeed(state, cell)) {
+      reject(plot, needGold(weedCost(state)));
+      return;
+    }
+    sfx.poof();
+    burst(p.x, p.y, ['🍃', '💨'], 8, 50);
+    if (weedCost(state)) floatText(p.x, p.y - 20, money(-weedCost(state)), { cls: 'bad', size: 0.8 });
+    render();
+    return;
+  }
   if (selected !== null) {
     const reel = selected;
     const sym = state.results[reel].symbol;
@@ -2175,17 +2187,6 @@ function onPlotTap(cell: number): void {
   if (state.frost[cell]) {
     shake(plot, 3);
     say(`${art('frost')} ${state.frost[cell]}${L('日', 'd')}`);
-    return;
-  }
-  if (state.weeds[cell]) {
-    if (!pullWeed(state, cell)) {
-      reject(plot, needGold(weedCost(state)));
-      return;
-    }
-    sfx.poof();
-    burst(p.x, p.y, ['🍃', '💨'], 8, 50);
-    if (weedCost(state)) floatText(p.x, p.y - 20, money(-weedCost(state)), { cls: 'bad', size: 0.8 });
-    render();
     return;
   }
   const tool = state.tools[cell];
