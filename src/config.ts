@@ -361,6 +361,8 @@ export const CONFIG = {
   ] as { from: number; count: number; pool: SymbolId[] }[],
   /** タヌキは単体で凶悪なので、年貢のあとに増えるのは難しいこの段階から。増えるときはほかのお邪魔と一緒にしない */
   tanukiFrom: 4,
+  /** 1回の年貢で袋に入る同じお邪魔の上限（カラスが一度に3枚入ってフィーバーしやすくなるのを防ぐ） */
+  sameObstacleMax: 2,
   /** 雑草：抜く費用と、毎日となりの空きマスへ広がる確率 */
   weedPullCost: 3,
   weedSpreadChance: 0.5,

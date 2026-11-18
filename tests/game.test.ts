@@ -922,6 +922,18 @@ describe('タヌキと畑の品', () => {
     expect(seen).toBeGreaterThan(0);
   });
 
+  it('1回の年貢で入る同じお邪魔は2枚まで（難しい3以上で3枚入るときも）', () => {
+    for (let n = 1; n <= 10; n++)
+      for (let k = 0; k < 200; k++) {
+        const got = rollObstacles(n, Math.random, 3);
+        for (const sym of new Set(got)) expect(got.filter((x) => x === sym).length).toBeLessThanOrEqual(CONFIG.sameObstacleMax);
+      }
+    // いつもカラスを引く乱数でも、3枚目は別のお邪魔になる
+    const crowFirst = rollObstacles(7, () => 0.3, 3);
+    expect(crowFirst.length).toBe(4);
+    expect(crowFirst.filter((x) => x === 'crow').length).toBeLessThanOrEqual(2);
+  });
+
   it('市ごとに畑の品が入れ替わり、週が進むと良い品（井戸・スプリンクラー・風車）が並ぶ', () => {
     const s = newGame();
     const seen = (): Set<string> => {

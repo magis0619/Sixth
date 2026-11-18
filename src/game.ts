@@ -703,7 +703,14 @@ export function rollObstacles(n: number, rng: Rng, difficulty = 0): SymbolId[] {
   const pool = (difficulty >= 5 ? [...rule.pool, 'locust' as SymbolId] : rule.pool).filter(
     (s) => !CUT.symbols.includes(s) && (s !== 'tanuki' || difficulty >= CONFIG.tanukiFrom),
   );
-  const picks = Array.from({ length: count }, () => pool[Math.floor(rng() * pool.length)]);
+  // 同じお邪魔は1回に sameObstacleMax 枚まで。超えたら、まだ上限に届いていない別のお邪魔から選び直す（ほかになければ入れない）
+  const picks: SymbolId[] = [];
+  for (let k = 0; k < count; k++) {
+    const room = pool.filter((p) => picks.filter((x) => x === p).length < CONFIG.sameObstacleMax);
+    if (!room.length) break;
+    const first = pool[Math.floor(rng() * pool.length)];
+    picks.push(room.includes(first) ? first : room[Math.floor(rng() * room.length)]);
+  }
   // タヌキが来るときは、ほかのお邪魔と一緒にしない（1枚だけ）
   return picks.includes('tanuki') ? ['tanuki'] : picks;
 }
