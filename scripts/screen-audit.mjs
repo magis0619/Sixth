@@ -81,6 +81,8 @@ function detect() {
     if (a.closest('.prep-actions') || c.closest('.prep-actions')) continue;
     // 市の「次へ」は下に固定して、中身がその下をスクロールする（作り通り）
     if (a.closest('.market-foot') || c.closest('.market-foot')) continue;
+    // 解放の画面は、上の題・飛ぶ札の下を中身がスクロールする（作り通り）
+    if (!!a.closest('.us-top, .us-jump') !== !!c.closest('.us-top, .us-jump')) continue;
     if (a.id === 'sheet-close' || c.id === 'sheet-close' || a.id === 'spin-go' || c.id === 'spin-go') continue;
     const r = a.getBoundingClientRect(), q = c.getBoundingClientRect();
     const ox = Math.min(r.right, q.right) - Math.max(r.left, q.left), oy = Math.min(r.bottom, q.bottom) - Math.max(r.top, q.top);
@@ -197,7 +199,7 @@ for (const size of Object.keys(SIZES)) {
     const { p, ctx, errs } = await page(size);
     await snap(p, size, '01-title');
     await p.click('#title-unlock', f); await snap(p, size, '02-unlock');
-    await p.evaluate(() => document.querySelector('#overlay .modal, #overlay [role=dialog]')?.scrollTo(0, 99999)); await snap(p, size, '02b-unlock-bottom');
+    await p.evaluate(() => (document.querySelector('#overlay .ul-body') ?? document.querySelector('#overlay .modal, #overlay [role=dialog]'))?.scrollTo(0, 99999)); await snap(p, size, '02b-unlock-bottom');
     await p.click('#unlock-back', f);
     await p.click('#title-help', f); await snap(p, size, '03-help');
     const tabs = await p.$$('#overlay [data-tab]');

@@ -557,8 +557,16 @@ export function showUnlock(): void {
       ${fxOwned.length ? `<p class="ul-done-k ul-picks-k">${L('使う演出（タップで見られる）', 'Use (tap to preview)')}</p><div class="ul-picks">${fxPick('', art('puff'), L('なし', 'None'))}${fxOwned.map((f) => fxPick(f.id, art(f.ico as ArtId), f.name)).join('')}${fxOwned.length >= 2 ? fxPick('random', art('question'), L('おまかせ', 'Random')) : ''}</div>` : ''}
     </section>`;
     const [ach, achDone, achAll] = collection();
-    setModal('unlock', 'prep-modal unlock-modal', L('強化の解放', 'Unlocks'), `
-        <div class="ul-head"><h2>${art('lock')} ${L('解放', 'Unlocks')}</h2><span class="ul-pts"><small>${L('所持', 'Have')}</small><b>${meta.points}</b><small>pt</small></span></div>
+    // 解放は専用の画面（画面いっぱい・上に戻ると所持ポイント）。描き直しても下へ送った位置は保つ
+    const prevTop = el.overlay.querySelector<HTMLElement>('.unlock-screen .ul-body')?.scrollTop ?? 0;
+    el.overlay.innerHTML = `
+      <div class="unlock-screen" role="dialog" aria-label="${L('強化の解放', 'Unlocks')}">
+        <div class="us-top">
+          <button class="ds-back" id="unlock-back" aria-label="${L('もどる', 'Back')}">←</button>
+          <b class="ds-title">${art('lock')} ${L('解放', 'Unlocks')}</b>
+          <span class="ul-pts"><small>${L('所持', 'Have')}</small><b>${meta.points}</b><small>pt</small></span>
+        </div>
+        <nav class="us-jump">${[['seed', L('絵柄', 'Symbols')], ['sunBlessing', L('お守り', 'Charms')], ['sparkle', L('演出', 'Effects')], ['farmMaster', L('腕前', 'Mastery')], ['question', L('ヒント', 'Hints')], ['star', L('達成', 'Goals')]].map(([ico, t], k) => `<button data-jump="${k}">${art(ico as ArtId)}<b>${t}</b></button>`).join('')}</nav>
         <div class="ul-body">
           ${section('seed', L('絵柄', 'Symbols'), L('市に並ぶ', 'Appear at market'), adds)}
           ${section('sunBlessing', L('お守り', 'Charms'), L('年貢のあとに出る', 'Offered after tax'), charms)}
@@ -571,7 +579,17 @@ export function showUnlock(): void {
           <section class="ul-sec"><h3>${art('star')}<span>${L('達成で解放', 'Achievements')}</span><span class="ul-count">${achDone}/${achAll}</span></h3><div class="ul-achs">${ach}</div></section>
           ${meta.skins.length ? `<section class="ul-sec"><h3>${art('artisan')}<span>${L('見た目', 'Looks')}</span></h3><div class="prep-grid">${skinItems()}</div></section>` : ''}
         </div>
-        <div class="prep-actions"><button class="secondary" id="unlock-back">← ${L('もどる', 'Back')}</button></div>`);
+      </div>`;
+    const ulBody = el.overlay.querySelector<HTMLElement>('.unlock-screen .ul-body');
+    if (ulBody) ulBody.scrollTop = prevTop;
+    // 上の札で段へ飛ぶ（段の並びは 絵柄・お守り・演出・腕前・ヒント・達成）
+    el.overlay.querySelectorAll<HTMLButtonElement>('[data-jump]').forEach((b) =>
+      b.addEventListener('click', () => {
+        const titles = [L('絵柄', 'Symbols'), L('お守り', 'Charms'), L('列の演出', 'Line effects'), L('農家の腕前', 'Farmer mastery'), L('組み合わせのヒント', 'Combo hints'), L('達成で解放', 'Achievements')];
+        const sec = [...el.overlay.querySelectorAll<HTMLElement>('.ul-sec')].find((x) => x.querySelector('h3 span')?.textContent === titles[Number(b.dataset.jump)]);
+        if (sec && ulBody) ulBody.scrollTo({ top: sec.offsetTop - ulBody.offsetTop - 8, behavior: 'smooth' });
+      }),
+    );
     el.overlay.classList.add('show');
     const unlocked = (b: HTMLElement) => {
       sfx.charmGet();
