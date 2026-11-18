@@ -3,6 +3,7 @@
 import { L } from '../i18n.ts';
 import {
   ACHIEVE_ADDS, PLACES, CHARM_ORDER, FARMERS, COMBOS, CUT, isCutAdd, type CharmId, type SymbolId, PAUSED_CHARMS, CHARM_TIER_NAMES, CHARMS, CONFIG, DIFFICULTIES, FEEDBACK_URL, META, SHARE_URL, SYMBOL_ORDER, SYMBOLS, THUNDER_LINES, UPGRADES,
+  UPGRADE_SYMBOL,
 } from '../config.ts';
 import { difficultyTaxMult, nextTax, placePrice, rateRun, taxPlan } from '../game.ts';
 import {
@@ -812,6 +813,15 @@ export function showDifficulty(): void {
 
 const FARMER_COLOR: Record<string, string> = { basic: '#5fae3c', berry: '#e5688f', pumpkin: '#e8862c', rancher: '#a8743e', rain: '#3a86c8' };
 
+/** 農家の狙い（1行）と得意なビルド（docs/builds.md の名前）。絵は狙いの要になる物 */
+const FARMER_GOAL: Record<string, { ico: ArtId; goal: string; build: string }> = {
+  basic: { ico: 'rain', goal: L('横一列のトマトを雨と太陽で育てる', 'Grow tomato rows with rain and sun'), build: L('トマトと天気雨', 'Tomato & weather') },
+  berry: { ico: 'hive', goal: L('巣箱の周りで苺を毎日実らせる', 'Ripen berries daily around hives'), build: L('苺と巣箱', 'Berries & hives') },
+  pumpkin: { ico: 'fertilizer', goal: L('かぼちゃの列に肥料で高く売る', 'Fertilize pumpkin rows, sell high'), build: L('かぼちゃと肥料', 'Pumpkin & fertilizer') },
+  rancher: { ico: 'henhouse', goal: L('小屋を早く置いて毎晩稼ぐ', 'Place coops early, earn nightly'), build: L('牧場', 'Ranch') },
+  rain: { ico: 'thunder', goal: L('雨の十字と雷でまとめて育てる', 'Grow many with rain and thunder'), build: L('雨と雷', 'Rain & thunder') },
+};
+
 export function showFarmerScreen(dir = 0): void {
   const saved = loadRun();
   let confirmNew = false;
@@ -822,20 +832,28 @@ export function showFarmerScreen(dir = 0): void {
     const unlocked = farmerUnlocked(meta, f.id);
     const color = FARMER_COLOR[f.id] ?? '#5fae3c';
     const nextIsDiff = maxDifficulty(meta) > 0;
-    // 最初の袋：いつもの袋＋農家の増減（増えた札は色つき、減った札は薄く）
+    // 増える・減る：農家で変わる札だけを、名前と数で（緑と赤の札）
+    const deltas = (Object.keys(f.bag) as SymbolId[]).filter((sym) => f.bag[sym]);
+    const chip = (sym: SymbolId, d: number) => `<button class="fs-chip ${d > 0 ? 'up' : 'down'}" data-ex-sym="${sym}">${art(sym as ArtId)}<b>${SYMBOLS[sym].name}</b><em>${d > 0 ? '+' : '−'}${Math.abs(d)}</em></button>`;
+    const ups = [
+      ...deltas.filter((sym) => f.bag[sym]! > 0).map((sym) => chip(sym, f.bag[sym]!)),
+      ...(Object.keys(f.charms) as CharmId[]).map((id) => `<button class="fs-chip up" data-ex-charm="${id}">${art(id as ArtId)}<b>${CHARMS[id].name}</b></button>`),
+      ...f.stock.map((id) => `<button class="fs-chip up" data-ex-place="${id}">${art(PLACE_ART[id])}<b>${PLACES[id].name}</b></button>`),
+    ].join('');
+    const downs = deltas.filter((sym) => f.bag[sym]! < 0).map((sym) => chip(sym, f.bag[sym]!)).join('');
+    // 最初の袋：全部の札を小さな札で（タップで説明）
+    let bagN = 0;
     const bag = SYMBOL_ORDER.flatMap((sym) => {
       const n = Math.max(0, CONFIG.initialBag[sym] + (f.bag[sym] ?? 0));
-      const dd = f.bag[sym] ?? 0;
-      return n > 0 || dd < 0 ? [`<button class="fs-card" data-ex-sym="${sym}" aria-label="${SYMBOLS[sym].name}"><span class="fs-card-in${dd > 0 ? ' up' : dd < 0 ? ' down' : ''}${SYMBOLS[sym].rarity === 'bad' ? ' bad' : ''}">${art(sym as ArtId)}<b>×${n}</b>${dd ? `<em>${dd > 0 ? '+' : ''}${dd}</em>` : ''}</span></button>`] : [];
+      bagN += n;
+      return n > 0 ? [`<button class="fs-mini-card${SYMBOLS[sym].rarity === 'bad' ? ' bad' : ''}" data-ex-sym="${sym}" aria-label="${SYMBOLS[sym].name}">${art(sym as ArtId)}<b>×${n}</b></button>`] : [];
     }).join('');
-    const extras = [
-      ...(Object.keys(f.charms) as CharmId[]).map((id) => `<button class="fs-relic" data-ex-charm="${id}">${art(id as ArtId)}<b>${CHARMS[id].name}</b></button>`),
-      ...f.stock.map((id) => `<button class="fs-relic" data-ex-place="${id}">${art(PLACE_ART[id])}<b>${PLACES[id].name}</b></button>`),
-    ].join('');
+    // 市に出やすい：絵と名前（いつも並ぶ物は「いつも」）
     const favor = [
-      ...f.favor.filter((id) => !isCutAdd(id) && !CONFIG.rareOffers.includes(id)).map((id) => `<span class="fs-mini">${ADD_EMOJI[id]}</span>`),
-      ...(f.favorPlaces ?? []).map((id) => `<span class="fs-mini">${art(PLACE_ART[id])}</span>`),
+      ...(f.favorPlaces ?? []).map((id) => `<span class="fs-fav">${art(PLACE_ART[id])}<b>${PLACES[id].name}</b><em>${L('いつも', 'always')}</em></span>`),
+      ...f.favor.filter((id) => !isCutAdd(id) && !CONFIG.rareOffers.includes(id)).map((id) => `<span class="fs-fav">${ADD_EMOJI[id]}<b>${SYMBOLS[UPGRADE_SYMBOL[id]!.symbol].name}</b></span>`),
     ].join('');
+    const g = FARMER_GOAL[f.id];
     el.overlay.innerHTML = `
       <div class="farm-screen" style="--fc:${color}" role="dialog" aria-label="${L('開店準備', 'Setup')}">
         <div class="ds-top">
@@ -855,10 +873,11 @@ export function showFarmerScreen(dir = 0): void {
         <h2 class="ds-name">${unlocked ? f.name : '？？？'}</h2>
         ${unlocked ? `<p class="fs-desc">${f.desc}</p>` : `<p class="fs-desc locked">${art('lock')} ${L(`「${DIFFICULTIES[f.unlockClear!].name}」をクリアで解放`, `Clear "${DIFFICULTIES[f.unlockClear!].name}" to unlock`)}</p>`}
         ${unlocked ? `<div class="ds-rules fs-info">
-          <p class="fs-tap">${L('札をタップで説明', 'Tap a card for details')}</p>
-          <p class="fs-k">${L('最初の袋', 'Starting bag')}</p>
+          ${g ? `<p class="fs-goal">${art(g.ico)}<b>${g.goal}</b></p><p class="fs-build"><span>${L('得意', 'Best')}：${L(`${g.build}ビルド`, g.build)}</span></p>` : ''}
+          ${ups ? `<div class="fs-delta"><span class="fs-k">${L('増える', 'More')}</span>${ups}</div>` : ''}
+          ${downs ? `<div class="fs-delta"><span class="fs-k">${L('減る', 'Less')}</span>${downs}</div>` : ''}
+          <p class="fs-k">${L(`最初の袋（${bagN}枚）`, `Starting bag (${bagN})`)}<span class="fs-tap">${L('タップで説明', 'Tap for details')}</span></p>
           <div class="fs-bag">${bag}</div>
-          ${extras ? `<p class="fs-k">${L('持ってくる物', 'Brings')}</p><div class="fs-relics">${extras}</div>` : ''}
           ${favor ? `<p class="fs-k">${L('市に出やすい', 'Often at market')}</p><div class="fs-favor">${favor}</div>` : ''}
         </div>` : `<div class="ds-rules fs-info fs-info-locked">${art('lock')}</div>`}
         <div class="fs-roster">${list.map((x) => `<button class="fs-face${x.id === f.id ? ' on' : ''}${farmerUnlocked(meta, x.id) ? '' : ' locked'}" data-farmer="${x.id}" style="--c:${FARMER_COLOR[x.id] ?? '#5fae3c'}" aria-label="${farmerUnlocked(meta, x.id) ? x.name : '？？？'}">${farmerUnlocked(meta, x.id) ? art(x.art as ArtId) : art('lock')}</button>`).join('')}</div>

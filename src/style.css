@@ -9154,3 +9154,29 @@ button.fs-relic { font: inherit; color: var(--ink); cursor: pointer; }
 .stall .shop.offer-row .offer-item .pivot-tag { position: absolute; top: -10px; left: 50%; translate: -50% 0; margin: 0; }
 .stall .shop.offer-row .offer-item .cost.free { margin-top: 4px; min-width: 72%; padding: 3px 10px; background: #ffcc33; }
 .stall .shop.offer-row .offer-item .cost.free b { font-size: 1rem; }
+
+/* ==== 農家を選ぶ：狙い1行・得意なビルド・増える/減る・最初の袋・市に出やすい ==== */
+.fs-info { gap: 5px; }
+.fs-goal { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 1rem; line-height: 1.3; }
+.fs-goal .art { width: 28px; height: 28px; flex: none; }
+.fs-build { margin: 0; }
+.fs-build span { display: inline-block; padding: 1px 10px; font-size: 0.8125rem; font-weight: 800; color: #fff; background: #3d7a24; border: 2px solid var(--ink); border-radius: 999px; }
+.fs-delta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.fs-delta .fs-k { margin: 0; width: 3.2em; }
+.fs-chip { display: inline-flex; align-items: center; gap: 3px; padding: 1px 8px 1px 3px; font: inherit; font-size: 0.875rem; font-weight: 800; color: var(--ink); border: 2px solid var(--ink); border-radius: 999px; cursor: pointer; width: auto; box-shadow: none; }
+.fs-chip .art { width: 22px; height: 22px; }
+.fs-chip em { font-style: normal; font-family: var(--font-pop); font-weight: 400; }
+.fs-chip.up { background: #e3f5d3; }
+.fs-chip.up em { color: #2f6b1c; }
+.fs-chip.down { background: #ffe0dc; }
+.fs-chip.down em { color: #a8301f; }
+.fs-info > .fs-k { display: flex; align-items: baseline; margin-top: 2px; }
+.fs-info > .fs-k .fs-tap { margin-left: auto; }
+.fs-bag { gap: 4px; }
+.fs-mini-card { display: inline-flex; align-items: center; gap: 2px; padding: 1px 7px 1px 2px; font: inherit; font-size: 0.8125rem; font-weight: 800; color: var(--ink); background: #fff; border: 2px solid var(--ink); border-radius: 8px; cursor: pointer; width: auto; box-shadow: none; }
+.fs-mini-card .art { width: 24px; height: 24px; }
+.fs-mini-card.bad { background: #fde7ec; }
+.fs-favor { flex-wrap: wrap; gap: 4px; }
+.fs-fav { display: inline-flex; align-items: center; gap: 3px; padding: 1px 8px 1px 3px; font-size: 0.8125rem; font-weight: 800; background: #fff; border: 2px solid var(--ink); border-radius: 999px; }
+.fs-fav .art, .fs-fav svg { width: 22px; height: 22px; }
+.fs-fav em { font-style: normal; color: #a85a0c; }
