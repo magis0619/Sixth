@@ -9203,3 +9203,12 @@ button.fs-relic { font: inherit; color: var(--ink); cursor: pointer; }
 .ds-rules ul.ds-old { gap: 3px; }
 .ds-rules ul.ds-old li { font-size: 0.9375rem; color: var(--ink-soft); }
 .ds-rules ul.ds-old li .art { width: 1.4em; height: 1.4em; opacity: 0.75; }
+
+/* ==== タイトル：下の4つは同じ大きさの2×2。解放のポイントは右上の札 ==== */
+.title-sub .icon-pill { position: relative; min-height: 44px; }
+.title-sub .pt-tag {
+  position: absolute; top: -10px; right: -6px;
+  padding: 0 8px; font-style: normal; font-size: 0.8125rem; font-weight: 800; line-height: 1.5;
+  color: var(--ink); background: #ffcc33; border: 2px solid var(--ink); border-radius: 999px;
+  box-shadow: 0 2px 0 var(--ink); rotate: 4deg;
+}
