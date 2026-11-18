@@ -968,7 +968,18 @@ const swallowBody = `
   <path d="M10 30Q12 33 16 33" fill="${C.red[0]}" ${S2}/>
   ${eye(15, 26, 1.8)}
   <path d="M4 28L9 27L8 30Z" fill="${INK}"/>`;
+// タカ：茶色の翼を広げ、黄色の曲がったくちばし（カラスを追い払う鳥）
+const hawkBody = `<g transform="translate(-6 -6) scale(1.2)">
+  ${face('M4 26Q16 14 30 22Q44 14 60 24Q50 30 40 30L34 34L30 34L24 30Q14 32 4 26Z', ['#b0773c', '#8a5a2b', '#d9a066'], 30, 22, 0.86)}
+  <path d="M14 26L18 30M22 24L25 29M42 24L39 29M50 26L46 30" fill="none" stroke="#6b431f" stroke-width="2" stroke-linecap="round"/>
+  ${face('M24 30Q32 26 40 30Q42 44 32 50Q22 44 24 30Z', ['#c98d4e', '#9a6631', '#e8b97f'], 32, 38, 0.84, S2)}
+  ${face('M26 34Q32 32 38 34Q38 42 32 46Q26 42 26 34Z', ['#fff3dc', '#e6d2ae', '#ffffff'], 32, 40, 0.84, S2)}
+  <path d="M28 50L26 58L32 53L38 58L36 50Z" fill="#8a5a2b" ${S2}/>
+  ${face(E(32, 22, 8, 7), ['#fff3dc', '#e6d2ae', '#ffffff'], 32, 21, 0.86, S2)}
+  ${eye(29, 20, 1.8)}${eye(35, 20, 1.8)}
+  <path d="M30 24Q32 23 34 24L33 29Q32 30 31 28Z" fill="#f5c518" ${S2}/></g>`;
 const CARD_ART = {
+  hawk: hawkBody,
   can: `
     ${ground(59, 18)}
     ${face('M14 26H44L42 54Q42 58 38 58H20Q16 58 16 54Z', ['#5aa9e6', '#3a86c8', '#c4e6ff'], 26, 40, 0.88)}

@@ -103,6 +103,8 @@ export interface GameState {
   /** 特別なマス（作物と重ねられる） */
   tiles: (PlaceId | null)[];
   /** 手に入れて、まだ畑に置いていない道具・特別なマス */
+  /** 大かかしが袋のカラスを追い出した日（1日1回まで） */
+  crowBanishedDay?: number;
   stock: PlaceId[];
   /** 袋の条件を満たして、次の年貢後の3択に必ず並ぶ特別なお守り */
   ready: CharmId[];
@@ -253,7 +255,7 @@ export interface GameSetup {
   mastery?: number;
 }
 
-export const ALL_ADDS: AddUpgradeId[] = ['addCan', 'addEgg', 'addSeed', 'addBerrySeed', 'addPumpkinSeed', 'addMelonSeed', 'addWatermelonSeed', 'addRain', 'addSun', 'addThunder', 'addHoe', 'addFertilizer', 'addBee', 'addMerchant', 'addGoldSeed', 'addClover'];
+export const ALL_ADDS: AddUpgradeId[] = ['addCan', 'addEgg', 'addHawk', 'addSeed', 'addBerrySeed', 'addPumpkinSeed', 'addMelonSeed', 'addWatermelonSeed', 'addRain', 'addSun', 'addThunder', 'addHoe', 'addFertilizer', 'addBee', 'addMerchant', 'addGoldSeed', 'addClover'];
 
 export function newGame(setup: GameSetup = { shop: ALL_ADDS, charmPool: CHARM_ORDER }): GameState {
   const state = freshGame(setup);
@@ -1374,7 +1376,7 @@ export function startDay(state: GameState, rng: Rng): EndDayResult {
 }
 
 export type AutoEvent =
-  | { type: 'crow'; cell: number | null; crop: Crop | null; eaten: boolean; toll: number; guarded: boolean; pecked?: boolean; reward?: number }
+  | { type: 'crow'; cell: number | null; crop: Crop | null; eaten: boolean; toll: number; guarded: boolean; pecked?: boolean; reward?: number; banished?: boolean }
   | { type: 'bug'; cell: number | null; warded: boolean; damage: number; hen: boolean; reward?: number }
   | { type: 'coin'; amount: number }
   | { type: 'merchant'; mult: number }
@@ -1385,7 +1387,8 @@ export type AutoEvent =
   | { type: 'locust'; cell: number | null; damage: number; bred: number }
   | { type: 'clover'; boost: number }
   | { type: 'egg'; progress: number; hatched: boolean }
-  | { type: 'swallow'; removed: SymbolId | null; amount: number };
+  | { type: 'swallow'; removed: SymbolId | null; amount: number }
+  | { type: 'hawk'; removed: boolean; amount: number };
 
 export function crowEatChance(state: GameState, power: number): number {
   const flock = state.contract === 'crowFlock' ? 2 : 1;
@@ -1467,6 +1470,15 @@ function resolveAutoRaw(state: GameState, reel: number, rng: Rng): AutoEvent | n
       }
       earn(state, 2);
       return { type: 'swallow', removed: null, amount: 2 };
+    }
+    case 'hawk': {
+      // タカ：袋のカラスを1枚追い出す。いなければ+2
+      if (state.bag.crow > 0) {
+        state.bag.crow--;
+        return { type: 'hawk', removed: true, amount: 0 };
+      }
+      earn(state, 2);
+      return { type: 'hawk', removed: false, amount: 2 };
     }
     case 'koban': {
       // 小判：金貨より多く、年貢を納めるたびに増える
@@ -1598,12 +1610,18 @@ function resolveAutoRaw(state: GameState, reel: number, rng: Rng): AutoEvent | n
     case 'crow': {
       const toll = 2 * lv(state, 'crowToll') + 3 * state.charms.crowReturn + (state.charms.crowFriend > 0 ? 3 : 0);
       if (toll) earn(state, toll);
+      // 大かかしが畑にあると、カラスが出た日に袋のカラスを1枚追い出す（1日1回）
+      const banished = state.bag.crow > 0 && state.crowBanishedDay !== state.day && fieldCells(state).some((i) => state.tools[i] === 'bigScarecrow');
+      if (banished) {
+        state.bag.crow--;
+        state.crowBanishedDay = state.day;
+      }
       // カラスの友：作物には手を出さない
-      if (state.charms.crowFriend > 0) return { type: 'crow', cell: null, crop: null, eaten: false, toll, guarded: false };
+      if (state.charms.crowFriend > 0) return { banished, type: 'crow', cell: null, crop: null, eaten: false, toll, guarded: false };
       // かぼちゃは大きくて重いので狙われない
       // かぼちゃ・スイカのような重い作物も狙う（食べられないが、つついて売値を下げる）
       const occupied = state.field.flatMap((c, i) => (c && (c.anchor === undefined) ? [i] : []));
-      if (occupied.length === 0) return { type: 'crow', cell: null, crop: null, eaten: false, toll, guarded: false };
+      if (occupied.length === 0) return { banished, type: 'crow', cell: null, crop: null, eaten: false, toll, guarded: false };
       // 一番やられたくない作物を狙う（かかしで守っていれば追い払われる）
       const cell = pickWorst(occupied, (i) => cropWorth(state, i), rng);
       const crop = state.field[cell];
@@ -1612,24 +1630,24 @@ function resolveAutoRaw(state: GameState, reel: number, rng: Rng): AutoEvent | n
         state.stats.crowsMissed++;
         guardians(state, cell).forEach((g) => state.toolXp[g]++);
         evolveTools(state);
-        return { type: 'crow', cell, crop, eaten: false, toll, guarded: true, reward: repelReward(state, cell) };
+        return { banished, type: 'crow', cell, crop, eaten: false, toll, guarded: true, reward: repelReward(state, cell) };
       }
       // 熟成の代償：実った作物はカラスが食べやすい
       if (rng() >= crowEatChance(state, r.power) * (crop && isRipe(crop) && state.charms.aging > 0 ? 1.5 : 1)) {
         state.stats.crowsMissed++;
-        return { type: 'crow', cell, crop, eaten: false, toll, guarded: false };
+        return { banished, type: 'crow', cell, crop, eaten: false, toll, guarded: false };
       }
       // 重くて食べられない作物は、つつくだけ（売値−20%、1回まで）
       if (crop && CROPS[crop.kind].crowProof) {
         crop.pecked = true;
-        return { type: 'crow', cell, crop, eaten: false, toll, guarded: false, pecked: true };
+        return { banished, type: 'crow', cell, crop, eaten: false, toll, guarded: false, pecked: true };
       }
       removeCrop(state, cell);
       state.stats.cropsEaten++;
       state.stats.crowEaten++;
       // カラス返し：たくさん食べられたらその場でもらえる
       if (!CUT.charms.includes('crowReturn') && state.charms.crowReturn === 0 && state.stats.crowEaten >= EVENT_CONDITIONS.crowReturn) grant(state, 'crowReturn');
-      return { type: 'crow', cell, crop, eaten: true, toll, guarded: false };
+      return { banished, type: 'crow', cell, crop, eaten: true, toll, guarded: false };
     }
     default:
       return null;
@@ -2486,7 +2504,9 @@ export function resolveAuto(state: GameState, reel: number, rng: Rng): AutoEvent
   let t = '';
   switch (ev.type) {
     case 'coin': t = `+${ev.amount}`; break;
-    case 'crow': t = ev.cell === null ? (state.charms.crowFriend > 0 ? `カラスの友で食べない +${ev.toll}` : '狙う作物なし') : ev.guarded ? `かかしで追い払った ${cellName(ev.cell)}` : ev.eaten ? `${cropName(ev.crop)}を食べた ${cellName(ev.cell)}（売値${ev.crop ? CROPS[ev.crop.kind].price : 0}）` : ev.pecked ? `${cropName(ev.crop)}をつついた −20% ${cellName(ev.cell)}` : `外れ ${cellName(ev.cell)}`; break;
+    case 'crow': t = ev.cell === null ? (state.charms.crowFriend > 0 ? `カラスの友で食べない +${ev.toll}` : '狙う作物なし') : ev.guarded ? `かかしで追い払った ${cellName(ev.cell)}` : ev.eaten ? `${cropName(ev.crop)}を食べた ${cellName(ev.cell)}（売値${ev.crop ? CROPS[ev.crop.kind].price : 0}）` : ev.pecked ? `${cropName(ev.crop)}をつついた −20% ${cellName(ev.cell)}` : `外れ ${cellName(ev.cell)}`;
+      if (ev.banished) t += '・大かかしが袋のカラスを追い出した';
+      break;
     case 'bug': t = ev.cell === null ? '作物なし' : ev.warded ? `防いだ ${cellName(ev.cell)}` : `成長-${ev.damage} ${cellName(ev.cell)}`; break;
     case 'weed': t = ev.warded ? '防いだ' : ev.cells.length ? `生えた ${ev.cells.map(cellName).join('')}` : '生える所なし'; break;
     case 'tanuki': t = `盗んだ${ev.stolen} ${ev.taken.map((x) => cropName(x.crop)).join('・')}`; break;
@@ -2497,6 +2517,7 @@ export function resolveAuto(state: GameState, reel: number, rng: Rng): AutoEvent
     case 'clover': t = `明日の金の種×${ev.boost}`; break;
     case 'egg': t = ev.hatched ? '孵ってツバメになった' : `孵化 ${ev.progress}/${CONFIG.eggHatch}`; break;
     case 'swallow': t = ev.removed ? `${SYMBOLS[ev.removed].name}を追い出した` : `+${ev.amount}`; break;
+    case 'hawk': t = ev.removed ? 'カラスを追い出した' : `+${ev.amount}`; break;
   }
   glog(state, `自動 ${SYMBOLS[sym].name}: ${t}${rw ? ` 追い払いのお礼+${rw}` : ''}`);
   return ev;

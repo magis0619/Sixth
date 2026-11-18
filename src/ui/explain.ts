@@ -142,6 +142,7 @@ function symbolRows(sym: SymbolId): string[] {
   if (sym === 'moon') return [row(art('moonHalf'), L('満ちる', 'Waxes'), L('出るたびに1つ', 'Each time')), row(art('moon'), L('満月で', 'Full moon'), L('畑全体 +1', 'Whole field +1'))];
   if (sym === 'egg') return [row(art('eggCrack2'), L('孵るまで', 'Hatches in'), L(`${CONFIG.eggHatch}回`, `${CONFIG.eggHatch}`)), row(art('swallow'), L('生まれる', 'Becomes'), L('ツバメ', 'Swallow'))];
   if (sym === 'swallow') return [row(art('bug'), L('袋の虫', 'Bag bugs'), L('1枚 追い出す', '−1')), row(art('coin'), L('虫がいない', 'No bugs'), '+2')];
+  if (sym === 'hawk') return [row(art('crow'), L('袋のカラス', 'Bag crows'), L('1枚 追い出す', '−1')), row(art('coin'), L('カラスがいない', 'No crows'), '+2')];
   if (sym === 'coin') return [row(art('coin'), L('お金', 'Gold'), `+${CONFIG.coinAmount}`)];
   if (symbolBase(sym) === 'fertilizer') return [row(art('fertilizer'), L('売値', 'Price'), '×1.5')];
   if (d.kind === 'manual') {

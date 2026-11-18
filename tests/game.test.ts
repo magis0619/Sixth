@@ -1411,6 +1411,32 @@ describe('じょうろ・卵とツバメ・新しいお守り', () => {
     resolveAuto(s, 0, () => 0.5);
     expect(s.bag.bug).toBe(1);
   });
+  it('タカは袋のカラスを1枚追い出す（いなければ+2）', () => {
+    const s = g();
+    s.bag.crow = 2;
+    s.results = [reel('hawk')];
+    resolveAuto(s, 0, () => 0.5);
+    expect(s.bag.crow).toBe(1);
+    s.bag.crow = 0;
+    const gold = s.gold;
+    s.results = [reel('hawk')];
+    resolveAuto(s, 0, () => 0.5);
+    expect(s.gold).toBe(gold + 2);
+  });
+  it('大かかしがあると、カラスが出た日に袋のカラスを1枚追い出す（1日1回・カラスの友でも）', () => {
+    const s = g();
+    s.charms.crowFriend = 1;
+    s.tools[at(2, 2)] = 'bigScarecrow';
+    s.bag.crow = 3;
+    s.results = [reel('crow'), reel('crow')];
+    resolveAuto(s, 0, () => 0.5);
+    resolveAuto(s, 1, () => 0.5);
+    expect(s.bag.crow).toBe(2);
+    s.day = 3;
+    s.results = [reel('crow')];
+    resolveAuto(s, 0, () => 0.5);
+    expect(s.bag.crow).toBe(1);
+  });
   it('カラスの友：カラスは食べずに+3、虫は2倍。欲張り：列+0.2・単品は売れない。早生：1段階育って植わり、売値−25%', () => {
     const s = g();
     s.charms.crowFriend = 1;

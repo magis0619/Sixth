@@ -39,7 +39,9 @@ export type SymbolId =
   // じょうろ・卵（孵化するとツバメ）
   | 'can'
   | 'egg'
-  | 'swallow';
+  | 'swallow'
+  // タカ（袋のカラスを追い出す）
+  | 'hawk';
 
 export type UpgradeId =
   | 'addSeed'
@@ -59,6 +61,7 @@ export type UpgradeId =
   | 'addHoe'
   | 'addCan'
   | 'addEgg'
+  | 'addHawk'
   | 'removeCrow'
   | 'removeBug'
   | 'removeWeed'
@@ -178,6 +181,7 @@ export const SYMBOLS: Record<SymbolId, SymbolDef> = {
   superFert: { id: 'superFert', name: '極上の肥料', emoji: '🧪', kind: 'manual', shape: 'plus', desc: '十字の5マスの作物の売値×1.5', feverDesc: '堆肥：畑の全作物に肥料', rarity: 'rare', base: 'fertilizer' },
   can: { id: 'can', name: 'じょうろ', emoji: '🚿', kind: 'manual', shape: 'one', desc: '1マス 成長+2', feverDesc: '大当たり×3', rarity: 'normal' },
   egg: { id: 'egg', name: '卵', emoji: '🥚', kind: 'auto', desc: 'スロットに3回出ると孵ってツバメになる', feverDesc: '大当たり×3', rarity: 'normal' },
+  hawk: { id: 'hawk', name: 'タカ', emoji: '🦅', kind: 'auto', desc: '袋のカラスを1枚追い出す', feverDesc: '大当たり×3', rarity: 'normal' },
   swallow: { id: 'swallow', name: 'ツバメ', emoji: '🐦', kind: 'auto', desc: '袋の虫を1枚追い出す（虫がいなければ+2）', feverDesc: '大当たり×3', rarity: 'normal' },
   koban: { id: 'koban', name: '小判', emoji: '🪙', kind: 'auto', desc: '+12（年貢を納めるたびに+3）', feverDesc: '大当たり×3', rarity: 'rare', base: 'coin' },
   locust: { id: 'locust', name: 'イナゴ', emoji: '🦗', kind: 'auto', desc: '出るたびに1/2で袋に1匹増える（畑はかじらない）', feverDesc: '大群：増えるときは2匹', rarity: 'bad' },
@@ -185,7 +189,7 @@ export const SYMBOLS: Record<SymbolId, SymbolDef> = {
 
 /** 絵柄袋・ショップでの表示順 */
 export const SYMBOL_ORDER: SymbolId[] = [
-  'seed', 'oniSeed', 'berrySeed', 'heartSeed', 'pumpkinSeed', 'lanternSeed', 'melonSeed', 'watermelonSeed', 'boxSeed', 'goldSeed', 'rain', 'bigRain', 'sun', 'bigSun', 'thunder', 'raijin', 'hoe', 'fertilizer', 'superFert', 'bee', 'queenBee', 'coin', 'koban', 'can', 'egg', 'swallow', 'merchant', 'clover', 'moon', 'crow', 'bug', 'weed', 'tanuki', 'frost', 'mole', 'locust',
+  'seed', 'oniSeed', 'berrySeed', 'heartSeed', 'pumpkinSeed', 'lanternSeed', 'melonSeed', 'watermelonSeed', 'boxSeed', 'goldSeed', 'rain', 'bigRain', 'sun', 'bigSun', 'thunder', 'raijin', 'hoe', 'fertilizer', 'superFert', 'bee', 'queenBee', 'coin', 'koban', 'can', 'egg', 'swallow', 'hawk', 'merchant', 'clover', 'moon', 'crow', 'bug', 'weed', 'tanuki', 'frost', 'mole', 'locust',
 ];
 
 // ---- 作物 ----
@@ -269,7 +273,7 @@ export interface PlaceDef {
 
 export const PLACES: Record<PlaceId, PlaceDef> = {
   scarecrow: { id: 'scarecrow', kind: 'tool', name: 'かかし', desc: '周り8マスをカラス・虫・雑草から守る', price: 20 },
-  bigScarecrow: { id: 'bigScarecrow', kind: 'tool', name: '大かかし', desc: '2マス以内をカラス・虫・雑草から守る', price: null },
+  bigScarecrow: { id: 'bigScarecrow', kind: 'tool', name: '大かかし', desc: '2マス以内をカラス・虫・雑草から守る。カラスが出た日に袋のカラスを1枚追い出す（1日1回）', price: null },
   well: { id: 'well', kind: 'tool', name: '井戸', desc: '上下左右 毎日+1', price: 60 },
   goldenWell: { id: 'goldenWell', kind: 'tool', name: '黄金の井戸', desc: '周り8マス 毎日+1', price: null },
   hive: { id: 'hive', kind: 'tool', name: '巣箱', desc: '周り8マス 売値+20%・苺が毎晩育つ', price: 30 },
@@ -316,7 +320,7 @@ export const CONFIG = {
   initialBag: {
     seed: 3, berrySeed: 0, pumpkinSeed: 0, melonSeed: 0, goldSeed: 0, rain: 2, sun: 1, thunder: 0, fertilizer: 0, bee: 0,
     crow: 1, bug: 0, coin: 1, merchant: 0, clover: 0, moon: 0, weed: 0, tanuki: 0, frost: 0, watermelonSeed: 0, hoe: 0, mole: 0, locust: 0,
-    oniSeed: 0, heartSeed: 0, lanternSeed: 0, boxSeed: 0, bigRain: 0, bigSun: 0, raijin: 0, queenBee: 0, superFert: 0, koban: 0, can: 0, egg: 0, swallow: 0,
+    oniSeed: 0, heartSeed: 0, lanternSeed: 0, boxSeed: 0, bigRain: 0, bigSun: 0, raijin: 0, queenBee: 0, superFert: 0, koban: 0, can: 0, egg: 0, swallow: 0, hawk: 0,
   } as Record<SymbolId, number>,
   /** 合体に要る同じ絵柄の枚数（市で1回に1種類まで） */
   /** 市の日（水・土）に売ると売値がこの倍率 */
@@ -453,6 +457,7 @@ export const CONFIG = {
     addSeed: 8,
     addCan: 10,
     addEgg: 12,
+    addHawk: 14,
     addBerrySeed: 8,
     addPumpkinSeed: 14,
     addRain: 8,
@@ -572,6 +577,7 @@ export const CONFIG = {
 export const UPGRADES: { id: UpgradeId; name: string; emoji: string; desc: string }[] = [
   { id: 'addCan', name: 'じょうろを足す', emoji: '🚿', desc: '絵柄袋にじょうろ（1マス 成長+2）を1枚追加' },
   { id: 'addEgg', name: '卵を足す', emoji: '🥚', desc: '絵柄袋に卵を1枚追加。スロットに3回出るとツバメになる' },
+  { id: 'addHawk', name: 'タカを足す', emoji: '🦅', desc: '絵柄袋にタカを1枚追加。出ると袋のカラスを1枚追い出す' },
   { id: 'addSeed', name: 'トマトの種を足す', emoji: '🍅', desc: '絵柄袋にトマトの種を1枚追加' },
   { id: 'addBerrySeed', name: '苺の種を足す', emoji: '🍓', desc: '絵柄袋に苺の種を1枚追加' },
   { id: 'addPumpkinSeed', name: 'かぼちゃの種を足す', emoji: '🎃', desc: '絵柄袋にかぼちゃの種を1枚追加' },
@@ -601,6 +607,7 @@ export const UPGRADE_SYMBOL: Partial<Record<UpgradeId, { symbol: SymbolId; delta
   addSeed: { symbol: 'seed', delta: 1 },
   addCan: { symbol: 'can', delta: 1 },
   addEgg: { symbol: 'egg', delta: 1 },
+  addHawk: { symbol: 'hawk', delta: 1 },
   addBerrySeed: { symbol: 'berrySeed', delta: 1 },
   addPumpkinSeed: { symbol: 'pumpkinSeed', delta: 1 },
   addRain: { symbol: 'rain', delta: 1 },
@@ -696,7 +703,7 @@ export const CHARMS: Record<CharmId, CharmDef> = {
   goldenWell: { id: 'goldenWell', tier: 'rare', name: '黄金の井戸', emoji: '⛲', desc: () => '黄金の井戸を置く（周り8マス 毎日+1）', max: Infinity },
   queenHive: { id: 'queenHive', tier: 'uncommon', name: '女王蜂の巣箱', emoji: '👑', desc: () => '女王蜂の巣箱を置く（周り8マス 売値+50%）', max: 2 },
   bargain: { id: 'bargain', tier: 'uncommon', name: '値切り上手', emoji: '🏷️', desc: (n) => `強化の価格−${Math.min(50, 10 * n)}%`, max: 5 },
-  scarecrow: { id: 'scarecrow', tier: 'common', name: '大かかし', emoji: '🎃', desc: () => '大かかしを置く（2マス以内をカラス・虫・雑草から守る）', max: 3 },
+  scarecrow: { id: 'scarecrow', tier: 'common', name: '大かかし', emoji: '🎃', desc: () => '大かかしを置く（2マス以内を守る。カラスが出た日は袋のカラスも1枚追い出す）', max: 3 },
   bumper: { id: 'bumper', tier: 'rare', name: '豊作', emoji: '🧺', desc: (n) => `金以外の作物 売値＋${15 * n}%`, max: 3 },
   goldLuck: { id: 'goldLuck', tier: 'uncommon', name: '金運', emoji: '🐱', desc: (n) => `金のとうもろこし 売値＋${10 * n}`, max: 3 },
   bugWard: { id: 'bugWard', tier: 'common', name: '草よけ', emoji: '🌿', desc: (n) => `虫・雑草を${Math.round((1 - Math.pow(0.5, n)) * 100)}%防ぐ・草むしり無料`, max: 4 },
@@ -854,12 +861,13 @@ export const META = {
   clearBonus: 20,
   /** 最初から解放されている「足す」強化 */
   // 最初から並ぶ札（はじめての人が雨・太陽だけにならないように。上級の物だけポイントで解放）
-  startUnlocked: ['addSun', 'addRain', 'addSeed', 'addBerrySeed', 'addPumpkinSeed', 'addFertilizer', 'addBee', 'addCan', 'addEgg'] as AddUpgradeId[],
+  startUnlocked: ['addSun', 'addRain', 'addSeed', 'addBerrySeed', 'addPumpkinSeed', 'addFertilizer', 'addBee', 'addCan', 'addEgg', 'addHawk'] as AddUpgradeId[],
   /** 「足す」強化の解放ポイントと、ショップに並べるコスト */
   adds: {
     addSun: { unlock: 0, cost: 2 },
     addCan: { unlock: 0, cost: 1 },
     addEgg: { unlock: 0, cost: 2 },
+    addHawk: { unlock: 0, cost: 2 },
     addRain: { unlock: 0, cost: 1 },
     addSeed: { unlock: 20, cost: 1 },
     addBerrySeed: { unlock: 15, cost: 1 },
@@ -946,6 +954,7 @@ if (EN) {
     can: ['Watering Can', '1 plot: growth +2', 'Jackpot ×3'],
     egg: ['Egg', 'Hatches into a swallow after appearing 3 times', 'Jackpot ×3'],
     swallow: ['Swallow', 'Drives 1 bug out of your bag (+2g if none)', 'Jackpot ×3'],
+    hawk: ['Hawk', 'Drives 1 crow out of your bag (+2g if none)', 'Jackpot ×3'],
     koban: ['Gold Koban', '+12g (+3g per tax paid)', 'Jackpot ×3'],
   };
   (Object.keys(sym) as SymbolId[]).forEach((id) => {
@@ -957,7 +966,7 @@ if (EN) {
   Object.assign(SHAPE_NAMES, { cross: 'Cross', column: 'Column', row: 'Row', x: 'Diagonals', all: 'Whole field', one: '1 square', col3: '3 columns', xline: 'Diagonal lines', box: '3×3', plus: 'Plus (5)' });
   const place: Record<PlaceId, [string, string]> = {
     scarecrow: ['Scarecrow', 'Guards the 8 plots around it from crows, bugs and weeds'],
-    bigScarecrow: ['Big Scarecrow', 'Guards everything within 2 plots from crows, bugs and weeds'],
+    bigScarecrow: ['Big Scarecrow', 'Guards everything within 2 plots from crows, bugs and weeds. Drives 1 crow out of your bag on days a crow appears'],
     well: ['Well', 'Up/down/left/right +1 growth each day'],
     goldenWell: ['Golden Well', 'The 8 plots around +1 growth each day'],
     hive: ['Beehive', '8 plots around: price +20%; strawberries grow nightly'],
@@ -991,7 +1000,7 @@ if (EN) {
   const up: Partial<Record<UpgradeId, string>> = {
     addSeed: 'Tomato Seed', addBerrySeed: 'Strawberry Seed', addPumpkinSeed: 'Pumpkin Seed', addRain: 'Rain', addSun: 'Sun', addFertilizer: 'Fertilizer',
     addGoldSeed: 'Golden Seed', addMelonSeed: 'Melon Seed', addThunder: 'Thunder', addWatermelonSeed: 'Watermelon Seed', addHoe: 'Hoe', addBee: 'Bee',
-    addMerchant: 'Merchant', addClover: 'Clover', addMoon: 'Moon', addCan: 'Watering Can', addEgg: 'Egg',
+    addMerchant: 'Merchant', addClover: 'Clover', addMoon: 'Moon', addCan: 'Watering Can', addEgg: 'Egg', addHawk: 'Hawk',
     removeCrow: 'Crow', removeBug: 'Bug', removeWeed: 'Weed', removeTanuki: 'Tanuki', removeFrost: 'Frost', removeMole: 'Mole', removeLocust: 'Locust',
   };
   UPGRADES.forEach((u) => {

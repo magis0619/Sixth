@@ -311,6 +311,7 @@ export const FEVER_FX: Record<SymbolId, { ico: ArtId | null; text: string }> = {
   can: { ico: 'coin', text: L('大当たり×3', 'Jackpot ×3') },
   egg: { ico: 'coin', text: L('大当たり×3', 'Jackpot ×3') },
   swallow: { ico: 'coin', text: L('大当たり×3', 'Jackpot ×3') },
+  hawk: { ico: 'coin', text: L('大当たり×3', 'Jackpot ×3') },
 };
 
 /** フィーバーの札：絵柄ごとに1枚。良い絵柄には大当たりの金貨の印 */

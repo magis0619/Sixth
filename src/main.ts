@@ -1122,7 +1122,7 @@ const longTotal = (len: number): number => Math.round(CONFIG.lineMult * CONFIG.l
 /** 市の畑の品の効き目：1行に1つ、行の頭に絵（docs/ui-reading.md） */
 const PLACE_ROWS: Record<PlaceId, [ArtId, string][]> = {
   scarecrow: [['crow', L('周り8マスを守る', 'Guards 8 around')], ['coin', L('追い払うと+1', '+1 per shoo')]],
-  bigScarecrow: [['crow', L('2マス以内を守る', 'Guards 2 away')], ['coin', L('追い払うと+2', '+2 per shoo')]],
+  bigScarecrow: [['crow', L('2マス以内を守る', 'Guards 2 away')], ['coin', L('追い払うと+2', '+2 per shoo')], ['puff', L('袋のカラス−1（1日1回）', 'Bag crow −1 daily')]],
   well: [['sprout', L('上下左右 毎晩+1', '4 sides +1 nightly')]],
   goldenWell: [['sprout', L('周り8マス 毎晩+1', '8 around +1 nightly')]],
   hive: [['coin', L('周り8マス 売値+20%', '8 around price +20%')], ['strawberry', L('苺が毎晩育つ', 'Strawberries grow nightly')]],
@@ -1966,6 +1966,19 @@ async function resolveAutos(): Promise<void> {
         sfx.coin();
         floatText(from.x, from.y - 30, money(ev.amount), { cls: 'gold', size: 0.8 });
       }
+    } else if (ev.type === 'hawk') {
+      // タカ：袋のカラスを追い出す（カラスの札が袋からリールへ飛んで、羽が散る）
+      if (ev.removed) {
+        autoOutcome[i] = L('カラスを追い出した', 'Crow out');
+        sfx.shoo();
+        const chip = visibleOr(el.bag.querySelector('[data-sym="crow"]'), 'bag');
+        flyTo(center(chip), reels[i], symHtml('crow'), 1, () => burst(from.x, from.y, ['🪶', '✨'], 8, 50));
+        renderBag();
+      } else {
+        autoOutcome[i] = `+${gold(ev.amount)}`;
+        sfx.coin();
+        floatText(from.x, from.y - 30, money(ev.amount), { cls: 'gold', size: 0.8 });
+      }
     } else if (ev.cell === null) {
       autoOutcome[i] = state.charms.crowFriend > 0 ? L('仲良し', 'Friend') : L('空振り', 'Miss');
       sfx.crow();
@@ -2004,6 +2017,16 @@ async function resolveAutos(): Promise<void> {
         vibrate(120);
       }
       renderField();
+    }
+    // 大かかしが袋のカラスを1枚追い出した：大かかしからリールへカラスが飛んで、袋の札が減る
+    if (ev.type === 'crow' && ev.banished) {
+      const big = fieldCells().find((c) => state.tools[c] === 'bigScarecrow');
+      const src = big !== undefined ? center(el.field.children[big]) : from;
+      sfx.shoo();
+      floatText(src.x, src.y - 40, `${art('bigScarecrow')} ${L('袋のカラス −1', 'Bag crow −1')}`, { cls: 'good', size: 0.9, dur: 1400 });
+      const chip = visibleOr(el.bag.querySelector('[data-sym="crow"]'), 'bag');
+      flyTo(center(chip), reels[i], symHtml('crow'), 1, () => burst(from.x, from.y, ['🪶', '✨'], 8, 50));
+      renderBag();
     }
     if (ev.type === 'crow' && ev.toll > 0) {
       sfx.coin();
