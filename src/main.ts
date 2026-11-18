@@ -2146,8 +2146,8 @@ function onPlotTap(cell: number): void {
     return;
   }
   if (state.stock.length && canPlace(state, cell)) {
-    // 作物があるマスに置くときは、作物がどくので2回目のタップで置く
-    if (state.field[cell] && placeArmed !== cell) {
+    // 作物があるマスに建物（道具）を置くときは、作物がどくので2回目のタップで置く。土地（水路・堆肥）は作物と重なるのでそのまま
+    if (state.field[cell] && PLACES[state.stock[0]].kind === 'tool' && placeArmed !== cell) {
       placeArmed = cell;
       sfx.select();
       shake(plot, 4);

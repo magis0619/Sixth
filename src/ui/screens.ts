@@ -41,6 +41,9 @@ function bestDay(): { day: number; gold: number } {
  * 結果画面の中身（上から A 結果 → B 総合評価 → C 経営成績 → D ハイライト → E アドバイス）。
  * 点数・ランク・年貢・ポイントの計算はしない（rateRun・nextTax・awardPoints の値を並べるだけ）
  */
+/** 数字のあとの単位（細く小さめ） */
+const u = (t: string) => `<i class="u">${t}</i>`;
+
 function resultBody(kind: 'fail' | 'clear' | 'endless', opts: { taxAmount: number; isNew: boolean; earned: number; newly: string[]; total?: boolean }): string {
   const st = state.stats;
   const r = rateRun(state);
@@ -64,8 +67,8 @@ function resultBody(kind: 'fail' | 'clear' | 'endless', opts: { taxAmount: numbe
       <p class="rs-badge">${badge}</p>
       <h2 class="rs-title">${title}</h2>
       <div class="rs-pills">
-        <span>${art('calendar')}${L(`<b>${state.day}</b>日目`, `Day <b>${state.day}</b>`)}${opts.isNew ? `<em>${L('最高', 'Best')}</em>` : ''}</span>
-        <span>${art('bale')}${L(`年貢 <b>${state.taxesPaid}</b>/${CONFIG.winTaxes}回`, `Tax <b>${state.taxesPaid}</b>/${CONFIG.winTaxes}`)}</span>
+        <span>${art('calendar')}${L(`<b>${state.day}${u('日目')}</b>`, `Day <b>${state.day}</b>`)}${opts.isNew ? `<em>${L('最高', 'Best')}</em>` : ''}</span>
+        <span>${art('bale')}${L(`年貢 <b>${state.taxesPaid}${u(`/${CONFIG.winTaxes}回`)}</b>`, `Tax <b>${state.taxesPaid}</b>/${CONFIG.winTaxes}`)}</span>
       </div>
       ${money}
     </section>`;
@@ -110,10 +113,10 @@ function resultBody(kind: 'fail' | 'clear' | 'endless', opts: { taxAmount: numbe
   const highlights = `<section class="rs-sec">
       <h3 class="rs-h">${L('今回のハイライト', 'Highlights')}</h3>
       <div class="rs-hi">
-        ${tile('coin', L('一番稼いだ日', 'Best day'), best.gold ? L(`${best.day}日目 +${best.gold}`, `Day ${best.day} +${best.gold}`) : '—')}
-        ${tile('tomato', L('列で売った', 'Lines sold'), L(`${st.lineHarvests}回`, `${st.lineHarvests}`))}
-        ${tile('crow', L('取られた作物', 'Crops lost'), L(`${st.cropsEaten}個`, `${st.cropsEaten}`))}
-        ${tile('bale', L('年貢を納めた', 'Taxes paid'), L(`${state.taxesPaid}回`, `${state.taxesPaid}`))}
+        ${tile('coin', L('一番稼いだ日', 'Best day'), best.gold ? L(`${best.day}${u('日目')} +${best.gold}`, `Day ${best.day} +${best.gold}`) : '—')}
+        ${tile('tomato', L('列で売った', 'Lines sold'), L(`${st.lineHarvests}${u('回')}`, `${st.lineHarvests}`))}
+        ${tile('crow', L('取られた作物', 'Crops lost'), L(`${st.cropsEaten}${u('個')}`, `${st.cropsEaten}`))}
+        ${tile('bale', L('年貢を納めた', 'Taxes paid'), L(`${state.taxesPaid}${u('回')}`, `${state.taxesPaid}`))}
       </div>
     </section>`;
   // E：次へのアドバイス（このプレイの数字から、最大3つ）
@@ -459,7 +462,7 @@ export function showRecords(): void {
       <ul class="records">
         ${row(art('sprout'), L('遊んだ回数', 'Games played'), `${meta.plays}`)}
         ${row(art('trophy'), L('クリア', 'Wins'), `${meta.clears}`)}
-        ${row(art('calendar'), L('最高到達', 'Best run'), best.day ? L(`${best.day}日目（年貢${best.taxes}回）`, `Day ${best.day} (${best.taxes} taxes)`) : '—')}
+        ${row(art('calendar'), L('最高到達', 'Best run'), best.day ? L(`${best.day}${u('日目')}（年貢${best.taxes}${u('回')}）`, `Day ${best.day} (${best.taxes} taxes)`) : '—')}
         ${row(art('skull'), L('一番上の難しさ', 'Hardest cleared'), meta.maxCleared >= 0 ? DIFFICULTIES[meta.maxCleared].name : L('まだクリアしていない', 'Not yet'))}
         ${row(art('tomato'), L('列で売った（累計）', 'Lines sold (total)'), `${meta.lines}`)}
         ${row(art('sparkle'), L('特別なお守り', 'Special charms'), `${meta.discovered.filter((id) => specials.includes(id)).length} / ${specials.length}`)}

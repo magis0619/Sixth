@@ -478,8 +478,8 @@ export const CONFIG = {
   } as Record<UpgradeId, number>,
   /** 満月は足すたびに moonGrowth 倍になる */
   moonGrowth: 1.5,
-  /** カラス・虫を消す価格は、消すたびに removeGrowth 倍になる */
-  removeGrowth: 2,
+  /** お邪魔を消す価格は、消すたびに removeGrowth 倍になる（2倍だと高すぎたので1.3倍） */
+  removeGrowth: 1.3,
   /** お邪魔を消せるのは1回の市（市の日がなければ1週間）にこの回数まで。一気に全部消して楽になりすぎないように */
   removesPerWeek: 1,
   /** ショップに週ごとに並ぶ数（絵柄を足す品・畑の品それぞれ）。消す品と畑を広げるはいつも並ぶ */
