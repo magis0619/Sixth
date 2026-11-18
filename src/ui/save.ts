@@ -97,6 +97,8 @@ export function loadRun(): GameState | null {
     s.difficulty ??= 0;
     s.toolXp ??= s.field.map(() => 0);
     s.toolLv ??= s.field.map(() => 0);
+    s.discards ??= 0;
+    s.discardedThisMarket ??= false;
     s.today ??= { rain: [], sun: [], boosted: [] };
     s.halfTax ??= false;
     s.contractOffer ??= [];

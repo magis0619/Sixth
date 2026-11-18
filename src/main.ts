@@ -4,7 +4,7 @@ import {
   CHARMS, CHARM_ORDER, curseText, symbolBase, cropBase, MERGES, type ShapeId, type CharmId, DIFFICULTIES, FARMERS, TOOL_EVOLVE, CONFIG, CROPS, PLACES, PLACE_ORDER, SEEDS, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL, type AddUpgradeId, type PlaceId, type SymbolId, type UpgradeId,
 } from './config.ts';
 import {
-  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult, mustPlace, hasRoomFor, takeOffer, roomLeft, refreshCombos, symbolShape, isRareOffer, isMarketDay, shopOpen, nextMarketDay, beginDay, spinDay, sellBlock, isFlooded, mergeable, mergeSymbol, mergeCost, PREMIUM, PREMIUM_ORDER, type PremiumId, premiumShown, premiumPrice, canBuyPremium, buyPremium,
+  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult, mustPlace, hasRoomFor, takeOffer, roomLeft, refreshCombos, symbolShape, isRareOffer, isMarketDay, shopOpen, nextMarketDay, beginDay, spinDay, sellBlock, isFlooded, mergeable, mergeSymbol, mergeCost, discard, discardPrice, canDiscard, PREMIUM, PREMIUM_ORDER, type PremiumId, premiumShown, premiumPrice, canBuyPremium, buyPremium,
 } from './game.ts';
 import { duckBgm, isMuted, sfx, suspendAudio, toggleMute, unlockAudio } from './audio.ts';
 import { saveMeta, setupFrom } from './meta.ts';
@@ -817,6 +817,50 @@ function renderShop(): void {
   renderUpgradeList($('remove-shop'), items.filter((u) => u.id.startsWith('remove')));
   renderMergeShop();
   renderPremiumShop();
+  renderDiscardShop();
+}
+
+/** 要らない札を捨てる（市で1回・捨てるたびに高くなる）。1回目のタップで選び、もう一度で捨てる */
+let discardArmed: SymbolId | null = null;
+function renderDiscardShop(): void {
+  const box = $('discard-shop');
+  const shown = shopOpen(state) && state.day > 0 && !tut;
+  (box.closest('.stall-sec') as HTMLElement).hidden = !shown;
+  if (!shown) return;
+  const price = discardPrice(state);
+  setHtml($('discard-price'), state.discardedThisMarket ? L('この市はもう捨てた', 'Done this market') : `${art('coin')}${price}・${L('市で1回', 'once per market')}`);
+  const syms = SYMBOL_ORDER.filter((id) => state.bag[id] > 0 && SYMBOLS[id].rarity !== 'bad');
+  const html = syms
+    .map((id) => `<button class="dc-chip${discardArmed === id ? ' armed' : ''}" data-discard="${id}" ${canDiscard(state, id) ? '' : 'disabled'} aria-label="${SYMBOLS[id].name}">${symHtml(id)}<b>×${state.bag[id]}</b></button>`)
+    .join('');
+  if (box.innerHTML !== html) {
+    box.innerHTML = html;
+    box.querySelectorAll<HTMLButtonElement>('[data-discard]').forEach((b) => b.addEventListener('click', () => onDiscard(b)));
+  }
+}
+
+function onDiscard(b: HTMLButtonElement): void {
+  unlockAudio();
+  if (ui.busy || state.over || holdMarket()) return;
+  const sym = b.dataset.discard as SymbolId;
+  if (discardArmed !== sym) {
+    discardArmed = sym;
+    sfx.select();
+    say(`${symHtml(sym)} ${L('もう一度タップで捨てる', 'Tap again to discard')}`, 2000);
+    renderDiscardShop();
+    return;
+  }
+  discardArmed = null;
+  if (!discard(state, sym)) {
+    reject(b, needGold(discardPrice(state)));
+    renderDiscardShop();
+    return;
+  }
+  sfx.buy();
+  const q = center(b);
+  burst(q.x, q.y, ['💨'], 8, 50);
+  render();
+  renderShop();
 }
 
 /** 大きな買い物（4週目から）：お金の使い道。売値+10%の像・リール+1 */
@@ -1049,6 +1093,9 @@ const PLACE_ROWS: Record<PlaceId, [ArtId, string][]> = {
   cowshed: [['coin', L('毎晩+4', '+4 nightly')], ['water', L('隣に水路で+2', '+2 next to water')]],
   compost: [['coin', L('売値×2', 'Price ×2')]],
   water: [['sprout', L('毎晩+1', '+1 nightly')], ['waterwheel', L('3つ並べて水車', '3 in a row: wheel')]],
+  sprinkler: [['sprout', L('横一列 毎晩+1', 'Its row +1 nightly')]],
+  reservoir: [['sprout', L('縦一列 毎晩+1', 'Its column +1 nightly')]],
+  windmill: [['sprout', L('縦と横の列 毎晩+1', 'Row & column +1 nightly')]],
 };
 const placeRowsHtml = (id: PlaceId): string => PLACE_ROWS[id].map(([ico, t]) => `<span class="fx-row">${art(ico)}<span>${t}</span></span>`).join('');
 

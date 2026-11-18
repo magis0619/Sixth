@@ -8,7 +8,7 @@
 
 import { CROPS, PLACES, SEEDS, SYMBOLS, type CharmId, type CropKind, type PlaceId, type SymbolId, type UpgradeId, UPGRADE_SYMBOL, cropBase } from '../src/config.ts';
 import {
-  bagTotal, buy, buyPlace, buyPremium, canBuy, canBuyPlace, canBuyPremium, canExpand, canPlace, canUse, cellAt, cellX, cellY, chooseCharm, expand, expandPrice,
+  bagTotal, buy, buyPlace, canDiscard, discard, discardPrice, buyPremium, canBuy, canBuyPlace, canBuyPremium, canExpand, canPlace, canUse, cellAt, cellX, cellY, chooseCharm, expand, expandPrice,
   fieldCells, isOpen, isRipe, mergeable, mergeCost, mergeSymbol, nextTax, place, placePrice, premiumPrice, pullWeed, ripeGroup, sell, shapeCells, skipCharm,
   takeOffer, upgradePrice, useSymbol, validTargets, type GameState,
 } from '../src/game.ts';
@@ -172,7 +172,8 @@ export function pickCharm(s: GameState): void {
 /** 年貢の前に取っておくお金 */
 function reserve(s: GameState): number {
   const t = nextTax(s);
-  return t.daysLeft <= 3 ? t.amount : Math.round(t.amount * 0.3);
+  // 前の日までは、まだ稼げる分を見込んで4割だけ残す
+  return t.daysLeft <= 1 ? t.amount : Math.round(t.amount * 0.4);
 }
 
 function shop(s: GameState): void {
@@ -192,15 +193,24 @@ function shop(s: GameState): void {
     // 置き物はマスを1つ使うので、畑が広くなってから（12マスで1つ、16マスで2つまで）
     const cells = s.cols * s.rows;
     const tools = fieldCells(s).filter((c) => s.tools[c]).length;
-    const toolRoom = cells >= 16 ? 2 : cells >= 12 ? 1 : 0;
+    const toolRoom = cells >= 20 ? 4 : cells >= 16 ? 3 : cells >= 12 ? 2 : 0;
+    // 夜に育つ置き物（風車 → スプリンクラー・ため池）。列を切らない端に置く
+    const night = (['windmill', 'sprinkler', 'reservoir'] as PlaceId[]).find((id) => tools < toolRoom && canBuyPlace(s, id) && afford(placePrice(s, id)));
+    if (night) { buyPlace(s, night); placeStock(s); continue; }
     // カラスが多いならかかし（巣箱より先）
     if (tools < toolRoom && s.bag.crow >= 2 && !fieldCells(s).some((c) => s.tools[c] === 'scarecrow' || s.tools[c] === 'bigScarecrow') && canBuyPlace(s, 'scarecrow') && afford(placePrice(s, 'scarecrow'))) { buyPlace(s, 'scarecrow'); placeStock(s); continue; }
     if (tools < toolRoom && canBuyPlace(s, 'hive') && afford(placePrice(s, 'hive'))) { buyPlace(s, 'hive'); placeStock(s); continue; }
-    // 大きな買い物
-    if (canBuyPremium(s, 'statue') && afford(premiumPrice(s, 'statue'))) { buyPremium(s, 'statue'); continue; }
+    // 大きな買い物（リールが先：引ける数が増える）
     if (canBuyPremium(s, 'reel') && afford(premiumPrice(s, 'reel'))) { buyPremium(s, 'reel'); continue; }
+    if (canBuyPremium(s, 'statue') && afford(premiumPrice(s, 'statue'))) { buyPremium(s, 'statue'); continue; }
     break;
   }
+  // 要らない札を捨てる：主力以外の種 → 金貨 → 多すぎる育てる札
+  const extraGrow = growIn(s) > seedsIn(s) * 1.4 + 1;
+  const junk = (Object.keys(s.bag) as SymbolId[]).find((id) => s.bag[id] > 0 && SEEDS[id] && !CROPS[SEEDS[id]!.crop].big && cropBase(SEEDS[id]!.crop) !== mainCrop(s))
+    ?? (s.bag.coin > 0 ? 'coin' : undefined)
+    ?? (extraGrow ? (['can', 'bee', 'sun', 'rain'] as SymbolId[]).find((id) => s.bag[id] > 1) : undefined);
+  if (junk && canDiscard(s, junk) && s.gold - discardPrice(s) >= keep) discard(s, junk);
   // 合体：主力の種が5枚そろって、合体しても種が足りるとき（袋の3割以上が種で残る）
   const main = mainCrop(s);
   const m = mergeable(s).find((id) => SEEDS[id] && cropBase(SEEDS[id]!.crop) === main && (seedsIn(s) - 4) / (bagTotal(s.bag) - 4) >= 0.3);

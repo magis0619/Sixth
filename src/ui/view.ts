@@ -112,6 +112,7 @@ export function shapeIcon(shape: string): string {
 export const PLACE_ART: Record<PlaceId, ArtId> = {
   scarecrow: 'scarecrow', bigScarecrow: 'bigScarecrow', well: 'well', goldenWell: 'goldenWell',
   hive: 'hive', queenHive: 'queenHive', henhouse: 'henhouse', cowshed: 'cowshed', compost: 'compost', water: 'water',
+  sprinkler: 'sprinkler', reservoir: 'reservoir', windmill: 'windmill',
 };
 
 

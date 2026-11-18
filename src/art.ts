@@ -618,6 +618,33 @@ const CHARM_ART = {
   well: wellD(C.red, C.brown[0], C.stone, '#8c8880'),
   goldenWell: `${wellD(C.gold, C.gold[1], ['#ffe98a', '#e9c24a'], '#c99a1e')}${sparkle(55, 10, 5.5, '#fff')}${sparkle(8, 40, 4, '#fff')}`,
   hive: `${skep(C.straw, '#b8862a')}`,
+  // 夜に育つ置き物：スプリンクラー（横一列）・ため池（縦一列）・風車（縦と横）
+  sprinkler: `${ground(58, 14)}
+    ${line('M32 57V32', C.stone[1], 4)}
+    ${face('M22 58H42L40 52H24Z', C.stone, 30, 54, 0.8)}
+    ${face(E(32, 28, 9, 6.5), C.stone, 29, 26, 0.82)}
+    ${face('M28 21H36V26H28Z', C.blue, 31, 23, 0.8, S2)}
+    <path d="M23 25Q14 16 4 24M41 25Q50 16 60 24" fill="none" stroke="${INK}" stroke-width="5.5" stroke-linecap="round"/>
+    <path d="M23 25Q14 16 4 24M41 25Q50 16 60 24" fill="none" stroke="${C.blue[0]}" stroke-width="3" stroke-linecap="round"/>
+    ${[[8, 33], [14, 30], [50, 30], [56, 33]].map(([x, y]) => `<path d="M${x} ${y - 3.5}Q${x + 2.6} ${y} ${x} ${y + 2.6}Q${x - 2.6} ${y} ${x} ${y - 3.5}Z" fill="${C.blue[0]}" ${S2}/>`).join('')}
+    ${hl(29, 26, 2.4, 1.4)}`,
+  reservoir: `${ground(58, 22)}
+    ${face(E(32, 44, 26, 14), C.stone, 26, 40, 0.86)}
+    ${face(E(32, 44, 19, 9), C.blue, 27, 41, 0.82, S2)}
+    <path d="M20 44Q26 41 32 44T44 44" fill="none" stroke="${C.blue[2]}" stroke-width="2" stroke-linecap="round"/>
+    ${line('M22 10V36M42 10V36', C.brown[0], 3.5)}
+    ${face('M24 13H40V27H24Z', C.brown, 30, 18, 0.84)}
+    <path d="M24 18H40M24 22.5H40" fill="none" stroke="${C.brown[1]}" stroke-width="1.8"/>
+    ${line('M32 28V36', C.blue[0], 3)}
+    ${hl(26, 15, 2, 1.2)}`,
+  windmill: `${ground(59, 16)}
+    ${face('M21 59L25 27H39L43 59Z', C.cloud, 29, 38, 0.86)}
+    ${face('M21 28L32 15L43 28Z', C.red, 29, 22, 0.82)}
+    ${face('M28 59V49Q32 44 36 49V59Z', C.brown, 31, 52, 0.8, S2)}
+    ${face(E(32, 36, 3.2, 3.2), C.blue, 31, 35, 0.8, S2)}
+    ${[0, 90, 180, 270].map((r) => `<g transform="rotate(${r + 45} 32 19)">${line('M32 19V2', C.brown[0], 2.6)}${face('M33 4H41V16H33Z', C.straw, 36, 8, 0.82, S2)}</g>`).join('')}
+    ${face(E(32, 19, 3.6, 3.6), C.brown, 31, 18, 0.8, S2)}
+    ${hl(27, 33, 1.6, 3)}`,
   queenHive: `${skep(C.gold, C.gold[1])}<path d="M21 12L22 2L28 8L32 1L36 8L42 2L43 12Z" fill="${C.gold[2]}" ${S2}/><circle cx="32" cy="7" r="1.6" fill="${C.red[0]}"/>`,
 };
 

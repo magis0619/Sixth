@@ -8963,3 +8963,25 @@ button.fs-relic { font: inherit; color: var(--ink); cursor: pointer; }
 .dt-track { position: relative; width: 100%; height: 64px; }
 .dt-track i { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 6px 6px 2px 2px; }
 .dt-bar { background: var(--dc); border: 2px solid var(--ink); }
+
+/* 市：要らない札を捨てる（袋の札を並べて、2回のタップで1枚捨てる） */
+.discard-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; padding: 4px 8px 10px; }
+.dc-chip {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 2px 4px;
+  background: #fff;
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.2);
+  font: inherit;
+}
+.dc-chip .art, .dc-chip svg { width: 32px; height: 32px; }
+.dc-chip b { font-size: 0.8125rem; font-weight: 800; }
+.dc-chip:disabled { opacity: 0.45; }
+.dc-chip.armed { background: #ffe0dc; border-color: var(--danger); }
+.line-hint.same { background: #a85a0c; }

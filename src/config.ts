@@ -250,7 +250,7 @@ export const SHAPE_NAMES: Record<ShapeId, string> = { cross: '縦横十字', col
 // ---- 畑に置くもの（道具・特別なマス） ----
 
 /** 道具はマスを占める（植えられない・列に入らない）。特別なマスは作物と重ねられる */
-export type PlaceId = 'scarecrow' | 'bigScarecrow' | 'well' | 'goldenWell' | 'hive' | 'queenHive' | 'henhouse' | 'cowshed' | 'compost' | 'water';
+export type PlaceId = 'scarecrow' | 'bigScarecrow' | 'well' | 'goldenWell' | 'hive' | 'queenHive' | 'henhouse' | 'cowshed' | 'compost' | 'water' | 'sprinkler' | 'reservoir' | 'windmill';
 
 export interface PlaceDef {
   id: PlaceId;
@@ -272,6 +272,10 @@ export const PLACES: Record<PlaceId, PlaceDef> = {
   cowshed: { id: 'cowshed', kind: 'tool', name: '牛小屋', desc: '毎日+4・隣に水路で+2', price: 120 },
   compost: { id: 'compost', kind: 'tile', name: '堆肥のマス', desc: '売値×2', price: 35 },
   water: { id: 'water', kind: 'tile', name: '水路のマス', desc: '毎日+1・3つ並べると水車（隣も育つ）・4方を囲むと釣り堀', price: 30 },
+  // 夜に育つ置き物（週が進むと市に並ぶ）
+  sprinkler: { id: 'sprinkler', kind: 'tool', name: 'スプリンクラー', desc: '横一列 毎晩+1', price: 70 },
+  reservoir: { id: 'reservoir', kind: 'tool', name: 'ため池', desc: '縦一列 毎晩+1', price: 70 },
+  windmill: { id: 'windmill', kind: 'tool', name: '風車', desc: '縦と横の列 毎晩+1', price: 150 },
 };
 
 export const PLACE_ORDER = Object.keys(PLACES) as PlaceId[];
@@ -507,6 +511,11 @@ export const CONFIG = {
     addThunder: '雷：横一列を一気に育てる',
     addMerchant: '商人：売る日を選んで高く',
   } as Partial<Record<string, string>>,
+  /** 市に並び始める週：この回数の年貢を納めたあとから（週ごとに品が良くなる）。ない物は最初から */
+  placeTier: { well: 2, cowshed: 2, sprinkler: 2, reservoir: 2, windmill: 4 } as Partial<Record<string, number>>,
+  /** 要らない札を捨てる：最初の値段と、捨てるたびに掛かる倍率（市で1回まで） */
+  discardBase: 10,
+  discardGrowth: 1.6,
   pivotPlaces: {
     henhouse: '鶏小屋：毎晩のお金＋虫・モグラよけ',
     cowshed: '牛小屋：毎晩のお金で稼ぐ',
@@ -914,6 +923,9 @@ if (EN) {
     cowshed: ['Cowshed', '+4g daily; +2 next to water'],
     compost: ['Compost Plot', 'Price ×2'],
     water: ['Water Plot', '+1 daily; 3 in a row = waterwheel; surround a plot = fishing pond'],
+    sprinkler: ['Sprinkler', 'Its row +1 every night'],
+    reservoir: ['Reservoir', 'Its column +1 every night'],
+    windmill: ['Windmill', 'Its row and column +1 every night'],
   };
   (Object.keys(place) as PlaceId[]).forEach((id) => Object.assign(PLACES[id], { name: place[id][0], desc: place[id][1] }));
   Object.assign(CONFIG.pivotAdds, {

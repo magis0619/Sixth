@@ -6,7 +6,7 @@ import { CONFIG, CROPS, CUT, EVENT_CONDITIONS, FARMERS, THUNDER_LINES, UPGRADE_S
 import {
   animalGold, buy, buyPlace, drawDay, hasRanch, hiveBonus, isColorful, canPlace, canUse, cellMultiplier, cropPrice, isPond, waterWheels, checkReady, chooseCharm, endDay, evolveTools, expand, expandPrice,
   fieldCells, isGolden, lv, multSteps, newCrop, newGame, nextTax, obstacleRule, place, pullWeed, resolveAuto, ripeGroup,
-  canBuy, canBuyPlace, canExpand, isMarketDay, rollObstacles, takeOffer, refreshCombos, symbolShape, canPlaceAt, isPivotAdd, isPivotPlace, mustPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult, beginDay, takeContract, mergeable, mergeSymbol, mergeCost, bagCount, skipCharm, singleMult, rollOffer, buyPremium, canBuyPremium, premiumPrice, resolveAuto as autoOf,
+  canBuy, canBuyPlace, canExpand, isMarketDay, rollObstacles, takeOffer, refreshCombos, symbolShape, canPlaceAt, isPivotAdd, isPivotPlace, mustPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult, beginDay, takeContract, mergeable, mergeSymbol, mergeCost, bagCount, skipCharm, singleMult, rollOffer, buyPremium, canBuyPremium, premiumPrice, resolveAuto as autoOf, discard, discardPrice, canDiscard,
 } from '../src/game.ts';
 import { CONTRACTS, contractGold } from '../src/contracts.ts';
 import { farmerUnlocked, recordRun, type MetaState } from '../src/meta.ts';
@@ -922,15 +922,54 @@ describe('タヌキと畑の品', () => {
     expect(seen).toBeGreaterThan(0);
   });
 
-  it('市ごとに畑の品が入れ替わり、水路や井戸も並ぶ', () => {
+  it('市ごとに畑の品が入れ替わり、週が進むと良い品（井戸・スプリンクラー・風車）が並ぶ', () => {
     const s = newGame();
-    const seen = new Set<string>();
-    for (let k = 0; k < 120; k++) {
-      drawDay(s, Math.random);
-      s.weeklyPlaces.forEach((id) => seen.add(id));
-    }
-    expect(seen.has('water')).toBe(true);
-    expect(seen.has('well')).toBe(true);
+    const seen = (): Set<string> => {
+      const out = new Set<string>();
+      for (let k = 0; k < 120; k++) {
+        drawDay(s, Math.random);
+        s.weeklyPlaces.forEach((id) => out.add(id));
+      }
+      return out;
+    };
+    const early = seen();
+    expect(early.has('water')).toBe(true);
+    expect(early.has('well')).toBe(false);
+    expect(early.has('sprinkler')).toBe(false);
+    s.taxesPaid = 2;
+    const mid = seen();
+    expect(mid.has('well')).toBe(true);
+    expect(mid.has('sprinkler')).toBe(true);
+    expect(mid.has('windmill')).toBe(false);
+    s.taxesPaid = 4;
+    expect(seen().has('windmill')).toBe(true);
+  });
+
+  it('スプリンクラーは横一列、ため池は縦一列、風車は縦と横を毎晩育てる', () => {
+    const s = game();
+    s.tools[at(0, 0)] = 'sprinkler';
+    s.tools[at(2, 2)] = 'reservoir';
+    const crops = [at(1, 0), at(2, 0), at(2, 1), at(1, 1)];
+    crops.forEach((c) => (s.field[c] = newCrop('pumpkin')));
+    endDay(s, () => 0.99);
+    // (1,0)(2,0) は横一列、(2,0)(2,1) は縦一列。(2,0) は両方で+2。(1,1) はどちらにもない
+    expect(s.field[at(1, 0)]!.growth).toBe(1);
+    expect(s.field[at(2, 0)]!.growth).toBe(2);
+    expect(s.field[at(2, 1)]!.growth).toBe(1);
+    expect(s.field[at(1, 1)]!.growth).toBe(0);
+  });
+
+  it('要らない札を捨てる：市で1回、捨てるたびに高くなる。お邪魔は捨てられない', () => {
+    const s = game();
+    s.day = 3;
+    s.gold = 999;
+    s.bag.rain = 5;
+    const p0 = discardPrice(s);
+    expect(canDiscard(s, 'crow')).toBe(false);
+    expect(discard(s, 'rain')).toBe(true);
+    expect(s.bag.rain).toBe(4);
+    expect(discard(s, 'rain')).toBe(false);
+    expect(discardPrice(s)).toBeGreaterThan(p0);
   });
 });
 

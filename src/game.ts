@@ -130,6 +130,9 @@ export interface GameState {
   taxCut: number;
   /** この市でもう合体したか（1回の市で1種類まで） */
   mergedThisMarket: boolean;
+  /** 要らない札を捨てた回数（値段が上がる）と、この市で捨てたか */
+  discards: number;
+  discardedThisMarket: boolean;
   /** 今日の市はもう閉じた（市は開いて閉じたら、その日はもう開かない） */
   marketClosed: boolean;
   /** 大きな買い物（後半の市）を買った数 */
@@ -300,6 +303,8 @@ function freshGame(setup: GameSetup): GameState {
     contractDone: null,
     taxCut: 0,
     mergedThisMarket: false,
+    discards: 0,
+    discardedThisMarket: false,
     marketClosed: false,
     premium: {},
     moonPhase: 0,
@@ -738,6 +743,7 @@ export function beginDay(state: GameState, rng: Rng): void {
   // 市ごとに：お邪魔を消せる回数が戻り、畑の品が入れ替わる
   if (isMarketDay(state.day)) {
     state.mergedThisMarket = false;
+    state.discardedThisMarket = false;
     state.removedThisWeek = 0;
     state.weeklyPlaces = rollWeeklyPlaces(state, rng);
   }
@@ -977,12 +983,24 @@ export function overnightTargets(state: GameState): number[] {
     if (state.tiles[i] === 'water') out.push(i);
     if (state.tools[i] === 'well') out.push(...neighbors(state, i));
     if (state.tools[i] === 'goldenWell') out.push(...around(state, i, 1));
+    out.push(...lineToolCells(state, i));
   });
   return out;
 }
 
+/** スプリンクラー（横一列）・ため池（縦一列）・風車（縦と横）が夜に育てるマス */
+function lineToolCells(state: GameState, i: number): number[] {
+  const t = state.tools[i];
+  if (t !== 'sprinkler' && t !== 'reservoir' && t !== 'windmill') return [];
+  const row = t === 'sprinkler' || t === 'windmill';
+  const col = t === 'reservoir' || t === 'windmill';
+  return fieldCells(state).filter((c) => c !== i && ((row && cellY(c) === cellY(i)) || (col && cellX(c) === cellX(i))));
+}
+
 function overnightGrowth(state: GameState): number[] {
   const affected: number[] = [];
+  // スプリンクラー・ため池・風車：線の上の作物が毎晩+1
+  fieldCells(state).forEach((i) => lineToolCells(state, i).forEach((c) => grow(state, c, 1, affected)));
   // 巣箱の周りの苺は受粉で育つ（牧場なら2倍）
   const pollen = hasRanch(state) ? 2 : 1;
   fieldCells(state).forEach((i) => {
@@ -1142,7 +1160,8 @@ export function rollOffer(state: GameState, rng: Rng): AddUpgradeId[] {
   const picks = pickWeighted(ids.map((id) => ({ id, w: (CONFIG.offerWeights[id] ?? 1) * (state.shop.includes(id) ? 1.5 : 1) })), CONFIG.dailyOfferCount, rng);
   // たまにレア（満月・金の種）が1つ混ざる
   const rares = CONFIG.rareOffers.filter((id) => !isCutAdd(id));
-  if (rares.length && rng() < CONFIG.rareOfferChance) {
+  // 週ごとに品が良くなる：年貢を納めるたびに、レアが混ざりやすくなる（8%→納めた回数×4%ずつ上乗せ）
+  if (rares.length && rng() < CONFIG.rareOfferChance + 0.04 * state.taxesPaid) {
     const rare = rares[Math.floor(rng() * rares.length)] as AddUpgradeId;
     picks.splice(Math.min(picks.length, CONFIG.dailyOfferCount - 1), 1, rare);
   }
@@ -1165,14 +1184,43 @@ function takeOfferRaw(state: GameState, id: AddUpgradeId): boolean {
 }
 
 /** 今週の畑の品：ショップで買える道具・特別なマスから weeklyCount 個。1つは作戦が変わる品 */
+/** 市に並べられる畑の品か（週ごとに良い品が増える） */
+export function placeUnlocked(state: GameState, id: PlaceId): boolean {
+  return state.taxesPaid >= (CONFIG.placeTier[id] ?? 0);
+}
+
 export function rollWeeklyPlaces(state: GameState, rng: Rng): PlaceId[] {
+  // 週ごとに品が良くなる：その週に並び始めた品は出やすい
+  const newest = Math.max(0, ...PLACE_ORDER.filter((id) => placeUnlocked(state, id)).map((id) => CONFIG.placeTier[id] ?? 0));
+  const weight = (id: PlaceId) => (newest > 0 && (CONFIG.placeTier[id] ?? 0) === newest ? 2.5 : 1);
+  const pool = PLACE_ORDER.filter((id) => PLACES[id].price !== null && !CUT.places.includes(id) && placeUnlocked(state, id));
   // 農家の品（牧場主の小屋など）はいつも並び、残りを週替わりで
   const fixed = (FARMERS.find((f) => f.id === state.farmer)?.favorPlaces ?? []).filter((id) => !CUT.places.includes(id));
   if (fixed.length) {
-    const rest = PLACE_ORDER.filter((id) => PLACES[id].price !== null && !CUT.places.includes(id) && !fixed.includes(id));
-    return [...fixed, ...pickWeighted(rest.map((id) => ({ id, w: 1 })), Math.max(0, CONFIG.weeklyCount - fixed.length), rng)];
+    const rest = pool.filter((id) => !fixed.includes(id));
+    return [...fixed, ...pickWeighted(rest.map((id) => ({ id, w: weight(id) })), Math.max(0, CONFIG.weeklyCount - fixed.length), rng)];
   }
-  return rollWithPivot(PLACE_ORDER.filter((id) => PLACES[id].price !== null && !CUT.places.includes(id)).map((id) => ({ id, w: 1 })), (id) => isPivotPlace(state, id), rng);
+  return rollWithPivot(pool.map((id) => ({ id, w: weight(id) })), (id) => isPivotPlace(state, id), rng);
+}
+
+// ---- 要らない札を捨てる（市で1回、捨てるたびに高くなる） ----
+
+export function discardPrice(state: GameState): number {
+  return Math.max(1, Math.round(CONFIG.discardBase * Math.pow(CONFIG.discardGrowth, state.discards ?? 0) * shopMult(state)));
+}
+
+/** 捨てられる札か：お邪魔は「消す」で。袋が6枚より少なくはしない */
+export function canDiscard(state: GameState, sym: SymbolId): boolean {
+  return !state.over && shopOpen(state) && !state.discardedThisMarket && state.bag[sym] > 0 && SYMBOLS[sym].rarity !== 'bad' && bagTotal(state.bag) > 6 && state.gold >= discardPrice(state);
+}
+
+function discardRaw(state: GameState, sym: SymbolId): boolean {
+  if (!canDiscard(state, sym)) return false;
+  state.gold -= discardPrice(state);
+  state.bag[sym]--;
+  state.discards = (state.discards ?? 0) + 1;
+  state.discardedThisMarket = true;
+  return true;
 }
 
 /** 雑草を抜く（草よけのお守りがあれば無料） */
@@ -2326,6 +2374,14 @@ export function spinDay(state: GameState, rng: Rng): void {
   glog(state, `回す 所持${state.gold} 出目: ${r}${state.fever.length ? ` フィーバー:${state.fever.map((f) => SYMBOLS[f].name).join('・')}` : ''}${state.combos.length ? ` 組み合わせ:${state.combos.map((c) => CHARMS[c].name).join('・')}` : ''}`);
 }
 
+export function discard(state: GameState, sym: SymbolId): boolean {
+  const price = discardPrice(state);
+  const ok = discardRaw(state, sym);
+  if (ok) lstat(state, OUT + '捨てる', price);
+  if (ok) glog(state, `捨てる ${SYMBOLS[sym].name} -${price}`);
+  return ok;
+}
+
 export function mergeSymbol(state: GameState, sym: SymbolId): boolean {
   const cost = mergeCost(state);
   const ok = mergeSymbolRaw(state, sym);
@@ -2535,8 +2591,8 @@ export function rateRun(state: GameState): Rating {
 
 export type PremiumId = 'statue' | 'reel';
 export const PREMIUM: Record<PremiumId, { name: string; desc: string; price: number; growth: number; max: number; art: string }> = {
-  statue: { name: L('豊穣の像', 'Harvest Statue'), desc: L('作物の売値+10%（ずっと・重ねられる）', 'Crop prices +10% (permanent, stacks)'), price: 200, growth: 1.6, max: 3, art: 'trophy' },
-  reel: { name: L('からくりリール', 'Clockwork Reel'), desc: L('リール+1（ずっと）', 'Reel +1 (permanent)'), price: 420, growth: 1, max: 1, art: 'artisan' },
+  statue: { name: L('豊穣の像', 'Harvest Statue'), desc: L('作物の売値+10%（ずっと・重ねられる）', 'Crop prices +10% (permanent, stacks)'), price: 120, growth: 1.6, max: 3, art: 'trophy' },
+  reel: { name: L('からくりリール', 'Clockwork Reel'), desc: L('リール+1（ずっと）', 'Reel +1 (permanent)'), price: 240, growth: 1, max: 1, art: 'artisan' },
 };
 export const PREMIUM_ORDER: PremiumId[] = ['statue', 'reel'];
 /** 大きな買い物が並ぶのは、この回数の年貢を納めたあと（4週目）から */
