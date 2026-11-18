@@ -1501,7 +1501,9 @@ function resolveAutoRaw(state: GameState, reel: number, rng: Rng): AutoEvent | n
       if (nearHenhouse(state, cell)) {
         // 食べた鶏小屋は経験を積み、お礼が入る
         around(state, cell, 1).filter((i) => state.tools[i] === 'henhouse').forEach((i) => animalXp(state, i));
-        return { type: 'bug', cell, warded: true, damage: 0, hen: true, reward: repelReward(state, cell) };
+        // 鶏が虫を食べると、卵が売れた分のお金（henBugGold）
+        earn(state, CONFIG.henBugGold);
+        return { type: 'bug', cell, warded: true, damage: 0, hen: true, reward: CONFIG.henBugGold };
       }
       // かかしの周りの虫は追い払われる
       if (isGuarded(state, cell)) {
@@ -2489,7 +2491,8 @@ export function resolveAuto(state: GameState, reel: number, rng: Rng): AutoEvent
   const ev = resolveAutoRaw(state, reel, rng);
   if (!ev || !sym) return ev;
   const rw = 'reward' in ev ? (ev.reward ?? 0) : 0;
-  lstat(state, IN + '追い払い', rw);
+  const henAte = ev.type === 'bug' && ev.hen;
+  lstat(state, IN + (henAte ? '鶏が虫を食べた' : '追い払い'), rw);
   const dg = state.gold - g0 - rw;
   if (dg > 0) lstat(state, IN + SYMBOLS[sym].name, dg);
   if (dg < 0) lstat(state, LOSS + SYMBOLS[sym].name + 'のお金', -dg);
@@ -2519,7 +2522,7 @@ export function resolveAuto(state: GameState, reel: number, rng: Rng): AutoEvent
     case 'swallow': t = ev.removed ? `${SYMBOLS[ev.removed].name}を追い出した` : `+${ev.amount}`; break;
     case 'hawk': t = ev.removed ? 'カラスを追い出した' : `+${ev.amount}`; break;
   }
-  glog(state, `自動 ${SYMBOLS[sym].name}: ${t}${rw ? ` 追い払いのお礼+${rw}` : ''}`);
+  glog(state, `自動 ${SYMBOLS[sym].name}: ${t}${rw ? (henAte ? ` 鶏が食べた+${rw}` : ` 追い払いのお礼+${rw}`) : ''}`);
   return ev;
 }
 

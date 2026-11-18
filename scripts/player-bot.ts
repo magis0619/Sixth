@@ -201,6 +201,11 @@ function shop(s: GameState): void {
     const cells = s.cols * s.rows;
     const tools = fieldCells(s).filter((c) => s.tools[c]).length;
     const toolRoom = cells >= 20 ? 4 : cells >= 16 ? 3 : cells >= 12 ? 2 : 0;
+    // ANIMALS=1（または牧場主）：鶏小屋・牛小屋を先に買う（3×3の畑でも2つまで）。自動化ビルドの計測用
+    if (process.env.ANIMALS || s.farmer === 'rancher') {
+      const animal = (['cowshed', 'henhouse'] as PlaceId[]).find((id) => tools < Math.max(toolRoom, 2) && canBuyPlace(s, id) && afford(placePrice(s, id)));
+      if (animal) { buyPlace(s, animal); placeStock(s); continue; }
+    }
     // 夜に育つ置き物（風車 → スプリンクラー・ため池）。列を切らない端に置く
     const night = (['windmill', 'sprinkler', 'reservoir'] as PlaceId[]).find((id) => tools < toolRoom && canBuyPlace(s, id) && afford(placePrice(s, id)));
     if (night) { buyPlace(s, night); placeStock(s); continue; }

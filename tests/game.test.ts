@@ -445,7 +445,7 @@ describe('水路のつながり・小屋・相場・品評会', () => {
     t.field[at(0, 0)] = { ...newCrop('tomato'), growth: 2 };
     t.results = [{ symbol: 'bug', used: false, total: 1, left: 1, power: 1 }];
     const ev = resolveAuto(t, 0, () => 0.9);
-    expect(ev?.type === 'bug' && ev.reward).toBe(CONFIG.repelGold);
+    expect(ev?.type === 'bug' && ev.reward).toBe(CONFIG.henBugGold);
     expect(t.toolXp[at(1, 1)]).toBe(1);
   });
 

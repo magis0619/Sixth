@@ -278,8 +278,8 @@ export const PLACES: Record<PlaceId, PlaceDef> = {
   goldenWell: { id: 'goldenWell', kind: 'tool', name: '黄金の井戸', desc: '周り8マス 毎日+1', price: null },
   hive: { id: 'hive', kind: 'tool', name: '巣箱', desc: '周り8マス 売値+20%・苺が毎晩育つ', price: 30 },
   queenHive: { id: 'queenHive', kind: 'tool', name: '女王蜂の巣箱', desc: '周り8マス 売値+50%・苺が毎晩育つ', price: null },
-  henhouse: { id: 'henhouse', kind: 'tool', name: '鶏小屋', desc: '毎日+2・周り8マスの虫を食べ、モグラを追い払う', price: 60 },
-  cowshed: { id: 'cowshed', kind: 'tool', name: '牛小屋', desc: '毎日+4・隣に水路で+2', price: 120 },
+  henhouse: { id: 'henhouse', kind: 'tool', name: '鶏小屋', desc: '毎日+3・周り8マスの虫を食べ（+3）、モグラを追い払う', price: 50 },
+  cowshed: { id: 'cowshed', kind: 'tool', name: '牛小屋', desc: '毎日+4・隣に水路で+2', price: 100 },
   compost: { id: 'compost', kind: 'tile', name: '堆肥のマス', desc: '売値×2', price: 35 },
   water: { id: 'water', kind: 'tile', name: '水路のマス', desc: '毎日+1・3つ並べると水車（隣も育つ）・4方を囲むと釣り堀', price: 30 },
   // 夜に育つ置き物（週が進むと市に並ぶ）
@@ -395,7 +395,7 @@ export const CONFIG = {
   colorfulKinds: 4,
   colorfulBonus: 0.1,
   /** 鶏小屋・牛小屋の毎晩の収入 */
-  henhouseGold: 2,
+  henhouseGold: 3,
   cowshedGold: 4,
   /** 鶏小屋・牛小屋は働くほど育つ：毎晩と虫を食べるたびに経験1。animalLvNeed で1段上がる（animalLvMax まで） */
   animalLvNeed: 7,
@@ -405,6 +405,8 @@ export const CONFIG = {
   cowshedLvGold: 2,
   /** かかし・鶏小屋がお邪魔を追い払うともらえるお金（大かかしは repelBigGold） */
   repelGold: 1,
+  /** 鶏小屋の鶏が虫を食べたときのお金 */
+  henBugGold: 3,
   repelBigGold: 2,
   /** 市場の相場：週ごとに1品が高値・1品が安値。難しい marketFrom から */
   marketFrom: 2,
@@ -972,7 +974,7 @@ if (EN) {
     goldenWell: ['Golden Well', 'The 8 plots around +1 growth each day'],
     hive: ['Beehive', '8 plots around: price +20%; strawberries grow nightly'],
     queenHive: ['Queen Hive', '8 plots around: price +50%; strawberries grow nightly'],
-    henhouse: ['Henhouse', '+2g daily; eats nearby bugs, scares off moles'],
+    henhouse: ['Henhouse', '+3g daily; eats nearby bugs (+3g), scares off moles'],
     cowshed: ['Cowshed', '+4g daily; +2 next to water'],
     compost: ['Compost Plot', 'Price ×2'],
     water: ['Water Plot', '+1 daily; 3 in a row = waterwheel; surround a plot = fishing pond'],

@@ -1127,7 +1127,7 @@ const PLACE_ROWS: Record<PlaceId, [ArtId, string][]> = {
   goldenWell: [['sprout', L('周り8マス 毎晩+1', '8 around +1 nightly')]],
   hive: [['coin', L('周り8マス 売値+20%', '8 around price +20%')], ['strawberry', L('苺が毎晩育つ', 'Strawberries grow nightly')]],
   queenHive: [['coin', L('周り8マス 売値+50%', '8 around price +50%')], ['strawberry', L('苺が毎晩育つ', 'Strawberries grow nightly')]],
-  henhouse: [['coin', L('毎晩+2', '+2 nightly')], ['bug', L('周りの虫・モグラを防ぐ', 'Stops bugs & moles')]],
+  henhouse: [['coin', L('毎晩+3', '+3 nightly')], ['bug', L('虫を食べて+3', 'Eats bugs: +3')]],
   cowshed: [['coin', L('毎晩+4', '+4 nightly')], ['water', L('隣に水路で+2', '+2 next to water')]],
   compost: [['coin', L('売値×2', 'Price ×2')]],
   water: [['sprout', L('毎晩+1', '+1 nightly')], ['waterwheel', L('3つ並べて水車', '3 in a row: wheel')]],

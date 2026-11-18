@@ -8,6 +8,8 @@
 
 import { CHARMS, CHARM_ORDER, CONFIG, FARMERS, CROPS, META, PLACES, SEEDS, SYMBOLS, type CropKind, type PlaceId, type UpgradeId } from '../src/config.ts';
 import {
+  animalGold,
+  shopMult,
   takeOffer,
   buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, expand, expandPrice, canUse, cellAt, cellX, cellY, chooseCharm, fieldCells,
   isOpen, isRipe, newGame, nextTax, place, placePrice, pullWeed, resolveAllAuto, resolveFever, ripeGroup, sell, shapeCells,
@@ -185,6 +187,7 @@ const taxes: number[] = [];
 const goldAtTax: number[][] = [];
 const weekly: number[][] = [];
 const loop: Record<string, number>[] = [];
+const cell: Record<string, number> = { days: 0, cropCells: 0, openCells: 0, cropGold: 0, repel: 0 };
 for (let n = 0; n < runs; n++) {
   const s = newGame(setup);
   if (process.env.REELS) s.reels = Number(process.env.REELS);
@@ -198,6 +201,17 @@ for (let n = 0; n < runs; n++) {
       fieldCells(s).filter((c) => s.field[c] && !isRipe(s.field[c]) && s.field[c]!.anchor === undefined)
         .sort((a, b) => (CROPS[s.field[b]!.kind].ripe - s.field[b]!.growth) - (CROPS[s.field[a]!.kind].ripe - s.field[a]!.growth))
         .reverse().slice(0, k).forEach((c) => s.field[c]!.growth++);
+    }
+    // CELLSTATS=1：その日の畑の使い方を数える（作物のあるマス・作物を置けるマス・鶏小屋・牛小屋と、その夜の収入）
+    if (process.env.CELLSTATS && s.day > 0) {
+      const fc = fieldCells(s);
+      cell.days++;
+      cell.cropCells += fc.filter((c) => s.field[c]).length;
+      cell.openCells += fc.filter((c) => !s.tools[c]).length;
+      for (const c of fc) {
+        const t = s.tools[c];
+        if (t === 'henhouse' || t === 'cowshed') { cell[`${t}Days`] = (cell[`${t}Days`] ?? 0) + 1; cell[`${t}Gold`] = (cell[`${t}Gold`] ?? 0) + animalGold(s, c); }
+      }
     }
     const r = startDay(s, Math.random);
     if (!r.ok) break;
@@ -256,6 +270,18 @@ for (let n = 0; n < runs; n++) {
       if (f) { b.empty += Number(f[1]); b.cells += Number(f[1]) + Number(f[2]) + Number(f[3]); }
     }
   }
+  if (process.env.CELLSTATS) {
+    const t = s.logStats?.total ?? {};
+    cell.cropGold += (t['収入:列で売る'] ?? 0) + (t['収入:単品'] ?? 0) + (t['収入:大商い'] ?? 0) + (t['収入:注文'] ?? 0);
+    cell.repel += t['収入:追い払い'] ?? 0;
+    cell.henBug = (cell.henBug ?? 0) + (t['収入:鶏が虫を食べた'] ?? 0);
+    // 買った数と払った額（難しさの値段の倍率も掛ける）
+    for (const id of ['henhouse', 'cowshed'] as PlaceId[]) {
+      const k = s.bought[id] ?? 0;
+      cell[`${id}N`] = (cell[`${id}N`] ?? 0) + k;
+      for (let j = 0; j < k; j++) cell[`${id}Paid`] = (cell[`${id}Paid`] ?? 0) + Math.round(PLACES[id].price! * Math.pow(CONFIG.placeGrowth, j) * shopMult(s));
+    }
+  }
   days.push(s.day);
   taxes.push(s.taxesPaid);
   // 週ごとの稼ぎ（生きていた週だけ）
@@ -283,3 +309,16 @@ if (process.env.LOOPSTATS) {
 }
 console.log(`週の稼ぎp50 ${weekly.slice(0, 8).map((g) => `${pct(g, 0.5)}(${g.length})`).join(' / ')}`);
 console.log(`年貢日の所持金p50 ${goldAtTax.slice(0, 8).map((g) => pct(g, 0.5)).join(' / ')}`);
+if (process.env.CELLSTATS) {
+  const r1 = (x: number) => Math.round(x * 100) / 100;
+  console.log(`マス1日あたりの稼ぎ（全${runs}回）`);
+  console.log(`  作物：作物のあるマス ${r1(cell.cropGold / cell.cropCells)}／作物を置けるマス ${r1(cell.cropGold / cell.openCells)}（作物のあるマスは平均 ${r1(cell.cropCells / cell.days)}／置けるマス ${r1(cell.openCells / cell.days)}）`);
+  for (const t of ['henhouse', 'cowshed']) if (cell[`${t}Days`]) {
+    const life = cell[`${t}Days`] / cell[`${t}N`];
+    const extra = t === 'henhouse' ? cell.henBug ?? 0 : 0;
+    const net = (cell[`${t}Gold`] + extra - cell[`${t}Paid`]) / cell[`${t}Days`];
+    if (extra) console.log(`  鶏が虫を食べたお金 ${r1(extra / cell[`${t}Days`])}/日`);
+    console.log(`  ${t === 'henhouse' ? '鶏小屋' : '牛小屋'}：夜の収入 ${r1(cell[`${t}Gold`] / cell[`${t}Days`])}／値段を引くと ${r1(net)}（1つあたり 置いていた日数 ${r1(life)}・値段 ${r1(cell[`${t}Paid`] / cell[`${t}N`])}・1回あたり ${r1(cell[`${t}N`] / runs)}個）`);
+  }
+  console.log(`  追い払いのお礼 計${cell.repel}`);
+}
