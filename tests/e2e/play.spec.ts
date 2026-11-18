@@ -264,8 +264,11 @@ test('初めての人はチュートリアルで、横一列に植えて列で�
   // 市の板がせり上がり終わるのを待ってから押す
   const take = page.locator('#offer-shop [data-take]').first();
   await expect(take).toBeInViewport({ timeout: 5_000 });
-  await take.click({ force: true });
-  await expect(coach).toContainText('次へ', { timeout: 5_000 });
+  // 市の板がせり上がる途中の押しは取りこぼすことがあるので、案内が進むまで押し直す
+  await expect(async () => {
+    if (await take.count()) await take.click({ force: true, timeout: 1_000 });
+    await expect(coach).toContainText('次へ', { timeout: 1_500 });
+  }).toPass({ timeout: 12_000 });
   await page.click('#market-next', { force: true });
   await expect(coach).toContainText('年貢', { timeout: 15_000 });
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('hatake-slot:run')!).results.map((r: { symbol: string }) => r.symbol))).toEqual(['seed', 'sun', 'coin']);
