@@ -41,7 +41,11 @@
         <div class="week" id="week" aria-live="polite"></div>
       </header>
 
-      <div class="status" id="status" aria-live="polite"></div>
+      <!-- 畑の上の1行：今週の注文と、今日の出来事（市の日・フィーバー・組み合わせ） -->
+      <div class="info-row" id="info-row">
+        <button class="order-tag" id="order" aria-label="注文" data-en-label="Order"></button>
+        <div class="status" id="status" aria-live="polite"></div>
+      </div>
 
       <section class="scene" id="scene" aria-hidden="true">
         <div class="scene-sky"><i class="cloud c1"></i><i class="cloud c2"></i></div>
@@ -52,7 +56,6 @@
       </section>
 
       <section class="farm" aria-label="畑" data-en-label="Field">
-        <button class="order-tag" id="order" aria-label="注文" data-en-label="Order"></button>
         <div class="market-tag" id="market" aria-label="今週の相場" hidden></div>
         <div class="pick-tag" id="pick" aria-live="polite" hidden></div>
         <div class="field" id="field"></div>
@@ -60,6 +63,8 @@
 
       <section class="machine" id="machine" aria-label="スロット" data-en-label="Slot machine">
         <div class="machine-top"></div>
+        <!-- 操作の案内：今なにをすればよいかを、リールのすぐ上に1行 -->
+        <div class="guide" id="guide" aria-live="polite"></div>
         <div class="reels-frame">
           <div class="reels" id="reels"></div>
           <button class="spin-go" id="spin-go" hidden></button>

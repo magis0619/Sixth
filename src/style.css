@@ -9078,3 +9078,26 @@ button.fs-relic { font: inherit; color: var(--ink); cursor: pointer; }
 .rs-sub button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 10px; font-size: 0.9375rem; font-weight: 800; background: #fff; color: var(--ink); border: 2px solid var(--ink); border-radius: 12px; }
 .rs-sub button .art, .rs-sub button svg { width: 1.2em; height: 1.2em; }
 .rs-total.rank-S { --rt: #9a7300; }
+
+/* ==== メイン画面の整理：景色の帯をなくし、注文と今日の出来事を畑の上の1行に、操作の案内をリールの上に ==== */
+#scene { display: none !important; }
+.machine-top { display: none !important; }
+#pick { display: none !important; }
+.info-row { display: flex; align-items: center; gap: 6px; min-height: 34px; margin: 2px 0 0; }
+.info-row .order-tag { position: static; transform: none; flex: none; font-size: 0.9375rem; padding: 4px 10px 4px 6px; }
+.info-row .order-tag .sign-nail { display: none; }
+.info-row .status { flex: 1; min-width: 0; justify-content: flex-end; }
+.info-row .status:empty { display: none; }
+/* 年貢：いつ払うかを2行目に */
+.hud-tax { height: auto; min-height: 44px; flex-wrap: wrap; row-gap: 0; padding: 3px 8px 3px 4px; align-content: center; }
+.hud-tax .tax-due { flex-basis: 100%; padding-left: 28px; font-size: 0.8125rem; font-weight: 800; color: var(--ink-soft); line-height: 1.2; }
+.hud-tax.short .tax-due { color: #a8301f; }
+/* 操作の案内 */
+.guide { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 2px 10px 6px; padding: 4px 12px; min-height: 32px; background: #fff8dc; color: var(--ink); border: 2px solid var(--ink); border-radius: 999px; font-size: 0.9375rem; font-weight: 800; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25); }
+.guide[hidden] { display: none; }
+.guide .art, .guide svg { width: 1.5em; height: 1.5em; flex: none; }
+.guide b { color: #a85a0c; }
+.guide em { margin-left: 6px; font-style: normal; font-size: 0.8125rem; color: var(--ink-soft); }
+/* 景色の帯をなくして空いた高さ：スロットを下（親指の届く所）に寄せ、リールを少し大きく */
+#app > .machine { margin-top: auto; }
+:root { --reel-h: clamp(76px, 13vh, 124px); }

@@ -1,7 +1,7 @@
 import { applyStaticLang, EN, gold, L } from './i18n.ts';
 import './style.css';
 import {
-  CHARMS, CHARM_ORDER, curseText, symbolBase, cropBase, MERGES, type ShapeId, type CharmId, DIFFICULTIES, FARMERS, TOOL_EVOLVE, CONFIG, CROPS, PLACES, PLACE_ORDER, SEEDS, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL, type AddUpgradeId, type PlaceId, type SymbolId, type UpgradeId,
+  CHARMS, CHARM_ORDER, curseText, symbolBase, cropBase, MERGES, SHAPE_NAMES, type ShapeId, type CharmId, DIFFICULTIES, FARMERS, TOOL_EVOLVE, CONFIG, CROPS, PLACES, PLACE_ORDER, SEEDS, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL, type AddUpgradeId, type PlaceId, type SymbolId, type UpgradeId,
 } from './config.ts';
 import {
   isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult, mustPlace, hasRoomFor, takeOffer, roomLeft, refreshCombos, symbolShape, isRareOffer, isMarketDay, shopOpen, nextMarketDay, beginDay, spinDay, sellBlock, isFlooded, mergeable, mergeSymbol, mergeCost, discard, discardPrice, canDiscard, PREMIUM, PREMIUM_ORDER, type PremiumId, premiumShown, premiumPrice, canBuyPremium, buyPremium,
@@ -102,6 +102,7 @@ function render(): void {
   renderOrder();
   renderMarket();
   renderPick();
+  renderGuide();
   renderGoal();
   renderStatus();
   renderReelStates();
@@ -336,6 +337,27 @@ function renderPick(): void {
   setHtml(box, `<span class="pick-label">${L('選択中', 'Selected')}</span><span class="pick-sym">${symHtml(r.symbol)}</span><b>${def.name}</b>${shape}`);
 }
 
+/** 操作の案内：今なにをすればよいかを、リールのすぐ上に1行で（docs/ui-reading.md：操作の近くに） */
+function renderGuide(): void {
+  const box = $('guide');
+  let html = '';
+  if (state.over || tut) html = '';
+  else if (state.day === 0) html = `${art('hand')}<span>${L('<b>リールをタップ</b>して回す', '<b>Tap the reels</b> to spin')}</span>`;
+  else if (state.stock.length && mustPlace(state)) {
+    const id = state.stock[0];
+    html = `${art(PLACE_ART[id])}<span>${L(`${PLACES[id].name}を置く → <b>光るマス</b>をタップ`, `Place the ${PLACES[id].name} → tap a <b>glowing plot</b>`)}</span>`;
+  } else if (selected !== null && state.results[selected]) {
+    const r = state.results[selected];
+    const shape = symbolShape(state, r.symbol);
+    const what = SEEDS[r.symbol] ? L(`植える 残り${r.left}`, `plant ${r.left}`) : shape ? SHAPE_NAMES[shape] : SYMBOLS[r.symbol].desc;
+    html = `${symHtml(r.symbol)}<span>${L(`${SYMBOLS[r.symbol].name} → <b>光るマス</b>をタップ`, `${SYMBOLS[r.symbol].name} → tap a <b>glowing plot</b>`)}<em>${what}</em></span>`;
+  } else if (usableReels().length) html = `${art('hand')}<span>${L('<b>出目</b>を選ぶ', 'Pick a <b>reel</b>')}</span>`;
+  else if (fieldCells().some((c) => isRipe(state.field[c]))) html = `${art('coin')}<span>${L('<b>実り</b>をタップで売る・リールで次の日へ', 'Tap <b>ripe crops</b> to sell · reels for next day')}</span>`;
+  else html = `${art('calendar')}<span>${L(`<b>リールをタップ</b>で${state.day + 1}日目へ`, `<b>Tap the reels</b> for day ${state.day + 1}`)}</span>`;
+  box.hidden = !html;
+  setHtml(box, html);
+}
+
 function renderMarket(): void {
   const m = state.market;
   const box = $('market');
@@ -428,7 +450,9 @@ function renderTax(): void {
   el.tax.className = `hud-tax${warn ? ' warn' : ''}${short ? ' short' : ' ok'}${state.difficulty ? ' hard' : ''}`;
   el.tax.innerHTML =
     `<span class="tax-label">${art('bale')}<span class="tax-word">${L('年貢', 'Tax')}</span></span><b>${gold(t.amount)}</b>` +
-    `<span class="tax-mark">${short ? L('足りない', 'short') : L('払える', 'ready')}</span>`;
+    `<span class="tax-mark">${short ? L('足りない', 'short') : L('払える', 'ready')}</span>` +
+    // いつ払うか：日曜まであと何日（今日なら「今日の終わり」）
+    `<span class="tax-due">${t.daysLeft <= 0 ? L('今日の終わり', 'Tonight') : L(`日曜まで あと${t.daysLeft}日`, `${t.daysLeft} days to Sunday`)}</span>`;
 }
 
 /** 列（縦・横・斜めに3つ以上）にそろった実があるか */
