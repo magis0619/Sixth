@@ -2050,6 +2050,9 @@ function applyMoon(i: number): void {
   afterGrowth(affected, '+1');
 }
 
+/** 作物のあるマスに置き物を置く確認（1回目のタップで選び、2回目で置く） */
+let placeArmed: number | null = null;
+
 function onPlotTap(cell: number): void {
   unlockAudio();
   if (ui.busy || state.over) return;
@@ -2064,6 +2067,15 @@ function onPlotTap(cell: number): void {
     return;
   }
   if (state.stock.length && canPlace(state, cell)) {
+    // 作物があるマスに置くときは、作物がどくので2回目のタップで置く
+    if (state.field[cell] && placeArmed !== cell) {
+      placeArmed = cell;
+      sfx.select();
+      shake(plot, 4);
+      say(`${art(PLACE_ART[state.stock[0]])} ${L(isRipe(state.field[cell]) ? '実りがなくなる：もう一度タップで置く' : '作物がなくなる：もう一度タップで置く', 'The crop will be removed: tap again to place')}`, 2500);
+      return;
+    }
+    placeArmed = null;
     place(state, cell);
     sfx.plant();
     sfx.charmGet();

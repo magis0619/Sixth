@@ -989,6 +989,45 @@ const CARD_ART = {
     <path d="M24 18L28 10H36L40 18" fill="${C.tan[1]}" ${S2}/>
     ${coinSmall(32, 40, 9)}
     ${sparkle(52, 12, 5, C.gold[0])}${sparkle(10, 16, 4, C.gold[0])}`,
+  // 追加したお守り
+  autumnHarvest: `
+    <g transform="translate(4 6) scale(0.85)">${pumpkin}</g>
+    ${face('M8 14C14 6 24 8 24 16C18 20 10 20 8 14Z', C.orange, 15, 14, 0.82, S2)}
+    <path d="M9 15L22 13" fill="none" stroke="${C.orange[1]}" stroke-width="1.6"/>
+    ${face('M44 6C52 4 58 10 56 18C48 18 44 12 44 6Z', C.red, 50, 11, 0.82, S2)}
+    <path d="M45 7L55 17" fill="none" stroke="${C.red[1]}" stroke-width="1.6"/>`,
+  thunderGod: `
+    <g transform="translate(6 10) scale(0.82)">${bolt()}</g>
+    ${face('M14 14L20 4L28 11L32 2L36 11L44 4L50 14Z', C.gold, 32, 9, 0.8, S2)}
+    <circle cx="32" cy="9" r="1.8" fill="${C.red[0]}"/>
+    ${sparkle(54, 30, 5, C.gold[0])}${sparkle(10, 40, 4, C.gold[0])}`,
+  moonViewing: `
+    ${face(E(40, 22, 16), ['#ffe98a', '#e9c556'], 36, 18, 0.86)}
+    <circle cx="35" cy="17" r="3" fill="#f0d272"/><circle cx="46" cy="27" r="3.5" fill="#f0d272"/>
+    ${line('M18 30V60', C.brown[0], 3)}
+    ${[[18, 34], [18, 43], [18, 52]].map(([x, y]) => face(E(x, y, 6, 5), C.white, x - 1, y - 1, 0.84, S2)).join('')}
+    ${face('M30 60H54L50 52H34Z', C.tan, 42, 55, 0.84, S2)}
+    ${sparkle(10, 10, 4, '#fff')}`,
+  bigSpender: `
+    ${face(E(32, 50, 22, 8), C.gold, 28, 47, 0.86)}
+    ${face(E(32, 42, 22, 8), C.gold, 28, 39, 0.86)}
+    ${face(E(32, 34, 22, 8), C.gold, 28, 31, 0.86)}
+    ${face(E(32, 22, 13, 18), C.gold, 28, 16, 0.86)}
+    <path d="M32 9V35M25 16H39M25 28H39" fill="none" stroke="${C.gold[1]}" stroke-width="2.2" stroke-linecap="round"/>
+    ${sparkle(52, 12, 5, '#fff')}${sparkle(12, 18, 4, '#fff')}`,
+  declutter: `
+    ${line('M44 6L28 40', C.tan[0], 4)}
+    ${face('M20 36L36 44L30 60Q18 60 10 52Z', C.straw, 22, 48, 0.84)}
+    <path d="M16 50L26 58M21 46L30 54M25 42L33 50" fill="none" stroke="${C.straw[1]}" stroke-width="1.8" stroke-linecap="round"/>
+    ${[[46, 52], [52, 46], [56, 56]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.6" fill="${C.stone[0]}" ${S2}/>`).join('')}
+    ${sparkle(50, 20, 5, C.gold[0])}`,
+  farmMaster: `
+    ${face('M6 40H58V58H6Z', C.brown, 26, 46, 0.88)}
+    <path d="M6 46H58M6 52H58M23 40V58M41 40V58" fill="none" stroke="${C.brown[1]}" stroke-width="1.8"/>
+    ${line('M14 36L40 6', C.tan[0], 4)}
+    ${face('M36 12L54 20L48 34L30 26Z', C.stone, 42, 20, 0.84)}
+    ${face(E(52, 48, 7), C.green, 50, 46, 0.82, S2)}
+    <path d="M52 44V52M48 48H56" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>`,
   earlyCrop: `
     ${line('M32 60V30', C.leaf[1], 4)}
     ${face('M32 40C26 41 16 39 13 28C22 25 31 30 32 40Z', C.leaf, 18, 31, 0.84)}

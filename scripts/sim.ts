@@ -2,6 +2,7 @@
 // npm run sim -- [回数] [starter|full|addX,addY…] [player|smart|random]   （FOCUS=1 で買い物を絞る）
 //   player: プレイヤー程度に考える（scripts/player-bot.ts）。STOPCLEAR=1 でクリアしたら止める
 //   LOOPSTATS=1 で1日の中身（種・育てる・お邪魔の出目、植えた・育った・売った量、空きマス）を週ごとに出す
+//   NONEW=1 で、2026-11-18に足したお守り6つを候補から外して比べる
 //   試し：DIFF=難しさ / TAX=年貢の表 / DMULT=難しさごとの年貢の倍率 / REELUP=2,4（その回数の年貢でリール+1）/ SEEDW=トマトの種の出やすさ
 //   smart: 列を狙って置き、列がそろうまで待つ / random: 置き場所・使う場所・買い物を適当に決め、実ったらすぐ売る
 
@@ -160,7 +161,7 @@ const setup = mode === 'full'
   : {
       shop: process.env.FARMER ? (FARMERS.find((f) => f.id === process.env.FARMER)!.favor as typeof META.startUnlocked) : mode === 'starter' ? META.startUnlocked : (mode.split(',') as typeof META.startUnlocked),
       pool: mode === 'starter' ? META.startUnlocked : undefined,
-      charmPool: CHARM_ORDER.filter((id) => !(id in META.charmUnlock)),
+      charmPool: CHARM_ORDER.filter((id) => !(id in META.charmUnlock) && !(process.env.NONEW && ['autumnHarvest', 'thunderGod', 'moonViewing', 'bigSpender', 'declutter', 'farmMaster'].includes(id))),
       // DIFF=1〜4 で難しいモード
       difficulty: Number(process.env.DIFF ?? 0),
       // FARMER=berry などで農家を選ぶ（市に出やすい品も農家のもの）

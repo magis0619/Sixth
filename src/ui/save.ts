@@ -99,6 +99,8 @@ export function loadRun(): GameState | null {
     s.toolLv ??= s.field.map(() => 0);
     s.discards ??= 0;
     s.discardedThisMarket ??= false;
+    s.discardsThisMarket ??= 0;
+    s.moonUsedDay ??= 0;
     s.today ??= { rain: [], sun: [], boosted: [] };
     s.halfTax ??= false;
     s.contractOffer ??= [];

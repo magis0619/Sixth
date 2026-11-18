@@ -6,7 +6,7 @@ import { CONFIG, CROPS, CUT, EVENT_CONDITIONS, FARMERS, THUNDER_LINES, UPGRADE_S
 import {
   animalGold, buy, buyPlace, drawDay, hasRanch, hiveBonus, isColorful, canPlace, canUse, cellMultiplier, cropPrice, isPond, waterWheels, checkReady, chooseCharm, endDay, evolveTools, expand, expandPrice,
   fieldCells, isGolden, lv, multSteps, newCrop, newGame, nextTax, obstacleRule, place, pullWeed, resolveAuto, ripeGroup,
-  canBuy, canBuyPlace, canExpand, isMarketDay, rollObstacles, takeOffer, refreshCombos, symbolShape, canPlaceAt, isPivotAdd, isPivotPlace, mustPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult, beginDay, takeContract, mergeable, mergeSymbol, mergeCost, bagCount, skipCharm, singleMult, rollOffer, buyPremium, canBuyPremium, premiumPrice, resolveAuto as autoOf, discard, discardPrice, canDiscard,
+  canBuy, canBuyPlace, canExpand, isMarketDay, rollObstacles, takeOffer, refreshCombos, symbolShape, canPlaceAt, isPivotAdd, isPivotPlace, mustPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult, beginDay, takeContract, mergeable, mergeSymbol, mergeCost, bagCount, skipCharm, singleMult, rollOffer, buyPremium, canBuyPremium, premiumPrice, resolveAuto as autoOf, discard, discardPrice, canDiscard, placePrice,
 } from '../src/game.ts';
 import { CONTRACTS, contractGold } from '../src/contracts.ts';
 import { farmerUnlocked, recordRun, type MetaState } from '../src/meta.ts';
@@ -718,13 +718,19 @@ describe('列の予告', () => {
 });
 
 describe('土地と建物', () => {
-  it('土地（水路・堆肥）は作物の上にも敷ける。建物は空きマスだけ', () => {
+  it('土地（水路・堆肥）は作物の上にも敷ける。建物は作物があっても置け、作物はどく（雑草・大物の上は不可）', () => {
     const s = newGame();
     s.field[0] = newCrop('tomato');
     expect(canPlaceAt(s, 'water', 0)).toBe(true);
     expect(canPlaceAt(s, 'compost', 0)).toBe(true);
-    expect(canPlaceAt(s, 'henhouse', 0)).toBe(false);
+    expect(canPlaceAt(s, 'henhouse', 0)).toBe(true);
     expect(canPlaceAt(s, 'henhouse', 1)).toBe(true);
+    s.weeds[1] = true;
+    expect(canPlaceAt(s, 'henhouse', 1)).toBe(false);
+    s.stock = ['henhouse'];
+    place(s, 0);
+    expect(s.tools[0]).toBe('henhouse');
+    expect(s.field[0]).toBeNull();
   });
 
   it('建物を置ける空きマスがなければ買えない。土地は敷けるマスが残っていれば買える', () => {
@@ -733,10 +739,13 @@ describe('土地と建物', () => {
     s.gold = 9999;
     s.weeklyPlaces = ['henhouse', 'water'];
     fieldCells(s).forEach((c) => (s.field[c] = newCrop('tomato')));
-    expect(canBuyPlace(s, 'henhouse')).toBe(false);
+    // 作物で埋まっていても、建物は作物をどけて置けるので買える
+    expect(canBuyPlace(s, 'henhouse')).toBe(true);
     expect(canBuyPlace(s, 'water')).toBe(true);
     fieldCells(s).forEach((c) => (s.tiles[c] = 'compost'));
     expect(canBuyPlace(s, 'water')).toBe(false);
+    fieldCells(s).forEach((c) => (s.weeds[c] = true));
+    expect(canBuyPlace(s, 'henhouse')).toBe(false);
   });
 
   it('市ではいくつも買えて置き待ちにたまり、置ける場所の数までしか買えない', () => {
@@ -969,6 +978,33 @@ describe('タヌキと畑の品', () => {
     expect(s.field[at(2, 0)]!.growth).toBe(2);
     expect(s.field[at(2, 1)]!.growth).toBe(1);
     expect(s.field[at(1, 1)]!.growth).toBe(0);
+  });
+
+  it('追加したお守り：秋の実り・雷さま・月見・大判振る舞い・断捨離・畑仕事の名人', () => {
+    const s = game();
+    s.day = 3;
+    const pumpkin = { ...newCrop('pumpkin'), growth: 5 };
+    const tomato = { ...newCrop('tomato'), growth: 3 };
+    const p0 = cropPrice(s, pumpkin, 0);
+    const t0 = cropPrice(s, tomato, 0);
+    s.charms.autumnHarvest = 1;
+    expect(cropPrice(s, pumpkin, 0)).toBe(Math.round(p0 * 1.5));
+    expect(cropPrice(s, tomato, 0)).toBe(Math.round(t0 * 0.8));
+    s.charms.autumnHarvest = 0;
+    // 畑仕事の名人：広げる−40%・置き物+40%
+    const e0 = expandPrice(s)!;
+    const h0 = placePrice(s, 'hive')!;
+    s.charms.farmMaster = 1;
+    expect(expandPrice(s)).toBe(Math.round(e0 * 0.6));
+    expect(placePrice(s, 'hive')).toBe(Math.round(h0 * 1.4));
+    // 断捨離：半額で市で2回まで、仕入れは2択
+    s.gold = 999;
+    s.bag.rain = 6;
+    s.charms.declutter = 1;
+    expect(discard(s, 'rain')).toBe(true);
+    expect(discard(s, 'rain')).toBe(true);
+    expect(discard(s, 'rain')).toBe(false);
+    expect(rollOffer(s, Math.random).length).toBe(2);
   });
 
   it('要らない札を捨てる：市で1回、捨てるたびに高くなる。お邪魔は捨てられない', () => {

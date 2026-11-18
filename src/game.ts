@@ -133,6 +133,10 @@ export interface GameState {
   /** 要らない札を捨てた回数（値段が上がる）と、この市で捨てたか */
   discards: number;
   discardedThisMarket: boolean;
+  /** この市で捨てた枚数（断捨離なら2枚まで） */
+  discardsThisMarket: number;
+  /** 月見の代償：満月を使った日 */
+  moonUsedDay: number;
   /** 今日の市はもう閉じた（市は開いて閉じたら、その日はもう開かない） */
   marketClosed: boolean;
   /** 大きな買い物（後半の市）を買った数 */
@@ -305,6 +309,8 @@ function freshGame(setup: GameSetup): GameState {
     mergedThisMarket: false,
     discards: 0,
     discardedThisMarket: false,
+    discardsThisMarket: 0,
+    moonUsedDay: 0,
     marketClosed: false,
     premium: {},
     moonPhase: 0,
@@ -751,6 +757,7 @@ export function beginDay(state: GameState, rng: Rng): void {
   if (isMarketDay(state.day)) {
     state.mergedThisMarket = false;
     state.discardedThisMarket = false;
+    state.discardsThisMarket = 0;
     state.removedThisWeek = 0;
     state.weeklyPlaces = rollWeeklyPlaces(state, rng);
   }
@@ -780,7 +787,8 @@ function spinDayRaw(state: GameState, rng: Rng): void {
   // 月の満ち欠け：月が出るたびに1つ満ちる。満月になった月だけ使える（使うと新月に戻る）
   state.results.forEach((r) => {
     if (r.symbol !== 'moon') return;
-    state.moonPhase = Math.min(3, (state.moonPhase ?? 0) + 1);
+    // 月見のお守り：2つずつ満ちる
+    state.moonPhase = Math.min(3, (state.moonPhase ?? 0) + (state.charms.moonViewing > 0 ? 2 : 1));
     r.moon = state.moonPhase;
     if (r.moon < 3) {
       r.used = true;
@@ -1164,13 +1172,15 @@ export function rollOffer(state: GameState, rng: Rng): AddUpgradeId[] {
   // トマトの種は最初から必ず候補に入れる（雨・太陽の2択にならないように）
   const ids = [...new Set<AddUpgradeId>(['addSeed', ...state.shop, ...state.pool])].filter((id) => !isRareOffer(id) && !isCutAdd(id));
   // 雨・太陽はよく出る（基本の札）。農家の得意な品はその次
-  const picks = pickWeighted(ids.map((id) => ({ id, w: (CONFIG.offerWeights[id] ?? 1) * (state.shop.includes(id) ? 1.5 : 1) })), CONFIG.dailyOfferCount, rng);
+  // 断捨離の代償：仕入れが2択
+  const n = CONFIG.dailyOfferCount - (state.charms.declutter > 0 ? 1 : 0);
+  const picks = pickWeighted(ids.map((id) => ({ id, w: (CONFIG.offerWeights[id] ?? 1) * (state.shop.includes(id) ? 1.5 : 1) })), n, rng);
   // たまにレア（満月・金の種）が1つ混ざる
   const rares = CONFIG.rareOffers.filter((id) => !isCutAdd(id));
   // 週ごとに品が良くなる：年貢を納めるたびに、レアが混ざりやすくなる（8%→納めた回数×4%ずつ上乗せ）
   if (rares.length && rng() < CONFIG.rareOfferChance + 0.04 * state.taxesPaid) {
     const rare = rares[Math.floor(rng() * rares.length)] as AddUpgradeId;
-    picks.splice(Math.min(picks.length, CONFIG.dailyOfferCount - 1), 1, rare);
+    picks.splice(Math.min(picks.length, n - 1), 1, rare);
   }
   return picks;
 }
@@ -1213,7 +1223,8 @@ export function rollWeeklyPlaces(state: GameState, rng: Rng): PlaceId[] {
 // ---- 要らない札を捨てる（市で1回、捨てるたびに高くなる） ----
 
 export function discardPrice(state: GameState): number {
-  return Math.max(1, Math.round(CONFIG.discardBase * Math.pow(CONFIG.discardGrowth, state.discards ?? 0) * shopMult(state)));
+  // 断捨離：半額
+  return Math.max(1, Math.round(CONFIG.discardBase * Math.pow(CONFIG.discardGrowth, state.discards ?? 0) * shopMult(state) * (state.charms.declutter > 0 ? 0.5 : 1)));
 }
 
 /** 捨てられる札か：お邪魔は「消す」で。袋が6枚より少なくはしない */
@@ -1226,7 +1237,9 @@ function discardRaw(state: GameState, sym: SymbolId): boolean {
   state.gold -= discardPrice(state);
   state.bag[sym]--;
   state.discards = (state.discards ?? 0) + 1;
-  state.discardedThisMarket = true;
+  // 断捨離なら市で2枚まで
+  state.discardsThisMarket = (state.discardsThisMarket ?? 0) + 1;
+  state.discardedThisMarket = state.discardsThisMarket >= (state.charms.declutter > 0 ? 2 : 1);
   return true;
 }
 
@@ -1283,7 +1296,8 @@ function resolveFeverRaw(state: GameState, rng: Rng): FeverEvent[] {
   for (const symbol of state.fever) {
     if (SYMBOLS[symbol].rarity === 'bad') continue;
     const count = state.results.filter((r) => r.symbol === symbol).length;
-    let jackpot = jackpotAmount(state, count);
+    // 大判振る舞い：大当たり×2
+    let jackpot = jackpotAmount(state, count) * (state.charms.bigSpender > 0 ? 2 : 1);
     const base = { symbol, count };
     const seed = SEEDS[symbol];
     if (seed && symbol !== 'goldSeed') {
@@ -1744,7 +1758,7 @@ function useSymbolRaw(state: GameState, reel: number, cell: number | null): numb
       grow(state, cell!, 2 * r.power, affected);
       return affected;
     case 'raijin':
-      shapeCells(state, 'row', cell!).forEach((i) => grow(state, i, 3 * r.power, affected));
+      shapeCells(state, 'row', cell!).forEach((i) => grow(state, i, (3 + lv(state, 'thunderGod')) * r.power, affected));
       return affected;
     case 'queenBee':
       shapeCells(state, 'xline', cell!).forEach((i) => grow(state, i, r.power, affected));
@@ -1789,12 +1803,13 @@ function useSymbolRaw(state: GameState, reel: number, cell: number | null): numb
       shapeCells(state, 'x', cell!).forEach((i) => grow(state, i, CONFIG.beeGrowth * r.power, affected));
       return affected;
     case 'thunder':
-      shapeCells(state, symbolShape(state, 'thunder')!, cell!).forEach((i) => grow(state, i, 2 * r.power, affected));
+      shapeCells(state, symbolShape(state, 'thunder')!, cell!).forEach((i) => grow(state, i, (2 + lv(state, 'thunderGod')) * r.power, affected));
       return affected;
     case 'moon':
       fieldCells(state).forEach((i) => grow(state, i, r.power + (comboOn(state, 'moonFeast') ? 1 : 0), affected));
       // 満月を使うと新月に戻る
       state.moonPhase = 0;
+      state.moonUsedDay = state.day;
       return affected;
     case 'sun': {
       // 霜を溶かしてから育てる（溶けたマスの作物もすぐ育つ）
@@ -1841,7 +1856,13 @@ export function cropPrice(state: GameState, crop: Crop, cell?: number): number {
   const rancher = Math.max(0.5, 1 - 0.1 * state.charms.rancher);
   // 大きな買い物：豊穣の像は1つにつき売値+10%。早生の代償で売値−25%
   const statue = (1 + 0.1 * (state.premium?.statue ?? 0)) * (state.charms.earlyCrop > 0 ? 0.75 : 1);
-  return Math.round((def.price + charm + crop.bonus + hive) * fert * tile * state.priceMult * marketMult(state, crop.kind) * fair * combo * marketDay * rancher * statue);
+  // 秋の実り：かぼちゃ・スイカ+50%、代償で苺・トマト−20%（1つごと）
+  const base = cropBase(crop.kind);
+  const autumn = lv(state, 'autumnHarvest') ? (base === 'pumpkin' || base === 'watermelon' ? 1 + 0.5 * lv(state, 'autumnHarvest') : base === 'strawberry' || base === 'tomato' ? Math.max(0.5, 1 - 0.2 * lv(state, 'autumnHarvest')) : 1) : 1;
+  // 月見の代償：満月を使った日は−20%。大判振る舞いの代償：良い絵柄のフィーバーがない日は−10%
+  const moonDay = state.charms.moonViewing > 0 && state.moonUsedDay === state.day && state.day > 0 ? 0.8 : 1;
+  const quiet = state.charms.bigSpender > 0 && !state.fever.some((s) => SYMBOLS[s].rarity !== 'bad') ? 0.9 : 1;
+  return Math.round((def.price + charm + crop.bonus + hive) * fert * tile * state.priceMult * marketMult(state, crop.kind) * fair * combo * marketDay * rancher * statue * autumn * moonDay * quiet);
 }
 
 export function isRipe(crop: Crop | null): boolean {
@@ -2100,6 +2121,10 @@ function buyRaw(state: GameState, id: UpgradeId): boolean {
 
 /** そのゲームで役に立つお守りか（大物狙いはスイカの種を使えるときだけ） */
 function charmUseful(state: GameState, id: CharmId): boolean {
+  const has = (sym: SymbolId, add: AddUpgradeId) => state.bag[sym] > 0 || state.shop.includes(add) || state.pool.includes(add);
+  if (id === 'autumnHarvest') return has('pumpkinSeed', 'addPumpkinSeed') || has('watermelonSeed', 'addWatermelonSeed');
+  if (id === 'thunderGod') return state.bag.thunder > 0 || state.bag.raijin > 0;
+  if (id === 'moonViewing') return state.bag.moon > 0;
   if (id === 'bigGame') return state.bag.watermelonSeed > 0 || state.bag.boxSeed > 0 || state.shop.includes('addWatermelonSeed') || state.pool.includes('addWatermelonSeed');
   return true;
 }
@@ -2144,7 +2169,8 @@ function chooseCharmRaw(state: GameState, id: CharmId): boolean {
 export function expandPrice(state: GameState): number | null {
   const p = CONFIG.expandPrices[state.bought.expand ?? 0];
   if (p === undefined || (state.cols >= CONFIG.fieldCols && state.rows >= CONFIG.fieldRows)) return null;
-  return Math.max(1, Math.round(p * (1 - Math.min(0.5, 0.1 * lv(state, 'bargain'))) * shopMult(state)));
+  // 畑仕事の名人：広げる値段−40%
+  return Math.max(1, Math.round(p * (1 - Math.min(0.5, 0.1 * lv(state, 'bargain'))) * shopMult(state) * (state.charms.farmMaster > 0 ? 0.6 : 1)));
 }
 
 export function canExpand(state: GameState): boolean {
@@ -2166,7 +2192,8 @@ export function placePrice(state: GameState, id: PlaceId): number | null {
   const base = PLACES[id].price;
   if (base === null) return null;
   const p = base * Math.pow(CONFIG.placeGrowth, state.bought[id] ?? 0);
-  return Math.max(1, Math.round(p * (1 - Math.min(0.5, 0.1 * lv(state, 'bargain'))) * shopMult(state)));
+  // 畑仕事の名人の代償：置き物+40%
+  return Math.max(1, Math.round(p * (1 - Math.min(0.5, 0.1 * lv(state, 'bargain'))) * shopMult(state) * (state.charms.farmMaster > 0 && PLACES[id].kind === 'tool' ? 1.4 : 1)));
 }
 
 export function canBuyPlace(state: GameState, id: PlaceId): boolean {
@@ -2204,8 +2231,8 @@ export function canPlace(state: GameState, cell: number): boolean {
  */
 export function canPlaceAt(state: GameState, id: PlaceId, cell: number): boolean {
   if (!inField(state, cell) || state.tools[cell] || isPond(state, cell)) return false;
-  // 建物は、特別なマスの上にも置ける（空きマスなら）
-  if (PLACES[id].kind === 'tool') return isOpen(state, cell);
+  // 建物は、特別なマスの上にも置ける。作物があっても置ける（作物はどける。大物は除く）
+  if (PLACES[id].kind === 'tool') return isOpen(state, cell) || (!!state.field[cell] && !CROPS[state.field[cell]!.kind].big && state.field[cell]!.anchor === undefined && !state.weeds[cell] && !state.frost[cell] && !isFlooded(state, cell));
   // 土地は大物の一部には敷けない（本体と売値がずれるので）
   return !state.tiles[cell] && !(state.field[cell] && CROPS[state.field[cell]!.kind].big);
 }
@@ -2224,6 +2251,8 @@ function placeRaw(state: GameState, cell: number): PlaceId | null {
   if (!canPlace(state, cell)) return null;
   const id = state.stock.shift()!;
   if (PLACES[id].kind === 'tool') {
+    // 作物があればどける
+    state.field[cell] = null;
     state.tools[cell] = id;
     state.toolXp[cell] = 0;
     if (state.toolLv) state.toolLv[cell] = 0;

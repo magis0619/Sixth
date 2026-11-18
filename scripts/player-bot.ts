@@ -79,7 +79,8 @@ function bestToolCell(s: GameState, id: PlaceId): number | null {
     const tools = [...s.tools];
     tools[c] = id;
     const loss = base - layoutValue(s, tools);
-    return -loss * 3 + (id === 'hive' || id === 'queenHive' || id === 'scarecrow' || id === 'bigScarecrow' || id === 'goldenWell' ? around(c) * 0.8 : 0);
+    // 作物があるマスは、どけるので避ける
+    return -loss * 3 - (s.field[c] ? 100 : 0) + (id === 'hive' || id === 'queenHive' || id === 'scarecrow' || id === 'bigScarecrow' || id === 'goldenWell' ? around(c) * 0.8 : 0);
   };
   return cells.sort((a, b) => score(b) - score(a))[0];
 }
@@ -157,6 +158,12 @@ const CHARM_VALUE: Partial<Record<CharmId, (s: GameState) => number>> = {
   rancher: (s) => (fieldCells(s).some((c) => s.tools[c] === 'henhouse' || s.tools[c] === 'cowshed') ? 2 : -2),
   bigGame: () => -2,
   wheelwright: () => -1,
+  autumnHarvest: (s) => (mainCrop(s) === 'pumpkin' ? 4 : -2),
+  thunderGod: (s) => (s.bag.thunder >= 2 ? 3 : 1),
+  moonViewing: (s) => (s.bag.moon >= 1 ? 2 : 0),
+  bigSpender: () => 1,
+  declutter: () => 1,
+  farmMaster: (s) => (s.cols * s.rows < 25 ? 3 : 0),
 };
 
 export function pickCharm(s: GameState): void {

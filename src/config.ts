@@ -106,7 +106,13 @@ export type CharmId =
   // 曰く付きのお守り（追加）
   | 'crowFriend'
   | 'greedy'
-  | 'earlyCrop';
+  | 'earlyCrop'
+  | 'autumnHarvest'
+  | 'thunderGod'
+  | 'moonViewing'
+  | 'bigSpender'
+  | 'declutter'
+  | 'farmMaster';
 
 /**
  * 一旦減らした要素（試し中）。ここに並べたものはゲームに出ない（仕入れ・ショップ・お邪魔・お守り・組み合わせ・図鑑）。
@@ -671,6 +677,12 @@ export const CHARM_CURSE: Partial<Record<CharmId, { text: (n: number) => string;
   crowFriend: { text: () => '虫の効き目が2倍' },
   greedy: { text: () => '単品は売れない（列か大物だけ）' },
   earlyCrop: { text: () => '作物の売値−25%' },
+  autumnHarvest: { text: (n) => `苺・トマトの売値−${20 * n}%` },
+  thunderGod: { text: () => '袋に雑草+2', bag: { weed: 2 } },
+  moonViewing: { text: () => '満月を使った日は売値−20%' },
+  bigSpender: { text: () => 'フィーバーのない日は売値−10%' },
+  declutter: { text: () => '仕入れが2択になる' },
+  farmMaster: { text: () => '置き物の値段+40%' },
 };
 
 /** お守り。年貢を納めるたびに charmChoices 個から1つ選ぶ。同じものは重ねて効果アップ */
@@ -712,6 +724,12 @@ export const CHARMS: Record<CharmId, CharmDef> = {
   crowFriend: { id: 'crowFriend', tier: 'uncommon', name: 'カラスの友', emoji: '🐦', desc: () => 'カラスが作物を食べず、来るたびに+3', max: 1 },
   greedy: { id: 'greedy', tier: 'uncommon', name: '欲張り', emoji: '💰', desc: () => '列の倍率+0.2', max: 1 },
   earlyCrop: { id: 'earlyCrop', tier: 'rare', name: '早生', emoji: '🌱', desc: () => '植えた作物は1段階育った状態から（1回早く実る）', max: 1 },
+  autumnHarvest: { id: 'autumnHarvest', tier: 'uncommon', name: '秋の実り', emoji: '🍂', desc: (n) => `かぼちゃ・スイカの売値+${50 * n}%`, max: 2 },
+  thunderGod: { id: 'thunderGod', tier: 'uncommon', name: '雷さま', emoji: '⚡', desc: (n) => `雷の成長+${n}`, max: 2 },
+  moonViewing: { id: 'moonViewing', tier: 'uncommon', name: '月見', emoji: '🌕', desc: () => '月が2つずつ満ちる（新月→半月→満月）', max: 1 },
+  bigSpender: { id: 'bigSpender', tier: 'rare', name: '大判振る舞い', emoji: '💰', desc: () => 'フィーバーの大当たり×2', max: 1 },
+  declutter: { id: 'declutter', tier: 'uncommon', name: '断捨離', emoji: '🧹', desc: () => '札を捨てる値段が半分・市で2回まで', max: 1 },
+  farmMaster: { id: 'farmMaster', tier: 'uncommon', name: '畑仕事の名人', emoji: '🧑‍🌾', desc: () => '畑を広げる値段−40%', max: 1 },
   exhibition: { id: 'exhibition', tier: 'rare', name: '品評会', emoji: '🏅', desc: () => '作物の売値+20%', max: 1, special: { kind: 'event', hint: '作物を全種類売ると…？' } },
 };
 
@@ -965,6 +983,7 @@ if (EN) {
     sunBlessing: () => '+2 crows in your bag', queenHive: () => '+2 bugs in your bag', scarecrow: (n) => `Tax +${5 * n}%`, bumper: (n) => `Tax +${10 * n}%`,
     bugWard: () => 'Singles sell for half again', artisan: () => 'Tax +20%', rancher: (n) => `Crop prices −${10 * n}%`, bigGame: (n) => `Line multiplier −${(0.2 * n).toFixed(1)}`,
     taxRelief: (n) => `Market prices +${30 * n}%`, crowFriend: () => 'Bugs hit twice as hard', greedy: () => 'Singles can’t be sold (lines or big crops only)', earlyCrop: () => 'Crop prices −25%',
+    autumnHarvest: (n) => `Strawberry & tomato prices −${20 * n}%`, thunderGod: () => '+2 weeds in your bag', moonViewing: () => 'Prices −20% on the day you use a full moon', bigSpender: () => 'Prices −10% on days without a fever', declutter: () => 'Daily pick shows only 2 choices', farmMaster: () => 'Placeable prices +40%',
   };
   (Object.keys(curse) as CharmId[]).forEach((id) => CHARM_CURSE[id] && (CHARM_CURSE[id]!.text = curse[id]!));
   const charm: Partial<Record<CharmId, [string, (n: number) => string, string?]>> = {
@@ -1004,6 +1023,12 @@ if (EN) {
     crowFriend: ['Crow Friend', () => 'Crows never eat crops; +3g each visit'],
     greedy: ['Greedy', () => 'Line multiplier +0.2'],
     earlyCrop: ['Early Crop', () => 'Planted crops start 1 stage grown'],
+    autumnHarvest: ['Autumn Harvest', (n) => `Pumpkin & watermelon prices +${50 * n}%`],
+    thunderGod: ['Thunder God', (n) => `Thunder growth +${n}`],
+    moonViewing: ['Moon Viewing', () => 'The moon waxes 2 steps at a time'],
+    bigSpender: ['Big Spender', () => 'Fever jackpots ×2'],
+    declutter: ['Declutter', () => 'Discarding costs half, twice per market'],
+    farmMaster: ['Master Farmer', () => 'Field expansion −40%'],
     exhibition: ['Fair Prize', () => 'Crop prices +20%', 'Sell every kind of crop…?'],
   };
   (Object.keys(charm) as CharmId[]).forEach((id) => {
