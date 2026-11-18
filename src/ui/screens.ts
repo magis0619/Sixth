@@ -3,11 +3,11 @@
 import { L } from '../i18n.ts';
 import {
   ACHIEVE_ADDS, PLACES, CHARM_ORDER, FARMERS, COMBOS, CUT, isCutAdd, type CharmId, type SymbolId, PAUSED_CHARMS, CHARM_TIER_NAMES, CHARMS, CONFIG, DIFFICULTIES, FEEDBACK_URL, META, SHARE_URL, SYMBOL_ORDER, SYMBOLS, THUNDER_LINES, UPGRADES,
-  UPGRADE_SYMBOL,
+  UPGRADE_SYMBOL, type FarmerPerk,
 } from '../config.ts';
 import { difficultyTaxMult, nextTax, placePrice, rateRun, taxPlan } from '../game.ts';
 import {
-  awardPoints, capacity, farmerUnlocked, isAchieveAdd, loadoutCost, maxDifficulty, recordRun, saveMeta, toggleLoadout, unlockAdd, unlockCharm,
+  awardPoints, buyComboHint, buyMastery, capacity, masteryPrice, nextComboHint, farmerUnlocked, isAchieveAdd, loadoutCost, maxDifficulty, recordRun, saveMeta, toggleLoadout, unlockAdd, unlockCharm,
 } from '../meta.ts';
 import { art, type ArtId } from '../art.ts';
 import { sfx, unlockAudio } from '../audio.ts';
@@ -220,6 +220,12 @@ export async function shareResult(endedAfterClear: boolean): Promise<void> {
 export type HelpTab = 'rules' | 'symbols' | 'combos' | 'charms';
 
 /** onClose：閉じたあとに戻す画面（準備画面から開いたとき） */
+/** ヒントを買った組み合わせ：最初の絵柄だけ見せ、残りは「？」 */
+export function comboHintPair(id: CharmId): string {
+  const syms = (Object.entries(COMBOS[id]!) as [SymbolId, number][]).flatMap(([sym, n]) => Array.from({ length: n }, () => sym));
+  return syms.map((sym, k) => (k === 0 ? symHtml(sym) : '<span class="q">？</span>')).join('<span class="fc-plus">＋</span>');
+}
+
 export function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
   const tabs: [HelpTab, string][] = [['rules', L('遊び方', 'How to play')], ['symbols', L('絵柄', 'Symbols')], ['combos', L('組み合わせ', 'Combos')], ['charms', L('お守り', 'Charms')]];
   const rules = `
@@ -277,6 +283,9 @@ export function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
   const found = comboIds.filter((id) => meta.discovered.includes(id));
   const combos = comboIds
     .map((id) => {
+      if (!found.includes(id) && meta.comboHints.includes(id)) {
+        return `<div class="dex-row combo-row hinted"><span class="combo-pair">${comboHintPair(id)}</span><div><b>？？？</b><span class="dex-desc">${L('ヒント：この絵柄から', 'Hint: starts with this')}</span></div></div>`;
+      }
       if (!found.includes(id)) {
         return `<div class="dex-row combo-row locked"><span class="combo-pair"><span class="q">？</span><span class="fc-plus">＋</span><span class="q">？</span></span><div><b>？？？</b></div></div>`;
       }
@@ -521,12 +530,31 @@ export function showUnlock(): void {
       .map((id) => ({ attr: `data-unlock="${id}"`, ico: ADD_EMOJI[id], name: shortName(id), effect: SYMBOLS[UPGRADE_SYMBOL[id]!.symbol].desc, price: META.adds[id].unlock, done: meta.unlockedAdds.includes(id) }));
     const charms: Buy[] = (Object.keys(META.charmUnlock) as (keyof typeof META.charmUnlock)[])
       .map((id) => ({ attr: `data-charm="${id}"`, ico: art(id as ArtId), name: CHARMS[id].name, effect: CHARMS[id].desc(1), price: META.charmUnlock[id]!, done: meta.unlockedCharms.includes(id) }));
+    // 農家の腕前：解放した農家ごとに次の段（上げきった農家は小さな札）
+    const masteries: Buy[] = FARMERS.filter((f) => farmerUnlocked(meta, f.id) && f.mastery?.length).map((f) => {
+      const lv = meta.mastery[f.id] ?? 0;
+      const max = f.mastery!.length;
+      const price = masteryPrice(meta, f.id);
+      return { attr: `data-mastery="${f.id}"`, ico: art(f.art as ArtId), name: `${f.name} ${masteryStars(lv, max)}`, effect: price === null ? L('上げきった', 'Maxed') : L(`段${lv + 1}：${perkText(f.mastery![lv])}`, `Lv${lv + 1}: ${perkText(f.mastery![lv])}`), price: price ?? 0, done: price === null };
+    });
+    // 組み合わせのヒント：まだの物があれば1行（買うと、まだの組み合わせの絵柄を1つ見せる）
+    const comboAll = Object.keys(COMBOS).length;
+    const hintNext = nextComboHint(meta);
+    const hintRow = hintNext
+      ? row({ attr: 'data-hint', ico: art('question'), name: L('組み合わせのヒント', 'Combo hint'), effect: L(`まだの組み合わせの絵柄を1つ見せる（残り${comboAll - meta.discovered.filter((id) => id in COMBOS).length - meta.comboHints.length}）`, `Reveal one symbol of an unfound combo`), price: META.comboHintPrice, done: false })
+      : '';
+    const hinted = meta.comboHints.filter((id) => !meta.discovered.includes(id));
     const [ach, achDone, achAll] = collection();
     setModal('unlock', 'prep-modal unlock-modal', L('強化の解放', 'Unlocks'), `
         <div class="ul-head"><h2>${art('lock')} ${L('解放', 'Unlocks')}</h2><span class="ul-pts"><small>${L('所持', 'Have')}</small><b>${meta.points}</b><small>pt</small></span></div>
         <div class="ul-body">
           ${section('seed', L('絵柄', 'Symbols'), L('市に並ぶ', 'Appear at market'), adds)}
-          ${section('sunBlessing', L('レアのお守り', 'Rare charms'), L('年貢のあとに出る', 'Offered after tax'), charms)}
+          ${section('sunBlessing', L('お守り', 'Charms'), L('年貢のあとに出る', 'Offered after tax'), charms)}
+          ${masteries.length ? section('farmMaster', L('農家の腕前', 'Farmer mastery'), L('始めに足される', 'Added at start'), masteries) : ''}
+          <section class="ul-sec"><h3>${art('question')}<span>${L('組み合わせのヒント', 'Combo hints')}</span><span class="ul-count">${meta.comboHints.length}</span></h3>
+            ${hintRow ? `<div class="ul-list">${hintRow}</div>` : `<p class="ul-all">${art('trophy')} ${L('全部わかった', 'All known')}</p>`}
+            ${hinted.length ? `<div class="ul-done"><span class="ul-done-k">${L('ヒント', 'Hints')}</span>${hinted.map((id) => `<span class="ul-chip">${comboHintPair(id)}</span>`).join('')}</div>` : ''}
+          </section>
           <section class="ul-sec"><h3>${art('star')}<span>${L('達成で解放', 'Achievements')}</span><span class="ul-count">${achDone}/${achAll}</span></h3><div class="ul-achs">${ach}</div></section>
           ${meta.skins.length ? `<section class="ul-sec"><h3>${art('artisan')}<span>${L('見た目', 'Looks')}</span></h3><div class="prep-grid">${skinItems()}</div></section>` : ''}
         </div>
@@ -543,6 +571,14 @@ export function showUnlock(): void {
         if (unlockAdd(meta, b.dataset.unlock as never)) unlocked(b);
       }),
     );
+    el.overlay.querySelectorAll<HTMLButtonElement>('[data-mastery]').forEach((b) =>
+      b.addEventListener('click', () => {
+        if (buyMastery(meta, b.dataset.mastery!)) unlocked(b);
+      }),
+    );
+    el.overlay.querySelector<HTMLButtonElement>('[data-hint]')?.addEventListener('click', (e) => {
+      if (buyComboHint(meta)) unlocked(e.currentTarget as HTMLElement);
+    });
     el.overlay.querySelectorAll<HTMLButtonElement>('[data-charm]').forEach((b) =>
       b.addEventListener('click', () => {
         if (unlockCharm(meta, b.dataset.charm as never)) unlocked(b);
@@ -836,6 +872,19 @@ const FARMER_GOAL: Record<string, { ico: ArtId; goal: string; build: string }> =
   rain: { ico: 'thunder', goal: L('雨の十字と雷でまとめて育てる', 'Grow many with rain and thunder'), build: L('雨と雷', 'Rain & thunder') },
 };
 
+/** 腕前の1段を短い言葉で（例：苺の種+1・所持金+15・堆肥のマスを持って始める） */
+export function perkText(p: FarmerPerk): string {
+  const parts = [
+    ...(p.gold ? [L(`所持金+${p.gold}`, `Gold +${p.gold}`)] : []),
+    ...(Object.entries(p.bag ?? {}) as [SymbolId, number][]).map(([sym, n]) => `${SYMBOLS[sym].name}+${n}`),
+    ...(p.stock ?? []).map((id) => L(`${PLACES[id].name}を持って始める`, `Start with ${PLACES[id].name}`)),
+  ];
+  return parts.join('・');
+}
+const perkIco = (p: FarmerPerk): string => (p.stock?.length ? art(PLACE_ART[p.stock[0]]) : p.bag ? art(Object.keys(p.bag)[0] as ArtId) : art('coin'));
+/** 腕前の星（★ 上げた段・☆ まだの段） */
+const masteryStars = (lv: number, max: number) => `<span class="stars" aria-label="${L(`腕前 段${lv}`, `Mastery ${lv}`)}"><b>${'★'.repeat(lv)}</b>${'☆'.repeat(Math.max(0, max - lv))}</span>`;
+
 export function showFarmerScreen(dir = 0): void {
   const saved = loadRun();
   let confirmNew = false;
@@ -846,19 +895,27 @@ export function showFarmerScreen(dir = 0): void {
     const unlocked = farmerUnlocked(meta, f.id);
     const color = FARMER_COLOR[f.id] ?? '#5fae3c';
     const nextIsDiff = maxDifficulty(meta) > 0;
+    // 腕前で上げた段の分も足す（札・所持金・畑の品）
+    const lvM = meta.mastery[f.id] ?? 0;
+    const perks = (f.mastery ?? []).slice(0, lvM);
+    const bagD: Partial<Record<SymbolId, number>> = { ...f.bag };
+    perks.forEach((p) => (Object.entries(p.bag ?? {}) as [SymbolId, number][]).forEach(([sym, n]) => (bagD[sym] = (bagD[sym] ?? 0) + n)));
+    const goldD = perks.reduce((n, p) => n + (p.gold ?? 0), 0);
+    const stockAll = [...f.stock, ...perks.flatMap((p) => p.stock ?? [])];
     // 増える・減る：農家で変わる札だけを、名前と数で（緑と赤の札）
-    const deltas = (Object.keys(f.bag) as SymbolId[]).filter((sym) => f.bag[sym]);
+    const deltas = (Object.keys(bagD) as SymbolId[]).filter((sym) => bagD[sym]);
     const chip = (sym: SymbolId, d: number) => `<button class="fs-chip ${d > 0 ? 'up' : 'down'}" data-ex-sym="${sym}">${art(sym as ArtId)}<b>${SYMBOLS[sym].name}</b><em>${d > 0 ? '+' : '−'}${Math.abs(d)}</em></button>`;
     const ups = [
-      ...deltas.filter((sym) => f.bag[sym]! > 0).map((sym) => chip(sym, f.bag[sym]!)),
+      ...deltas.filter((sym) => bagD[sym]! > 0).map((sym) => chip(sym, bagD[sym]!)),
+      ...(goldD ? [`<span class="fs-chip up">${art('coin')}<b>${L('所持金', 'Gold')}</b><em>+${goldD}</em></span>`] : []),
       ...(Object.keys(f.charms) as CharmId[]).map((id) => `<button class="fs-chip up" data-ex-charm="${id}">${art(id as ArtId)}<b>${CHARMS[id].name}</b></button>`),
-      ...f.stock.map((id) => `<button class="fs-chip up" data-ex-place="${id}">${art(PLACE_ART[id])}<b>${PLACES[id].name}</b></button>`),
+      ...stockAll.map((id) => `<button class="fs-chip up" data-ex-place="${id}">${art(PLACE_ART[id])}<b>${PLACES[id].name}</b></button>`),
     ].join('');
-    const downs = deltas.filter((sym) => f.bag[sym]! < 0).map((sym) => chip(sym, f.bag[sym]!)).join('');
+    const downs = deltas.filter((sym) => bagD[sym]! < 0).map((sym) => chip(sym, bagD[sym]!)).join('');
     // 最初の袋：全部の札を小さな札で（タップで説明）
     let bagN = 0;
     const bag = SYMBOL_ORDER.flatMap((sym) => {
-      const n = Math.max(0, CONFIG.initialBag[sym] + (f.bag[sym] ?? 0));
+      const n = Math.max(0, CONFIG.initialBag[sym] + (bagD[sym] ?? 0));
       bagN += n;
       return n > 0 ? [`<button class="fs-mini-card${SYMBOLS[sym].rarity === 'bad' ? ' bad' : ''}" data-ex-sym="${sym}" aria-label="${SYMBOLS[sym].name}">${art(sym as ArtId)}<b>×${n}</b></button>`] : [];
     }).join('');
@@ -887,9 +944,8 @@ export function showFarmerScreen(dir = 0): void {
         <h2 class="ds-name">${unlocked ? f.name : '？？？'}</h2>
         ${unlocked ? `<p class="fs-desc">${f.desc}</p>` : `<p class="fs-desc locked">${art('lock')} ${L(`「${DIFFICULTIES[f.unlockClear!].name}」をクリアで解放`, `Clear "${DIFFICULTIES[f.unlockClear!].name}" to unlock`)}</p>`}
         ${unlocked ? `<div class="ds-rules fs-info">
-          ${g ? `<p class="fs-goal">${art(g.ico)}<b>${g.goal}</b></p><p class="fs-build"><span>${L('得意', 'Best')}：${L(`${g.build}ビルド`, g.build)}</span></p>` : ''}
-          ${ups ? `<div class="fs-delta"><span class="fs-k">${L('増える', 'More')}</span>${ups}</div>` : ''}
-          ${downs ? `<div class="fs-delta"><span class="fs-k">${L('減る', 'Less')}</span>${downs}</div>` : ''}
+          ${g ? `<p class="fs-goal">${art(g.ico)}<b>${g.goal}</b></p><p class="fs-build"><span>${L('得意', 'Best')}：${L(`${g.build}ビルド`, g.build)}</span>${f.mastery?.length ? `<b class="fs-mastery">${L('腕前', 'Mastery')}${masteryStars(lvM, f.mastery.length)}</b>` : ''}</p>` : ''}
+          ${ups || downs ? `<div class="fs-delta"><span class="fs-k">${L('変わる', 'Changes')}</span>${ups}${downs}</div>` : ''}
           <p class="fs-k">${L(`最初の袋（${bagN}枚）`, `Starting bag (${bagN})`)}<span class="fs-tap">${L('タップで説明', 'Tap for details')}</span></p>
           <div class="fs-bag">${bag}</div>
           ${favor ? `<p class="fs-k">${L('市に出やすい', 'Often at market')}</p><div class="fs-favor">${favor}</div>` : ''}

@@ -1,7 +1,7 @@
 // 遊ぶたびに増える要素（豊穣ポイント・解放・ショップの組み合わせ）。ブラウザに保存する。
 
 import { L } from './i18n.ts';
-import { ACHIEVE_ADDS, CHARMS, CHARM_ORDER, CONFIG, FARMERS, isCutAdd, DIFFICULTIES, META, THUNDER_LINES, type AddUpgradeId, type CharmId, type SymbolId } from './config.ts';
+import { ACHIEVE_ADDS, CHARMS, CHARM_ORDER, COMBOS, CONFIG, FARMERS, isCutAdd, DIFFICULTIES, META, THUNDER_LINES, type AddUpgradeId, type CharmId, type SymbolId } from './config.ts';
 import { ALL_ADDS, type GameSetup, type GameState } from './game.ts';
 
 export interface MetaState {
@@ -40,6 +40,10 @@ export interface MetaState {
   farmersPlayed: string[];
   /** クリアした回数 */
   clears: number;
+  /** ヒントを買った組み合わせ（絵柄を1つ見せる） */
+  comboHints: CharmId[];
+  /** 農家ごとの腕前の段（0〜3） */
+  mastery: Record<string, number>;
 }
 
 const KEY = 'hatake-slot:meta';
@@ -66,6 +70,8 @@ function fresh(): MetaState {
     hints: [],
     farmersPlayed: [],
     clears: 0,
+    comboHints: [],
+    mastery: {},
   };
 }
 
@@ -134,6 +140,36 @@ export function unlockCharm(meta: MetaState, id: CharmId): boolean {
   if (price === undefined || meta.unlockedCharms.includes(id) || meta.points < price) return false;
   meta.points -= price;
   meta.unlockedCharms.push(id);
+  saveMeta(meta);
+  return true;
+}
+
+/** 次にヒントを出す組み合わせ（まだ見つけていない・ヒントもまだの物の先頭）。なければ null */
+export function nextComboHint(meta: MetaState): CharmId | null {
+  return (Object.keys(COMBOS) as CharmId[]).find((id) => !meta.discovered.includes(id) && !meta.comboHints.includes(id)) ?? null;
+}
+
+export function buyComboHint(meta: MetaState): CharmId | null {
+  const id = nextComboHint(meta);
+  if (!id || meta.points < META.comboHintPrice) return null;
+  meta.points -= META.comboHintPrice;
+  meta.comboHints.push(id);
+  saveMeta(meta);
+  return id;
+}
+
+/** 腕前を1段上げる値段（上げきったら null） */
+export function masteryPrice(meta: MetaState, farmer: string): number | null {
+  const lv = meta.mastery[farmer] ?? 0;
+  const max = FARMERS.find((f) => f.id === farmer)?.mastery?.length ?? 0;
+  return lv < max ? META.masteryPrices[lv] ?? null : null;
+}
+
+export function buyMastery(meta: MetaState, farmer: string): boolean {
+  const price = masteryPrice(meta, farmer);
+  if (price === null || meta.points < price || !farmerUnlocked(meta, farmer)) return false;
+  meta.points -= price;
+  meta.mastery[farmer] = (meta.mastery[farmer] ?? 0) + 1;
   saveMeta(meta);
   return true;
 }
@@ -218,6 +254,7 @@ export function setupFrom(meta: MetaState): GameSetup {
     return {
       difficulty: Math.min(meta.difficulty, maxDifficulty(meta)),
       farmer: farmer.id,
+      mastery: meta.mastery[farmer.id] ?? 0,
       shop: (farmer.favor as AddUpgradeId[]).filter((id) => !CONFIG.rareOffers.includes(id) && !isCutAdd(id)),
       charmPool: CHARM_ORDER.filter((id) => !(id in META.charmUnlock) || meta.unlockedCharms.includes(id)),
       pool: ALL_ADDS.filter((id) => meta.unlockedAdds.includes(id) && !CONFIG.rareOffers.includes(id) && !isCutAdd(id)),

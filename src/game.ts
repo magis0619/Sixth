@@ -249,6 +249,8 @@ export interface GameSetup {
   difficulty?: number;
   /** 農家（FARMERS の id） */
   farmer?: string;
+  /** 農家の腕前の段（0〜3） */
+  mastery?: number;
 }
 
 export const ALL_ADDS: AddUpgradeId[] = ['addCan', 'addEgg', 'addSeed', 'addBerrySeed', 'addPumpkinSeed', 'addMelonSeed', 'addWatermelonSeed', 'addRain', 'addSun', 'addThunder', 'addHoe', 'addFertilizer', 'addBee', 'addMerchant', 'addGoldSeed', 'addClover'];
@@ -262,6 +264,13 @@ export function newGame(setup: GameSetup = { shop: ALL_ADDS, charmPool: CHARM_OR
     (Object.entries(farmer.bag) as [SymbolId, number][]).forEach(([sym, n]) => (state.bag[sym] = Math.max(0, state.bag[sym] + n)));
     (Object.entries(farmer.charms) as [CharmId, number][]).forEach(([id, n]) => (state.charms[id] += n));
     state.stock.push(...farmer.stock);
+    // 腕前：上げた段の分だけ、始めの所持金・札・畑の品が足される
+    (farmer.mastery ?? []).slice(0, setup.mastery ?? 0).forEach((p) => {
+      state.gold += p.gold ?? 0;
+      (Object.entries(p.bag ?? {}) as [SymbolId, number][]).forEach(([sym, n]) => (state.bag[sym] += n));
+      state.stock.push(...(p.stock ?? []));
+    });
+    if (setup.mastery) glog(state, `腕前 段${setup.mastery}`);
   }
   return state;
 }

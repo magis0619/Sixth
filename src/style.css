@@ -9271,3 +9271,26 @@ button.fs-relic { font: inherit; color: var(--ink); cursor: pointer; }
 /* 見たけれどまだ解放していないお守り：文字は読める濃さのまま、絵だけ薄く・鍵の札 */
 .dex-row.needs-unlock .e { opacity: 0.55; }
 .dex-row.needs-unlock .fv { display: inline-flex; align-items: center; gap: 3px; margin-top: 2px; padding: 0 8px; font-size: 0.8125rem; font-weight: 800; color: var(--ink); background: #fff8e7; border: 2px solid var(--ink); border-radius: 999px; }
+
+/* ==== 農家の腕前の星・組み合わせのヒント ==== */
+.stars { color: #e0a40a; letter-spacing: 1px; font-size: 0.9375rem; -webkit-text-stroke: 0.5px var(--ink); }
+.fs-build { display: flex; align-items: center; gap: 8px; }
+.fs-mastery { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; font-size: 0.8125rem; font-weight: 800; }
+.ul-item .text b .stars { margin-left: 4px; }
+.ul-chip .stars { margin-left: 2px; font-size: 0.8125rem; }
+.ul-chip .q, .combo-row.hinted .q { display: inline-grid; place-items: center; width: 20px; height: 20px; font-size: 0.8125rem; font-weight: 800; color: var(--ink-soft); border: 2px dashed rgba(61, 51, 38, 0.5); border-radius: 6px; }
+.ul-chip .fc-plus { margin: 0 1px; }
+.ul-chip .sym, .ul-chip .art { width: 20px; height: 20px; }
+.combo-row.hinted { background: #fff8dc; }
+.combo-row.hinted .q { width: 28px; height: 28px; font-size: 1rem; }
+/* 腕前で札が増えても箱に収まるように：変わる札は1つの行、袋の札は小さく、箱を少し高く・絵を少し小さく */
+.fs-info { height: 284px; }
+.fs-portrait { width: min(44vw, 170px); }
+.fs-delta { gap: 4px; }
+.fs-delta .fs-k { width: auto; margin-right: 2px; }
+.fs-mini-card { padding: 1px 5px 1px 1px; }
+.fs-mini-card .art { width: 22px; height: 22px; }
+/* 星は白地でも読める濃さ（上げた段は濃い金、まだの段は薄い墨） */
+.stars { color: var(--ink-soft); -webkit-text-stroke: 0; }
+.stars b { color: #8a5300; font-weight: 400; }
+.fs-mastery .stars b { color: #8a5300; }

@@ -161,11 +161,14 @@ const setup = mode === 'full'
   : {
       shop: process.env.FARMER ? (FARMERS.find((f) => f.id === process.env.FARMER)!.favor as typeof META.startUnlocked) : mode === 'starter' ? META.startUnlocked : (mode.split(',') as typeof META.startUnlocked),
       pool: mode === 'starter' ? META.startUnlocked : undefined,
-      charmPool: CHARM_ORDER.filter((id) => !(id in META.charmUnlock) && !(process.env.NONEW && ['autumnHarvest', 'thunderGod', 'moonViewing', 'bigSpender', 'declutter', 'farmMaster'].includes(id))),
+      // ALLCHARMS=1 で、ポイントで解放するお守りも全部解放した状態にする
+      charmPool: CHARM_ORDER.filter((id) => (process.env.ALLCHARMS || !(id in META.charmUnlock)) && !(process.env.NONEW && ['autumnHarvest', 'thunderGod', 'moonViewing', 'bigSpender', 'declutter', 'farmMaster'].includes(id))),
       // DIFF=1〜4 で難しいモード
       difficulty: Number(process.env.DIFF ?? 0),
       // FARMER=berry などで農家を選ぶ（市に出やすい品も農家のもの）
       farmer: process.env.FARMER ?? 'basic',
+      // MASTERY=0〜3 で農家の腕前の段
+      mastery: Number(process.env.MASTERY ?? 0),
     };
 // TAX=10,40,90,... で年貢の表を差し替えて試す（7回目まで。8回目以降は最後の値から伸びる）
 if (process.env.TAX) (CONFIG as { taxSchedule: number[] }).taxSchedule = process.env.TAX.split(',').map(Number);

@@ -803,6 +803,13 @@ export const DIFFICULTIES = [
 ];
 
 /** 農家：最初の袋（いつもの袋からの増減）・最初のお守り・最初に持っている畑の品・市に出やすい品（2倍） */
+/** 農家の腕前の1段：始めの所持金・袋の札・最初に持っている畑の品 */
+export interface FarmerPerk {
+  gold?: number;
+  bag?: Partial<Record<SymbolId, number>>;
+  stock?: PlaceId[];
+}
+
 export interface FarmerDef {
   id: string;
   name: string;
@@ -820,14 +827,16 @@ export interface FarmerDef {
   unlockClear?: number;
   /** 初めてこの農家で遊ぶときのこつ */
   tip?: string;
+  /** 腕前（ポイントで1段ずつ上げる）。段ごとに始めに足される物 */
+  mastery?: FarmerPerk[];
 }
 
 export const FARMERS: FarmerDef[] = [
-  { id: 'basic', name: 'ふつうの農家', desc: 'いつもの袋で、何でも育てる', art: 'tomato', bag: {}, charms: {}, stock: [], favor: [] },
-  { id: 'berry', name: '苺農家', desc: '苺の列で数を売る。市にいつも巣箱', art: 'strawberry', bag: { seed: -2, berrySeed: 3 }, charms: {}, stock: [], favor: ['addBerrySeed', 'addBee'], favorPlaces: ['hive'], unlockClear: 0, tip: '苺は2日で実る。市の巣箱を苺の近くに置くと、毎晩育って売値も上がる' },
-  { id: 'pumpkin', name: 'かぼちゃ農家', desc: '大物を1つずつ高く売る。かぼちゃの種つき', art: 'pumpkin', bag: { seed: -1, pumpkinSeed: 1 }, charms: {}, stock: [], favor: ['addPumpkinSeed', 'addWatermelonSeed', 'addFertilizer'], unlockClear: 1, tip: 'かぼちゃは高く売れて、カラスに食べられない。肥料と組み合わせよう' },
-  { id: 'rancher', name: '牧場主', desc: '小屋で毎晩お金を稼ぐ。市にいつも鶏小屋', art: 'henhouse', bag: {}, charms: {}, stock: [], favor: [], favorPlaces: ['henhouse'], unlockClear: 2, tip: '市にいつも鶏小屋。早めに買って置くと、毎晩お金が入る' },
-  { id: 'rain', name: '雨乞い', desc: '雨で一気に育てる。恵みの雨つき', art: 'rain', bag: { rain: 1, sun: -1 }, charms: { gentleRain: 1 }, stock: [], favor: ['addRain', 'addThunder'], unlockClear: 3, tip: '雨の真ん中のマスはさらに+1（恵みの雨）。雨を中心に組み立てよう' },
+  { id: 'basic', name: 'ふつうの農家', desc: 'いつもの袋で、何でも育てる', art: 'tomato', bag: {}, charms: {}, stock: [], favor: [], mastery: [{ bag: { rain: 1 } }, { gold: 15 }, { stock: ['scarecrow'] }] },
+  { id: 'berry', name: '苺農家', desc: '苺の列で数を売る。市にいつも巣箱', art: 'strawberry', bag: { seed: -2, berrySeed: 3 }, charms: {}, stock: [], favor: ['addBerrySeed', 'addBee'], favorPlaces: ['hive'], unlockClear: 0, tip: '苺は2日で実る。市の巣箱を苺の近くに置くと、毎晩育って売値も上がる', mastery: [{ bag: { berrySeed: 1 } }, { gold: 15 }, { bag: { bee: 1 } }] },
+  { id: 'pumpkin', name: 'かぼちゃ農家', desc: '大物を1つずつ高く売る。かぼちゃの種つき', art: 'pumpkin', bag: { seed: -1, pumpkinSeed: 1 }, charms: {}, stock: [], favor: ['addPumpkinSeed', 'addWatermelonSeed', 'addFertilizer'], unlockClear: 1, tip: 'かぼちゃは高く売れて、カラスに食べられない。肥料と組み合わせよう', mastery: [{ bag: { fertilizer: 1 } }, { gold: 15 }, { stock: ['compost'] }] },
+  { id: 'rancher', name: '牧場主', desc: '小屋で毎晩お金を稼ぐ。市にいつも鶏小屋', art: 'henhouse', bag: {}, charms: {}, stock: [], favor: [], favorPlaces: ['henhouse'], unlockClear: 2, tip: '市にいつも鶏小屋。早めに買って置くと、毎晩お金が入る', mastery: [{ bag: { coin: 1 } }, { gold: 15 }, { stock: ['henhouse'] }] },
+  { id: 'rain', name: '雨乞い', desc: '雨で一気に育てる。恵みの雨つき', art: 'rain', bag: { rain: 1, sun: -1 }, charms: { gentleRain: 1 }, stock: [], favor: ['addRain', 'addThunder'], unlockClear: 3, tip: '雨の真ん中のマスはさらに+1（恵みの雨）。雨を中心に組み立てよう', mastery: [{ bag: { rain: 1 } }, { gold: 15 }, { bag: { thunder: 1 } }] },
 ];
 
 /** 「足す」強化（ゲーム開始時にショップへ並べるものを選ぶ対象） */
@@ -869,7 +878,12 @@ export const META = {
     addMoon: { unlock: 0, cost: 0 },
   } as Record<AddUpgradeId, { unlock: number; cost: number }>,
   /** レアのお守りは解放するまで出ない */
-  charmUnlock: { sunBlessing: 50, bumper: 50, seedSack: 40 } as Partial<Record<CharmId, number>>,
+  // あとから足したお守りも、解放するまで出ない（初めのうちは3択が薄まらない）
+  charmUnlock: { sunBlessing: 50, bumper: 50, seedSack: 40, autumnHarvest: 40, thunderGod: 40, moonViewing: 40, declutter: 40, farmMaster: 50, bigSpender: 60 } as Partial<Record<CharmId, number>>,
+  /** 組み合わせのヒント（まだの組み合わせの絵柄を1つ見せる）の値段 */
+  comboHintPrice: 20,
+  /** 農家の腕前を1段上げる値段（段1・段2・段3） */
+  masteryPrices: [60, 120, 200],
   /** ショップに並べられるコストの上限と、その拡張 */
   baseCapacity: 4,
   capacityStep: 2,

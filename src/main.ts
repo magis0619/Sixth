@@ -342,11 +342,11 @@ function renderGuide(): void {
   const box = $('guide');
   let html = '';
   if (state.over || tut) html = '';
-  else if (state.day === 0) html = `${art('hand')}<span>${L('<b>リールをタップ</b>して回す', '<b>Tap the reels</b> to spin')}</span>`;
+  // 置き待ちの物があるときは、まず置く（1日目の前に、腕前でもらった物も）
   else if (state.stock.length && mustPlace(state)) {
     const id = state.stock[0];
     html = `${art(PLACE_ART[id])}<span>${L(`${PLACES[id].name}を置く → <b>光るマス</b>をタップ`, `Place the ${PLACES[id].name} → tap a <b>glowing plot</b>`)}</span>`;
-  } else if (selected !== null && state.results[selected]) {
+  } else if (state.day === 0) html = `${art('hand')}<span>${L('<b>リールをタップ</b>して回す', '<b>Tap the reels</b> to spin')}</span>`; else if (selected !== null && state.results[selected]) {
     const r = state.results[selected];
     const shape = symbolShape(state, r.symbol);
     const what = SEEDS[r.symbol] ? L(`植える 残り${r.left}`, `plant ${r.left}`) : shape ? SHAPE_NAMES[shape] : SYMBOLS[r.symbol].desc;
@@ -594,10 +594,13 @@ let offerHinted = (() => {
 
 /** 回せるとき（出目を使い切った・1日目）はリール窓が光り「タップで回す」の帯が出る */
 function renderSpinButton(): void {
-  if (state.stock.length && mustPlace(state) && !ui.busy) hintOnce('place', `${art('hand')} ${L('もらった物は、<b>光るマスをタップ</b>して置く', 'Tap a <b>glowing plot</b> to place what you got')}`);
+  const placing = state.stock.length > 0 && mustPlace(state);
+  // 上に画面（タイトル・開店準備）が重なっている間は出さない（見えないまま使い切らない）
+  if (placing && state.day > 0 && !ui.busy && !el.overlay.classList.contains('show')) hintOnce('place', `${art('hand')} ${L('もらった物は、<b>光るマスをタップ</b>して置く', 'Tap a <b>glowing plot</b> to place what you got')}`);
   const t = nextTax(state);
   el.spin.disabled = ui.busy || state.over;
-  const ready = !ui.busy && !state.over && (state.day === 0 || usableReels().length === 0);
+  // 置き待ちの物があるうちは回せない（「タップで回す」を出さない）
+  const ready = !ui.busy && !state.over && !placing && (state.day === 0 || usableReels().length === 0);
   el.machine.classList.toggle('ready-spin', ready);
   el.machine.classList.toggle('taxday', state.day > 0 && t.daysLeft === 0);
   // 次の日に進むしかないとき：リールの上に大きな「次の日へ」の札を重ねる
@@ -2592,6 +2595,10 @@ function onBuy(id: UpgradeId): void {
 function startGame(resume: GameState | null = null): void {
   setState(resume ?? newGame(setupFrom(meta)));
   goldInFlight = 0;
+  // 所持金の表示は始めの額に合わせる（腕前で0以外から始まることがある）
+  cancelAnimationFrame(goldTween);
+  shownGold = state.gold;
+  el.gold.textContent = String(state.gold);
   orderRevealPending = false;
   el.field.classList.remove('withered');
   if (resume) Object.keys(done).forEach((k) => (done[k as keyof typeof done] = true));
