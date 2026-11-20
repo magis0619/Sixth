@@ -204,36 +204,36 @@ export function comboCard(id: CharmId): string {
 
 /** ゲームの全体像：1日の流れと、週の流れ */
 export function overviewCard(start = true): string {
-  // 遊び方の一枚絵：ゲームの実物の部品（筐体・畑のマス・列の札）を小さく見せ、手順を1本の流れでつなぐ。言葉は事実だけ
-  const machine = `<span class="ov3-machine"><span class="ov3-win">${(['seed', 'rain', 'sun'] as ArtId[]).map((a) => `<i>${art(a)}</i>`).join('')}</span></span>`;
-  // 雨を真ん中に使った3×3：十字のマスが育つ
-  const cross = [1, 3, 4, 5, 7];
-  const field = `<span class="ov3-field">${Array.from({ length: 9 }, (_, k) => `<i class="${cross.includes(k) ? 'wet' : ''}">${cross.includes(k) ? art('sprout') : ''}</i>`).join('')}</span>`;
-  const row = `<span class="ov3-row"><span class="ov3-plots">${art('tomato')}${art('tomato')}${art('tomato')}</span><em class="ov3-hint">${L('×1.3', '×1.3')}</em></span>`;
-  const step = (n: number, title: string, note: string, pic: string) =>
-    `<li><span class="ov3-n">${n}</span><div class="ov3-txt"><b>${title}</b>${note ? `<small>${note}</small>` : ''}</div>${pic}</li>`;
-  return `<div class="ov3">
-    <h2 class="ov3-title">${L('遊び方', 'How to play')}</h2>
-    <ol class="ov3-flow">
-      ${step(1, L('1日に1回、リールを回す', 'Spin once a day'), L('袋の絵柄が3つ出る', '3 symbols from your bag'), machine)}
-      ${step(2, L('出た絵柄を畑で使う', 'Use them on the field'), L('雨は十字に育てる', 'Rain grows a cross'), field)}
-      ${step(3, L('3つ並べて売る', 'Sell 3 in a row'), L('単品は半値', 'Singles: half price'), row)}
-    </ol>
-    <p class="ov3-goal">${art('bale')}<span><b>${L(`日曜ごとに年貢。${CONFIG.winTaxes}回払えばクリア`, `Tax every Sunday. Pay ${CONFIG.winTaxes} times to win`)}</b><small>${L('払えないと終わり', "Can't pay = game over")}</small></span></p>
-    <button class="primary ov3-go">${start ? L('はじめる', 'Start') : L('とじる', 'Close')}</button>
+  // 遊び方の一枚絵（画面いっぱい・文章なし）：上から下へ1秒で読める流れ
+  // リールを回す → 畑で育つ → 3つ並べて ×1.3 で売る → 金貨 → 日曜の年貢を7回 → クリア
+  const down = '<span class="ov4-down">▼</span>';
+  const machine = `<span class="ov3-machine ov4-big"><span class="ov3-win">${(['seed', 'rain', 'sun'] as ArtId[]).map((a) => `<i>${art(a)}</i>`).join('')}</span></span>`;
+  const grow = `<span class="ov4-grow"><i>${art('sprout')}</i><b>▶</b><i>${art('leaf')}</i><b>▶</b><i>${art('tomato')}</i></span>`;
+  const sell = `<span class="ov4-sell"><span class="ov3-plots">${art('tomato')}${art('tomato')}${art('tomato')}</span><em class="ov3-hint">×1.3</em><b>▶</b>${art('coin')}</span>`;
+  const tax = `<span class="ov4-tax">${art('bale')}<em>×${CONFIG.winTaxes}</em><b>▶</b>${art('trophy')}</span>`;
+  return `<div class="ov4" aria-label="${L('遊び方', 'How to play')}">
+    ${machine}${down}${grow}${down}${sell}${down}${tax}
+    <button class="ov4-go" aria-label="${start ? L('はじめる', 'Start') : L('とじる', 'Close')}">${start ? '▶' : '✕'}</button>
   </div>`;
 }
 
 // ---- 初めての場面のカード ----
 
-/** 初めての市 */
+/** 初めての「タダで1つ選ぶ」（市の日の朝。選ばないと先に進めない） */
+export function offerCard(): string {
+  return `<p class="ex-kicker">${L('市の日の朝', 'Market morning')}</p>
+    <h2 class="ex-title">${L('タダで1つ選ぶ', 'Pick one, free')}</h2>
+    <div class="ex-row"><span class="ex-trio">${big('rain', 'small')}<span class="ex-pick">${big('seed', 'small')}</span>${big('sun', 'small')}</span><span class="ex-arrow">▶</span>${big('seed', 'bag')}</div>
+    <p class="ex-line">${L('<b>必ず1つ</b>。袋に入って、次の日から出る', '<b>You must pick one.</b> It joins your bag from tomorrow')}</p>`;
+}
+
+/** 初めての市（買い物） */
 export function marketCard(): string {
   return `<p class="ex-kicker">${L('はじめての市', 'Your first market')}</p>
-    <h2 class="ex-title">${L('水・土の朝は市', 'Wed & Sat mornings: market')}</h2>
-    <div class="ex-row"><span class="ex-trio">${big('rain', 'small')}${big('sun', 'small')}${big('seed', 'small')}</span><span class="ex-arrow">▶</span>${big('seed', 'bag')}</div>
-    <p class="ex-line">${L('3つから<b>1つ必ず</b>、タダで袋に入る', 'Pick <b>one of three</b>, free, into your bag')}</p>
-    <div class="ex-icons">${[['expand', L('畑を広げる', 'Expand')], ['scarecrow', L('道具', 'Tools')], ['crow', L('お邪魔を消す', 'Remove pests')]].map(([a, t]) => `<span>${art(a as ArtId)}<b>${t}</b></span>`).join('')}</div>
-    <p class="ex-line">${art('coin')} ${L(`市の日は<b>売値×${CONFIG.marketDaySell}</b>。この日に実るように育てよう`, `Crops sell for <b>×${CONFIG.marketDaySell}</b> on market days. Time your harvest`)}</p>`;
+    <h2 class="ex-title">${L('市で買い物', 'Shop at the market')}</h2>
+    <div class="ex-icons">${[['expand', L('畑を広げる', 'Expand')], ['hive', L('置き物', 'Items')], ['crow', L('お邪魔を消す', 'Remove pests')]].map(([a, t]) => `<span>${art(a as ArtId)}<b>${t}</b></span>`).join('')}</div>
+    <p class="ex-line">${art('coin')} ${L(`市の日は<b>売値×${CONFIG.marketDaySell}</b>`, `Crops sell for <b>×${CONFIG.marketDaySell}</b> on market days`)}</p>
+    <p class="ex-note">${L('買わなくてもよい。次へで市を出る', 'Buying is optional. Press Next to leave')}</p>`;
 }
 
 /** 初めての年貢の日 */

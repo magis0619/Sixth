@@ -26,12 +26,30 @@ import { applySettings, showSettings } from './ui/settings.ts';
 import { accept, reject } from './ui/states.ts';
 import { renderDanger, renderSky, setupScene } from './ui/scene.ts';
 import { blockLongPress, setupLongPress } from './ui/info.ts';
-import { comboCard, contractCard, explainOnce, feverCard, markTutorialSymbols, marketCard, mergeCard, symbolCard, taxCard } from './ui/explain.ts';
+import { comboCard, contractCard, explainOnce, feverCard, markTutorialSymbols, marketCard, mergeCard, offerCard, symbolCard, taxCard } from './ui/explain.ts';
 import { contractRibbon, contractSay, showContractDone, showContractOffer } from './ui/contract-ui.ts';
 import { CUTIN_MS, comboBanner, feverBanner, playCutIn, showCharmOffer, showTaxStamp, witherField } from './ui/shows.ts';
 
 let selected: number | null = null;
 let armedNextDay = false;
+/** 列で売る・列ができたの演出の数（0より多い間は、チュートリアルの吹き出しを隠し、その手順を先へ進めない） */
+let fxRunning = 0;
+const harvestPlaying = (): boolean => fxRunning > 0;
+/** 演出を1つ始める。終わったら戻す関数を返す（吹き出しの表示もすぐ合わせる） */
+function holdCoach(): () => void {
+  fxRunning++;
+  document.getElementById('coach')?.classList.add('quiet');
+  let done = false;
+  return () => {
+    if (done) return;
+    done = true;
+    fxRunning = Math.max(0, fxRunning - 1);
+    if (!fxRunning) {
+      document.getElementById('coach')?.classList.remove('quiet');
+      if (tut) render();
+    }
+  };
+}
 let shownGold = state.gold;
 /**
  * まだ財布に届いていないお金（金貨や作物が飛んでいる途中の分）。
@@ -1046,7 +1064,6 @@ function onTakeOffer(b: HTMLButtonElement): void {
   const from = center(b.querySelector('.ico')!);
   // 畳む前の段（render で hidden になる前に、高さを測っておく）
   const sec = b.closest('.stall-sec') as HTMLElement;
-  const h = sec.offsetHeight;
   if (!takeOffer(state, id)) return;
   offerFolding = true;
   const sym = UPGRADE_SYMBOL[id]!.symbol;
@@ -1056,19 +1073,12 @@ function onTakeOffer(b: HTMLButtonElement): void {
     if (it !== b) it.animate([{ opacity: 1, transform: 'scale(1)' }, { opacity: 0.25, transform: 'scale(0.96)' }], { duration: 220, fill: 'forwards' });
   });
   later(() => {
-    // 段を畳んで消す（高さ→0・薄く）。終わってから描き直す
-    const fold = sec.animate(
-      [
-        { height: `${h}px`, opacity: 1, marginBottom: getComputedStyle(sec).marginBottom },
-        { height: '0px', opacity: 0, marginBottom: '0px', paddingTop: '0px', paddingBottom: '0px' },
-      ],
-      { duration: isCalm() ? 200 : 380, easing: 'cubic-bezier(.4,0,.2,1)' },
-    );
-    sec.style.overflow = 'hidden';
-    fold.onfinish = () => {
-      sec.style.overflow = '';
+    // 選んだら画面を薄く消して、市（買い物）を開く
+    const scr = $('offer-screen');
+    scr.animate([{ opacity: 1 }, { opacity: 0 }], { duration: isCalm() ? 120 : 260, easing: 'ease-in' }).onfinish = () => {
+      scr.hidden = true;
       offerFolding = false;
-      renderShop();
+      openMarket();
     };
   }, 420);
   later(() => {
@@ -1449,14 +1459,31 @@ function leaveMarket(): void {
 }
 
 /** 市を開く（仕入れ・畑の品・お邪魔を消す・広げるが1つの画面） */
+/** 市の日の朝：まず「タダで1つ選ぶ」だけの画面を出す。選ぶと市（買い物）が開く */
+function showOfferScreen(): void {
+  const scr = $('offer-screen');
+  renderOfferShop();
+  if (!scr.hidden) return;
+  scr.hidden = false;
+  scr.animate([{ opacity: 0 }, { opacity: 1 }], { duration: isCalm() ? 120 : 240, easing: 'ease-out' });
+  // 札は動かさずに薄く出す（動いている途中の札を押すとタップが消えるので）
+  scr.querySelectorAll<HTMLElement>('.offer-item').forEach((it, k) => it.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260, delay: 120 + k * 80, fill: 'backwards' }));
+  void explainOnce('ex:offer', offerCard(), !!tut);
+}
+
 function openMarket(): void {
+  // 選んでいない仕入れがあれば、先にその画面
+  if (state.offer.length) {
+    showOfferScreen();
+    return;
+  }
   renderShop();
   renderFarmShop();
   const wasOpen = openSheetName === 'shop';
   openSheet('shop');
   if (wasOpen) return;
-  // 初めての市の日：一枚絵で（3つから1つ必ず・買い物）
-  if (state.offer.length && isMarketDay(state.day)) void explainOnce('ex:market', marketCard(), !!tut);
+  // 初めての市の日：一枚絵で（買い物）
+  if (isMarketDay(state.day)) void explainOnce('ex:market', marketCard(), !!tut);
   el.sheet.animate([{ transform: 'translateY(105%)' }, { transform: 'translateY(-2%)', offset: 0.75 }, { transform: 'translateY(0)' }], {
     duration: isCalm() ? 260 : 520,
     easing: 'cubic-bezier(.2,.8,.3,1)',
@@ -2398,6 +2425,8 @@ function bumpPips(cell: number, from: number, to: number): void {
 /** 育って新しく列がそろったら、その列を光らせて知らせる */
 function announceLines(cells: number[], delay = 500): number {
   const formed = [...new Set(cells.flatMap((c) => (isRipe(state.field[c]) ? [ripeGroup(state, c)] : [])).filter((g) => g.length >= 3).map((g) => [...g].sort((a, b) => a - b).join()))];
+  // 「列ができた」の演出の間は、チュートリアルの吹き出しを隠す
+  if (formed.length) later(holdCoach(), delay + formed.length * 250 + 1400);
   formed.forEach((key, k) => {
     const group = key.split(',').map(Number);
     later(() => {
@@ -2483,7 +2512,9 @@ function sellCrop(cell: number): void {
   if (!res.line) later(orderDone, 500);
   if (res.line) {
     done.line = true;
+    const release = holdCoach();
     void playLineHarvest(res, centers, p, landSale).finally(() => {
+      release();
       landSale();
       orderDone();
     });
@@ -2824,12 +2855,12 @@ const TUT_STEPS: TutStep[] = [
   { text: `${symHtml('rain')} ${L('<b>雨のリール</b> → <b>真ん中</b>へ<br>縦横に育つ', 'Tap the <b>rain reel</b> → the <b>middle</b><br>It grows a cross')}`, focus: () => (selected === 1 ? plotEls([tutRow()[1]]) : reelEl(1)), reel: 1, cells: [tutRow()[1]], done: () => !!state.results[1]?.used },
   { text: L('○が増えた＝育った<br><b>リールをタップ</b>で次の日へ', 'More ○ = grown<br><b>Tap the reels</b> for the next day'), focus: () => [el.reels], spin: true, done: () => state.day >= 2 && !state.morning && !ui.busy },
   // 2日目：雷で実らせて、列で売る
-  { text: `${symHtml('thunder')} ${L('<b>雷</b> → <b>トマトの列</b>へ<br>横一列が+2育つ', 'Tap <b>thunder</b> → the <b>tomato row</b><br>The row grows +2')}`, focus: () => (selected === 0 ? plotEls(tutRow()) : reelEl(0)), point: () => (selected === 0 ? el.field.children[tutRow()[1]] : reelEl(0)[0]) ?? null, reel: 0, cells: tutRow(), done: () => !!state.results[0]?.used },
-  { text: L('実った！<br><b>タップで列ごと売ろう</b>', 'Ripe!<br><b>Tap to sell the whole line</b>'), focus: () => plotEls(tutRow()), point: () => el.field.children[tutRow()[1]] ?? null, cells: tutRow(), done: () => state.stats.lineHarvests >= 1 && !ui.busy },
+  { text: `${symHtml('thunder')} ${L('<b>雷</b> → <b>トマトの列</b>へ<br>横一列が+2育つ', 'Tap <b>thunder</b> → the <b>tomato row</b><br>The row grows +2')}`, focus: () => (selected === 0 ? plotEls(tutRow()) : reelEl(0)), point: () => (selected === 0 ? el.field.children[tutRow()[1]] : reelEl(0)[0]) ?? null, reel: 0, cells: tutRow(), done: () => !!state.results[0]?.used && !harvestPlaying() },
+  { text: L('実った！<br><b>タップで列ごと売ろう</b>', 'Ripe!<br><b>Tap to sell the whole line</b>'), focus: () => plotEls(tutRow()), point: () => el.field.children[tutRow()[1]] ?? null, cells: tutRow(), done: () => state.stats.lineHarvests >= 1 && !ui.busy && !harvestPlaying() },
   { text: L(`${MARK_LINE} 列は<b>×1.3</b><br>同じ作物の列は<b>さらに×1.3</b><br>${MARK_SINGLE} 並ばない<b>単品は半値</b>`, `${MARK_LINE} Lines <b>×1.3</b> · same crop <b>×1.3 more</b><br>${MARK_SINGLE} Singles sell at <b>half price</b>`), focus: () => [], button: L('次へ', 'Next') },
   // 3日目（水曜）：朝に市が開く → 1つ選ぶ → 次へでリールが回る
   { text: L('上の曜日が今日。<b>水曜は市</b><br><b>リールをタップ</b>で次の日へ', 'The top shows today. <b>Wed = market</b><br><b>Tap the reels</b> for the next day'), focus: () => [el.week, el.reels], point: () => el.reels, spin: true, done: () => state.day >= 3 },
-  { text: `${art('bargain')} ${L('市が開いた！<br><b>3つから1つ</b>選ぼう（タダ）', 'The market is open!<br>Pick <b>1 of 3</b> (free)')}`, focus: () => [document.querySelector('.offer-sec')!], point: () => document.querySelector('#offer-shop [data-take] .cost'), done: () => state.day >= 3 && !state.offer.length },
+  { text: L('<b>3つから1つ</b>選ぶ', 'Pick <b>1 of 3</b>'), focus: () => [document.querySelector('.offer-sec')!], point: () => document.querySelector('#offer-shop [data-take] .cost'), done: () => state.day >= 3 && !state.offer.length },
   { text: L('<b>次へ</b>で市を出ると<br>リールが回る', 'Press <b>Next</b> to leave<br>and spin'), focus: () => [$('market-next')], spin: true, done: () => state.day >= 3 && !state.morning && !ui.busy },
   { text: `${art('bale')} ${L('<b>日曜の終わりに年貢</b><br>足りないと赤くなる', '<b>Tax at the end of Sunday</b><br>Turns red when short')}`, focus: () => [el.week, el.tax], button: L('次へ', 'Next') },
   { text: L('あとは自由に！<br><b>年貢を7回</b>納めるとクリア', "You're on your own!<br>Pay the tax <b>7 times</b> to win"), focus: () => [], button: L('はじめる', "Let's go") },
@@ -2947,6 +2978,7 @@ function placeTutSpot(): void {
   Object.assign(hand.style, { left: `${r.left + r.width / 2}px`, top: `${r.top + r.height * 0.55}px` });
 }
 
+
 /**
  * 吹き出しを、光らせる物とかぶらない側へ置く（上下で空きの広い方）。しっぽを光らせる物の方へ向ける。
  * 目は「吹き出しを読む → しっぽの先 → 光っている物」の順に動く
@@ -2954,7 +2986,10 @@ function placeTutSpot(): void {
 function placeCoach(targets: Element[]): void {
   const coach = document.getElementById('coach');
   if (!coach || !targets.length) return;
-  const rs = targets.map((e) => e.getBoundingClientRect());
+  // 収穫などの演出の最中は吹き出しを隠す（演出の上にかぶらない）
+  coach.classList.toggle('quiet', harvestPlaying());
+  // 置き場所は、いちばん目の光らせる物に合わせる（曜日とリールの両方を光らせても、曜日の近くに出す）
+  const rs = [targets[0].getBoundingClientRect()];
   const top = Math.min(...rs.map((r) => r.top)) - 8;
   const bottom = Math.max(...rs.map((r) => r.bottom)) + 8;
   const cx = (Math.min(...rs.map((r) => r.left)) + Math.max(...rs.map((r) => r.right))) / 2;
@@ -2966,7 +3001,9 @@ function placeCoach(targets: Element[]): void {
   const roomBelow = H - bottom - 8;
   let y: number;
   let side: 'above' | 'below';
-  if (roomAbove >= h + gap || roomAbove >= roomBelow) {
+  // タダで1つ選ぶ画面では、上に題があるので札の下に出す
+  const preferBelow = !$('offer-screen').hidden && roomBelow >= h + gap;
+  if (!preferBelow && (roomAbove >= h + gap || roomAbove >= roomBelow)) {
     side = 'above';
     y = Math.max(safeTop, top - gap - h);
   } else {

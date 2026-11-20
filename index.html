@@ -85,6 +85,19 @@
 
     <div class="build-label" id="build-label"></div>
 
+    <!-- 市の日の朝：まず「タダで1つ選ぶ」だけの画面（選ぶと市が開く） -->
+    <div class="offer-screen" id="offer-screen" role="dialog" aria-label="タダで1つ選ぶ" data-en-label="Pick one free" hidden>
+      <div class="os-head">
+        <span class="tab-ico os-ico" data-art="gift"></span>
+        <h2 class="os-title"><span data-en="Pick 1 free">タダで1つ選ぶ</span></h2>
+        <p class="os-must"><span data-en="Required · goes into your bag">必ず1つ・袋に入る</span></p>
+      </div>
+      <div class="stall">
+        <section class="stall-sec offer-sec">
+          <div class="shop offer-row" id="offer-shop"></div>
+        </section>
+      </div>
+    </div>
     <div class="sheet-backdrop" id="sheet-backdrop"></div>
     <aside class="sheet" id="sheet" aria-hidden="true">
       <div class="sheet-head">
@@ -94,11 +107,6 @@
       <div class="sheet-pane" data-pane="shop">
         <!-- 屋台：畑・絵柄を足す・お邪魔を消す を、1つの画面に見出しで分けて並べる -->
         <div class="stall" id="stall">
-          <section class="stall-sec offer-sec" hidden>
-            <div class="awning"></div>
-            <h3 class="stall-head"><span class="tab-ico" data-art="gift"></span><span data-en="Free pick">タダで1つ選ぶ</span><span class="must" data-en="Required">必ず</span></h3>
-            <div class="shop offer-row" id="offer-shop"></div>
-          </section>
           <!-- 品は「何に効くか」で4つに分ける：畑を強化する・収益を増やす・作物を守る・袋を整える -->
           <section class="stall-sec" data-cat="grow">
             <div class="awning"></div>

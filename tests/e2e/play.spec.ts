@@ -43,7 +43,7 @@ async function settle(page: Page): Promise<'play' | 'over' | 'clear'> {
     // 年貢のあと：お邪魔が袋に入る窓（見えているときだけ押す）
     if (await page.locator('#overlay.show .pest-modal #pest-ok:visible').count()) { await page.click('#pest-ok', { timeout: 1000 }).catch(() => {}); await page.waitForTimeout(1000); continue; }
     // 市の日：仕入れを1つ選んでから市を閉じる
-    const take = page.locator('#sheet.open #offer-shop [data-take]').first();
+    const take = page.locator('#offer-screen:not([hidden]) [data-take]').first();
     if (await take.count()) { await take.click({ force: true, timeout: 1000 }).catch(() => {}); await page.waitForTimeout(400); continue; }
     if (await page.locator('#sheet.open').count()) { await page.click((await page.locator('#sheet.open[data-pane="shop"]').count()) ? '#market-next' : '#sheet-close', { force: true }).catch(() => {}); await page.waitForTimeout(300); continue; }
     // お守りでもらった道具（大かかしなど）は、畑に置くまで先へ進めない
@@ -258,7 +258,8 @@ test('初めての人はチュートリアルで、横一列に植えて列で�
   // 水曜の朝：リールを押すと先に市が開き、決まった3つから1つ選ぶ
   await expect(coach).toContainText('水曜は市');
   await page.locator('#reels .reel').first().click({ force: true });
-  await expect(page.locator('#sheet.open')).toHaveCount(1, { timeout: 15_000 });
+  // まず「タダで1つ選ぶ」の画面（選ぶと市が開く）
+  await expect(page.locator('#offer-screen:not([hidden])')).toHaveCount(1, { timeout: 15_000 });
   await expect(coach).toContainText('3つから1つ');
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('hatake-slot:run')!).offer)).toEqual(['addRain', 'addSun', 'addSeed']);
   // 市の板がせり上がり終わるのを待ってから押す
@@ -269,6 +270,8 @@ test('初めての人はチュートリアルで、横一列に植えて列で�
     if (await take.count()) await take.click({ force: true, timeout: 1_000 });
     await expect(coach).toContainText('次へ', { timeout: 1_500 });
   }).toPass({ timeout: 12_000 });
+  // 選ぶと「タダで1つ」の画面が消えて市が開く。せり上がり終わってから押す
+  await expect(page.locator('#market-next')).toBeInViewport({ timeout: 5_000 });
   await page.click('#market-next', { force: true });
   await expect(coach).toContainText('年貢', { timeout: 15_000 });
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('hatake-slot:run')!).results.map((r: { symbol: string }) => r.symbol))).toEqual(['seed', 'sun', 'coin']);
@@ -341,10 +344,13 @@ test('市で巣箱を買って置くと、市に自動で戻る。閉じたら�
   await page.reload();
   await page.click('#title-resume', { force: true });
   await page.evaluate(() => document.getElementById('spin')!.click());
-  const take = page.locator('#sheet.open #offer-shop [data-take]').first();
+  const take = page.locator('#offer-screen:not([hidden]) [data-take]').first();
   await expect(take).toBeInViewport({ timeout: 10_000 });
   await take.click({ force: true });
-  await page.locator('#stall .farm-list [data-id="hive"]').click({ force: true });
+  // 選ぶと市が開く。巣箱が見えてから押す
+  const hive = page.locator('#stall .farm-list [data-id="hive"]');
+  await expect(hive).toBeInViewport({ timeout: 5_000 });
+  await hive.click({ force: true });
   await page.click('#market-next', { force: true });
   await expect(page.locator('#sheet.open')).toHaveCount(0);
   // 置く
