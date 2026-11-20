@@ -1,3 +1,4 @@
+// 使い方：node scripts/css-clean.cjs（src/style.css を書き換える）。前後で SEED=1 DUMPSTYLE=フォルダ の画面の点検を取り、計算後のスタイルが同じか比べること
 // CSS の整理：1) どこにも出てこないクラス・id だけを指す規則を消す 2) 後ろに同じセレクタ・同じ性質があって、絶対に効かない宣言を消す
 const fs = require('fs');
 const postcss = require('postcss');
