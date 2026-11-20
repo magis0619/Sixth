@@ -204,20 +204,23 @@ export function comboCard(id: CharmId): string {
 
 /** ゲームの全体像：1日の流れと、週の流れ */
 export function overviewCard(start = true): string {
-  // 遊び方の一枚絵：題・ひと言・3つの手順（絵つき）・目標・ボタン。文字は1行に1つで短く
-  const step = (n: number, cls: string, title: string, line: string, pic: string) =>
-    `<div class="ov2-step ${cls}"><span class="ov2-n">${n}</span><div class="ov2-text"><b>${title}</b><span>${line}</span></div><div class="ov2-pic">${pic}</div></div>`;
-  const reels = `<span class="ov2-reels">${(['seed', 'rain', 'sun'] as ArtId[]).map((a) => `<i>${art(a)}</i>`).join('')}</span>`;
-  const plots = `<span class="ov2-plots"><i></i><i class="on">${art('sprout')}</i><i></i><em>${art('hand')}</em></span>`;
-  const sell = `<span class="ov2-sell">${art('tomato')}${art('tomato')}${art('tomato')}<b>${art('coin')}+12</b></span>`;
-  return `<div class="ov2">
-    <h2 class="ov2-title">${L('遊び方', 'How to play')}</h2>
-    <p class="ov2-lead">${L('出た絵柄で、畑を育てよう', 'Grow your farm with the reels')}</p>
-    ${step(1, 'a', L('リールを回す', 'Spin the reels'), L('袋から絵柄が3つ出る', '3 symbols from your bag'), reels)}
-    ${step(2, 'b', L('畑で使う', 'Use them'), L('光るマスをタップ', 'Tap a glowing plot'), plots)}
-    ${step(3, 'c', L('並べて売る', 'Sell in a row'), L('3つ並べると高い', '3 in a row sells high'), sell)}
-    <div class="ov2-goal"><span class="ov2-goal-k">${L('目標', 'Goal')}</span>${art('bale')}<div><b>${L('日曜に年貢を納める', 'Pay tax every Sunday')}</b><span>${L(`${CONFIG.winTaxes}回でクリア`, `${CONFIG.winTaxes} times to win`)}</span></div></div>
-    <button class="ov2-go">${start ? L('さあ、はじめる！', "Let's go!") : L('とじる', 'Close')}</button>
+  // 遊び方の一枚絵：ゲームの実物の部品（筐体・畑のマス・列の札）を小さく見せ、手順を1本の流れでつなぐ。言葉は事実だけ
+  const machine = `<span class="ov3-machine"><span class="ov3-win">${(['seed', 'rain', 'sun'] as ArtId[]).map((a) => `<i>${art(a)}</i>`).join('')}</span></span>`;
+  // 雨を真ん中に使った3×3：十字のマスが育つ
+  const cross = [1, 3, 4, 5, 7];
+  const field = `<span class="ov3-field">${Array.from({ length: 9 }, (_, k) => `<i class="${cross.includes(k) ? 'wet' : ''}">${cross.includes(k) ? art('sprout') : ''}</i>`).join('')}</span>`;
+  const row = `<span class="ov3-row"><span class="ov3-plots">${art('tomato')}${art('tomato')}${art('tomato')}</span><em class="ov3-hint">${L('×1.3', '×1.3')}</em></span>`;
+  const step = (n: number, title: string, note: string, pic: string) =>
+    `<li><span class="ov3-n">${n}</span><div class="ov3-txt"><b>${title}</b>${note ? `<small>${note}</small>` : ''}</div>${pic}</li>`;
+  return `<div class="ov3">
+    <h2 class="ov3-title">${L('遊び方', 'How to play')}</h2>
+    <ol class="ov3-flow">
+      ${step(1, L('1日に1回、リールを回す', 'Spin once a day'), L('袋の絵柄が3つ出る', '3 symbols from your bag'), machine)}
+      ${step(2, L('出た絵柄を畑で使う', 'Use them on the field'), L('雨は十字に育てる', 'Rain grows a cross'), field)}
+      ${step(3, L('3つ並べて売る', 'Sell 3 in a row'), L('単品は半値', 'Singles: half price'), row)}
+    </ol>
+    <p class="ov3-goal">${art('bale')}<span><b>${L(`日曜ごとに年貢。${CONFIG.winTaxes}回払えばクリア`, `Tax every Sunday. Pay ${CONFIG.winTaxes} times to win`)}</b><small>${L('払えないと終わり', "Can't pay = game over")}</small></span></p>
+    <button class="primary ov3-go">${start ? L('はじめる', 'Start') : L('とじる', 'Close')}</button>
   </div>`;
 }
 

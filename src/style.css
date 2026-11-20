@@ -8477,38 +8477,44 @@ html.idle *, html.idle *::before, html.idle *::after { animation-play-state: pau
 /* 段が上がるほど紋章を暗く */
 .diff-screen[data-sky='3'] .ds-emblem, .diff-screen[data-sky='4'] .ds-emblem, .diff-screen[data-sky='5'] .ds-emblem { background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--dc) 45%, #000), #1a1210 75%); }
 
-/* ==== 遊び方の一枚絵（はじめて遊ぶとき）：題・ひと言・3つの手順・目標・ボタン ==== */
-.explain-card:has(.ov2) { padding: 0 14px 16px; overflow: visible; }
-.ov2 ~ .ex-tap { display: none; }
-.ov2 { display: grid; gap: 10px; text-align: left; }
-.ov2-title { justify-self: center; margin: -18px 0 0; padding: 6px 34px 8px; font-size: 1.75rem; font-weight: 900; color: var(--ink); background: linear-gradient(#e2b071, #c88a45); border: 3px solid var(--ink); border-radius: 14px; box-shadow: 0 4px 0 var(--ink); }
-.ov2-lead { margin: 0; text-align: center; font-size: 1.125rem; font-weight: 700; }
-.ov2-step { display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 10px; padding: 10px 12px; border: 2px solid rgba(61, 51, 38, 0.25); border-radius: 14px; }
-.ov2-step.a { background: #fdf0dc; }
-.ov2-step.b { background: #e8f5d6; }
-.ov2-step.c { background: #e0eefb; }
-.ov2-n { display: grid; place-items: center; width: 34px; height: 34px; font-size: 1.25rem; font-weight: 900; color: #fff; background: var(--ink); border-radius: 50%; }
-.ov2-text { display: grid; gap: 2px; }
-.ov2-text b { font-size: 1.125rem; font-weight: 900; }
-.ov2-text span { font-size: 0.9375rem; }
-.ov2-pic { display: flex; align-items: center; }
-.ov2-reels { display: flex; gap: 3px; padding: 4px; background: #8a5a2b; border: 2px solid var(--ink); border-radius: 10px; }
-.ov2-reels i { display: grid; place-items: center; width: 34px; height: 34px; background: #fff; border-radius: 6px; }
-.ov2-reels .art { width: 28px; height: 28px; }
-.ov2-plots { position: relative; display: flex; gap: 3px; }
-.ov2-plots i { display: grid; place-items: center; width: 30px; height: 30px; background: #9a6a40; border: 2px solid #6b4423; border-radius: 6px; }
-.ov2-plots i.on { background: #b98550; border-color: #ffcc33; box-shadow: 0 0 0 2px #ffcc33; }
-.ov2-plots .art { width: 22px; height: 22px; }
-.ov2-plots em { position: absolute; left: 34px; top: 16px; }
-.ov2-plots em .art { width: 26px; height: 26px; }
-.ov2-sell { display: flex; align-items: center; }
-.ov2-sell > .art { width: 28px; height: 28px; margin-right: -4px; }
-.ov2-sell b { display: inline-flex; align-items: center; gap: 1px; margin-left: 8px; font-size: 1.125rem; font-weight: 900; }
-.ov2-sell b .art { width: 20px; height: 20px; }
-.ov2-goal { position: relative; display: grid; grid-template-columns: 44px 1fr; align-items: center; gap: 10px; margin-top: 8px; padding: 16px 12px 10px; background: #fff8e7; border: 2px solid rgba(61, 51, 38, 0.25); border-radius: 14px; }
-.ov2-goal-k { position: absolute; top: -12px; left: 50%; translate: -50% 0; padding: 1px 16px; font-size: 0.9375rem; font-weight: 900; color: #fff; background: #e8743b; border-radius: 999px; }
-.ov2-goal > .art { width: 44px; height: 44px; }
-.ov2-goal div { display: grid; gap: 2px; }
-.ov2-goal b { font-size: 1.0625rem; font-weight: 900; }
-.ov2-goal span { font-size: 0.9375rem; }
-.ov2-go { margin-top: 4px; min-height: 56px; font: inherit; font-size: 1.375rem; font-weight: 900; color: var(--ink); background: #ffcc33; border: 3px solid var(--ink); border-radius: 16px; box-shadow: 0 5px 0 var(--ink); cursor: pointer; }
+/* ==== 遊び方の一枚絵：実物の部品を小さく見せ、手順は左の点線でつなぐ（色の箱・丸数字・題の札は使わない） ==== */
+.explain-card:has(.ov3) { padding: 16px 16px 16px; text-align: left; }
+.ov3 ~ .ex-tap { display: none; }
+.ov3 { display: grid; gap: 12px; }
+.ov3-title { margin: 0; font-size: 1.375rem; font-weight: 900; }
+.ov3-flow { position: relative; margin: 0; padding: 0; list-style: none; display: grid; gap: 14px; }
+.ov3-flow::before { content: ''; position: absolute; left: 10px; top: 14px; bottom: 14px; border-left: 2px dashed rgba(61, 51, 38, 0.35); }
+.ov3-flow li { position: relative; display: grid; grid-template-columns: 22px 1fr auto; align-items: center; column-gap: 10px; }
+.ov3-n { position: relative; z-index: 1; display: grid; place-items: center; width: 22px; height: 22px; font-size: 0.9375rem; font-weight: 900; background: var(--cloth); }
+.ov3-txt { display: grid; gap: 1px; }
+.ov3-txt b { font-size: 1rem; font-weight: 700; line-height: 1.35; }
+.ov3-txt small { font-size: 0.875rem; color: var(--ink-soft); }
+/* 筐体：本物と同じ赤い木と金の縁 */
+.ov3-machine { padding: 4px; border-radius: 10px; background: linear-gradient(#e2673f, #c24a2a); box-shadow: 0 0 0 2px var(--ink), 0 3px 0 var(--ink); }
+.ov3-win { display: flex; gap: 2px; padding: 3px; border-radius: 6px; background: #3b1a0e; box-shadow: 0 0 0 1.5px var(--gold); }
+.ov3-win i { display: grid; place-items: center; width: 26px; height: 26px; background: #fff8e7; border-radius: 4px; }
+.ov3-win .art { width: 22px; height: 22px; }
+/* 畑：本物の土のマス。雨の十字が湿って芽が出る */
+.ov3-field { display: grid; grid-template-columns: repeat(3, 18px); gap: 2px; padding: 3px; background: #4a2d17; border-radius: 6px; box-shadow: 0 0 0 2px var(--ink); }
+.ov3-field i { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 3px; background: #6e4527; }
+.ov3-field i.wet { background: #5a3a24; box-shadow: inset 0 0 0 1.5px #7fc4ff; }
+.ov3-field .art { width: 14px; height: 14px; }
+/* 列：トマト3つと、本物と同じピンクの倍率の札 */
+.ov3-row { position: relative; display: grid; justify-items: center; }
+.ov3-plots { display: flex; gap: 2px; padding: 3px; background: #4a2d17; border-radius: 6px; box-shadow: 0 0 0 2px var(--ink); }
+.ov3-plots .art { width: 22px; height: 22px; padding: 1px; background: #6e4527; border-radius: 3px; }
+.ov3-hint { margin-top: -6px; padding: 0 7px; font-style: normal; font-size: 0.875rem; font-weight: 700; color: #fff; background: var(--pink); border-radius: 8px; box-shadow: 0 2px 0 #b8336f; }
+.ov3-goal { display: grid; grid-template-columns: 34px 1fr; align-items: center; gap: 10px; margin: 0; padding-top: 12px; border-top: 2px dashed rgba(61, 51, 38, 0.3); }
+.ov3-goal > .art { width: 34px; height: 34px; }
+.ov3-goal span { display: grid; gap: 1px; }
+.ov3-goal b { font-size: 1rem; font-weight: 700; }
+.ov3-goal small { font-size: 0.875rem; color: #a8301f; font-weight: 700; }
+.ov3-go { width: 100%; }
+/* 遊び方の一枚絵：絵を見える大きさに、ボタンはゲームの大事なボタンと同じ黄色 */
+.ov3-win i { width: 32px; height: 32px; }
+.ov3-win .art { width: 28px; height: 28px; }
+.ov3-field { grid-template-columns: repeat(3, 24px); }
+.ov3-field i { width: 24px; height: 24px; }
+.ov3-field .art { width: 20px; height: 20px; }
+.ov3-plots .art { width: 28px; height: 28px; }
+.ov3-go { min-height: 52px; font: inherit; font-size: 1.25rem; font-weight: 700; color: var(--ink); background: var(--gold); border: 3px solid var(--ink); border-radius: 14px; box-shadow: 0 4px 0 var(--ink); cursor: pointer; }
