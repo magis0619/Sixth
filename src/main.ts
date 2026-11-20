@@ -6,6 +6,7 @@ import {
 } from './config.ts';
 import {
   isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult, mustPlace, hasRoomFor, takeOffer, roomLeft, refreshCombos, symbolShape, isRareOffer, isMarketDay, shopOpen, nextMarketDay, beginDay, spinDay, sellBlock, isFlooded, mergeable, mergeSymbol, mergeCost, discard, discardPrice, canDiscard, PREMIUM, PREMIUM_ORDER, type PremiumId, premiumShown, premiumPrice, canBuyPremium, buyPremium,
+  taxCursePct,
 } from './game.ts';
 import { duckBgm, isMuted, sfx, suspendAudio, toggleMute, unlockAudio } from './audio.ts';
 import { saveMeta, setupFrom } from './meta.ts';
@@ -451,6 +452,8 @@ function renderTax(): void {
   el.tax.className = `hud-tax${warn ? ' warn' : ''}${short ? ' short' : ' ok'}${state.difficulty ? ' hard' : ''}`;
   el.tax.innerHTML =
     `<span class="tax-label">${art('bale')}<span class="tax-word">${L('年貢', 'Tax')}</span></span><b>${gold(t.amount)}</b>` +
+    // お守りの代償で年貢が上がっているときは、金額の横に「+10%」の印
+    (taxCursePct(state) ? `<em class="tax-curse" title="${L('お守りの代償', 'Charm curse')}">+${taxCursePct(state)}%</em>` : '') +
     `<span class="tax-mark">${short ? L('足りない', 'short') : L('払える', 'ready')}</span>` +
     // いつ払うか：日曜まであと何日（今日なら「今日の終わり」）
     `<span class="tax-due">${t.daysLeft <= 0 ? L('今日の終わり', 'Tonight') : L(`日曜まで あと${t.daysLeft}日`, `${t.daysLeft} days to Sunday`)}</span>`;
@@ -942,7 +945,7 @@ function onBuyPremium(b: HTMLButtonElement): void {
   renderShop();
 }
 
-/** 合体：同じ札が5枚そろった絵柄を、1枚の上位の札にできる（市で1回に1種類まで） */
+/** 合体：同じ札が4枚そろった絵柄を、1枚の上位の札にできる（市で1回に1種類まで） */
 function renderMergeShop(): void {
   const box = $('merge-shop');
   const list = mergeable(state);
@@ -1455,7 +1458,8 @@ function openMarket(): void {
     easing: 'cubic-bezier(.2,.8,.3,1)',
   });
   [...el.sheet.querySelectorAll<HTMLElement>('[data-pane="shop"] .stall-sec:not([hidden]), .market-foot')].forEach((sec, k) =>
-    sec.animate([{ transform: 'translateY(28px)', opacity: 0 }, { transform: 'translateY(0)', opacity: 1 }], {
+    // 動かさずに薄く出す（動いている途中の札を押すと、押した札から指がずれてタップが消えるので）
+    sec.animate([{ opacity: 0 }, { opacity: 1 }], {
       duration: 320,
       delay: 180 + k * 90,
       easing: 'cubic-bezier(.2,.8,.3,1)',
@@ -3172,6 +3176,27 @@ el.mute.addEventListener('click', (e) => {
 });
 hooks.render = render;
 hooks.startGame = startGame;
+
+// 市・袋の板の中のボタン：押してから離すまでに板が動いて（せり上がる途中など）指がボタンから外れても、押したボタンのタップとして扱う
+{
+  let pressed: { btn: HTMLElement; at: number } | null = null;
+  el.sheet.addEventListener('pointerdown', (e) => {
+    const btn = (e.target as Element).closest<HTMLElement>('button');
+    pressed = btn ? { btn, at: performance.now() } : null;
+  }, true);
+  el.sheet.addEventListener('click', (e) => {
+    const p = pressed;
+    pressed = null;
+    if (!p || performance.now() - p.at > 700 || !p.btn.isConnected) return;
+    const hit = (e.target as Element).closest('button');
+    if (hit === p.btn) return;
+    // 指がずれて別の所で離れた：押したボタンを押したことにする
+    if (!hit) {
+      e.stopPropagation();
+      p.btn.click();
+    }
+  }, true);
+}
 
 // 軽量化：しばらく触らないと、飾りの動き（舞う葉・光る枠・脈打つマスなど）を止める。触ればすぐ戻る
 {

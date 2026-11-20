@@ -5,10 +5,17 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { CONFIG, CROPS, CUT, EVENT_CONDITIONS, FARMERS, THUNDER_LINES, UPGRADE_SYMBOL } from '../src/config.ts';
 import {
   animalGold, buy, buyPlace, drawDay, hasRanch, hiveBonus, isColorful, canPlace, canUse, cellMultiplier, cropPrice, isPond, waterWheels, checkReady, chooseCharm, endDay, evolveTools, expand, expandPrice,
-  fieldCells, isGolden, lv, multSteps, newCrop, newGame, nextTax, obstacleRule, place, pullWeed, resolveAuto, ripeGroup,
+  fieldCells, isGolden, lv, multSteps, newCrop, newGame as newGameRaw, nextTax, obstacleRule, place, pullWeed, resolveAuto, ripeGroup,
   canBuy, canBuyPlace, canExpand, isMarketDay, rollObstacles, takeOffer, refreshCombos, symbolShape, canPlaceAt, isPivotAdd, isPivotPlace, mustPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult, beginDay, takeContract, mergeable, mergeSymbol, mergeCost, bagCount, skipCharm, singleMult, rollOffer, buyPremium, canBuyPremium, premiumPrice, resolveAuto as autoOf, discard, discardPrice, canDiscard, placePrice,
 } from '../src/game.ts';
 import { CONTRACTS, contractGold } from '../src/contracts.ts';
+
+/** 試しの畑：農家を指定しないときは、ふつうの農家の最初のお守り（日だまり）なしで始める（数え方を変えないため） */
+const newGame: typeof newGameRaw = (setup) => {
+  const s = newGameRaw(setup);
+  if (!setup?.farmer) s.charms.sunBlessing = 0;
+  return s;
+};
 import { farmerUnlocked, recordRun, type MetaState } from '../src/meta.ts';
 import type { CropKind, SymbolId } from '../src/config.ts';
 
@@ -1160,11 +1167,11 @@ describe('合体', () => {
     expect(mergeSymbol(s, 'rain')).toBe(true);
     expect(s.gold).toBe(0);
   });
-  it('同じ札が5枚で、市の日だけ合体できる。1回の市で1種類まで', () => {
+  it('同じ札が4枚で、市の日だけ合体できる。1回の市で1種類まで', () => {
     const s = market();
-    s.bag.rain = 5;
+    s.bag.rain = 4;
     s.bag.seed = 6;
-    s.bag.sun = 4;
+    s.bag.sun = 3;
     expect(mergeable(s)).toEqual(['seed', 'rain']);
     expect(mergeSymbol(s, 'rain')).toBe(true);
     expect(s.bag.rain).toBe(0);
@@ -1175,8 +1182,8 @@ describe('合体', () => {
     t.day = 2;
     t.bag.rain = 5;
     expect(mergeable(t)).toEqual([]);
-    // お守りの条件では、合体した札は5枚と数える
-    expect(bagCount(s, 'rain')).toBe(5);
+    // お守りの条件では、合体した札は元の枚数（4枚）と数える
+    expect(bagCount(s, 'rain')).toBe(CONFIG.mergeNeed);
   });
   it('鬼トマトの種は鬼トマトを植え、トマトと同じ作物の列になる', () => {
     const s = market();

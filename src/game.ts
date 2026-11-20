@@ -620,6 +620,11 @@ export interface TaxInfo {
 }
 
 /** 次に納める年貢。dueDay の日の終わり（次の回転前）に徴収される */
+/** お守りの代償で年貢が上がる割合（%）。大きな種袋・豊作は1つ+10、からくり職人は+20、大かかしは+5 */
+export function taxCursePct(state: GameState): number {
+  return 10 * state.charms.seedSack + 10 * state.charms.bumper + 20 * state.charms.artisan + 5 * state.charms.scarecrow;
+}
+
 export function nextTax(state: GameState): TaxInfo {
   // 納めた回数から次の期日を決める（納付直後に同じ年貢を指さないように）
   const index = state.taxesPaid;
@@ -627,7 +632,7 @@ export function nextTax(state: GameState): TaxInfo {
   // 年貢の減免：1つで5%、上限25%（強すぎたので弱めた）
   const relief = Math.min(0.3, 0.1 * lv(state, 'taxRelief'));
   // 曰く付きのお守りの代償：大きな種袋・豊作は1つ+10%、からくり職人は+20%
-  const curse = 1 + 0.1 * state.charms.seedSack + 0.1 * state.charms.bumper + 0.2 * state.charms.artisan + 0.05 * state.charms.scarecrow;
+  const curse = 1 + taxCursePct(state) / 100;
   const half = (state.halfTax ? 0.5 : 1) * difficultyTaxMult(state.difficulty);
   return { dueDay, daysLeft: dueDay - state.day, amount: Math.round(taxAmount(index) * (1 - relief) * curse * (1 - (state.taxCut ?? 0)) * half), index };
 }

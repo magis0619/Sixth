@@ -886,7 +886,7 @@ const SCENE_ART = {
     ${hl(17, 35, 1.4, 4, 0, 0.7)}`,
 };
 
-// ---- 合体した絵柄（同じ札5枚で1枚） ----
+// ---- 合体した絵柄（同じ札4枚で1枚） ----
 const oniTomato = `
   ${ground(58, 17)}
   ${face('M14 28Q8 16 10 3Q18 12 24 22Z', ['#fff3d6', '#e8cf9a', '#ffffff'], 14, 18, 0.82)}
@@ -1083,7 +1083,27 @@ const MERGE_ART = {
     ${sparkle(54, 8, 5, '#fff')}`,
 };
 
+// ---- 難しさの紋章（段が上がるほど不気味に）。今ある絵を組み合わせる ----
+const G = (t: string, inner: string, extra = '') => `<g transform="${t}" ${extra}>${inner}</g>`;
+/** 影絵（黒くする） */
+const shadow = (inner: string, op = 0.9) => `<g style="filter:brightness(0.15)" opacity="${op}">${inner}</g>`;
+/** 赤く光る目 */
+const redEye = (x: number, y: number, r = 3.2) => `<circle cx="${x}" cy="${y}" r="${r + 2.5}" fill="#ff2a2a" opacity="0.35"/><circle cx="${x}" cy="${y}" r="${r}" fill="#ff3b30" stroke="${INK}" stroke-width="1.5"/><circle cx="${x - 1}" cy="${y - 1}" r="${r * 0.35}" fill="#fff"/>`;
+const DREAD_ART = {
+  // 1：こちらを見張るカラス（目が赤い）
+  dread1: `${SYMBOL_ART.crow}${redEye(46.8, 23, 3)}`,
+  // 2：カラスの群れ（後ろに影の2羽）
+  dread2: `${shadow(G('translate(-6 -10) scale(0.6)', SYMBOL_ART.crow), 0.75)}${shadow(G('translate(30 -8) scale(0.55)', SYMBOL_ART.crow), 0.65)}${G('translate(4 10) scale(0.85)', SYMBOL_ART.crow + redEye(46.8, 23, 3.2))}`,
+  // 3：嵐（黒い雲・稲妻・影のカラス）
+  dread3: `${shadow(G('translate(0 -8) scale(1.05)', SCENE_ART.puff), 0.85)}${G('translate(16 24) scale(0.62)', bolt())}${shadow(G('translate(2 34) scale(0.42)', SYMBOL_ART.crow), 0.8)}${shadow(G('translate(38 38) scale(0.38)', SYMBOL_ART.crow), 0.7)}`,
+  // 4：闇に光るタヌキの目（赤い月）
+  dread4: `<circle cx="46" cy="16" r="11" fill="#c0392b" opacity="0.85"/><circle cx="50" cy="13" r="10" fill="#22180f"/>${shadow(G('translate(6 12) scale(0.82)', SYMBOL_ART.tanuki), 0.95)}<ellipse cx="22" cy="38" rx="4" ry="3" fill="#ffe14a"/><ellipse cx="38" cy="38" rx="4" ry="3" fill="#ffe14a"/><ellipse cx="22" cy="38" rx="1.2" ry="2.6" fill="#22180f"/><ellipse cx="38" cy="38" rx="1.2" ry="2.6" fill="#22180f"/>`,
+  // 5：イナゴの大群と骸骨（赤い光）
+  dread5: `<circle cx="32" cy="34" r="26" fill="#ff2a2a" opacity="0.18"/>${G('translate(14 16) scale(0.56)', SCENE_ART.skull)}${G('translate(-2 -2) scale(0.42)', SYMBOL_ART.locust)}${G('translate(38 0) scale(0.38) ', SYMBOL_ART.locust)}${G('translate(40 36) scale(0.4)', SYMBOL_ART.locust)}${G('translate(-2 38) scale(0.36)', SYMBOL_ART.locust)}${G('translate(24 46) scale(0.3)', SYMBOL_ART.locust)}`,
+};
+
 export const ART = {
+  ...DREAD_ART,
   ...CROP_ART,
   ...SYMBOL_ART,
   ...CHARM_ART,

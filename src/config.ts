@@ -25,7 +25,7 @@ export type SymbolId =
   | 'frost'
   | 'mole'
   | 'locust'
-  // 合体した絵柄（同じ札5枚で1枚）
+  // 合体した絵柄（同じ札4枚で1枚）
   | 'oniSeed'
   | 'heartSeed'
   | 'lanternSeed'
@@ -169,16 +169,16 @@ export const SYMBOLS: Record<SymbolId, SymbolDef> = {
   tanuki: { id: 'tanuki', name: 'タヌキ', emoji: '🦝', kind: 'auto', desc: '実りを盗む', feverDesc: '群れ：2つ持っていく', rarity: 'bad' },
   frost: { id: 'frost', name: '霜', emoji: '❄️', kind: 'auto', desc: '3日凍らせる', feverDesc: '群れ：2マスが凍る', rarity: 'bad' },
   mole: { id: 'mole', name: 'モグラ', emoji: '🐀', kind: 'auto', desc: '作物を隣の空きマスへ押し出す', feverDesc: '群れ：2つ押し出す', rarity: 'bad' },
-  // ---- 合体した絵柄（同じ札5枚が1枚になる） ----
-  oniSeed: { id: 'oniSeed', name: '鬼トマトの種', emoji: '🍅', kind: 'manual', desc: '鬼トマト（売値12）を3〜5個植える', feverDesc: '品種改良：今日植える鬼トマトは1段階育った状態から', rarity: 'rare', base: 'seed' },
-  heartSeed: { id: 'heartSeed', name: 'ハート苺の種', emoji: '🍓', kind: 'manual', desc: 'ハート苺（売値9）を4〜6個植える', feverDesc: '品種改良：今日植えるハート苺は1段階育った状態から', rarity: 'rare', base: 'berrySeed' },
-  lanternSeed: { id: 'lanternSeed', name: 'ランタンかぼちゃの種', emoji: '🎃', kind: 'manual', desc: 'ランタンかぼちゃ（4日で実る・売値60）を1個植える', feverDesc: '品種改良：今日植えるランタンかぼちゃは1段階育った状態から', rarity: 'rare', base: 'pumpkinSeed' },
-  boxSeed: { id: 'boxSeed', name: '箱スイカの種', emoji: '🍉', kind: 'manual', desc: '箱スイカ（5日で実る・売値220）を1個植える（2×2マス）', feverDesc: '品種改良：今日植える箱スイカは1段階育った状態から', rarity: 'rare', base: 'watermelonSeed' },
-  bigRain: { id: 'bigRain', name: '大雨', emoji: '🌧️', kind: 'manual', shape: 'cross', desc: '縦横十字 成長+1（真ん中は+2）', feverDesc: '虹：全作物の成長＋1', rarity: 'rare', base: 'rain' },
+  // ---- 合体した絵柄（同じ札4枚が1枚になる） ----
+  oniSeed: { id: 'oniSeed', name: '鬼トマトの種', emoji: '🍅', kind: 'manual', desc: '売値12・3〜5個', feverDesc: '品種改良：今日植える鬼トマトは1段階育った状態から', rarity: 'rare', base: 'seed' },
+  heartSeed: { id: 'heartSeed', name: 'ハート苺の種', emoji: '🍓', kind: 'manual', desc: '売値9・4〜6個', feverDesc: '品種改良：今日植えるハート苺は1段階育った状態から', rarity: 'rare', base: 'berrySeed' },
+  lanternSeed: { id: 'lanternSeed', name: 'ランタンかぼちゃの種', emoji: '🎃', kind: 'manual', desc: '売値60・4日', feverDesc: '品種改良：今日植えるランタンかぼちゃは1段階育った状態から', rarity: 'rare', base: 'pumpkinSeed' },
+  boxSeed: { id: 'boxSeed', name: '箱スイカの種', emoji: '🍉', kind: 'manual', desc: '2×2・売値220', feverDesc: '品種改良：今日植える箱スイカは1段階育った状態から', rarity: 'rare', base: 'watermelonSeed' },
+  bigRain: { id: 'bigRain', name: '大雨', emoji: '🌧️', kind: 'manual', shape: 'cross', desc: '十字+1・真ん中+2', feverDesc: '虹：全作物の成長＋1', rarity: 'rare', base: 'rain' },
   bigSun: { id: 'bigSun', name: '真夏の太陽', emoji: '☀️', kind: 'manual', shape: 'col3', desc: '縦3列 成長+1', feverDesc: '夏祭り：今日の売値×2', rarity: 'rare', base: 'sun' },
   raijin: { id: 'raijin', name: '雷神', emoji: '⚡', kind: 'manual', shape: 'row', desc: '横一列 成長+3', feverDesc: '大雷：全作物の成長＋1', rarity: 'rare', base: 'thunder' },
   queenBee: { id: 'queenBee', name: '女王蜂', emoji: '🐝', kind: 'manual', shape: 'xline', desc: '斜めの線いっぱい 成長+1', feverDesc: 'はちみつ：作物1つにつき＋4', rarity: 'rare', base: 'bee' },
-  superFert: { id: 'superFert', name: '極上の肥料', emoji: '🧪', kind: 'manual', shape: 'plus', desc: '十字の5マスの作物の売値×1.5', feverDesc: '堆肥：畑の全作物に肥料', rarity: 'rare', base: 'fertilizer' },
+  superFert: { id: 'superFert', name: '極上の肥料', emoji: '🧪', kind: 'manual', shape: 'plus', desc: '十字 売値×1.5', feverDesc: '堆肥：畑の全作物に肥料', rarity: 'rare', base: 'fertilizer' },
   can: { id: 'can', name: 'じょうろ', emoji: '🚿', kind: 'manual', shape: 'one', desc: '1マス 成長+2', feverDesc: '大当たり×3', rarity: 'normal' },
   egg: { id: 'egg', name: '卵', emoji: '🥚', kind: 'auto', desc: 'スロットに3回出ると孵ってツバメになる', feverDesc: '大当たり×3', rarity: 'normal' },
   hawk: { id: 'hawk', name: 'タカ', emoji: '🦅', kind: 'auto', desc: '袋のカラスを1枚追い出す', feverDesc: '大当たり×3', rarity: 'normal' },
@@ -331,7 +331,7 @@ export const CONFIG = {
   spareReelGold: 1,
   /** 卵が孵るまでに、スロットに出る回数 */
   eggHatch: 3,
-  mergeNeed: 5,
+  mergeNeed: 4,
   /** 合体のお金：その週の年貢の割合（最低 mergeCostMin） */
   mergeCostRate: 0.3,
   mergeCostMin: 10,
@@ -704,7 +704,7 @@ export const CHARMS: Record<CharmId, CharmDef> = {
   gentleRain: { id: 'gentleRain', tier: 'uncommon', name: '恵みの雨', emoji: '☔', desc: (n) => `雨の中心 さらに成長＋${2 * n}`, max: 3 },
   crowToll: { id: 'crowToll', tier: 'common', name: 'カラスの通行料', emoji: '🪶', desc: (n) => `カラスが来るたびに＋${2 * n}`, max: Infinity },
   aging: { id: 'aging', tier: 'common', name: '熟成', emoji: '🍷', desc: (n) => `実ったまま1日ごとに売値＋${10 * n}%（3日まで）`, max: 3 },
-  seedSack: { id: 'seedSack', tier: 'rare', name: '大きな種袋', emoji: '🎒', desc: (n) => `全部の種で植えられる数＋${n}`, max: 2 },
+  seedSack: { id: 'seedSack', tier: 'rare', name: '大きな種袋', emoji: '🎒', desc: (n) => `種1枚で植える数+${n}（トマト${3 + n}〜${5 + n}個）`, max: 2 },
   sunBlessing: { id: 'sunBlessing', tier: 'rare', name: '日だまり', emoji: '🌻', desc: (n) => `太陽の成長＋${n}`, max: 2 },
   goldenWell: { id: 'goldenWell', tier: 'rare', name: '黄金の井戸', emoji: '⛲', desc: () => '黄金の井戸を置く（周り8マス 毎日+1）', max: Infinity },
   queenHive: { id: 'queenHive', tier: 'uncommon', name: '女王蜂の巣箱', emoji: '👑', desc: () => '女王蜂の巣箱を置く（周り8マス 売値+50%）', max: 2 },
@@ -845,10 +845,10 @@ export interface FarmerDef {
 }
 
 export const FARMERS: FarmerDef[] = [
-  { id: 'basic', name: 'ふつうの農家', desc: 'いつもの袋で、何でも育てる', art: 'tomato', bag: {}, charms: {}, stock: [], favor: [], mastery: [{ bag: { rain: 1 } }, { gold: 15 }, { stock: ['scarecrow'] }] },
-  { id: 'berry', name: '苺農家', desc: '苺の列で数を売る。市にいつも巣箱', art: 'strawberry', bag: { seed: -2, berrySeed: 3 }, charms: {}, stock: [], favor: ['addBerrySeed', 'addBee'], favorPlaces: ['hive'], unlockClear: 0, tip: '苺は2日で実る。市の巣箱を苺の近くに置くと、毎晩育って売値も上がる', mastery: [{ bag: { berrySeed: 1 } }, { gold: 15 }, { bag: { bee: 1 } }] },
-  { id: 'pumpkin', name: 'かぼちゃ農家', desc: '大物を1つずつ高く売る。かぼちゃの種つき', art: 'pumpkin', bag: { seed: -1, pumpkinSeed: 1 }, charms: {}, stock: [], favor: ['addPumpkinSeed', 'addWatermelonSeed', 'addFertilizer'], unlockClear: 1, tip: 'かぼちゃは高く売れて、カラスに食べられない。肥料と組み合わせよう', mastery: [{ bag: { fertilizer: 1 } }, { gold: 15 }, { stock: ['compost'] }] },
-  { id: 'rancher', name: '牧場主', desc: '小屋で毎晩お金を稼ぐ。市にいつも鶏小屋', art: 'henhouse', bag: {}, charms: {}, stock: [], favor: [], favorPlaces: ['henhouse'], unlockClear: 2, tip: '市にいつも鶏小屋。早めに買って置くと、毎晩お金が入る', mastery: [{ bag: { coin: 1 } }, { gold: 15 }, { stock: ['henhouse'] }] },
+  { id: 'basic', name: 'ふつうの農家', desc: 'いつもの袋で、何でも育てる。日だまりつき', art: 'tomato', bag: {}, charms: { sunBlessing: 1 }, stock: [], favor: [], mastery: [{ bag: { rain: 1 } }, { gold: 15 }, { stock: ['scarecrow'] }] },
+  { id: 'berry', name: '苺農家', desc: '苺の列で数を売る。市にいつも巣箱。草よけつき', art: 'strawberry', bag: { seed: -2, berrySeed: 3 }, charms: { bugWard: 1 }, stock: [], favor: ['addBerrySeed', 'addBee'], favorPlaces: ['hive'], unlockClear: 0, tip: '苺は2日で実る。市の巣箱を苺の近くに置くと、毎晩育って売値も上がる', mastery: [{ bag: { berrySeed: 1 } }, { gold: 15 }, { bag: { bee: 1 } }] },
+  { id: 'pumpkin', name: 'かぼちゃ農家', desc: '大物を1つずつ高く売る。欲張りつき', art: 'pumpkin', bag: { seed: -1, pumpkinSeed: 1 }, charms: { greedy: 1 }, stock: [], favor: ['addPumpkinSeed', 'addWatermelonSeed', 'addFertilizer'], unlockClear: 1, tip: 'かぼちゃは高く売れて、カラスに食べられない。肥料と組み合わせよう', mastery: [{ bag: { fertilizer: 1 } }, { gold: 15 }, { stock: ['compost'] }] },
+  { id: 'rancher', name: '牧場主', desc: '小屋で毎晩お金を稼ぐ。市にいつも鶏小屋。牧場主つき', art: 'henhouse', bag: {}, charms: { rancher: 1 }, stock: [], favor: [], favorPlaces: ['henhouse'], unlockClear: 2, tip: '市にいつも鶏小屋。早めに買って置くと、毎晩お金が入る', mastery: [{ bag: { coin: 1 } }, { gold: 15 }, { stock: ['henhouse'] }] },
   { id: 'rain', name: '雨乞い', desc: '雨で一気に育てる。恵みの雨つき', art: 'rain', bag: { rain: 1, sun: -1 }, charms: { gentleRain: 1 }, stock: [], favor: ['addRain', 'addThunder'], unlockClear: 3, tip: '雨の真ん中のマスはさらに+1（恵みの雨）。雨を中心に組み立てよう', mastery: [{ bag: { rain: 1 } }, { gold: 15 }, { bag: { thunder: 1 } }] },
 ];
 

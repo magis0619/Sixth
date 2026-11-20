@@ -9399,3 +9399,12 @@ h2, .ds-name, .title-start, .ds-go, .market-foot button, .rs-main { letter-spaci
 
 /* 軽量化：しばらく触っていないときは、飾りの動きを止める（main.ts が html に idle を付ける） */
 html.idle *, html.idle *::before, html.idle *::after { animation-play-state: paused !important; }
+/* お守りの代償で上がった年貢：金額の横に赤い小さな札 */
+.hud-tax .tax-curse { font-style: normal; font-size: 0.8125rem; font-weight: 700; color: #fff; background: #a8301f; border-radius: 999px; padding: 0 6px; margin-left: 2px; line-height: 1.4; }
+
+/* ==== 難しさの紋章：段ごとの不気味な絵（数字は左下の小さな札） ==== */
+.ds-num .art { width: min(34vw, 136px); height: min(34vw, 136px); filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.35)); }
+.ds-emblem { overflow: visible; }
+.ds-lv { position: absolute; left: -6px; bottom: 8px; width: 44px; height: 44px; display: grid; place-items: center; font-size: 1.5rem; font-weight: 900; color: #fff; background: var(--ink); border: 3px solid #fff8e7; border-radius: 50%; box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35); }
+/* 段が上がるほど紋章を暗く */
+.diff-screen[data-sky='3'] .ds-emblem, .diff-screen[data-sky='4'] .ds-emblem, .diff-screen[data-sky='5'] .ds-emblem { background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--dc) 45%, #000), #1a1210 75%); }

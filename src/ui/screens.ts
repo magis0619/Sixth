@@ -853,7 +853,8 @@ export function showDifficulty(): void {
           <button class="ds-arrow l" id="diff-prev" ${lv === 0 ? 'disabled' : ''} aria-label="${L('やさしく', 'Easier')}">◀</button>
           <div class="ds-emblem${locked ? ' locked' : ''}${dir ? (dir > 0 ? ' in-r' : ' in-l') : ''}">
             <span class="ds-ring"></span>
-            <span class="ds-num">${locked ? art('lock') : lv === 0 ? art('sprout') : lv}</span>
+            <span class="ds-num">${locked ? art('lock') : lv === 0 ? art('sprout') : art(`dread${lv}` as ArtId)}</span>
+            ${lv > 0 && !locked ? `<span class="ds-lv">${lv}</span>` : ''}
             ${cleared ? `<span class="ds-cleared">${art('trophy')}${L('クリア済み', 'Cleared')}</span>` : ''}
             ${lv > 0 && !locked ? `<span class="ds-mult">${art('bale')}<small>${L('年貢', 'Tax')}</small><b>×${mult(lv)}</b></span>` : ''}
           </div>
