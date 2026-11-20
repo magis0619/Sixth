@@ -2470,7 +2470,7 @@ body::before {
   z-index: 13;
   /* 重ね方の計算（multiply）は画面全体を毎フレーム合成し直すので重い。薄い色を重ねるだけにする */
   background: transparent;
-  transition: background 1.2s;
+  /* 軽量化：画面いっぱいなので色をゆっくり変えない */
 }
 
 :root[data-time='morning'] body::before { background: rgba(255, 200, 170, 0.12); }
@@ -8180,7 +8180,7 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 .machine-top { display: none !important; }
 #pick { display: none !important; }
 .info-row { display: flex; align-items: center; gap: 6px; min-height: 34px; margin: 2px 0 0; }
-.info-row .order-tag { position: static; transform: none; flex: none; font-size: 1rem; padding: 4px 10px 4px 6px; }
+.info-row .order-tag { position: relative; inset: auto; translate: none; transform: none; flex: none; font-size: 1rem; padding: 4px 10px 4px 6px; }
 .info-row .order-tag .sign-nail { display: none; }
 .info-row .status { flex: 1; min-width: 0; justify-content: flex-end; }
 .info-row .status:empty { display: none; }
@@ -8518,3 +8518,22 @@ html.idle *, html.idle *::before, html.idle *::after { animation-play-state: pau
 .ov3-field .art { width: 20px; height: 20px; }
 .ov3-plots .art { width: 28px; height: 28px; }
 .ov3-go { min-height: 52px; font: inherit; font-size: 1.25rem; font-weight: 700; color: var(--ink); background: var(--gold); border: 3px solid var(--ink); border-radius: 14px; box-shadow: 0 4px 0 var(--ink); cursor: pointer; }
+
+/* ==== チュートリアルの吹き出し：光らせる物の上か下に置き（main.ts の placeCoach）、しっぽで指す ==== */
+/* 吹き出しは動かさずに置き換える（動いている途中に下のマスを押すと吹き出しに当たる）。吹き出し自体は押せず、ボタンだけ押せる */
+.coach { pointer-events: none; }
+.coach button { pointer-events: auto; }
+.coach[data-side]::before {
+  content: ''; position: absolute; left: var(--tail-x, 50%); width: 18px; height: 18px;
+  background: #fffdf3; border: 3px solid #5aae35; translate: -50% 0; rotate: 45deg;
+}
+.coach[data-side='above']::before { bottom: -11px; border-top: none; border-left: none; }
+.coach[data-side='below']::before { top: -11px; border-bottom: none; border-right: none; }
+/* 得意なビルドの札：押すと一枚絵（? の丸で押せると分かる） */
+.fs-build-btn { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 1px 4px 1px 6px; font: inherit; font-size: 0.875rem; font-weight: 700; color: #fff; background: #3d7a24; border: 2px solid var(--ink); border-radius: 999px; box-shadow: 0 2px 0 var(--ink); cursor: pointer; }
+.fs-build-btn .art { width: 20px; height: 20px; }
+.fs-build-btn i { display: grid; place-items: center; width: 20px; height: 20px; font-style: normal; font-size: 0.8125rem; color: #3d7a24; background: #fff; border-radius: 50%; }
+/* 狙いの1行をなくしたので、説明の箱を低く（いちばん札の多い農家で収まる高さ） */
+.fs-info { height: 270px; }
+/* 週契約の帯は、市の日の「売値×1.25」の札と重ならないよう少し下げる */
+.week.has-contract .wk-ribbon { margin-top: 14px; }

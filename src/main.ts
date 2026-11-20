@@ -2926,6 +2926,7 @@ function placeTutSpot(): void {
     })
     .join(' ');
   dim.style.clipPath = `path(evenodd, 'M0 0 H${W} V${H} H0 Z ${holes}')`;
+  placeCoach(targets);
   // 指はボタンで進む手順には出さない（押すのは吹き出しのボタン）
   const point = s.button ? null : (s.point?.() ?? targets[0]);
   if (!point) {
@@ -2941,6 +2942,40 @@ function placeTutSpot(): void {
   }
   const r = point.getBoundingClientRect();
   Object.assign(hand.style, { left: `${r.left + r.width / 2}px`, top: `${r.top + r.height * 0.55}px` });
+}
+
+/**
+ * 吹き出しを、光らせる物とかぶらない側へ置く（上下で空きの広い方）。しっぽを光らせる物の方へ向ける。
+ * 目は「吹き出しを読む → しっぽの先 → 光っている物」の順に動く
+ */
+function placeCoach(targets: Element[]): void {
+  const coach = document.getElementById('coach');
+  if (!coach || !targets.length) return;
+  const rs = targets.map((e) => e.getBoundingClientRect());
+  const top = Math.min(...rs.map((r) => r.top)) - 8;
+  const bottom = Math.max(...rs.map((r) => r.bottom)) + 8;
+  const cx = (Math.min(...rs.map((r) => r.left)) + Math.max(...rs.map((r) => r.right))) / 2;
+  const H = window.innerHeight;
+  const h = coach.offsetHeight;
+  const gap = 14;
+  const safeTop = 8;
+  const roomAbove = top - safeTop;
+  const roomBelow = H - bottom - 8;
+  let y: number;
+  let side: 'above' | 'below';
+  if (roomAbove >= h + gap || roomAbove >= roomBelow) {
+    side = 'above';
+    y = Math.max(safeTop, top - gap - h);
+  } else {
+    side = 'below';
+    y = Math.min(H - h - 8, bottom + gap);
+  }
+  coach.style.top = `${Math.round(y)}px`;
+  coach.style.bottom = 'auto';
+  coach.dataset.side = side;
+  // しっぽの横位置：光らせる物の真ん中（吹き出しの端からはみ出さない範囲）
+  const cr = coach.getBoundingClientRect();
+  coach.style.setProperty('--tail-x', `${Math.round(Math.min(cr.width - 28, Math.max(28, cx - cr.left)))}px`);
 }
 
 function renderTutorial(): void {
@@ -3003,9 +3038,7 @@ function renderTutorial(): void {
   // 演出で物が動いても暗幕の穴と指がついていくよう、少しずつ置き直す
   window.clearInterval(tutSpotTimer);
   tutSpotTimer = window.setInterval(placeTutSpot, 250);
-  coach.classList.toggle('low', tutFocus.some((e) => e === el.tax));
-  // 上の曜日を指すときは、曜日を隠さないよう畑の上（真ん中）へ
-  coach.classList.toggle('mid', tutFocus.includes(el.week) && !tutFocus.includes(el.tax));
+  // 置き場所は placeCoach（光らせる物の上か下の、空いている方）
 }
 
 // ---- 起動 ----

@@ -862,7 +862,6 @@ export function showDifficulty(): void {
         </div>
         <h2 class="ds-name">${DIFFICULTIES[lv].name}</h2>
         <div class="ds-rules">
-          <p class="ds-goal">${art('trophy')}<b>${L(`年貢を${plan.length}回納めたらクリア`, `Pay tax ${plan.length} times to win`)}</b></p>
           ${lv === 0
             ? `<p class="ds-plain">${art('sprout')} ${L('縛りなし。まずはここから', 'No extra rules. Start here')}</p>`
             : `<p class="ds-k new">${L('この難しさで増える', 'New at this level')}</p><ul>${tax}${newRules.map((r) => `<li class="new">${art(r.ico)}<span>${r.text}</span><em>NEW</em></li>`).join('')}</ul>
@@ -918,13 +917,23 @@ export function showDifficulty(): void {
 const FARMER_COLOR: Record<string, string> = { basic: '#5fae3c', berry: '#e5688f', pumpkin: '#e8862c', rancher: '#a8743e', rain: '#3a86c8' };
 
 /** 農家の狙い（1行）と得意なビルド（docs/builds.md の名前）。絵は狙いの要になる物 */
-const FARMER_GOAL: Record<string, { ico: ArtId; goal: string; build: string }> = {
-  basic: { ico: 'rain', goal: L('横一列のトマトを雨と太陽で育てる', 'Grow tomato rows with rain and sun'), build: L('トマトと天気雨', 'Tomato & weather') },
-  berry: { ico: 'hive', goal: L('巣箱の周りで苺を毎日実らせる', 'Ripen berries daily around hives'), build: L('苺と巣箱', 'Berries & hives') },
-  pumpkin: { ico: 'fertilizer', goal: L('かぼちゃの列に肥料で高く売る', 'Fertilize pumpkin rows, sell high'), build: L('かぼちゃと肥料', 'Pumpkin & fertilizer') },
-  rancher: { ico: 'henhouse', goal: L('小屋を早く置いて毎晩稼ぐ', 'Place coops early, earn nightly'), build: L('牧場', 'Ranch') },
-  rain: { ico: 'thunder', goal: L('雨の十字と雷でまとめて育てる', 'Grow many with rain and thunder'), build: L('雨と雷', 'Rain & thunder') },
+const FARMER_GOAL: Record<string, { ico: ArtId; goal: string; build: string; key: ArtId[]; tip: string }> = {
+  basic: { ico: 'rain', goal: L('横一列のトマトを雨と太陽で育てる', 'Grow tomato rows with rain and sun'), build: L('トマトと天気雨', 'Tomato & weather'), key: ['seed', 'rain', 'sun'], tip: L('横に植えて、雨は真ん中・太陽は縦に', 'Plant in rows; rain in the middle, sun down a column') },
+  berry: { ico: 'hive', goal: L('巣箱の周りで苺を毎日実らせる', 'Ripen berries daily around hives'), build: L('苺と巣箱', 'Berries & hives'), key: ['berrySeed', 'hive', 'bee'], tip: L('巣箱の周り8マスに苺を植える', 'Plant berries in the 8 plots around a hive') },
+  pumpkin: { ico: 'fertilizer', goal: L('かぼちゃの列に肥料で高く売る', 'Fertilize pumpkin rows, sell high'), build: L('かぼちゃと肥料', 'Pumpkin & fertilizer'), key: ['pumpkinSeed', 'fertilizer', 'compost'], tip: L('並べたかぼちゃに肥料をかけてから売る', 'Fertilize a pumpkin row, then sell') },
+  rancher: { ico: 'henhouse', goal: L('小屋を早く置いて毎晩稼ぐ', 'Place coops early, earn nightly'), build: L('牧場', 'Ranch'), key: ['henhouse', 'cowshed', 'water'], tip: L('鶏小屋は早く買うほど得。虫を食べると+3', 'Buy coops early; eating bugs pays +3') },
+  rain: { ico: 'thunder', goal: L('雨の十字と雷でまとめて育てる', 'Grow many with rain and thunder'), build: L('雨と雷', 'Rain & thunder'), key: ['rain', 'thunder', 'seed'], tip: L('雨の真ん中に一番育てたいマスを', 'Aim the center of the rain at your best plot') },
 };
+
+/** 得意なビルドの一枚絵（農家を選ぶ画面で「得意」の札を押すと出る） */
+function buildCard(id: string): string {
+  const g = FARMER_GOAL[id];
+  return `<p class="ex-kicker">${L('得意なビルド', 'Best build')}</p>
+    <h2 class="ex-title">${L(`${g.build}ビルド`, g.build)}</h2>
+    <div class="ex-row"><span class="ex-trio">${g.key.map((a) => `<span class="ex-art small">${art(a)}</span>`).join('')}</span></div>
+    <p class="ex-line"><b>${g.goal}</b></p>
+    <p class="ex-note">${g.tip}</p>`;
+}
 
 /** 腕前の1段を短い言葉で（例：苺の種+1・所持金+15・堆肥のマスを持って始める） */
 export function perkText(p: FarmerPerk): string {
@@ -998,9 +1007,9 @@ export function showFarmerScreen(dir = 0): void {
           <button class="ds-arrow r" id="fs-next" aria-label="${L('次の農家', 'Next')}">▶</button>
         </div>
         <h2 class="ds-name">${unlocked ? f.name : '？？？'}</h2>
-        ${unlocked ? `<p class="fs-desc">${f.desc}</p>` : `<p class="fs-desc locked">${art('lock')} ${L(`「${DIFFICULTIES[f.unlockClear!].name}」をクリアで解放`, `Clear "${DIFFICULTIES[f.unlockClear!].name}" to unlock`)}</p>`}
+        ${unlocked ? '' : `<p class="fs-desc locked">${art('lock')} ${L(`「${DIFFICULTIES[f.unlockClear!].name}」をクリアで解放`, `Clear "${DIFFICULTIES[f.unlockClear!].name}" to unlock`)}</p>`}
         ${unlocked ? `<div class="ds-rules fs-info">
-          ${g ? `<p class="fs-goal">${art(g.ico)}<b>${g.goal}</b></p><p class="fs-build"><span>${L('得意', 'Best')}：${L(`${g.build}ビルド`, g.build)}</span>${f.mastery?.length ? `<b class="fs-mastery">${L('腕前', 'Mastery')}${masteryStars(lvM, f.mastery.length)}</b>` : ''}</p>` : ''}
+          ${g ? `<p class="fs-build"><button class="fs-build-btn" data-build="${f.id}">${art(g.ico)}${L('得意', 'Best')}：${L(`${g.build}ビルド`, g.build)}<i>?</i></button>${f.mastery?.length ? `<b class="fs-mastery">${L('腕前', 'Mastery')}${masteryStars(lvM, f.mastery.length)}</b>` : ''}</p>` : ''}
           <div class="fs-rows">
             ${ups || downs ? `<span class="fs-k">${L('変わる', 'Changes')}</span><div class="fs-line">${ups}${downs}</div>` : ''}
             <span class="fs-k">${L('袋', 'Bag')}<small>${L(`${bagN}枚`, `${bagN}`)}</small></span><div class="fs-line">${bag}</div>
@@ -1035,6 +1044,8 @@ export function showFarmerScreen(dir = 0): void {
         void showExplain(`<p class="ex-kicker">${L('畑の品', 'Farm item')}</p><h2 class="ex-title">${PLACES[id].name}</h2><div class="ex-row"><span class="ex-art">${art(PLACE_ART[id])}</span></div><p class="ex-line">${PLACES[id].desc}</p>`);
       }),
     );
+    // 得意なビルドの札：押すと一枚絵で説明
+    el.overlay.querySelector<HTMLElement>('[data-build]')?.addEventListener('click', (e) => void showExplain(buildCard((e.currentTarget as HTMLElement).dataset.build!)));
     $('fs-prev').addEventListener('click', () => pick(-1));
     $('fs-next').addEventListener('click', () => pick(1));
     el.overlay.querySelectorAll<HTMLButtonElement>('[data-farmer]').forEach((b) =>
