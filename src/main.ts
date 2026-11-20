@@ -454,9 +454,10 @@ function renderTax(): void {
     `<span class="tax-label">${art('bale')}<span class="tax-word">${L('年貢', 'Tax')}</span></span><b>${gold(t.amount)}</b>` +
     // お守りの代償で年貢が上がっているときは、金額の横に「+10%」の印
     (taxCursePct(state) ? `<em class="tax-curse" title="${L('お守りの代償', 'Charm curse')}">+${taxCursePct(state)}%</em>` : '') +
-    `<span class="tax-mark">${short ? L('足りない', 'short') : L('払える', 'ready')}</span>` +
-    // いつ払うか：日曜まであと何日（今日なら「今日の終わり」）
-    `<span class="tax-due">${t.daysLeft <= 0 ? L('今日の終わり', 'Tonight') : L(`日曜まで あと${t.daysLeft}日`, `${t.daysLeft} days to Sunday`)}</span>`;
+    // 足りないときは、いくら足りないか（いつ払うかは曜日の板で分かるので書かない）
+    `<span class="tax-mark">${short ? L(`あと${t.amount - state.gold}`, `${t.amount - state.gold} short`) : L('払える', 'ready')}</span>` +
+    // 何回目の年貢か（クリアまでの7回のうち）
+    `<span class="tax-count">${Math.min(t.index + 1, CONFIG.winTaxes)}<small>/${CONFIG.winTaxes}</small></span>`;
 }
 
 /** 列（縦・横・斜めに3つ以上）にそろった実があるか */
@@ -865,7 +866,7 @@ let discardArmed: SymbolId | null = null;
 function renderDiscardShop(): void {
   const box = $('discard-shop');
   const shown = shopOpen(state) && state.day > 0 && !tut;
-  (box.closest('.stall-sub') as HTMLElement).hidden = !shown;
+  (box.closest('.stall-sec') as HTMLElement).hidden = !shown;
   if (!shown) return;
   const price = discardPrice(state);
   setHtml($('discard-price'), state.discardedThisMarket ? L('この市はもう捨てた', 'Done this market') : `${art('coin')}${price}・${L('市で1回', 'once per market')}`);
@@ -949,7 +950,7 @@ function onBuyPremium(b: HTMLButtonElement): void {
 function renderMergeShop(): void {
   const box = $('merge-shop');
   const list = mergeable(state);
-  (box.closest('.stall-sub') as HTMLElement).hidden = !list.length;
+  (box.closest('.stall-sec') as HTMLElement).hidden = !list.length;
   if (list.length) void explainOnce('ex:merge', mergeCard(list[0], MERGES[list[0]]!, mergeCost(state)), !!tut);
   const cost = mergeCost(state);
   const key = `${list.join(",")}|${state.mergedThisMarket}|${cost}|${state.gold}`;

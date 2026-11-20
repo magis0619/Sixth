@@ -123,17 +123,20 @@
           </section>
           <section class="stall-sec" data-cat="bag">
             <div class="awning"></div>
-            <h3 class="stall-head"><span class="tab-ico" data-art="crow"></span><span data-en="Pests & bag">お邪魔を消す・袋を整える</span></h3>
+            <h3 class="stall-head"><span class="tab-ico" data-art="crow"></span><span data-en="Remove pests">お邪魔を消す</span><span class="cat-note" data-en="1 per market">市で1枚</span></h3>
             <div class="shop" id="remove-shop"></div>
             <p class="stall-empty" id="stall-empty" data-en="No pests in your bag!">袋にお邪魔はいない！</p>
-            <div class="stall-sub merge-sub" hidden>
-              <p class="sub-head"><span class="tab-ico" data-art="sparkle"></span><span data-en="Merge">合体</span><span class="cat-note" data-en="4 same → 1 · once per market">同じ札4枚→1枚・市で1回</span></p>
-              <div class="shop" id="merge-shop"></div>
-            </div>
-            <div class="stall-sub discard-sub" hidden>
-              <p class="sub-head"><span class="tab-ico" data-art="puff"></span><span data-en="Discard a card">札を1枚捨てる</span><span class="cat-note" id="discard-price"></span></p>
-              <div class="discard-grid" id="discard-shop"></div>
-            </div>
+          </section>
+          <!-- 袋を整える：合体・札を捨てる（ほかの段と同じ見出しの形） -->
+          <section class="stall-sec merge-sec" hidden>
+            <div class="awning"></div>
+            <h3 class="stall-head"><span class="tab-ico" data-art="sparkle"></span><span data-en="Merge">合体</span><span class="cat-note" data-en="4 same → 1 · once per market">同じ札4枚→1枚・市で1回</span></h3>
+            <div class="shop" id="merge-shop"></div>
+          </section>
+          <section class="stall-sec discard-sec" hidden>
+            <div class="awning"></div>
+            <h3 class="stall-head"><span class="tab-ico" data-art="puff"></span><span data-en="Discard a card">札を1枚捨てる</span><span class="cat-note" id="discard-price"></span></h3>
+            <div class="discard-grid" id="discard-shop"></div>
           </section>
         </div>
         <!-- 市を出る：仕入れを選ぶまでは押せない -->

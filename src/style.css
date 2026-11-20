@@ -8184,10 +8184,14 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 .info-row .order-tag .sign-nail { display: none; }
 .info-row .status { flex: 1; min-width: 0; justify-content: flex-end; }
 .info-row .status:empty { display: none; }
-/* 年貢：いつ払うかを2行目に */
-.hud-tax { height: auto; min-height: 44px; flex-wrap: wrap; row-gap: 0; padding: 3px 8px 3px 4px; align-content: center; }
-.hud-tax .tax-due { flex-basis: 100%; padding-left: 28px; font-size: 0.875rem; font-weight: 500; color: var(--ink-soft); line-height: 1.2; }
-.hud-tax.short .tax-due { color: #a8301f; }
+/* 年貢：1行に「年貢 3/7 ・金額・（代償）・払える/あと◯」。いつ払うかは曜日の板で分かる */
+.hud-tax { height: auto; min-height: 44px; flex-wrap: nowrap; padding: 3px 8px 3px 6px; align-items: center; }
+.hud-tax .tax-label { order: 1; }
+.hud-tax .tax-count { order: 2; font-size: 0.9375rem; font-weight: 700; color: var(--ink-soft); }
+.hud-tax .tax-count small { font-size: 0.8125rem; font-weight: 500; }
+.hud-tax > b { order: 3; }
+.hud-tax .tax-curse { order: 4; }
+.hud-tax .tax-mark { order: 5; white-space: nowrap; }
 /* 操作の案内 */
 .guide { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 2px 10px 6px; padding: 4px 12px; min-height: 32px; background: #fff8dc; color: var(--ink); border: 2px solid var(--ink); border-radius: 999px; font-size: 1rem; font-weight: 700; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25); }
 .guide[hidden] { display: none; }
@@ -8472,3 +8476,39 @@ html.idle *, html.idle *::before, html.idle *::after { animation-play-state: pau
 .ds-lv { position: absolute; left: -6px; bottom: 8px; width: 44px; height: 44px; display: grid; place-items: center; font-size: 1.5rem; font-weight: 900; color: #fff; background: var(--ink); border: 3px solid #fff8e7; border-radius: 50%; box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35); }
 /* 段が上がるほど紋章を暗く */
 .diff-screen[data-sky='3'] .ds-emblem, .diff-screen[data-sky='4'] .ds-emblem, .diff-screen[data-sky='5'] .ds-emblem { background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--dc) 45%, #000), #1a1210 75%); }
+
+/* ==== 遊び方の一枚絵（はじめて遊ぶとき）：題・ひと言・3つの手順・目標・ボタン ==== */
+.explain-card:has(.ov2) { padding: 0 14px 16px; overflow: visible; }
+.ov2 ~ .ex-tap { display: none; }
+.ov2 { display: grid; gap: 10px; text-align: left; }
+.ov2-title { justify-self: center; margin: -18px 0 0; padding: 6px 34px 8px; font-size: 1.75rem; font-weight: 900; color: var(--ink); background: linear-gradient(#e2b071, #c88a45); border: 3px solid var(--ink); border-radius: 14px; box-shadow: 0 4px 0 var(--ink); }
+.ov2-lead { margin: 0; text-align: center; font-size: 1.125rem; font-weight: 700; }
+.ov2-step { display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 10px; padding: 10px 12px; border: 2px solid rgba(61, 51, 38, 0.25); border-radius: 14px; }
+.ov2-step.a { background: #fdf0dc; }
+.ov2-step.b { background: #e8f5d6; }
+.ov2-step.c { background: #e0eefb; }
+.ov2-n { display: grid; place-items: center; width: 34px; height: 34px; font-size: 1.25rem; font-weight: 900; color: #fff; background: var(--ink); border-radius: 50%; }
+.ov2-text { display: grid; gap: 2px; }
+.ov2-text b { font-size: 1.125rem; font-weight: 900; }
+.ov2-text span { font-size: 0.9375rem; }
+.ov2-pic { display: flex; align-items: center; }
+.ov2-reels { display: flex; gap: 3px; padding: 4px; background: #8a5a2b; border: 2px solid var(--ink); border-radius: 10px; }
+.ov2-reels i { display: grid; place-items: center; width: 34px; height: 34px; background: #fff; border-radius: 6px; }
+.ov2-reels .art { width: 28px; height: 28px; }
+.ov2-plots { position: relative; display: flex; gap: 3px; }
+.ov2-plots i { display: grid; place-items: center; width: 30px; height: 30px; background: #9a6a40; border: 2px solid #6b4423; border-radius: 6px; }
+.ov2-plots i.on { background: #b98550; border-color: #ffcc33; box-shadow: 0 0 0 2px #ffcc33; }
+.ov2-plots .art { width: 22px; height: 22px; }
+.ov2-plots em { position: absolute; left: 34px; top: 16px; }
+.ov2-plots em .art { width: 26px; height: 26px; }
+.ov2-sell { display: flex; align-items: center; }
+.ov2-sell > .art { width: 28px; height: 28px; margin-right: -4px; }
+.ov2-sell b { display: inline-flex; align-items: center; gap: 1px; margin-left: 8px; font-size: 1.125rem; font-weight: 900; }
+.ov2-sell b .art { width: 20px; height: 20px; }
+.ov2-goal { position: relative; display: grid; grid-template-columns: 44px 1fr; align-items: center; gap: 10px; margin-top: 8px; padding: 16px 12px 10px; background: #fff8e7; border: 2px solid rgba(61, 51, 38, 0.25); border-radius: 14px; }
+.ov2-goal-k { position: absolute; top: -12px; left: 50%; translate: -50% 0; padding: 1px 16px; font-size: 0.9375rem; font-weight: 900; color: #fff; background: #e8743b; border-radius: 999px; }
+.ov2-goal > .art { width: 44px; height: 44px; }
+.ov2-goal div { display: grid; gap: 2px; }
+.ov2-goal b { font-size: 1.0625rem; font-weight: 900; }
+.ov2-goal span { font-size: 0.9375rem; }
+.ov2-go { margin-top: 4px; min-height: 56px; font: inherit; font-size: 1.375rem; font-weight: 900; color: var(--ink); background: #ffcc33; border: 3px solid var(--ink); border-radius: 16px; box-shadow: 0 5px 0 var(--ink); cursor: pointer; }

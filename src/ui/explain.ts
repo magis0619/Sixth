@@ -203,22 +203,22 @@ export function comboCard(id: CharmId): string {
 }
 
 /** ゲームの全体像：1日の流れと、週の流れ */
-export function overviewCard(): string {
-  const step = (n: number, pic: string, label: string) => `<div class="ov-step"><span class="ov-n">${n}</span><span class="ov-pic">${pic}</span><b>${label}</b></div>`;
-  const days = (L('月火水木金土日', 'MTWTFSS')).split('');
-  return `<p class="ex-kicker">${L('畑スロットの遊び方', 'How Farm Slots works')}</p>
-    <h2 class="ex-title">${L('1日の流れ', 'Each day')}</h2>
-    <div class="ov-loop">
-      ${step(1, `${art('seed')}${art('rain')}${art('coin')}`, L('リールを回す', 'Spin the reels'))}
-      <span class="ov-arrow">▶</span>
-      ${step(2, `${art('sprout')}${art('leaf')}${art('tomato')}`, L('畑に植えて育てる', 'Plant and grow'))}
-      <span class="ov-arrow">▶</span>
-      ${step(3, `${art('tomato')}${art('tomato')}${art('tomato')}`, L('3つ並べて売る', 'Sell 3 in a row'))}
-    </div>
-    <h2 class="ex-title">${L('1週間の流れ', 'Each week')}</h2>
-    <div class="ov-week">${days.map((d, k) => `<span class="${k === 2 || k === 5 ? 'mk' : ''}${k === 6 ? ' tx' : ''}"><b>${d}</b>${k === 2 || k === 5 ? art('bargain') : k === 6 ? art('bale') : ''}</span>`).join('')}</div>
-    <div class="ov-legend"><span>${art('bargain')} ${L(`水・土は市（袋に絵柄を足す・売値×${CONFIG.marketDaySell}）`, `Wed/Sat: market (add symbols, prices ×${CONFIG.marketDaySell})`)}</span><span>${art('bale')} ${L('日曜の終わりに年貢', 'Tax at the end of Sunday')}</span></div>
-    <div class="ov-goal">${art('trophy')}<b>${L(`年貢を${CONFIG.winTaxes}回納めたらクリア`, `Pay ${CONFIG.winTaxes} taxes to win`)}</b><span>${L('払えないと終わり', "Can't pay = game over")}</span></div>`;
+export function overviewCard(start = true): string {
+  // 遊び方の一枚絵：題・ひと言・3つの手順（絵つき）・目標・ボタン。文字は1行に1つで短く
+  const step = (n: number, cls: string, title: string, line: string, pic: string) =>
+    `<div class="ov2-step ${cls}"><span class="ov2-n">${n}</span><div class="ov2-text"><b>${title}</b><span>${line}</span></div><div class="ov2-pic">${pic}</div></div>`;
+  const reels = `<span class="ov2-reels">${(['seed', 'rain', 'sun'] as ArtId[]).map((a) => `<i>${art(a)}</i>`).join('')}</span>`;
+  const plots = `<span class="ov2-plots"><i></i><i class="on">${art('sprout')}</i><i></i><em>${art('hand')}</em></span>`;
+  const sell = `<span class="ov2-sell">${art('tomato')}${art('tomato')}${art('tomato')}<b>${art('coin')}+12</b></span>`;
+  return `<div class="ov2">
+    <h2 class="ov2-title">${L('遊び方', 'How to play')}</h2>
+    <p class="ov2-lead">${L('出た絵柄で、畑を育てよう', 'Grow your farm with the reels')}</p>
+    ${step(1, 'a', L('リールを回す', 'Spin the reels'), L('袋から絵柄が3つ出る', '3 symbols from your bag'), reels)}
+    ${step(2, 'b', L('畑で使う', 'Use them'), L('光るマスをタップ', 'Tap a glowing plot'), plots)}
+    ${step(3, 'c', L('並べて売る', 'Sell in a row'), L('3つ並べると高い', '3 in a row sells high'), sell)}
+    <div class="ov2-goal"><span class="ov2-goal-k">${L('目標', 'Goal')}</span>${art('bale')}<div><b>${L('日曜に年貢を納める', 'Pay tax every Sunday')}</b><span>${L(`${CONFIG.winTaxes}回でクリア`, `${CONFIG.winTaxes} times to win`)}</span></div></div>
+    <button class="ov2-go">${start ? L('さあ、はじめる！', "Let's go!") : L('とじる', 'Close')}</button>
+  </div>`;
 }
 
 // ---- 初めての場面のカード ----

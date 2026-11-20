@@ -327,7 +327,7 @@ export function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
   // 全体の流れ・絵柄の一枚絵をもう一度
   el.overlay.firstElementChild?.addEventListener('click', (e) => {
     const t = e.target as HTMLElement;
-    if (t.closest('#help-overview')) void showExplain(overviewCard());
+    if (t.closest('#help-overview')) void showExplain(overviewCard(false));
     const row = t.closest<HTMLElement>('[data-ex-sym]');
     if (row) void showExplain(symbolCard(row.dataset.exSym as SymbolId, false));
   });
