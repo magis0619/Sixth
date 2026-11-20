@@ -85,25 +85,12 @@ button {
 }
 
 /* ---- 布のパネル（共通） ---- */
-.cloth {
-  background: var(--cloth);
-  border-radius: 20px;
-  box-shadow: 0 3px 0 rgba(110, 66, 36, 0.35), inset 0 0 0 2px #fff;
-  outline: 2px dashed var(--stitch);
-  outline-offset: -6px;
-}
 
 /* ---- HUD（木の看板） ---- */
 .hud {
   display: flex;
   flex-direction: column;
   gap: 6px;
-}
-
-.hud-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .stat {
@@ -130,21 +117,6 @@ button {
 .stat-icon {
   font-size: 1.375rem;
   display: flex;
-}
-
-.stat-gold {
-  min-width: 108px;
-  background: var(--gold-soft);
-  box-shadow: 0 3px 0 var(--gold-dark), inset 0 0 0 2px #fff;
-}
-
-.stat-day {
-  font-size: 1.125rem;
-  margin-right: auto;
-}
-
-.stat-day .stat-icon {
-  font-size: 1.125rem;
 }
 
 .icon-btn {
@@ -187,24 +159,10 @@ button {
   font-size: 1rem;
 }
 
-.tax .tax-state {
-  margin-left: auto;
-  background: rgba(255, 255, 255, 0.92);
-  color: var(--ink);
-  text-shadow: none;
-  border-radius: 999px;
-  padding: 1px 9px;
-  font-size: 0.875rem;
-}
-
 .tax.warn {
   background: linear-gradient(#e86a5c, #c94336);
   box-shadow: 0 3px 0 #8f2a20;
   animation: pulse 1s ease-in-out infinite;
-}
-
-.tax.warn .tax-state {
-  color: #a3241a;
 }
 
 /* ---- 今日の効果・ヒント ---- */
@@ -444,27 +402,12 @@ button {
   padding: 0 4px;
 }
 
-.badge-gold {
-  position: absolute;
-  top: 5%;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: #4a3200;
-  background: var(--gold-soft);
-  border-radius: 8px;
-  padding: 0 4px;
-}
-
 /* そろい：ピンクの縁と倍率バッジ */
 .plot.line {
   box-shadow: inset 0 0 0 3px var(--pink), 0 0 0 3px var(--ink);
 }
 
-.plot.lines-2,
-.plot.lines-3,
-.plot.lines-4 {
+.plot.lines-3 {
   animation: target 0.7s ease-in-out infinite;
 }
 
@@ -517,7 +460,6 @@ button {
 }
 
 .machine-top {
-  display: flex;
   align-items: center;
   gap: 8px;
   color: #fff8e7;
@@ -1131,16 +1073,6 @@ button {
   margin-bottom: 10px;
 }
 
-.modal .newrec {
-  display: inline-block;
-  background: var(--gold);
-  color: #4a3200;
-  border-radius: 8px;
-  padding: 2px 8px;
-  margin-left: 6px;
-  animation: pulse 0.8s ease-in-out infinite;
-}
-
 .modal table {
   width: 100%;
   border-collapse: collapse;
@@ -1210,37 +1142,6 @@ button {
 .modal .secondary:disabled {
   opacity: 0.45;
   cursor: default;
-}
-
-.share-row {
-  display: flex;
-  gap: 8px;
-}
-
-.share-row .secondary {
-  flex: 1;
-  text-align: center;
-  text-decoration: none;
-  color: var(--ink);
-}
-
-.points-earned {
-  text-align: center;
-  background: var(--gold-soft);
-  border-radius: 12px;
-  padding: 6px;
-  margin-bottom: 8px;
-  box-shadow: inset 0 0 0 2px var(--gold);
-}
-
-.points-earned b {
-  font-size: 1.125rem;
-}
-
-.points-earned small {
-  display: block;
-  font-size: 0.875rem;
-  color: var(--ink-soft);
 }
 
 /* 年貢のハンコ */
@@ -1751,9 +1652,6 @@ button {
   .stat {
     font-size: 1.125rem;
   }
-  .stat-gold {
-    min-width: 92px;
-  }
 }
 
 /* 横長の画面：畑とスロットを横に並べる */
@@ -1827,27 +1725,6 @@ button {
   display: flex;
 }
 
-.order-text {
-  white-space: nowrap;
-}
-
-.order-bar {
-  flex: 1;
-  min-width: 40px;
-  height: 8px;
-  border-radius: 999px;
-  background: var(--cloth-deep);
-  overflow: hidden;
-}
-
-.order-bar i {
-  display: block;
-  height: 100%;
-  background: var(--role-manual);
-  border-radius: 999px;
-  transition: width 0.3s;
-}
-
 .order-reward {
   font-weight: 700;
   font-size: 0.875rem;
@@ -1881,11 +1758,6 @@ button {
   font-size: 0.75em;
   line-height: 1;
   color: #a1145a;
-}
-
-.price.adj {
-  border-radius: 50%;
-  box-shadow: 0 0 0 2px var(--pink);
 }
 
 /* ---- お邪魔：雑草・霜 ---- */
@@ -1942,18 +1814,6 @@ button {
 
 .item.weekly {
   box-shadow: 0 3px 0 rgba(110, 66, 36, 0.3), inset 0 0 0 2px var(--tier-uncommon);
-}
-
-.weekly-tag {
-  position: absolute;
-  top: -8px;
-  right: 8px;
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: #fff;
-  background: var(--tier-uncommon);
-  border-radius: 8px;
-  padding: 0 8px;
 }
 
 /* ---- スロットの演出（リーチ・カットイン・フリーズ） ---- */
@@ -2071,21 +1931,6 @@ button {
 }
 
 /* フリーズ：暗転と、ブラウン管が消えるような白い線 */
-.freeze-black {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  background: #000;
-  pointer-events: none;
-}
-
-.crt-line {
-  position: absolute;
-  inset: 0;
-  background: #fff;
-  transform: scale(0, 0.004);
-  box-shadow: 0 0 0 3px var(--ink);
-}
 
 /* 割れた筐体のガラス */
 .crack {
@@ -2160,17 +2005,6 @@ button {
 }
 
 /* 単品（列に入らない実）は半値なので控えめに */
-.badge-single {
-  position: absolute;
-  bottom: 5%;
-  background: rgba(61, 51, 38, 0.75);
-  color: #fff;
-  border-radius: 8px;
-  font-size: max(0.875rem, calc(var(--cell) * 0.1));
-  font-weight: 700;
-  padding: 0 5px;
-  white-space: nowrap;
-}
 
 /* 道具：木の台に置いたように見せる */
 .plot.tool {
@@ -2204,14 +2038,6 @@ button {
 .plot.tile-water {
   background-color: #5a6f7a;
   box-shadow: inset 0 0 0 3px #5aa6e0;
-}
-
-.badge-tile {
-  position: absolute;
-  top: 4%;
-  right: 4%;
-  font-size: max(0.875rem, calc(var(--cell) * 0.2));
-  line-height: 1;
 }
 
 /* 出目の形の範囲（指しているマスを中心に） */
@@ -2657,30 +2483,6 @@ body::before {
 }
 
 /* 育ち具合：段階の名前と、実るまでの残りを文字で */
-.stage-name {
-  position: absolute;
-  top: 5%;
-  right: 5%;
-  background: rgba(255, 250, 240, 0.92);
-  color: #3d3326;
-  border-radius: 8px;
-  padding: 0 6px;
-  font-size: max(0.875rem, calc(var(--cell) * 0.13));
-  font-weight: 700;
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
-}
-
-.grow-left {
-  position: absolute;
-  bottom: 22%;
-  left: 5%;
-  background: rgba(61, 51, 38, 0.78);
-  color: #fff;
-  border-radius: 8px;
-  padding: 0 5px;
-  font-size: max(0.875rem, calc(var(--cell) * 0.12));
-  font-weight: 700;
-}
 
 .pips {
   bottom: 5%;
@@ -2691,24 +2493,6 @@ body::before {
 }
 
 /* 特別なマス：土の色だけでなく名前の札を出す */
-.badge-tile {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  background: rgba(255, 250, 240, 0.92);
-  color: #3d3326;
-  border-radius: 8px;
-  padding: 0 6px 0 2px;
-  font-size: max(0.875rem, calc(var(--cell) * 0.12));
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
-  top: 5%;
-  left: 5%;
-  right: auto;
-}
-
-.badge-tile b {
-  font-weight: 700;
-}
 
 .plot .empty small {
   display: block;
@@ -2735,24 +2519,8 @@ body::before {
 }
 
 /* 作物が植わっているマスでは、特別なマスの札を左の中段へ（左上は作物の種類札） */
-.plot[class*='crop-'] .badge-tile {
-  top: 34%;
-}
 
 /* 特別なマス（作物・道具があるときは右下に小さな印、空きマスは中央に名札） */
-.badge-tile {
-  top: auto;
-  left: auto;
-  bottom: 5%;
-  right: 5%;
-  padding: 2px;
-  border-radius: 50%;
-  font-size: max(0.9rem, calc(var(--cell) * 0.2));
-}
-
-.plot[class*='crop-'] .badge-tile {
-  top: auto;
-}
 
 .tile-label {
   display: flex;
@@ -2828,12 +2596,6 @@ body::before {
   line-height: 1.35;
 }
 
-.shop .weekly-tag {
-  position: static;
-  font-size: 0.875rem;
-  padding: 1px 6px;
-}
-
 .shop .item .cost {
   grid-column: auto;
   display: flex;
@@ -2869,24 +2631,6 @@ body::before {
 
 .shop .item .cost.done {
   box-shadow: none;
-}
-
-.shop-title {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin: 12px 2px 6px;
-  font-size: 1rem;
-}
-
-.shop-title:first-of-type {
-  margin-top: 2px;
-}
-
-.shop-title small {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--ink-soft);
 }
 
 /* 見出しは下の中身と線で区切る（スクロールで下に潜った文字が透けないように） */
@@ -2941,28 +2685,10 @@ body::before {
   color: #6e6250;
 }
 
-.prep-item.locked.unlockable,
 .prep-item.locked:not(:disabled) {
   background: #fff8dc;
   box-shadow: inset 0 0 0 2px var(--gold);
   animation: none;
-}
-
-.prep-item.locked.unlockable small {
-  color: #8a6400;
-  font-weight: 700;
-}
-
-.prep-cap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.prep-cap small {
-  font-size: 0.875rem;
-  font-weight: 700;
-  opacity: 0.8;
 }
 
 /* 「はじめる」「続きから」は常に画面の下に見えるように貼り付ける */
@@ -2981,18 +2707,6 @@ body::before {
 }
 
 /* 作物が乗った特別なマスは、上の真ん中に小さな印（右下は成長の点と重なる）。堆肥は枠を付けない（実りの金枠と紛らわしい） */
-.plot[class*='crop-'] .badge-tile {
-  top: 4%;
-  bottom: auto;
-  left: 50%;
-  right: auto;
-  transform: translateX(-50%);
-  font-size: max(0.875rem, calc(var(--cell) * 0.17));
-}
-
-.plot.ripe[class*='crop-'] .badge-tile {
-  display: none;
-}
 
 .plot.tile-compost {
   box-shadow: none;
@@ -3037,13 +2751,6 @@ body::before {
   flex-direction: column;
   align-items: center;
   margin-top: 6dvh;
-}
-
-.title-art {
-  font-size: 3.6rem;
-  display: flex;
-  gap: 6px;
-  animation: bob 2.4s ease-in-out infinite;
 }
 
 .title-logo h1 {
@@ -3147,72 +2854,8 @@ body::before {
 }
 
 /* 結果：数字をアイコンと大きく */
-.over-stats {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  margin: 10px 0;
-}
-
-.over-stats span {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  background: #fffdf7;
-  border-radius: 12px;
-  padding: 8px 10px;
-  font-size: 0.875rem;
-  font-weight: 700;
-  position: relative;
-}
-
-.over-stats .art {
-  font-size: 1.375rem;
-}
-
-.over-stats b {
-  font-size: 1.375rem;
-}
-
-.over-stats em {
-  position: absolute;
-  top: -10px;
-  right: -6px;
-  font-style: normal;
-  font-size: 0.875rem;
-  background: var(--pink);
-  color: #fff;
-  border-radius: 8px;
-  padding: 1px 6px;
-}
 
 /* 準備：並べられる数をメーターで */
-.cap-meter {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  margin: 4px 0 10px;
-}
-
-.cap-meter i {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #e6dcc8;
-  box-shadow: inset 0 0 0 2px #d0c2a6;
-}
-
-.cap-meter i.on {
-  background: var(--role-manual);
-  box-shadow: inset 0 0 0 2px #2f7a22;
-}
-
-.cap-meter span {
-  margin-left: 6px;
-  font-weight: 700;
-  font-size: 0.9375rem;
-}
 
 .prep-item .cost {
   color: var(--role-manual);
@@ -3276,52 +2919,6 @@ body::before {
   filter: brightness(0) opacity(0.35);
 }
 
-.diff-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  justify-content: center;
-  margin-bottom: 10px;
-}
-
-.diff-chip {
-  border: none;
-  border-radius: 12px;
-  padding: 6px 10px;
-  background: #fffdf7;
-  font-weight: 700;
-  font-size: 0.875rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  box-shadow: inset 0 0 0 2px #e6dcc8;
-}
-
-.diff-chip small {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--ink-soft);
-}
-
-.diff-chip.on {
-  background: #3d2a4a;
-  color: #fff;
-  box-shadow: inset 0 0 0 2px #8a5bff;
-}
-
-.diff-chip.on small {
-  color: #d8c8ff;
-}
-
-.diff-tag {
-  background: #3d2a4a;
-  color: #fff;
-  border-radius: 8px;
-  padding: 0 8px;
-  font-size: 0.875rem;
-  margin-right: 4px;
-}
-
 .newly {
   margin: 8px 0;
   padding: 8px 10px;
@@ -3366,26 +2963,6 @@ body::before {
 
 
 /* クリアまでの年貢の回数 */
-.clear-prog {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  background: #fff6c8;
-  color: #8a5a00;
-  border-radius: 8px;
-  padding: 0 8px 0 4px;
-  font-size: 0.875rem;
-  font-weight: 700;
-  margin-right: 6px;
-}
-
-.clear-prog .art {
-  font-size: 1em;
-}
-
-.clear-prog.endless {
-  padding: 0 8px;
-}
 
 /* ==== ヘッダー：1段にまとめた木の看板（所持金・年貢・注文・？・音） ==== */
 .hud-bar {
@@ -3455,48 +3032,6 @@ body::before {
   line-height: 1;
 }
 
-.hud-tax .tax-main {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  font-size: 1rem;
-}
-
-.hud-tax .tax-main .art {
-  font-size: 1.125rem;
-}
-
-.hud-tax .tax-ok {
-  margin-left: 4px;
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: #2f7a22;
-}
-
-.hud-tax.short .tax-ok {
-  color: var(--danger);
-}
-
-.hud-tax .tax-sub {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: #8a5a00;
-  white-space: nowrap;
-}
-
-.hud-tax .tax-sub em {
-  font-style: normal;
-  background: #3d2a4a;
-  color: #fff;
-  border-radius: 8px;
-  padding: 0 6px;
-  font-size: 0.875rem;
-}
-
 .hud-tax.warn {
   background: #ffe0dc;
   box-shadow: inset 0 0 0 2px var(--danger);
@@ -3510,53 +3045,6 @@ body::before {
 }
 
 /* 注文：作物の絵と進み具合 */
-.hud-order {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  height: 38px;
-  padding: 0 8px 0 4px;
-  border: none;
-  border-radius: 8px;
-  background: #fff4dc;
-  box-shadow: inset 0 0 0 2px #e8cf9e;
-  position: relative;
-  font-size: 0.9375rem;
-  color: var(--ink);
-}
-
-.hud-order[hidden] {
-  display: none;
-}
-
-.hud-order .order-ico {
-  font-size: 1.375rem;
-  display: flex;
-}
-
-.hud-order .order-bar {
-  position: absolute;
-  left: 8px;
-  right: 8px;
-  bottom: 4px;
-  height: 3px;
-  border-radius: 4px;
-  background: #e8cf9e;
-  overflow: hidden;
-}
-
-.hud-order .order-bar i {
-  display: block;
-  height: 100%;
-  background: var(--role-manual);
-}
-
-.hud-order.done {
-  background: #e6f5d6;
-  box-shadow: inset 0 0 0 2px var(--role-manual);
-  color: #2f7a22;
-}
 
 .hud .icon-btn {
   width: 34px;
@@ -3617,43 +3105,6 @@ body::before {
   box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.8), inset 0 -3px 0 rgba(0, 0, 0, 0.2), 0 3px 0 #6a2512;
 }
 
-.lcd {
-  justify-self: stretch;
-  height: 48px;
-  border-radius: 8px;
-  background: #0f2a16;
-  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.8), 0 0 0 2px #555;
-  color: #7dff8a;
-  text-shadow: 0 0 6px rgba(125, 255, 138, 0.8);
-  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  line-height: 1.15;
-  font-weight: 700;
-}
-
-.lcd b {
-  font-size: 1rem;
-}
-
-.lcd small {
-  font-size: 0.875rem;
-  opacity: 0.85;
-}
-
-.lcd.tax {
-  color: #ffd84a;
-  text-shadow: 0 0 6px rgba(255, 216, 74, 0.8);
-}
-
-.lcd.warn {
-  color: #ff7a6a;
-  text-shadow: 0 0 6px rgba(255, 90, 70, 0.9);
-  animation: pulse 0.6s ease-in-out infinite;
-}
-
 /* ドームの押しボタン：クロームの縁＋赤い半球 */
 .machine .spin,
 .control .spin {
@@ -3677,13 +3128,6 @@ body::before {
   margin-bottom: 6px;
 }
 
-.control .spin .spin-cap {
-  font-size: 1rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-shadow: 0 2px 0 rgba(90, 10, 0, 0.7);
-}
-
 .control .spin:active:not(:disabled) {
   transform: translateY(5px);
   box-shadow:
@@ -3704,10 +3148,6 @@ body::before {
   color: #5a3d00;
 }
 
-.control .spin.taxday .spin-cap {
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
-}
-
 .control .spin.armed {
   background:
     radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.75) 0 10%, transparent 26%),
@@ -3715,40 +3155,7 @@ body::before {
   animation: pulse 0.6s ease-in-out infinite;
 }
 
-.control .spin.armed .spin-cap {
-  font-size: 0.9375rem;
-}
-
 /* レバー：見た目だけ。まわすと引かれる */
-.lever {
-  justify-self: start;
-  position: relative;
-  width: 26px;
-  height: 56px;
-  transform-origin: 50% 90%;
-}
-
-.lever::before {
-  content: '';
-  position: absolute;
-  left: 9px;
-  bottom: 0;
-  width: 8px;
-  height: 44px;
-  border-radius: 4px;
-  background: linear-gradient(90deg, #8a8a94, #f2f2f5, #8a8a94);
-}
-
-.lever i {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #fff 0 10%, #ff5a3a 30%, #8a1505 100%);
-  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.4);
-}
 
 /* 金色のスロットでも押しボタンは赤いまま（筐体と見分ける） */
 .machine.skin-gold .control .spin {
@@ -3756,16 +3163,6 @@ body::before {
 }
 
 /* 難しいモード中は★の札を紫に（名前はタップで出す） */
-.hud-tax .tax-sub.hard {
-  background: #3d2a4a;
-  color: #fff;
-  border-radius: 999px;
-  padding: 1px 6px;
-}
-
-.hud-tax .tax-sub {
-  flex: none;
-}
 
 /* バージョン表記と重ならないよう、ヘッダーを少し下げる */
 #app {
@@ -3874,11 +3271,6 @@ body::before {
 
 .hud-tax > b {
   font-size: 1.125rem;
-  font-weight: 700;
-}
-
-.hud-tax .tax-when {
-  font-size: 0.875rem;
   font-weight: 700;
 }
 
@@ -4038,34 +3430,6 @@ body::before {
 .machine.ready-spin .reel:nth-child(4) .window { animation-delay: 0.45s; }
 .machine.ready-spin .reel:nth-child(5) .window { animation-delay: 0.6s; }
 
-.spin-cue {
-  position: absolute;
-  left: 50%;
-  top: -15px;
-  transform: translateX(-50%);
-  z-index: 6;
-  background: #ffd84a;
-  color: #5a3d00;
-  font-weight: 700;
-  font-size: 0.9375rem;
-  padding: 3px 14px;
-  border-radius: 8px;
-  box-shadow: 0 3px 0 #a87a00;
-  white-space: nowrap;
-  pointer-events: none;
-  animation: pulse 1.2s ease-in-out infinite;
-}
-
-.spin-cue[hidden] {
-  display: none;
-}
-
-.machine.taxday .spin-cue {
-  background: #ff9a3a;
-  color: #fff;
-  box-shadow: 0 3px 0 #9a4a00;
-}
-
 /* 帯が窓に重なるぶん、筐体の上に余白を取る */
 .machine .reels-frame {
   margin-top: 8px;
@@ -4076,8 +3440,7 @@ body::before {
 }
 
 .calm .machine.ready-spin .reels-frame,
-.calm .machine.ready-spin .reel .window,
-.calm .spin-cue {
+.calm .machine.ready-spin .reel .window {
   animation: none;
 }
 
@@ -4895,16 +4258,14 @@ body::before {
 }
 
 /* 倍率の札：印と数字だけ（文字は使わない） */
-.badge-line,
-.badge-single {
+.badge-line {
   display: inline-flex;
   align-items: center;
   gap: 3px;
   font-size: max(0.875rem, calc(var(--cell) * 0.14));
 }
 
-.badge-line .mk,
-.badge-single .mk {
+.badge-line .mk {
   height: 0.62em;
   width: auto;
 }
@@ -5252,25 +4613,6 @@ body::before {
   display: block;
 }
 
-.pick-what {
-  font-size: 0.875rem;
-  color: #8a5a10;
-}
-
-.pick-what .shape-icon {
-  display: inline-grid;
-  vertical-align: middle;
-}
-
-.pick-what .shape-icon i {
-  background: rgba(94, 61, 36, 0.18);
-}
-
-.pick-what .shape-icon i.on {
-  background: #e8a33a;
-  box-shadow: none;
-}
-
 @keyframes pick-in {
   from { scale: 0.6; opacity: 0; }
 }
@@ -5321,7 +4663,6 @@ h3,
 .stat,
 .tax b,
 .hud b,
-.lcd b,
 .cost b,
 .price b,
 .fx-text,
@@ -5391,13 +4732,6 @@ h3,
   font-weight: 700;
   color: #7a4a00;
   text-align: left;
-}
-
-.over-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 8px;
 }
 
 /* ==== 設定・記録 ==== */
@@ -5880,32 +5214,6 @@ html[lang='en'] .prep-item b {
   from { transform: scale(2); opacity: 0; }
 }
 
-.prep-note {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  margin: 10px 0 0;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--ink-soft);
-}
-
-.setup-modal .diff-chip {
-  background: linear-gradient(180deg, var(--wood-light), var(--wood));
-  color: #fff8e7;
-  box-shadow: inset 0 0 0 2px var(--wood-dark), 0 2px 0 var(--wood-darker);
-}
-
-.setup-modal .diff-chip small {
-  color: #fbe9c8;
-}
-
-.setup-modal .diff-chip.on {
-  background: #3d2a4a;
-  box-shadow: inset 0 0 0 2px #1e1226, 0 2px 0 #1e1226;
-}
-
 .setup-modal .prep-actions {
   margin: 12px -16px 0;
   padding: 12px 16px 12px;
@@ -6006,20 +5314,6 @@ html[lang='en'] .prep-item b {
 }
 
 /* 「次の日へ」の札：使えずに残った出目の理由 */
-.go-dead {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 2px;
-  padding: 2px 8px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.16);
-  font-size: 0.875rem;
-}
-
-.go-dead .art {
-  font-size: 1.125rem;
-}
 
 .setup-modal .cart-load {
   font-size: 2rem;
@@ -6033,7 +5327,6 @@ html[lang='en'] .prep-item b {
 .item .effect,
 .chip .pct,
 .charm small,
-.points-earned span,
 .charm-card .lv,
 .charm-card .tier,
 .prep-item small,
@@ -6042,18 +5335,9 @@ html[lang='en'] .prep-item b {
 .dex-row .own,
 .order-reward,
 .order-tag .order-reward,
-.weekly-tag,
-.shop .weekly-tag,
 .shop .item .effect,
 .shop .item .cost small,
-.shop-title small,
-.prep-cap small,
-.over-stats em,
-.diff-tag,
-.hud-tax .tax-sub,
-.hud-tax .tax-sub em,
 .hud-tax .tax-mark,
-.lcd small,
 .info-head em,
 .machine > .reach-call small,
 .pivot-tag,
@@ -6067,8 +5351,7 @@ html[lang='en'] .prep-item b {
 }
 
 /* 畑のマスの上の小さな札は、マスに収まる範囲で大きく */
-.badge-fert,
-.badge-gold {
+.badge-fert {
   font-size: 0.875rem;
 }
 
@@ -6083,12 +5366,6 @@ html[lang='en'] .prep-item b {
 .pick-shape .art,
 .pick-shape svg {
   font-size: 1.125rem;
-}
-
-.points-earned span {
-  margin-left: 6px;
-  font-weight: 700;
-  color: var(--ink-soft);
 }
 
 /* 荷台のカードは、枠をいくつ使う品でも同じ大きさ（使う数は札の■で分かる） */
@@ -6760,12 +6037,6 @@ html.hurry .hurry-edge {
 }
 
 /* 終わりの画面のポイント */
-.points-earned {
-  border: var(--line-thin);
-  border-radius: 10px 12px 9px 11px;
-  background: #fff1c4;
-  box-shadow: 0 3px 0 var(--ink);
-}
 
 /* 解放画面のポイント表示 */
 .prep-modal .points {
@@ -6924,27 +6195,6 @@ html.hurry .hurry-edge {
   pointer-events: none;
 }
 
-.offer-card {
-  grid-template-columns: auto 1fr;
-}
-
-.offer-card .e {
-  font-size: 2.6rem;
-}
-
-.oc-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.oc-text > b {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 1rem;
-}
-
 .oc-shape {
   display: inline-grid;
   place-items: center;
@@ -6958,52 +6208,11 @@ html.hurry .hurry-edge {
   font-size: 1.125rem;
 }
 
-.oc-desc {
-  font-size: 0.9375rem;
-  font-weight: 700;
-}
-
-.oc-odds {
-  font-size: 0.9375rem;
-  font-weight: 700;
-  color: var(--ink-soft);
-}
-
-.oc-odds b {
-  color: var(--ink);
-}
-
-.oc-odds .art {
-  vertical-align: -0.15em;
-}
-
-.combo-banner {
-  background: #6a9e3a;
-}
-
-.fc-pair {
-  display: flex;
-  align-items: center;
-  font-size: 2rem;
-}
-
 .fc-plus {
   font-family: var(--font-pop);
   font-weight: 700;
   font-size: 1rem;
   margin: 0 1px;
-}
-
-.fc-combo {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  text-align: left;
-}
-
-.fc-desc {
-  font-size: 0.9375rem;
-  font-weight: 700;
 }
 
 .st.combo {
@@ -7120,10 +6329,6 @@ html.hurry .hurry-edge {
   box-shadow: 0 3px 0 #b8860b, inset 0 0 0 3px #f5b818;
 }
 
-.offer-card.rare-offer {
-  background: #fff1c4;
-}
-
 /* 図鑑：まだ見つけていない組み合わせの「？」 */
 .combo-pair .q {
   display: grid;
@@ -7152,16 +6357,13 @@ html.hurry .hurry-edge {
 /* ==== 動き：待っている間に動き続けるのは、そのとき押してほしい1か所だけ ==== */
 /* 回す前：指の絵だけが動く（看板・リールの枠・文字は止める） */
 .machine.ready-spin .reels-frame::after,
-.spin-cue,
 .machine-top.cue,
 .spin-go b {
   animation: none;
 }
 /* 実った作物：揺れる実だけで「売れる」を伝える。きらめきと列の点滅は止める */
 .plot.ripe::after,
-.plot.lines-2,
-.plot.lines-3,
-.plot.lines-4 {
+.plot.lines-3 {
   animation: none;
 }
 /* 窓が開いている間は、後ろのスロット台の動きを止める */
@@ -7456,7 +6658,6 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 .pest-card .pc-art { width: 72px; height: 72px; display: flex; }
 .pest-card .pc-art svg { width: 100%; height: 100%; }
 .pest-card b { font-size: 1.125rem; }
-.pest-card .pc-desc { font-size: 0.9375rem; font-weight: 700; color: var(--ink-soft); }
 
 /* 横持ち：曜日は上の帯の空いた真ん中に重ねる（高さを増やさない） */
 @media (max-height: 480px) and (orientation: landscape) {
@@ -7564,19 +6765,6 @@ body:has(#overlay.show) :is(.machine, .machine *) {
   font-size: 0.9375rem;
 }
 .fm-chip svg { width: 22px; height: 22px; }
-.fm-none { font-size: 0.9375rem; font-weight: 700; color: var(--ink-soft); }
-.fm-favor {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  margin-left: 4px;
-  padding: 1px 6px;
-  border: 2px dashed var(--stitch);
-  border-radius: 8px;
-  font-size: 0.875rem;
-  font-weight: 700;
-}
-.fm-favor svg { width: 20px; height: 20px; }
 .farmer .tag-stamp { position: absolute; top: -8px; right: 8px; }
 
 /* ==== 年貢を納めたあと：クリアまでの道のり（数秒で消える） ==== */
@@ -7710,8 +6898,6 @@ body:has(#overlay.show) :is(.machine, .machine *) {
   color: var(--ink-soft);
 }
 /* チュートリアル：フィーバーの見本（同じ絵柄が3つ） */
-.tut-fever { display: flex; justify-content: center; gap: 6px; margin-bottom: 6px; }
-.tut-fever .art, .tut-fever svg { width: 40px !important; height: 40px !important; }
 
 /* ==== チュートリアル：暗幕と穴・指・案内役・進み具合 ==== */
 .tut-dim {
@@ -7758,7 +6944,6 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 .coach-actions { gap: 12px; }
 .coach .coach-next { font-size: 1.125rem; min-height: 44px; padding: 8px 22px; }
 .coach .coach-skip { font-size: 1rem; min-height: 40px; padding: 4px 14px; }
-.coach .tut-fever { justify-content: flex-start; }
 .coach-good {
   position: absolute;
   left: 6px;
@@ -7987,18 +7172,6 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 .ct-rw { display: inline-flex; align-items: center; gap: 2px; font-weight: 700; }
 .ct-rw .art { width: 1.5em; height: 1.5em; }
 .ct-rw b { font-size: 1rem; }
-.ct-skip {
-  display: block;
-  margin: 12px auto 0;
-  padding: 8px 18px;
-  border: 3px solid var(--ink);
-  border-radius: 999px;
-  background: var(--cloth-deep);
-  color: var(--ink);
-  font-size: 1rem;
-  font-weight: 700;
-}
-.ct-skip:disabled { opacity: 0.6; }
 
 /* 日曜：果たした */
 .contract-done { text-align: center; }
@@ -8126,17 +7299,6 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 }
 
 /* ==== 合体（同じ札4枚→1枚） ==== */
-.merge-rule {
-  margin-left: auto;
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: var(--wood-dark);
-  background: var(--gold-soft);
-  border: 2px solid var(--ink);
-  border-radius: 999px;
-  padding: 0 8px;
-}
-.merge-sec #merge-shop { display: grid; grid-template-columns: 1fr; gap: 8px; }
 .merge-item {
   display: flex !important;
   align-items: center;
@@ -8245,10 +7407,6 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 .ex-grid i.on { background: #8fcf5c; }
 .ex-grid i.mid { outline: 3px solid var(--gold); outline-offset: -1px; }
 .ex-grid i b { font-size: 0.875rem; color: #fff; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5); }
-.ex-facts { display: flex; justify-content: center; gap: 14px; margin: -2px 0 8px; font-size: 1rem; }
-.ex-facts span { display: inline-flex; align-items: center; gap: 4px; }
-.ex-facts .art { width: 1.6em; height: 1.6em; }
-.ex-facts b { font-size: 1.2rem; }
 .ex-line { margin: 4px 0; font-size: 1.0625rem; font-weight: 700; line-height: 1.5; }
 .ex-note, .ex-fever { margin: 4px 0; font-size: 0.9375rem; color: var(--ink-soft); }
 .ex-note .art, .ex-fever .art { width: 1.3em; height: 1.3em; vertical-align: -0.3em; }
@@ -8382,47 +7540,13 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 .tp-step, .tp-goal { position: relative; z-index: 1; }
 
 /* ==== 評価（クリア・終わりの画面） ==== */
-.rating {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  gap: 12px;
-  margin: 10px 0;
-  padding: 10px 12px;
-  background: #fff;
-  border: 3px solid var(--ink);
-  border-radius: 14px;
-  text-align: left;
-}
-.rt-stamp {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 76px;
-  height: 76px;
-  border-radius: 50%;
-  border: 4px solid var(--rt, #8a7a62);
-  color: var(--rt, #8a7a62);
-  rotate: -8deg;
-  animation: rt-stamp 0.5s cubic-bezier(.3, 1.6, .5, 1) 0.4s backwards;
-}
-.rt-stamp b { font-family: var(--font-pop); font-weight: 900; font-size: 2.4rem; line-height: 1; }
-.rt-stamp span { font-size: 0.875rem; font-weight: 700; }
 .rank-S { --rt: #d9a400; }
-.rank-S .rt-stamp { background: #fff5c8; }
 .rank-A { --rt: #a8301f; }
 .rank-B { --rt: #3a86c8; }
 .rank-C { --rt: #4e9230; }
 .rank-D { --rt: #8a7a62; }
 @keyframes rt-stamp { from { transform: scale(2.2); opacity: 0; } }
-.rt-parts { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
-.rt-parts li { display: grid; grid-template-columns: 7.5em 1fr 2em; grid-template-rows: auto auto; column-gap: 6px; align-items: center; }
 .rt-label { font-size: 0.875rem; font-weight: 700; }
-.rt-bar { height: 10px; border-radius: 5px; background: #e6dccb; overflow: hidden; }
-.rt-bar i { display: block; height: 100%; background: var(--rt, #8a7a62); border-radius: 5px; }
-.rt-parts b { font-size: 0.9375rem; text-align: right; }
-.rt-parts small { grid-column: 1 / -1; font-size: 0.875rem; color: var(--ink-soft); margin-top: -2px; }
 .ex-trio { display: flex; }
 .ex-trio .ex-art { margin: 0 -6px; }
 .ex-art.bag { filter: drop-shadow(0 0 8px rgba(242, 185, 26, 0.6)); }
@@ -8450,7 +7574,6 @@ body:has(#overlay.show) :is(.machine, .machine *) {
   font-size: 1rem;
   font-weight: 700;
 }
-.st.market-day { background: #fff1b8; border-color: var(--gold-dark); }
 /* 曰く付きの行はカードの下に横いっぱい（名前・説明の段を崩さない） */
 .charm-card { grid-template-rows: auto auto auto; }
 .charm-card .e { grid-row: 1 / 3; }
@@ -8460,8 +7583,6 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 /* 買うと年貢に足りなくなる値札 */
 .item .cost.tax-risk { background: #ffe0dc; border-color: #a8301f; }
 .item .cost.tax-risk small { color: #a8301f; font-weight: 700; }
-.rt-progress { grid-column: 1 / -1; grid-row: 2; margin: 0; font-size: 0.9375rem; font-weight: 700; color: #a8301f; }
-.rt-progress .art { width: 1.2em; height: 1.2em; vertical-align: -0.25em; }
 .ex-moon { gap: 4px; }
 .ex-moon .ex-art.small { width: 48px; height: 48px; }
 .ex-moon .ex-arrow { font-size: 1rem; }
@@ -8586,7 +7707,6 @@ body:has(#overlay.show) :is(.machine, .machine *) {
   border-radius: 16px;
   box-shadow: 0 5px 0 rgba(0, 0, 0, 0.35);
 }
-.ds-stack { margin: 0 0 6px; font-size: 0.9375rem; font-weight: 700; color: var(--ink-soft); }
 .ds-plain { margin: 0; font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 6px; }
 .ds-plain .art { width: 1.6em; height: 1.6em; }
 .ds-rules ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
@@ -8658,29 +7778,6 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 /* 最初の袋（Slay the Spire の最初のデッキのように札を並べる） */
 .fs-info { display: grid; gap: 4px; }
 .fs-k { margin: 2px 0 0; font-size: 0.875rem; font-weight: 500; color: var(--ink-soft); }
-.fs-bag { display: flex; flex-wrap: wrap; gap: 6px; }
-.fs-card {
-  position: relative;
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  width: 46px;
-  padding: 4px 2px 2px;
-  background: #fff;
-  border: 2px solid var(--ink);
-  border-radius: 8px;
-  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.2);
-}
-.fs-card .art { width: 32px; height: 32px; }
-.fs-card b { font-size: 0.875rem; }
-.fs-card em { position: absolute; top: -8px; right: -8px; font-style: normal; font-size: 0.875rem; font-weight: 700; color: #fff; background: var(--role-manual); border: 2px solid var(--ink); border-radius: 999px; padding: 0 5px; }
-.fs-card.down { opacity: 0.55; }
-.fs-card.down em { background: #8a7a62; }
-.fs-card.bad { background: #fde7ec; }
-.fs-relics { display: flex; flex-wrap: wrap; gap: 6px; }
-.fs-relic { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px 3px 4px; background: var(--gold-soft); border: 2px solid var(--gold-dark); border-radius: 999px; font-size: 0.9375rem; font-weight: 700; }
-.fs-relic .art { width: 1.6em; height: 1.6em; }
-.fs-favor { display: flex; gap: 4px; }
 .fs-mini { display: inline-flex; width: 30px; height: 30px; padding: 2px; background: #fff; border: 2px solid var(--ink); border-radius: 50%; }
 .fs-mini .art, .fs-mini svg { width: 100%; height: 100%; }
 /* 下の顔の列 */
@@ -8717,26 +7814,6 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 .fs-info-locked { display: flex; align-items: center; justify-content: center; background: rgba(255, 248, 231, 0.25); }
 .fs-info-locked .art { width: 64px; height: 64px; opacity: 0.6; }
 .fs-tap { margin: 0; font-size: 0.875rem; font-weight: 500; color: var(--ink-soft); text-align: right; }
-button.fs-card { cursor: pointer; font: inherit; color: inherit; padding: 0; border: none; background: none; box-shadow: none; width: auto; }
-.fs-card-in {
-  position: relative;
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  width: 46px;
-  padding: 4px 2px 2px;
-  background: #fff;
-  border: 2px solid var(--ink);
-  border-radius: 8px;
-  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.2);
-}
-.fs-card-in .art { width: 32px; height: 32px; }
-.fs-card-in b { font-size: 0.875rem; }
-.fs-card-in em { position: absolute; top: -8px; right: -8px; font-style: normal; font-size: 0.875rem; font-weight: 700; color: #fff; background: var(--role-manual); border: 2px solid var(--ink); border-radius: 999px; padding: 0 5px; }
-.fs-card-in.down { opacity: 0.55; }
-.fs-card-in.down em { background: #8a7a62; }
-.fs-card-in.bad { background: #fde7ec; }
-button.fs-relic { font: inherit; color: var(--ink); cursor: pointer; }
 
 /* ==== 説明カード：大きく、同じ幅の行に1つずつ（docs/ui-reading.md） ==== */
 .explain-card { width: min(440px, 100%); padding: 20px 18px 12px; }
@@ -8785,8 +7862,6 @@ button.fs-relic { font: inherit; color: var(--ink); cursor: pointer; }
 .bb-cell.short { background: #ffe0dc; }
 .bb-cell.short b { color: #a8301f; }
 /* お邪魔の窓：守り方の1行 */
-.pest-card .pc-guard { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; padding: 2px 10px 2px 4px; background: #eaf8dc; border: 2px solid #4e9230; border-radius: 999px; font-size: 0.9375rem; font-weight: 700; color: #2f6b1c; }
-.pest-card .pc-guard .art { width: 1.5em; height: 1.5em; }
 
 /* ==== 小さかった補助の文字を読める大きさに（docs/ui-reading.md：本文15px・補足13px以上） ==== */
 .shop .item .effect, .item .effect { font-size: 0.9375rem; line-height: 1.4; }
@@ -9182,8 +8257,6 @@ button.fs-relic { font: inherit; color: var(--ink); cursor: pointer; }
 .fs-goal .art { width: 28px; height: 28px; flex: none; }
 .fs-build { margin: 0; }
 .fs-build span { display: inline-block; padding: 1px 10px; font-size: 0.875rem; font-weight: 700; color: #fff; background: #3d7a24; border: 2px solid var(--ink); border-radius: 999px; }
-.fs-delta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.fs-delta .fs-k { margin: 0; width: 3.2em; }
 .fs-chip { display: inline-flex; align-items: center; gap: 3px; padding: 1px 8px 1px 3px; font: inherit; font-size: 0.9375rem; font-weight: 700; color: var(--ink); border: 2px solid var(--ink); border-radius: 999px; cursor: pointer; width: auto; box-shadow: none; }
 .fs-chip .art { width: 22px; height: 22px; }
 .fs-chip em { font-style: normal; font-family: var(--font-pop); font-weight: 700; }
@@ -9193,11 +8266,9 @@ button.fs-relic { font: inherit; color: var(--ink); cursor: pointer; }
 .fs-chip.down em { color: #a8301f; }
 .fs-info > .fs-k { display: flex; align-items: baseline; margin-top: 2px; }
 .fs-info > .fs-k .fs-tap { margin-left: auto; }
-.fs-bag { gap: 4px; }
 .fs-mini-card { display: inline-flex; align-items: center; gap: 2px; padding: 1px 7px 1px 2px; font: inherit; font-size: 0.875rem; font-weight: 700; color: var(--ink); background: #fff; border: 2px solid var(--ink); border-radius: 8px; cursor: pointer; width: auto; box-shadow: none; }
 .fs-mini-card .art { width: 24px; height: 24px; }
 .fs-mini-card.bad { background: #fde7ec; }
-.fs-favor { flex-wrap: wrap; gap: 4px; }
 .fs-fav { display: inline-flex; align-items: center; gap: 3px; padding: 1px 8px 1px 3px; font-size: 0.875rem; font-weight: 700; background: #fff; border: 2px solid var(--ink); border-radius: 999px; }
 .fs-fav .art, .fs-fav svg { width: 22px; height: 22px; }
 .fs-fav em { font-style: normal; color: #a85a0c; }
@@ -9235,10 +8306,6 @@ button.fs-relic { font: inherit; color: var(--ink); cursor: pointer; }
 }
 
 /* ==== 解放：所持ポイントを大きく上に残す。品は「絵・名前と効き目1行・値札」の行、解放済みは小さな札 ==== */
-.modal.unlock-modal { display: flex; flex-direction: column; height: calc(100dvh - 32px); max-height: none; overflow: hidden; padding: 14px 14px 0; }
-.ul-head { display: flex; align-items: center; gap: 8px; padding-bottom: 8px; border-bottom: 2px dashed var(--stitch); }
-.ul-head h2 { margin: 0; font-size: 1.25rem; display: flex; align-items: center; gap: 6px; }
-.ul-head h2 .art { width: 1.2em; height: 1.2em; }
 .ul-pts { margin-left: auto; display: inline-flex; align-items: baseline; gap: 4px; padding: 2px 14px; background: #ffcc33; border: 3px solid var(--ink); border-radius: 999px; box-shadow: 0 3px 0 var(--ink); }
 .ul-pts small { font-size: 0.875rem; font-weight: 700; }
 .ul-pts b { font-family: var(--font-pop); font-weight: 900; font-size: 1.5rem; line-height: 1.2; }
@@ -9276,7 +8343,6 @@ button.fs-relic { font: inherit; color: var(--ink); cursor: pointer; }
 .ul-ach .effect { font-size: 0.875rem; line-height: 1.3; color: var(--ink-soft); }
 .ul-ach.done { background: #e3f5d3; border: 2px solid #4e9230; }
 .ul-badge { position: absolute; top: -8px; right: -6px; width: 22px; height: 22px; display: grid; place-items: center; font-size: 0.875rem; font-weight: 700; color: #fff; background: #3d7a24; border: 2px solid var(--ink); border-radius: 50%; }
-.unlock-modal .prep-actions { margin: 0 -14px; padding: 10px 14px 14px; border-top: 2px dashed var(--stitch); background: var(--cloth); }
 
 /* ==== 遊び方と図鑑：窓は画面の高さいっぱい。タブは選んだものが黄色、見つけた数を上に ==== */
 .modal.help-modal { display: flex; flex-direction: column; height: calc(100dvh - 32px); max-height: none; overflow: hidden; }
@@ -9307,8 +8373,6 @@ button.fs-relic { font: inherit; color: var(--ink); cursor: pointer; }
 /* 腕前で札が増えても箱に収まるように：変わる札は1つの行、袋の札は小さく、箱を少し高く・絵を少し小さく */
 .fs-info { height: 284px; }
 .fs-portrait { width: min(44vw, 170px); }
-.fs-delta { gap: 4px; }
-.fs-delta .fs-k { width: auto; margin-right: 2px; }
 .fs-mini-card { padding: 1px 5px 1px 1px; }
 .fs-mini-card .art { width: 22px; height: 22px; }
 /* 星は白地でも読める濃さ（上げた段は濃い金、まだの段は薄い墨） */

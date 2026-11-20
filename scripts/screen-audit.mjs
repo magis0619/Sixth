@@ -132,6 +132,24 @@ async function snap(p, size, key) {
     measured.loops[key] = [...new Set(m.loops)];
   }
   const issues = await p.evaluate(detect);
+  // DUMPSTYLE=フォルダ：画面の全要素の見た目（計算後のスタイル）を書き出す。CSS を整理する前後で同じか比べる用
+  if (process.env.DUMPSTYLE) {
+    const dump = await p.evaluate(() => {
+      // 動いている途中で値が変わるもの・ゲームの中身で変わるものは比べない
+      const skip = /^(transform|translate|scale|rotate|opacity|animation|transition|offset|will-change|d|cx|cy|r|x|y|-webkit-locale|perspective-origin|transform-origin)/;
+      const out = [];
+      document.querySelectorAll('body *').forEach((e, i) => {
+        if (e.closest('#fx, #ambient, svg')) return;
+        const cs = getComputedStyle(e);
+        const o = {};
+        for (const k of cs) if (!skip.test(k)) o[k] = cs.getPropertyValue(k);
+        for (const pe of ['::before', '::after']) { const c = getComputedStyle(e, pe); if (c.content && c.content !== 'none') for (const k of c) if (!skip.test(k)) o[pe + k] = c.getPropertyValue(k); }
+        out.push([e.tagName + (e.id ? '#' + e.id : '') + '.' + String(e.className?.baseVal ?? e.className), o]);
+      });
+      return out;
+    });
+    (await import('node:fs')).writeFileSync(`${process.env.DUMPSTYLE}/${size}-${key}.json`, JSON.stringify(dump));
+  }
   await p.screenshot({ path: `${OUT}/${size}-${key}.png` });
   report.push({ size, key, issues });
 }
@@ -141,6 +159,8 @@ async function page(size, run) {
   const p = await ctx.newPage();
   const errs = [];
   p.on('pageerror', (e) => errs.push(e.message));
+  // SEED=1：乱数を固定する（CSS を整理する前後で、同じ画面を比べられるように）
+  if (process.env.SEED) await p.addInitScript(() => { let x = 12345; Math.random = () => ((x = (x * 1103515245 + 12345) % 2147483648) / 2147483648); });
   await p.addInitScript(([r, lang, measure]) => {
     if (sessionStorage.getItem('a')) return;
     sessionStorage.setItem('a', '1');
