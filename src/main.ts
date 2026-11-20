@@ -446,12 +446,15 @@ function renderTax(): void {
   const t = nextTax(state);
   // 今のお金が年貢に足りないときは、所持金を赤字で
   el.goldBox.classList.toggle('short', state.day > 0 && state.gold < t.amount);
+  // 左上：所持金のあとに「/年貢の額」
+  $('gold-need').textContent = `/${t.amount}`;
   renderWeek();
   const short = state.gold < t.amount;
   const warn = short && t.daysLeft <= CONFIG.taxWarnDays;
   el.tax.className = `hud-tax${warn ? ' warn' : ''}${short ? ' short' : ' ok'}${state.difficulty ? ' hard' : ''}`;
   el.tax.innerHTML =
-    `<span class="tax-label">${art('bale')}<span class="tax-word">${L('年貢', 'Tax')}</span></span><b>${gold(t.amount)}</b>` +
+    // 年貢の額は左上の所持金の横（所持金/年貢）に出す
+    `<span class="tax-label">${art('bale')}<span class="tax-word">${L('年貢', 'Tax')}</span></span>` +
     // お守りの代償で年貢が上がっているときは、金額の横に「+10%」の印
     (taxCursePct(state) ? `<em class="tax-curse" title="${L('お守りの代償', 'Charm curse')}">+${taxCursePct(state)}%</em>` : '') +
     // 足りないときは、いくら足りないか（いつ払うかは曜日の板で分かるので書かない）

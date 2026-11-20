@@ -8535,5 +8535,6 @@ html.idle *, html.idle *::before, html.idle *::after { animation-play-state: pau
 .fs-build-btn i { display: grid; place-items: center; width: 20px; height: 20px; font-style: normal; font-size: 0.8125rem; color: #3d7a24; background: #fff; border-radius: 50%; }
 /* 狙いの1行をなくしたので、説明の箱を低く（いちばん札の多い農家で収まる高さ） */
 .fs-info { height: 270px; }
-/* 週契約の帯は、市の日の「売値×1.25」の札と重ならないよう少し下げる */
-.week.has-contract .wk-ribbon { margin-top: 14px; }
+/* 左上：所持金/年貢の額。年貢の額は小さめ。足りないときは所持金の数字が赤（今まで通り） */
+.hud-gold .gold-need { font-size: 0.6em; font-weight: 700; color: #f3e2c0; margin-left: 1px; align-self: flex-end; padding-bottom: 0.25em; white-space: nowrap; }
+.hud-gold { white-space: nowrap; }

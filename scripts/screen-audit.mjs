@@ -269,7 +269,8 @@ for (const size of Object.keys(SIZES)) {
     await ctx.close();
   }
   // 週契約：日曜に果たす→見返り（お守り3択）→月曜の3択→受けたあとの帯
-  {
+  // 週契約は一旦お休み（CONFIG.contractsOn: false）。戻したときだけ CONTRACTS=1 で撮る
+  if (process.env.CONTRACTS) {
     const { p, ctx, errs } = await page(size, mod((s) => { s.day = 14; s.taxesPaid = 1; s.gold = 999; s.difficulty = 3; s.contract = 'diagWind'; }));
     await p.click('#title-resume', f); await p.waitForTimeout(300);
     await p.evaluate(() => document.getElementById('spin').click()); await p.waitForTimeout(200);
@@ -289,7 +290,7 @@ for (const size of Object.keys(SIZES)) {
     await ctx.close();
   }
   // 週契約の最中：長雨（右端の列が水びたし）・霧（使えないリール）
-  {
+  if (process.env.CONTRACTS) {
     const { p, ctx, errs } = await page(size, mod((s) => {
       s.day = 10; s.difficulty = 3; s.contract = 'longRain';
       s.results = [{ symbol: 'seed', used: true, total: 2, left: 0, power: 1, fog: 'lost' }, { symbol: 'sun', used: false, total: 1, left: 1, power: 1, fog: 'seen' }, { symbol: 'rain', used: false, total: 1, left: 1, power: 1 }];
