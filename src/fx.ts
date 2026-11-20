@@ -37,9 +37,30 @@ function offset(from: { x: number; y: number }, p: { x: number; y: number }): Ke
   return { translate: `${p.x - from.x}px ${p.y - from.y}px` };
 }
 
+/**
+ * 要素の真ん中の画面座標。同じコマの中では1回測った値を使い回す。
+ * 演出は「DOMを書き換える → 位置を測る」を何度も繰り返すので、毎回測ると、そのたびに画面全体の配置の計算がやり直しになる
+ * （大きな画面ほど重い）。演出の位置なので、1コマ（16ms）前の値で困らない
+ */
+let centerCache = new WeakMap<Element, { x: number; y: number }>();
+let centerCacheArmed = false;
 export function center(el: Element): { x: number; y: number } {
+  const hit = centerCache.get(el);
+  if (hit) return hit;
   const r = el.getBoundingClientRect();
-  return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  const c = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  // 大きさのない（まだ描かれていない）要素は覚えない
+  if (r.width || r.height) {
+    centerCache.set(el, c);
+    if (!centerCacheArmed) {
+      centerCacheArmed = true;
+      requestAnimationFrame(() => {
+        centerCache = new WeakMap();
+        centerCacheArmed = false;
+      });
+    }
+  }
+  return c;
 }
 
 function spawn(html: string, cls: string, x: number, y: number): HTMLElement {
@@ -57,8 +78,9 @@ export function floatText(x: number, y: number, text: string, opts: { cls?: stri
   const el = spawn(text, `fx-text ${opts.cls ?? ''}`, x, y);
   const size = (opts.size ?? 1) * (calm ? 1 : BIG);
   el.style.fontSize = `${1.4 * size}rem`;
-  // 画面の端からはみ出さないよう、横の位置を内側へ寄せる
-  const half = el.offsetWidth * 0.6 + 8;
+  // 画面の端からはみ出さないよう、横の位置を内側へ寄せる。幅は字数から見積もる（offsetWidth を読むと配置の計算が走って重い）
+  const chars = text.replace(/<svg[\s\S]*?<\/svg>/g, 'M').replace(/<[^>]+>/g, '').length;
+  const half = chars * 1.4 * size * 16 * 0.55 * 0.6 + 8;
   el.style.left = `${Math.min(Math.max(x, half), window.innerWidth - half)}px`;
   const rise = (opts.rise ?? 70) * (calm ? 1 : BIG);
   // 時間の大半は止まって読める状態にする（全体に強い緩急をかけると、すぐ消え始めて読めない）。

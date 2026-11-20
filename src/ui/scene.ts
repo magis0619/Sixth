@@ -35,7 +35,8 @@ export function buildAmbient(season: (typeof SEASONS)[number]): void {
     document.body.prepend(layer);
   }
   layer.className = season;
-  const n = season === 'summer' ? 0 : 14;
+  // 軽量化：舞うものは8つまで。演出控えめなら出さない（ずっと動き続ける物は、少ないほど軽い）
+  const n = season === 'summer' || document.documentElement.classList.contains('calm') ? 0 : 8;
   layer.innerHTML = Array.from({ length: n }, () => {
     const left = Math.random() * 100;
     const dur = 7 + Math.random() * 7;

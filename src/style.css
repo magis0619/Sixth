@@ -60,7 +60,8 @@ body {
     radial-gradient(ellipse 80% 50px at 85% 140px, #9fd56c 98%, transparent 100%),
     linear-gradient(var(--sky) 0, var(--sky2) 120px, var(--grass) 150px, var(--grass2) 100%);
   background-attachment: fixed;
-  transition: --sky 1.2s, --sky2 1.2s, --grass 1.2s, --grass2 1.2s;
+  /* 軽量化：背景は画面いっぱいなので、色をゆっくり変える（transition）と、その間ずっと毎コマ画面全体を描き直す。
+     時間帯・季節の色はその場で切り替える（fixed はそのまま：外すと描き直す範囲がかえって広がる） */
   overflow-x: hidden;
   user-select: none;
   -webkit-user-select: none;
@@ -2403,9 +2404,10 @@ button {
   animation: ghost-shiver 0.2s linear infinite;
 }
 
+/* 軽量化：margin を動かすと毎コマ配置と描き直しが走るので、translate で震わせる */
 @keyframes ghost-shiver {
-  0%, 100% { margin-left: 0; }
-  50% { margin-left: 1px; }
+  0%, 100% { translate: 0 0; }
+  50% { translate: 1px 0; }
 }
 
 /* ---- 演出（第3弾）：空・季節・実り・天気・年貢・クリア・枯れ畑 ---- */
@@ -8356,13 +8358,16 @@ body:has(#overlay.show) :is(.machine, .machine *) {
   position: absolute;
   left: var(--wk-x0, 7%);
   top: var(--wk-y, 23px);
-  width: calc(var(--wk-w, 86%) * var(--wk-p, 0));
+  /* 軽量化：幅は動かさず、横に縮めて進み具合を見せる（scale は描き直さずに動かせる） */
+  width: var(--wk-w, 86%);
   height: 10px;
   border-radius: 5px;
   background: linear-gradient(#ffe27a, #f2b91a 60%, #d99b06);
   box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.15);
   translate: 0 -50%;
-  transition: width 0.5s cubic-bezier(.3, .9, .4, 1);
+  transform-origin: 0 50%;
+  scale: var(--wk-p, 0) 1;
+  transition: scale 0.5s cubic-bezier(.3, .9, .4, 1);
 }
 .week > .wd { position: relative; z-index: 1; }
 /* 年貢の道のり：溝の区間、済んだ区間は金 */
@@ -9377,3 +9382,20 @@ h2, .ds-name, .title-start, .ds-go, .market-foot button, .rs-main { letter-spaci
 .us-top .ds-title { color: var(--ink); text-shadow: none; }
 .unlock-screen { background: #fff3d6; }
 .unlock-screen .ul-achs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+/* ==== 軽量化：回っている最中のリールの光り方を、描き直しの要らない動き（不透明度・大きさ）にする ==== */
+/* 待ちの点滅：明るさ（filter）→ うっすら薄くなる */
+@keyframes shimmer {
+  50% { opacity: 0.82; }
+}
+/* リーチ：赤い枠は止めたまま、窓ごと少し大きくなって脈打つ */
+.reel.reach .window {
+  box-shadow: inset 0 0 0 4px #ff2a2a, 0 0 0 4px #ff2a2a, 0 0 0 3px var(--ink);
+}
+@keyframes reach-pulse {
+  0%, 100% { scale: 1; }
+  50% { scale: 1.04; }
+}
+
+/* 軽量化：しばらく触っていないときは、飾りの動きを止める（main.ts が html に idle を付ける） */
+html.idle *, html.idle *::before, html.idle *::after { animation-play-state: paused !important; }

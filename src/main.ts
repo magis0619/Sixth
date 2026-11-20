@@ -3172,6 +3172,18 @@ el.mute.addEventListener('click', (e) => {
 });
 hooks.render = render;
 hooks.startGame = startGame;
+
+// 軽量化：しばらく触らないと、飾りの動き（舞う葉・光る枠・脈打つマスなど）を止める。触ればすぐ戻る
+{
+  let idleTimer = 0;
+  const wake = () => {
+    document.documentElement.classList.remove('idle');
+    clearTimeout(idleTimer);
+    idleTimer = window.setTimeout(() => document.documentElement.classList.add('idle'), 15000);
+  };
+  ['pointerdown', 'pointermove', 'keydown', 'wheel'].forEach((t) => document.addEventListener(t, wake, { passive: true, capture: true }));
+  wake();
+}
 hooks.setGold = () => syncGold();
 applySkin();
 setupLongPress();
