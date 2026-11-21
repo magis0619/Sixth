@@ -96,29 +96,30 @@ export async function playLineHarvest(res: SellResult, centers: { x: number; y: 
   const box = el.field.getBoundingClientRect();
   if (!res.bumper) floatText(f.x, Math.max(70, box.top - 4), name, { cls: 'combo', size: 1.1 + level * 0.2, rise: 40, dur: 1500 + level * 300 });
   await stackMultipliers(f.x, box.bottom + 26, res.steps);
-  // 作物が1つずつ跳ねて財布に吸い込まれる。数が多くても、全部が飛び終わるまで短く（1つずつの間は最大0.1秒、全部で0.6秒まで）
-  const gap = Math.min(100, 600 / Math.max(1, res.cells.length));
+  // 作物がポポポポと一定の調子で財布に吸い込まれる（1つずつの間は最大0.05秒、全部で0.4秒まで）
+  const gap = Math.min(50, 400 / Math.max(1, res.cells.length));
   const arrivals = res.cells.map(({ cell: c, price: each, kind }, k) =>
     new Promise<void>((resolve) => {
       later(() => {
         const q = centers[c];
-        sfx.sell(each, play.combo + k);
+        // 飛び出しの音は最初の1つだけ（続けて鳴らすと重なって濁る）。入るたびに「ポッ」
+        if (k === 0) sfx.sell(each, play.combo);
         ghosts[k].remove();
         pop(el.field.children[c], 1.2);
         // 1つずつの額は短めに見せて、合計が出る前に消す（真ん中の数字と重ならないように）
         floatText(q.x, q.y - 10, money(each), { cls: 'gold', size: Math.min(1.4, 0.75 + each / 30), dur: 650 });
         burst(q.x, q.y, lineFxBits(fx), 6, 50);
         flyTo(q, el.goldBox, art(FRUIT[kind]), 1, () => {
-          sfx.coin();
-          pop(el.goldBox, 1.3);
+          sfx.popIn(k);
+          pop(el.goldBox, 1.2);
           resolve();
-        }, true);
+        }, 'snap');
       }, k * gap);
     }),
   );
   await Promise.all(arrivals);
   ghosts.forEach((g) => g.remove());
-  await sleep(120);
+  await sleep(60);
   landSale();
   // 合計が桁ごとに回って止まる
   const amount = res.total;

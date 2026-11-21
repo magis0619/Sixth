@@ -161,6 +161,11 @@ export const sfx = {
     const notes = value >= 30 ? [0, 4, 7, 12, 16] : value >= 12 ? [0, 4, 7, 12] : [0, 7];
     notes.forEach((n, i) => tone(NOTE(base + n), 0.18, { type: 'square', vol: 0.12, delay: i * 0.05 }));
   },
+  /** 列の作物が財布に入るたびの短い「ポッ」。k 番目ほど少し高い */
+  popIn(k: number) {
+    const n = Math.min(k, 14);
+    tone(NOTE(19 + n), 0.07, { type: 'sine', vol: 0.18, slideTo: NOTE(26 + n) });
+  },
   coin() {
     tone(NOTE(23), 0.08, { type: 'square', vol: 0.12 });
     tone(NOTE(28), 0.25, { type: 'square', vol: 0.12, delay: 0.08 });

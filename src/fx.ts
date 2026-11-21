@@ -119,19 +119,21 @@ export function burst(x: number, y: number, chars: string[], count = 10, spread 
 }
 
 /** 要素から要素へ絵文字を飛ばす。最後の1つが着いたら onArrive */
-export function flyTo(from: { x: number; y: number }, toEl: Element, char: string, count = 1, onArrive?: () => void, fast = false): void {
+export function flyTo(from: { x: number; y: number }, toEl: Element, char: string, count = 1, onArrive?: () => void, fast: boolean | 'snap' = false): void {
   const to = center(toEl);
   for (let i = 0; i < count; i++) {
     const el = spawn(glyph(char), 'fx-fly', from.x, from.y);
-    const mx = (from.x + to.x) / 2 + (Math.random() - 0.5) * 120;
-    const my = Math.min(from.y, to.y) - 40 - Math.random() * 60;
+    // snap：ポポポと続けて吸い込むときは、ふくらみを小さくして短く速く
+    const snap = fast === 'snap';
+    const mx = (from.x + to.x) / 2 + (Math.random() - 0.5) * (snap ? 40 : 120);
+    const my = Math.min(from.y, to.y) - (snap ? 16 + Math.random() * 20 : 40 + Math.random() * 60);
     const anim = el.animate(
       [
         { transform: 'translate(-50%, -50%) scale(1)', ...offset(from, from) },
         { transform: 'translate(-50%, -50%) scale(1.3)', ...offset(from, { x: mx, y: my }), offset: 0.45 },
         { transform: 'translate(-50%, -50%) scale(0.6)', ...offset(from, to) },
       ],
-      { duration: fast ? 300 + i * 30 : 550 + i * 70, easing: 'cubic-bezier(.5,0,.5,1)', fill: 'forwards' },
+      { duration: fast === 'snap' ? 220 : fast ? 300 + i * 30 : 550 + i * 70, easing: fast === 'snap' ? 'cubic-bezier(.55,0,.8,.6)' : 'cubic-bezier(.5,0,.5,1)', fill: 'forwards' },
     );
     anim.onfinish = () => {
       el.remove();
