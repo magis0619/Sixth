@@ -3,7 +3,7 @@
 import { L } from '../i18n.ts';
 import {
   ACHIEVE_ADDS, PLACES, CHARM_ORDER, FARMERS, COMBOS, CUT, isCutAdd, type CharmId, type SymbolId, PAUSED_CHARMS, CHARM_TIER_NAMES, CHARMS, CONFIG, DIFFICULTIES, FEEDBACK_URL, META, SHARE_URL, SYMBOL_ORDER, SYMBOLS, THUNDER_LINES, UPGRADES,
-  UPGRADE_SYMBOL, type FarmerPerk,
+  UPGRADE_SYMBOL, SEEDS, type FarmerPerk,
 } from '../config.ts';
 import { difficultyTaxMult, nextTax, placePrice, rateRun, taxPlan } from '../game.ts';
 import {
@@ -129,8 +129,24 @@ function resultBody(kind: 'fail' | 'clear' | 'endless', opts: { taxAmount: numbe
     guard: () => (st.cropsEaten > 0 ? ['crow', L(`作物を${st.cropsEaten}個取られた`, `Lost ${st.cropsEaten} crops`), L(`かかし（${scare}）で周り8マスを守れる`, `A scarecrow (${scare}) guards 8 plots`)] : null),
     margin: () => (ratio ? ['coin', L(`稼ぎは年貢の${ratio}倍`, `Earned ${ratio}× the tax`), L('長い列・堆肥で売値を上げよう', 'Long lines and compost raise prices')] : null),
   };
-  // 負けたときは不足額を先に、そのあと一番低い成績から順に
-  if (failed && short > 0) add(['coin', L(`あと${short}足りなかった`, `${short} short`), L(`最後の週に1日+${Math.ceil(short / CONFIG.taxPeriod)}で届いた`, `+${Math.ceil(short / CONFIG.taxPeriod)} a day in the last week would have done it`)]);
+  // 負けたときは不足額を先に。年貢の前に使いすぎていたらそれを添える
+  const spentBefore = (st.spentByDay ?? []).slice(Math.max(0, state.day - 2), state.day + 1).reduce((n, v) => n + (v ?? 0), 0);
+  if (failed && short > 0)
+    add(
+      spentBefore >= short
+        ? ['coin', L(`あと${short}足りなかった`, `${short} short`), L(`年貢の前の3日で${spentBefore}使っていた`, `You spent ${spentBefore} in the 3 days before tax`)]
+        : ['coin', L(`あと${short}足りなかった`, `${short} short`), L(`最後の週に1日+${Math.ceil(short / CONFIG.taxPeriod)}で届いた`, `+${Math.ceil(short / CONFIG.taxPeriod)} a day in the last week would have done it`)],
+    );
+  // 負けた理由：袋の中身（種が少ない・お邪魔が多い）
+  if (failed) {
+    const ids = Object.keys(state.bag) as SymbolId[];
+    const bagTotal = ids.reduce((n, id) => n + state.bag[id], 0);
+    const seeds = ids.filter((id) => SEEDS[id]).reduce((n, id) => n + state.bag[id], 0);
+    const pests = ids.filter((id) => SYMBOLS[id]?.rarity === 'bad').reduce((n, id) => n + state.bag[id], 0);
+    if (bagTotal && pests / bagTotal >= 0.3) add(['crow', L(`袋${bagTotal}枚のうちお邪魔${pests}枚`, `${pests} of ${bagTotal} in your bag are pests`), L(`市で消すか、かかし（${scare}）で守る`, `Remove them at the market, or guard with a scarecrow (${scare})`)]);
+    if (bagTotal && seeds / bagTotal < 0.25) add(['seed', L(`袋${bagTotal}枚のうち種${seeds}枚`, `Only ${seeds} of ${bagTotal} in your bag are seeds`), L('仕入れで種を足して畑を埋める', 'Take seeds to fill the field')]);
+  }
+  // そのあと一番低い成績から順に
   [...r.parts].sort((x, y) => x.value - y.value).forEach((p) => p.value < 90 && tipFor[p.key]() && add(tipFor[p.key]()!));
   if (st.lineHarvests === 0) add(['tomato', L('列で売っていない', 'No lines sold'), L('3つ並べて売ると×1.3', 'Sell 3 in a line: ×1.3')]);
   if (!tips.length) add(['sparkle', L('同じ作物の列はさらに×1.3', 'Same-crop lines: ×1.3 more'), L('1種類にそろえると高く売れる', 'Stick to one crop for higher prices')]);

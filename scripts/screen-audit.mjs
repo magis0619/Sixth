@@ -368,7 +368,7 @@ for (const size of Object.keys(SIZES)) {
   }
   // 年貢が払えずゲームオーバー
   {
-    const { p, ctx, errs } = await page(size, mod((s) => { s.day = 7; s.gold = 0; s.field = s.field.map(() => null); }));
+    const { p, ctx, errs } = await page(size, mod((s) => { s.day = 7; s.gold = 0; s.field = s.field.map(() => null); s.bag.crow += 4; s.bag.bug += 2; s.stats.spentByDay = [0, 0, 0, 0, 0, 0, 30]; }));
     await p.click('#title-resume', f); await p.waitForTimeout(300);
     await p.evaluate(() => document.getElementById('spin').click()); await p.waitForTimeout(200);
     if (await p.$('#skip-yes')) await p.click('#skip-yes', f);

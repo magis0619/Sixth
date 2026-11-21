@@ -226,7 +226,16 @@ export interface GameState {
     lineCrops?: number;
     manualTotal?: number;
     taxTotal?: number;
+    /** 日ごとに市などで使ったお金（負けた理由の振り返り用。添え字は日） */
+    spentByDay?: number[];
   };
+}
+
+/** 市・道具などでお金を使う（年貢・盗まれた分は含めない）。日ごとの支出を数える */
+function spend(state: GameState, amount: number): void {
+  state.gold -= amount;
+  const by = (state.stats.spentByDay ??= []);
+  by[state.day] = (by[state.day] ?? 0) + amount;
 }
 
 /** お守りが金色（同じものを goldenAt 個そろえた）か */
@@ -861,7 +870,7 @@ function mergeSymbolRaw(state: GameState, sym: SymbolId): boolean {
   if (!mergeable(state).includes(sym)) return false;
   const cost = mergeCost(state);
   if (state.gold < cost) return false;
-  state.gold -= cost;
+  spend(state, cost);
   state.bag[sym] -= CONFIG.mergeNeed;
   state.bag[MERGES[sym]!]++;
   state.mergedThisMarket = true;
@@ -1264,7 +1273,7 @@ export function canDiscard(state: GameState, sym: SymbolId): boolean {
 
 function discardRaw(state: GameState, sym: SymbolId): boolean {
   if (!canDiscard(state, sym)) return false;
-  state.gold -= discardPrice(state);
+  spend(state, discardPrice(state));
   state.bag[sym]--;
   state.discards = (state.discards ?? 0) + 1;
   // 断捨離なら市で2枚まで
@@ -1281,7 +1290,7 @@ export function weedCost(state: GameState): number {
 function pullWeedRaw(state: GameState, cell: number): boolean {
   const cost = weedCost(state);
   if (!state.weeds[cell] || state.gold < cost) return false;
-  state.gold -= cost;
+  spend(state, cost);
   state.weeds[cell] = false;
   return true;
 }
@@ -2167,7 +2176,7 @@ export function canBuy(state: GameState, id: UpgradeId): boolean {
 
 function buyRaw(state: GameState, id: UpgradeId): boolean {
   if (!canBuy(state, id)) return false;
-  state.gold -= upgradePrice(state, id);
+  spend(state, upgradePrice(state, id));
   const change = UPGRADE_SYMBOL[id]!;
   state.bag[change.symbol] += change.delta;
   if (change.delta < 0) {
@@ -2243,7 +2252,7 @@ export function canExpand(state: GameState): boolean {
 /** 列→行の順に1つ広げる（3×3 → 4×3 → 4×4 → 5×4 → 5×5） */
 function expandRaw(state: GameState): boolean {
   if (!canExpand(state)) return false;
-  state.gold -= expandPrice(state)!;
+  spend(state, expandPrice(state)!);
   state.bought.expand = (state.bought.expand ?? 0) + 1;
   if (state.cols <= state.rows) state.cols++;
   else state.rows++;
@@ -2274,7 +2283,7 @@ export function roomLeft(state: GameState, id: PlaceId): number {
 /** 買って手元に置く。畑に置くのは place で */
 function buyPlaceRaw(state: GameState, id: PlaceId): boolean {
   if (!canBuyPlace(state, id)) return false;
-  state.gold -= placePrice(state, id)!;
+  spend(state, placePrice(state, id)!);
   state.bought[id] = (state.bought[id] ?? 0) + 1;
   state.stock.push(id);
   return true;
@@ -2721,7 +2730,7 @@ export function canBuyPremium(state: GameState, id: PremiumId): boolean {
 export function buyPremium(state: GameState, id: PremiumId): boolean {
   if (!canBuyPremium(state, id)) return false;
   const price = premiumPrice(state, id)!;
-  state.gold -= price;
+  spend(state, price);
   state.premium = { ...state.premium, [id]: (state.premium?.[id] ?? 0) + 1 };
   if (id === 'reel') state.reels = Math.min(CONFIG.maxReels, state.reels + 1);
   lstat(state, OUT + '大きな買い物', price);
