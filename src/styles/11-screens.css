@@ -1090,3 +1090,18 @@ html.idle *, html.idle *::before, html.idle *::after { animation-play-state: pau
 html.hurry-hold .hurry-badge { display: flex; }
 /* 出たばかりの画面は少しの間押せない。押せるようになると明るくなる */
 .arming :is(button, .item, [data-take]) { opacity: 0.6; }
+
+/* ==== 遊び方の一枚絵：手順ごとに番号と単語、絵の下に一言（文は使わない） ==== */
+.ov4 { gap: 6px; }
+.ov4-step { display: flex; align-items: center; gap: 8px; margin: 4px 0 0; font-size: 1.25rem; font-weight: 700; color: var(--ink); }
+.ov4-num { display: grid; place-items: center; width: 30px; height: 30px; font-family: var(--font-pop); font-size: 1.0625rem; color: #fff; background: var(--wood-dark); border-radius: 50%; }
+.ov4-cap { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.ov4-cap small { font-size: 0.9375rem; font-weight: 700; line-height: 1.1; white-space: nowrap; color: var(--ink); }
+.ov4-big .ov3-win i { width: 84px; height: 84px; }
+.ov4-big .ov3-win .ov4-cap .art { width: 50px; height: 50px; }
+.ov4-grow i { width: 84px; height: 84px; }
+.ov4-grow .ov4-cap .art { width: 48px; height: 48px; }
+.ov4-grow .ov4-cap small { color: #fff8e7; }
+.ov4-sell .ov4-cap .art, .ov4-tax .ov4-cap .art { width: 56px; height: 56px; }
+.ov4-down { font-size: 1.25rem; }
+.ov4-go { margin-top: 10px; }

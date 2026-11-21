@@ -206,15 +206,21 @@ export function comboCard(id: CharmId): string {
 
 /** ゲームの全体像：1日の流れと、週の流れ */
 export function overviewCard(start = true): string {
-  // 遊び方の一枚絵（画面いっぱい・文章なし）：上から下へ1秒で読める流れ
-  // リールを回す → 畑で育つ → 3つ並べて ×1.3 で売る → 金貨 → 日曜の年貢を7回 → クリア
+  // 遊び方の一枚絵（画面いっぱい）：文は使わず、単語・数字・絵だけで、上から下へ4つの手順
+  // 1 回す → 2 育つ → 3 並べて売る（×1.3 → お金）→ 4 年貢（7日ごと ×7 → クリア）
   const down = '<span class="ov4-down">▼</span>';
-  const machine = `<span class="ov3-machine ov4-big"><span class="ov3-win">${(['seed', 'rain', 'sun'] as ArtId[]).map((a) => `<i>${art(a)}</i>`).join('')}</span></span>`;
-  const grow = `<span class="ov4-grow"><i>${art('sprout')}</i><b>▶</b><i>${art('leaf')}</i><b>▶</b><i>${art('tomato')}</i></span>`;
-  const sell = `<span class="ov4-sell"><span class="ov3-plots">${art('tomato')}${art('tomato')}${art('tomato')}</span><em class="ov3-hint">×1.3</em><b>▶</b>${art('coin')}</span>`;
-  const tax = `<span class="ov4-tax">${art('bale')}<em>×${CONFIG.winTaxes}</em><b>▶</b>${art('trophy')}</span>`;
+  const step = (n: number, word: string) => `<p class="ov4-step"><span class="ov4-num">${n}</span>${word}</p>`;
+  // 絵の下に一言（絵だけだと何か分からないので、短い単語と組にする）
+  const cap = (a: ArtId, word: string) => `<span class="ov4-cap">${art(a)}<small>${word}</small></span>`;
+  const machine = `<span class="ov3-machine ov4-big"><span class="ov3-win">${([['seed', L('種', 'Seed')], ['rain', L('雨', 'Rain')], ['sun', L('太陽', 'Sun')]] as [ArtId, string][]).map(([a, w]) => `<i>${cap(a, w)}</i>`).join('')}</span></span>`;
+  const grow = `<span class="ov4-grow"><i>${cap('sprout', L('芽', 'Sprout'))}</i><b>▶</b><i>${cap('leaf', L('葉', 'Leaf'))}</i><b>▶</b><i>${cap('tomato', L('実り', 'Ripe'))}</i></span>`;
+  const sell = `<span class="ov4-sell"><span class="ov3-plots">${art('tomato')}${art('tomato')}${art('tomato')}</span><em class="ov3-hint">×1.3</em><b>▶</b>${cap('coin', L('お金', 'Gold'))}</span>`;
+  const tax = `<span class="ov4-tax">${cap('bale', L(`${CONFIG.taxPeriod}日ごと`, `Every ${CONFIG.taxPeriod} days`))}<em>×${CONFIG.winTaxes}</em><b>▶</b>${cap('trophy', L('クリア', 'Clear'))}</span>`;
   return `<div class="ov4" aria-label="${L('遊び方', 'How to play')}">
-    ${machine}${down}${grow}${down}${sell}${down}${tax}
+    ${step(1, L('回す', 'Spin'))}${machine}${down}
+    ${step(2, L('育つ', 'Grow'))}${grow}${down}
+    ${step(3, L('3つ並べて売る', 'Sell 3 in a row'))}${sell}${down}
+    ${step(4, L('年貢', 'Tax'))}${tax}
     <button class="ov4-go" aria-label="${start ? L('はじめる', 'Start') : L('とじる', 'Close')}">${start ? '▶' : '✕'}</button>
   </div>`;
 }
