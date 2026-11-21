@@ -5,6 +5,11 @@ import { type GameState, logSnapshot, rollWeekly, rollWeeklyPlaces } from '../ga
 import { state, ui } from './store.ts';
 
 export const RUN_KEY = 'hatake-slot:run';
+/**
+ * 中断セーブの版。保存の形を変えたら1つ上げ、loadRun の読み替えに「前の版 → 今の版」を足す。
+ * 1＝版の番号を入れる前（読み替えを全部通す）
+ */
+export const SAVE_VERSION = 2;
 
 const LOG_KEY = 'hatake-slot:lastlog';
 let loggedLen = -1;
@@ -56,7 +61,7 @@ export function saveRun(): void {
   saveLastLog();
   if (ui.busy || state.over || state.day === 0) return;
   try {
-    localStorage.setItem(RUN_KEY, JSON.stringify(state));
+    localStorage.setItem(RUN_KEY, JSON.stringify({ ...state, saveVersion: SAVE_VERSION }));
   } catch {
     // 保存できなくても遊べる
   }
@@ -66,7 +71,9 @@ export function loadRun(): GameState | null {
   try {
     const raw = localStorage.getItem(RUN_KEY);
     if (!raw) return null;
-    const s = JSON.parse(raw) as GameState;
+    const s = JSON.parse(raw) as GameState & { saveVersion?: number };
+    // 新しい版で保存された物は、古い画面では読まない（壊さないよう、新しく始める）
+    if ((s.saveVersion ?? 1) > SAVE_VERSION) return null;
     // 作物の種類・注文を入れる前の保存データを読み替える
     const old: Record<string, CropKind> = { normal: 'tomato', gold: 'corn' };
     s.field = s.field.map((c) => (c ? { ...c, kind: old[c.kind] ?? c.kind } : null));
@@ -147,10 +154,30 @@ export function loadRun(): GameState | null {
       s.stock = [];
       s.bought = {};
     }
+    s.saveVersion = SAVE_VERSION;
+    // 読み替えても形がおかしい保存は使わない（続きからを出さず、新しく始める）
+    if (!validRun(s)) {
+      clearRun();
+      return null;
+    }
     return s;
   } catch {
+    clearRun();
     return null;
   }
+}
+
+/** 続きから遊べる形か（マスの数・数字・袋がそろっているか） */
+export function validRun(s: GameState): boolean {
+  const size = CONFIG.fieldCols * CONFIG.fieldRows;
+  const num = (v: unknown) => typeof v === 'number' && Number.isFinite(v);
+  return (
+    num(s.day) && s.day >= 0 && num(s.gold) && num(s.taxesPaid) && num(s.reels) && s.reels >= 1 &&
+    num(s.cols) && num(s.rows) && s.cols >= 1 && s.rows >= 1 && s.cols <= CONFIG.fieldCols && s.rows <= CONFIG.fieldRows &&
+    [s.field, s.tools, s.tiles, s.weeds, s.frost].every((a) => Array.isArray(a) && a.length === size) &&
+    !!s.bag && typeof s.bag === 'object' && SYMBOL_ORDER.every((id) => num(s.bag[id])) &&
+    Array.isArray(s.results) && !!s.stats && !!s.charms
+  );
 }
 
 export function clearRun(): void {

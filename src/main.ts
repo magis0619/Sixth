@@ -3105,7 +3105,9 @@ function renderTutorial(): void {
 
 // ---- 起動 ----
 
+// 開発用の版の札は、開発中か ?debug を付けたときだけ出す（版は設定の下にも出ている）
 $('build-label').textContent = __BUILD__;
+$('build-label').hidden = !(import.meta.env.DEV || new URLSearchParams(location.search).has('debug'));
 // 絵の立体の塗り（グラデーション）の定義をページに1回だけ置く
 document.body.insertAdjacentHTML('afterbegin', gradientDefs());
 applyStaticLang();
