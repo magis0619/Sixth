@@ -8377,6 +8377,12 @@ body:has(#overlay.show) :is(.machine, .machine *) {
 /* 腕前で札が増えても箱に収まるように：変わる札は1つの行、袋の札は小さく、箱を少し高く・絵を少し小さく */
 .fs-info { height: 284px; }
 .fs-portrait { width: min(44vw, 170px); }
+/* 狭い画面：得意の札は1行のまま、腕前は次の行へ。背の低い画面は絵を小さくして下のボタンまで収める */
+.fs-build { flex-wrap: wrap; row-gap: 4px; }
+.fs-build-btn, .fs-mastery { white-space: nowrap; }
+@media (max-height: 780px) {
+  .fs-portrait { width: min(30vw, 112px); }
+}
 .fs-mini-card { padding: 1px 5px 1px 1px; }
 .fs-mini-card .art { width: 22px; height: 22px; }
 /* 星は白地でも読める濃さ（上げた段は濃い金、まだの段は薄い墨） */
@@ -8533,10 +8539,10 @@ html.idle *, html.idle *::before, html.idle *::after { animation-play-state: pau
 .fs-build-btn { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 1px 4px 1px 6px; font: inherit; font-size: 0.875rem; font-weight: 700; color: #fff; background: #3d7a24; border: 2px solid var(--ink); border-radius: 999px; box-shadow: 0 2px 0 var(--ink); cursor: pointer; }
 .fs-build-btn .art { width: 20px; height: 20px; }
 .fs-build-btn i { display: grid; place-items: center; width: 20px; height: 20px; font-style: normal; font-size: 0.8125rem; color: #3d7a24; background: #fff; border-radius: 50%; }
-/* 狙いの1行をなくしたので、説明の箱を低く（いちばん札の多い農家で収まる高さ） */
-.fs-info { height: 270px; }
+/* 狙いの1行をなくしたので、説明の箱を低く。狭い画面で札が増えたら箱が伸びる */
+.fs-info { height: auto; min-height: 270px; flex-shrink: 0; }
 /* 左上：所持金/年貢の額。年貢の額は小さめ。足りないときは所持金の数字が赤（今まで通り） */
-.hud-gold .gold-need { font-size: 0.6em; font-weight: 700; color: #f3e2c0; margin-left: 1px; align-self: flex-end; padding-bottom: 0.25em; white-space: nowrap; }
+.hud-gold .gold-need { font-size: max(0.6em, 0.875rem); font-weight: 700; color: #f3e2c0; margin-left: 1px; align-self: flex-end; padding-bottom: 0.25em; white-space: nowrap; }
 .hud-gold { white-space: nowrap; }
 /* 演出の最中は吹き出しを隠す */
 .coach.quiet { opacity: 0; visibility: hidden; }
