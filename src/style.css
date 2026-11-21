@@ -8598,3 +8598,17 @@ html.idle *, html.idle *::before, html.idle *::after { animation-play-state: pau
 /* 超レアの札は、光が外へ出ないよう切り取ったカードの内側の上に置く */
 .stall .shop.offer-row .offer-item.super-offer .pivot-tag { top: 6px; }
 .offer-screen .stall .shop.offer-row .item.offer-item.super-offer, .stall .shop.offer-row .item.offer-item.super-offer { padding-top: 34px; }
+
+/* ==== 列で売った合計：金の板・回る後光・大収穫の帯（fx.ts の rollNumber の tier） ==== */
+.fx-roll-big { display: grid; place-items: center; }
+.fx-roll-big .roll-rays { position: absolute; left: 50%; top: 50%; width: 5.2em; height: 5.2em; margin: -2.6em 0 0 -2.6em; border-radius: 50%; background: repeating-conic-gradient(rgba(255, 230, 120, 0.75) 0 10deg, transparent 10deg 24deg); -webkit-mask: radial-gradient(circle, #000 25%, transparent 70%); mask: radial-gradient(circle, #000 25%, transparent 70%); z-index: -1; }
+.fx-roll-big .roll-plate { position: relative; display: flex; align-items: center; gap: 0.12em; padding: 0.12em 0.45em 0.12em 0.2em; border-radius: 0.5em; background: linear-gradient(#5a3418, #3b1f0c); border: 0.08em solid #ffd84a; box-shadow: 0 0 0 0.05em var(--ink), 0 0.12em 0 var(--ink), 0 0 0.6em rgba(255, 210, 80, 0.8); overflow: hidden; }
+.fx-roll-big .roll-coin { display: grid; width: 0.85em; height: 0.85em; }
+.fx-roll-big .roll-coin .art { width: 100%; height: 100%; }
+.fx-roll-big .roll-num { display: flex; align-items: center; color: #ffe14a; -webkit-text-stroke: 0.07em #2a1608; paint-order: stroke fill; text-shadow: 0 0.07em 0 #2a1608, 0 0 0.35em rgba(255, 200, 60, 0.85); }
+.fx-roll-big .roll-shine { position: absolute; top: -20%; bottom: -20%; left: 0; width: 35%; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.75), transparent); transform: skewX(-20deg); translate: -120% 0; pointer-events: none; }
+.fx-roll-big .roll-ribbon { position: absolute; z-index: 2; left: 50%; top: -1.25em; translate: -50% 0; padding: 0.05em 0.6em; font-size: 0.45em; font-weight: 900; color: #fff; -webkit-text-stroke: 0; text-shadow: 0 2px 0 #7a1500; background: linear-gradient(#ff6b5b, #c93c2b); border: 0.1em solid var(--ink); border-radius: 0.4em; white-space: nowrap; rotate: -4deg; }
+.fx-roll-big.t2 .roll-rays { background: repeating-conic-gradient(rgba(255, 230, 120, 0.85) 0 10deg, transparent 10deg 20deg); }
+.fx-roll-big.t3 .roll-plate, .fx-roll-big.t4 .roll-plate { box-shadow: 0 0 0 0.05em var(--ink), 0 0.12em 0 var(--ink), 0 0 1em rgba(255, 120, 60, 0.9); }
+.fx-roll-big.t4 .roll-rays { background: repeating-conic-gradient(#ff6b6b 0 8deg, #ffd84a 8deg 16deg, #7dd36a 16deg 24deg, #5ab0ff 24deg 32deg); opacity: 0.6; }
+.fx-roll-ring { width: 3.6em; height: 3.6em; font-size: 2rem; border-radius: 50%; border: 0.18em solid #ffd84a; box-shadow: 0 0 0.6em rgba(255, 216, 74, 0.9), inset 0 0 0.4em rgba(255, 216, 74, 0.7); pointer-events: none; }

@@ -277,14 +277,22 @@ export function later(fn: () => void, ms: number): number {
  * 金額を桁ごとに回して止める（スロットのリールのように右の桁から止まる）。
  * 止まり切るまで待つ Promise を返す
  */
-export function rollNumber(x: number, y: number, value: number, opts: { prefix?: string; size?: number; hold?: number; rise?: boolean } = {}): Promise<void> {
+export function rollNumber(x: number, y: number, value: number, opts: { prefix?: string; size?: number; hold?: number; rise?: boolean; tier?: number } = {}): Promise<void> {
   const digits = String(Math.max(0, Math.round(value))).split('');
-  const el = spawn('', 'fx-roll', x, y);
+  // tier（列で売った合計）：金の板・回る後光・止まったときの輪と金貨で、待っていた数字を飾る
+  const tier = opts.tier ?? 0;
+  const el = spawn('', `fx-roll${tier ? ` fx-roll-big t${Math.min(tier, 4)}` : ''}`, x, y);
   el.style.fontSize = `${2.2 * (opts.size ?? 1)}rem`;
-  el.innerHTML =
+  const numHtml =
     (opts.prefix ? `<span class="roll-prefix">${opts.prefix}</span>` : '') +
     digits.map(() => `<span class="roll-digit"><span class="roll-strip">${'0123456789'.repeat(3).split('').map((d) => `<i>${d}</i>`).join('')}</span></span>`).join('') +
     (EN ? '<span class="roll-unit">g</span>' : '');
+  el.innerHTML = tier
+    ? `<span class="roll-rays"></span>${tier >= 3 ? `<span class="roll-ribbon">${EN ? 'BIG HARVEST!' : '大収穫！'}</span>` : ''}<span class="roll-plate"><span class="roll-coin">${glyph('🪙')}</span><span class="roll-num">${numHtml}</span><span class="roll-shine"></span></span>`
+    : numHtml;
+  // 後光はゆっくり回り続ける（transform だけなので軽い）
+  const rays = el.querySelector<HTMLElement>('.roll-rays');
+  if (rays && !calm) rays.animate([{ rotate: '0deg' }, { rotate: '360deg' }], { duration: 9000, iterations: Infinity });
   // rise：下からせり上がって出る
   const from = opts.rise ? 'translate(-50%, calc(-50% + 70px)) scale(0.8)' : 'translate(-50%, -50%) scale(0.4)';
   el.animate([{ transform: from, opacity: 0 }, { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 }], {
@@ -306,6 +314,14 @@ export function rollNumber(x: number, y: number, value: number, opts: { prefix?:
   });
   return Promise.all(done).then(async () => {
     el.animate([{ transform: 'translate(-50%, -50%) scale(1.25)' }, { transform: 'translate(-50%, -50%) scale(1)' }], { duration: 200, fill: 'forwards' });
+    if (tier) {
+      // 止まった瞬間：金の輪が広がり、金貨ときらめきが飛び、数字の上を光が走る
+      const ring = spawn('', 'fx-roll-ring', x, y);
+      ring.animate([{ transform: 'translate(-50%, -50%) scale(0.4)', opacity: 0.95 }, { transform: 'translate(-50%, -50%) scale(2.4)', opacity: 0 }], { duration: 650, easing: 'cubic-bezier(.2,.7,.3,1)' }).onfinish = () => ring.remove();
+      burst(x, y, ['🪙', '✨', '🌟', '🪙'], 10 + tier * 4, 120 + tier * 20);
+      el.querySelector<HTMLElement>('.roll-shine')?.animate([{ translate: '-120% 0' }, { translate: '220% 0' }], { duration: 650, delay: 120, easing: 'ease-in-out' });
+      el.querySelector<HTMLElement>('.roll-plate')?.animate([{ scale: '1' }, { scale: '1.12' }, { scale: '1' }], { duration: 360, easing: 'cubic-bezier(.3,1.6,.5,1)' });
+    }
     await sleep(opts.hold ?? 700);
     el.animate([{ opacity: 1 }, { opacity: 0, transform: 'translate(-50%, -90%) scale(0.9)' }], { duration: 300, fill: 'forwards' }).onfinish = () => el.remove();
   });

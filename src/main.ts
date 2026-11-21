@@ -2606,7 +2606,7 @@ async function playLineHarvest(res: SellResult, centers: { x: number; y: number 
   if (level >= 2) confetti(20 + level * 20);
   if (level >= 3 && fx !== 'coins') coinRain(30 + level * 10);
   playLineFx(fx, level, f);
-  await rollNumber(f.x, f.y, amount, { prefix: '+', size: 0.9 + level * 0.15, hold: 500 + level * 150 });
+  await rollNumber(f.x, f.y, amount, { prefix: '+', size: 0.9 + level * 0.15, hold: 700 + level * 200, tier: level });
   if (res.bumper) await bigHarvestFinale(res.bumper);
 }
 
