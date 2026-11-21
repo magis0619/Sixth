@@ -108,7 +108,7 @@ export function showSettings(onClose?: () => void): void {
         ${toggle('set-vibrate', L('振動', 'Vibration'), settings.vibrate)}
         ${toggle('set-fast', L('演出をはやく', 'Faster effects'), settings.fast)}
         ${toggle('set-calm', L('演出控えめ', 'Calm effects'), isCalm())}
-        ${TELEMETRY_URL ? toggle('set-telemetry', L('遊んだ記録を送る', 'Send play stats'), settings.telemetry) : ''}
+        ${TELEMETRY_URL ? toggle('set-telemetry', L('遊んだ記録を送る（匿名）', 'Send play stats (anonymous)'), settings.telemetry) : ''}
         <button class="set-row" id="set-tutorial"><span>${art('question')} ${meta.tutorialDone ? L('チュートリアルをもう一度', 'Replay the tutorial') : L('チュートリアル：次にスタートを押すと始まる', 'Tutorial: starts on your next Start')}</span></button>
         <button class="set-row" id="set-explain"><span>${art('book')} ${L('説明カードをもう一度出す', 'Show the picture guides again')}</span></button>
         ${DEV_DATA_SWAP ? `<div class="dev-swap"><span class="dev-tag">${L('試し用', 'Testing')}</span>${hasBackup()

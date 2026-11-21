@@ -9,7 +9,7 @@ import {
 import { isMuted, sfx, suspendAudio, toggleMute, unlockAudio } from './audio.ts';
 import { saveMeta, setupFrom } from './meta.ts';
 import { art, gradientDefs, type ArtId } from './art.ts';
-import { track } from './telemetry.ts';
+import { flushTelemetry, setupQuitTracking, track } from './telemetry.ts';
 import {
   burst, center, coinRain, dropIn, PEST_SPEED, ripple, confetti, flash, floatText, flyTo, isCalm, pop, rollNumber, scanlines, shake, shakeFor, sleep, toggleCalm, vibrate, rainShower, setHurry, later, fmtMult, travel, sunBeam, beeFlight, growUp,
 } from './fx.ts';
@@ -1744,6 +1744,10 @@ document.body.insertAdjacentHTML('afterbegin', gradientDefs());
 applyStaticLang();
 applySettings();
 // ホーム画面に置いたとき・電波がないときも遊べるように（公開版だけ）
+// 遊んだ記録：途中で画面を離れたときにも送る。前に送れなかった分は送り直す
+setupQuitTracking(() => state);
+flushTelemetry();
+
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => void navigator.serviceWorker.register('./sw.js').catch(() => {}));
 }

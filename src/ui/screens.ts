@@ -170,7 +170,7 @@ export function showGameOver(endedAfterClear = false): void {
   if (isNew) saveBest({ day: state.day, taxes: state.taxesPaid });
   const t = nextTax(state);
   const earned = awardPoints(meta, state);
-  track('result', state, { end: endedAfterClear ? 'clear' : 'tax', tax: t.amount, points: earned, difficulty: state.difficulty });
+  track('result', state, { end: endedAfterClear ? 'clear' : 'tax', tax: t.amount, points: earned });
   const newly = recordRun(meta, state, true);
   const kind = endedAfterClear ? 'clear' : state.cleared ? 'endless' : 'fail';
   el.overlay.innerHTML = `

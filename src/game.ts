@@ -78,6 +78,8 @@ export interface Market {
 export interface Purchase {
   day: number;
   id: UpgradeId;
+  /** 市の朝の仕入れでタダでもらった */
+  free?: boolean;
 }
 
 export interface GameState {
@@ -1234,7 +1236,7 @@ function takeOfferRaw(state: GameState, id: AddUpgradeId): boolean {
   if (state.over || !state.offer.includes(id)) return false;
   state.bag[UPGRADE_SYMBOL[id]!.symbol] += UPGRADE_SYMBOL[id]!.delta;
   state.offer = [];
-  state.stats.purchases.push({ day: state.day, id });
+  state.stats.purchases.push({ day: state.day, id, free: true });
   checkReady(state);
   return true;
 }

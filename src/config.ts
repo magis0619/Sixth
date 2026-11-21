@@ -304,7 +304,7 @@ export const PLACE_ORDER = Object.keys(PLACES) as PlaceId[];
  * プレイ記録の送り先（Googleスプレッドシートの Apps Script をウェブアプリとして公開したURL）。
  * 空なら送らない。作り方は scripts/telemetry-apps-script.gs の先頭
  */
-export const TELEMETRY_URL = '';
+export const TELEMETRY_URL = 'https://script.google.com/macros/s/AKfycbyZXEhnOGCWEbJSaH0wzPVJWe0ImuMukZqiz1f5zshcQkiH0oDvP6sWKLs2fIIH1_0GFg/exec';
 
 /** 感想フォームのURL（Googleフォーム等）。空なら結果画面にボタンを出さない */
 export const FEEDBACK_URL = '';
