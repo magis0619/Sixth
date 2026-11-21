@@ -9,7 +9,7 @@ import {
 import { isMuted, sfx, suspendAudio, toggleMute, unlockAudio } from './audio.ts';
 import { saveMeta, setupFrom } from './meta.ts';
 import { art, gradientDefs, type ArtId } from './art.ts';
-import { flushTelemetry, setupQuitTracking, track } from './telemetry.ts';
+import { flushTelemetry, reportError, setupQuitTracking, track } from './telemetry.ts';
 import {
   burst, center, coinRain, dropIn, PEST_SPEED, ripple, confetti, flash, floatText, flyTo, isCalm, pop, rollNumber, scanlines, shake, shakeFor, sleep, toggleCalm, vibrate, rainShower, setHurry, later, fmtMult, travel, sunBeam, beeFlight, growUp,
 } from './fx.ts';
@@ -1761,8 +1761,14 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 document.addEventListener('visibilitychange', () => suspendAudio(document.hidden));
 // 思わぬエラーが起きても、遊び続けられるようにひと言だけ出す（途中は保存されている）
 const OOPS = L('うまく動かない所がありました。おかしければ再読み込みしてください', 'Something went wrong. If things look off, please reload');
-window.addEventListener('error', () => say(OOPS, 4000));
-window.addEventListener('unhandledrejection', () => say(OOPS, 4000));
+window.addEventListener('error', (e) => {
+  say(OOPS, 4000);
+  reportError(state, 'window', e.error ?? e.message);
+});
+window.addEventListener('unhandledrejection', (e) => {
+  say(OOPS, 4000);
+  reportError(state, 'promise', e.reason);
+});
 el.spin.addEventListener('click', () => void onSpin());
 $('spin-go').addEventListener('click', () => void onSpin());
 el.tax.addEventListener('click', () => {

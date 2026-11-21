@@ -14,7 +14,7 @@ import { buildLogText } from './ui/save.ts';
 import { settings } from './ui/settings.ts';
 import { meta } from './ui/store.ts';
 
-export type TrackKind = 'progress' | 'result' | 'quit';
+export type TrackKind = 'progress' | 'result' | 'quit' | 'error';
 
 const QUEUE_KEY = 'hatake-slot:telemetry-queue';
 /** keepalive（画面を閉じる直前でも届く送り方）で送れる大きさの上限（64KB）より少し小さく */
@@ -121,11 +121,20 @@ export function track(kind: TrackKind, state: GameState, extra: Record<string, u
   if (!enabled()) return;
   try {
     const data: Record<string, unknown> = { kind, pid: playerId(), build: __BUILD__, at: new Date().toISOString(), ...summary(state), ...extra };
-    if (kind !== 'progress') data.log = buildLogText(__BUILD__);
+    if (kind === 'result' || kind === 'quit') data.log = buildLogText(__BUILD__);
     post(JSON.stringify(data));
   } catch {
     // 送れなくても続ける
   }
+}
+
+let errorsSent = 0;
+/** 画面のエラーを送る（同じ画面で5回まで）。where＝どこで起きたか、detail＝そのときの様子 */
+export function reportError(state: GameState, where: string, err: unknown, detail: Record<string, unknown> = {}): void {
+  if (errorsSent >= 5) return;
+  errorsSent++;
+  const e = err as { message?: string; stack?: string } | undefined;
+  track('error', state, { where, message: String(e?.message ?? err ?? '').slice(0, 300), stack: String(e?.stack ?? '').slice(0, 1500), ...detail });
 }
 
 let quitSent = '';

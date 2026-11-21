@@ -13,6 +13,7 @@ import { burst, center, ripple, confetti, flash, floatText, flyTo, isCalm, pop, 
 import { PLACE_ART, setHtml, bagPct, costHtml, openSheet, openSheetName, say, shapeIcon, symHtml, upgradeArt, upgradeEffect, visibleOr } from './view.ts';
 import { $, el, hooks, state, ui } from './store.ts';
 import { armFresh } from './tapguard.ts';
+import { reportError } from '../telemetry.ts';
 import { done, play } from './play.ts';
 import { accept, reject } from './states.ts';
 import { explainOnce, marketCard, mergeCard, offerCard } from './explain.ts';
@@ -55,23 +56,37 @@ export function renderBudget(): void {
 }
 
 export function renderShop(): void {
-  renderBudget();
-  renderOfferShop();
-  // 市を出るボタン：仕入れを選ぶまでは押せない（選ぶと押せるようになる）
-  const next = $('market-next') as HTMLButtonElement;
-  const must = forcedOffer();
-  next.disabled = must;
-  setHtml(next, must ? L('↑ 仕入れを1つ選ぶ', '↑ Pick one first') : `${L('次へ', 'Next')} ▶`);
-  const items = shopItems();
-  const adds = items.filter((u) => !u.id.startsWith('remove'));
-  renderUpgradeList(el.shop, adds);
-  // 毎日の仕入れのときは、ショップに絵柄の区画はいらない
-  (el.shop.closest('.stall-sec') as HTMLElement).hidden = adds.length === 0;
-  renderUpgradeList($('remove-shop'), items.filter((u) => u.id.startsWith('remove')));
-  renderMergeShop();
-  renderPremiumShop();
-  renderDiscardShop();
+  // どれか1つの段でエラーが起きても、ほかの段は出す（市が空のまま開かないように）
+  safely('budget', renderBudget);
+  safely('offer', renderOfferShop);
+  safely('next', () => {
+    // 市を出るボタン：仕入れを選ぶまでは押せない（選ぶと押せるようになる）
+    const next = $('market-next') as HTMLButtonElement;
+    const must = forcedOffer();
+    next.disabled = must;
+    setHtml(next, must ? L('↑ 仕入れを1つ選ぶ', '↑ Pick one first') : `${L('次へ', 'Next')} ▶`);
+  });
+  safely('adds', () => {
+    const items = shopItems();
+    const adds = items.filter((u) => !u.id.startsWith('remove'));
+    renderUpgradeList(el.shop, adds);
+    // 毎日の仕入れのときは、ショップに絵柄の区画はいらない
+    (el.shop.closest('.stall-sec') as HTMLElement).hidden = adds.length === 0;
+    renderUpgradeList($('remove-shop'), items.filter((u) => u.id.startsWith('remove')));
+  });
+  safely('merge', renderMergeShop);
+  safely('premium', renderPremiumShop);
+  safely('discard', renderDiscardShop);
   syncStallSecs();
+}
+
+/** 市の段を描く。エラーは記録に送って、ほかの段は続ける */
+function safely(where: string, fn: () => void): void {
+  try {
+    fn();
+  } catch (err) {
+    reportError(state, `market:${where}`, err, { weeklyPlaces: state.weeklyPlaces.join(','), offer: state.offer.join(',') });
+  }
 }
 
 /** 分類の段：中に品が1つもなければ段ごと隠す（お邪魔の段は「いない！」の1行があれば出す） */
@@ -412,7 +427,9 @@ export function renderFarmShop(): void {
     rng: '',
   };
   PLACE_ORDER.filter((id) => state.weeklyPlaces.includes(id)).forEach((id) =>
-    items.push({ key: id, cat: PLACE_CAT[id], ico: art(PLACE_ART[id]), name: PLACES[id].name, effect: roomLeft(state, id) > 0 ? placeRowsHtml(id) : PLACES[id].kind === 'tool' ? L('置ける空きマスがない', 'No empty plot to place it') : L('敷けるマスがない', 'No plot to lay it on'), price: placePrice(state, id), ok: canBuyPlace(state, id), rng: rangeGrid(id) }),
+    safely(`place:${id}`, () =>
+      items.push({ key: id, cat: PLACE_CAT[id], ico: art(PLACE_ART[id]), name: PLACES[id].name, effect: roomLeft(state, id) > 0 ? placeRowsHtml(id) : PLACES[id].kind === 'tool' ? L('置ける空きマスがない', 'No empty plot to place it') : L('敷けるマスがない', 'No plot to lay it on'), price: placePrice(state, id), ok: canBuyPlace(state, id), rng: rangeGrid(id) }),
+    ),
   );
   // 畑を広げるは「畑を強化する」の最後（広げきったら完了の札で）
   items.push(expandItem);
@@ -518,9 +535,18 @@ export function openMarket(): void {
     return;
   }
   renderShop();
-  renderFarmShop();
+  safely('farm', renderFarmShop);
   const wasOpen = openSheetName === 'shop';
   openSheet('shop');
+  // 畑の品の段が1つも出ていなければ、そのときの様子を記録に送る（市が空で開いた不具合を調べるため）
+  if (!document.querySelector('#stall .stall-sec[data-cat]:not([hidden])')) {
+    reportError(state, 'market:empty', 'no farm section', {
+      weeklyPlaces: state.weeklyPlaces.join(','),
+      farmItems: document.querySelectorAll('#stall .farm-list .item').length,
+      secs: [...document.querySelectorAll<HTMLElement>('#stall .stall-sec')].map((x) => (x.hidden ? 0 : 1)).join(''),
+    });
+    syncStallSecs();
+  }
   if (wasOpen) return;
   // 初めての市の日：一枚絵で（買い物）
   if (isMarketDay(state.day)) void explainOnce('ex:market', marketCard(), !!play.tut);
