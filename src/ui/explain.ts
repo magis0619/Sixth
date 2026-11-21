@@ -207,7 +207,7 @@ export function comboCard(id: CharmId): string {
 /** ゲームの全体像：1日の流れと、週の流れ */
 export function overviewCard(start = true): string {
   // 遊び方の一枚絵（画面いっぱい）：文は使わず、単語・数字・絵だけで、上から下へ4つの手順
-  // 1 回す → 2 育つ → 3 並べて売る（×1.3 → お金）→ 4 年貢（7日ごと ×7 → クリア）
+  // 1 スロットを回す → 2 育つ → 3 並べて売る（×1.3 → お金）→ 4 お金を支払う（7日ごと ×7 → クリア）
   const down = '<span class="ov4-down">▼</span>';
   const step = (n: number, word: string) => `<p class="ov4-step"><span class="ov4-num">${n}</span>${word}</p>`;
   // 絵の下に一言（絵だけだと何か分からないので、短い単語と組にする）
@@ -217,10 +217,10 @@ export function overviewCard(start = true): string {
   const sell = `<span class="ov4-sell"><span class="ov3-plots">${art('tomato')}${art('tomato')}${art('tomato')}</span><em class="ov3-hint">×1.3</em><b>▶</b>${cap('coin', L('お金', 'Gold'))}</span>`;
   const tax = `<span class="ov4-tax">${cap('bale', L(`${CONFIG.taxPeriod}日ごと`, `Every ${CONFIG.taxPeriod} days`))}<em>×${CONFIG.winTaxes}</em><b>▶</b>${cap('trophy', L('クリア', 'Clear'))}</span>`;
   return `<div class="ov4" aria-label="${L('遊び方', 'How to play')}">
-    ${step(1, L('回す', 'Spin'))}${machine}${down}
+    ${step(1, L('スロットを回す', 'Spin the slots'))}${machine}${down}
     ${step(2, L('育つ', 'Grow'))}${grow}${down}
     ${step(3, L('3つ並べて売る', 'Sell 3 in a row'))}${sell}${down}
-    ${step(4, L('年貢', 'Tax'))}${tax}
+    ${step(4, L('お金を支払う', 'Pay the tax'))}${tax}
     <button class="ov4-go" aria-label="${start ? L('はじめる', 'Start') : L('とじる', 'Close')}">${start ? '▶' : '✕'}</button>
   </div>`;
 }
