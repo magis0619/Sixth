@@ -8588,3 +8588,13 @@ html.idle *, html.idle *::before, html.idle *::after { animation-play-state: pau
 .ov4-down { font-size: 1.75rem; }
 /* タダで1つ選ぶ画面の上の案内は、題と重ならないよう札の下に出す（main.ts の placeCoach が上下を選ぶ） */
 .offer-screen .os-head { margin-bottom: 4px; }
+
+/* ==== スーパーレア（金の札）：仕入れのカードを金に、上に「超レア」の札。光がゆっくり走る ==== */
+.stall .shop.offer-row .item.offer-item.super-offer { background: linear-gradient(160deg, #fff6c8, #ffd95a 55%, #f2b91a); border-color: #8a5300; box-shadow: 0 3px 0 #8a5300, 0 0 0 3px #ffe680; overflow: hidden; }
+.super-offer::after { content: ''; position: absolute; inset: -40% auto -40% -60%; width: 40%; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent); transform: skewX(-20deg); animation: super-shine 2.4s ease-in-out infinite; pointer-events: none; }
+@keyframes super-shine { 0%, 40% { translate: 0 0; } 100% { translate: 520% 0; } }
+.calm .super-offer::after { animation: none; display: none; }
+.pivot-tag.super-tag { background: linear-gradient(#ffe680, #f2b91a); color: var(--ink); border-color: #8a5300; }
+/* 超レアの札は、光が外へ出ないよう切り取ったカードの内側の上に置く */
+.stall .shop.offer-row .offer-item.super-offer .pivot-tag { top: 6px; }
+.offer-screen .stall .shop.offer-row .item.offer-item.super-offer, .stall .shop.offer-row .item.offer-item.super-offer { padding-top: 34px; }

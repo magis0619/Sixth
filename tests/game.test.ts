@@ -1418,6 +1418,33 @@ describe('じょうろ・卵とツバメ・新しいお守り', () => {
     resolveAuto(s, 0, () => 0.5);
     expect(s.bag.bug).toBe(1);
   });
+  it('スーパーレア：豊穣の雨は畑全部+1、天照は縦横の列いっぱい+2、打出の小槌は今日の売値×2', () => {
+    const s = g();
+    [at(0, 0), at(2, 0), at(1, 1), at(2, 2)].forEach((c) => (s.field[c] = newCrop('melon')));
+    s.results = [reel('blessRain'), reel('amaterasu'), reel('mallet')];
+    useSymbol(s, 0, null);
+    expect([at(0, 0), at(2, 0), at(1, 1), at(2, 2)].map((c) => s.field[c]!.growth)).toEqual([1, 1, 1, 1]);
+    useSymbol(s, 1, at(2, 0));
+    // (2,0) を中心に：同じ行の (0,0)(2,0) と同じ列の (2,2) が+2、(1,1) はそのまま
+    expect([at(0, 0), at(2, 0), at(1, 1), at(2, 2)].map((c) => s.field[c]!.growth)).toEqual([3, 3, 1, 3]);
+    const before = s.priceMult;
+    resolveAuto(s, 2, () => 0.5);
+    expect(s.priceMult).toBe(before + 1);
+  });
+  it('スーパーレアは仕入れにまれに1つ混ざり、年貢を納めるほど出やすい', () => {
+    const s = g();
+    const rate = (paid: number) => {
+      s.taxesPaid = paid;
+      let n = 0;
+      for (let k = 0; k < 4000; k++) if (rollOffer(s, Math.random).some((id) => CONFIG.superOffers.includes(id))) n++;
+      return n / 4000;
+    };
+    const r0 = rate(0);
+    const r6 = rate(6);
+    expect(r0).toBeGreaterThan(0.005);
+    expect(r0).toBeLessThan(0.04);
+    expect(r6).toBeGreaterThan(r0);
+  });
   it('タカは袋のカラスを1枚追い出す（いなければ+2）', () => {
     const s = g();
     s.bag.crow = 2;

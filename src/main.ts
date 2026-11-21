@@ -7,6 +7,7 @@ import {
 import {
   isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult, mustPlace, hasRoomFor, takeOffer, roomLeft, refreshCombos, symbolShape, isRareOffer, isMarketDay, shopOpen, nextMarketDay, beginDay, spinDay, sellBlock, isFlooded, mergeable, mergeSymbol, mergeCost, discard, discardPrice, canDiscard, PREMIUM, PREMIUM_ORDER, type PremiumId, premiumShown, premiumPrice, canBuyPremium, buyPremium,
   taxCursePct,
+  isSuperOffer,
 } from './game.ts';
 import { duckBgm, isMuted, sfx, suspendAudio, toggleMute, unlockAudio } from './audio.ts';
 import { saveMeta, setupFrom } from './meta.ts';
@@ -1044,7 +1045,9 @@ function renderOfferShop(): void {
       const def = SYMBOLS[sym];
       const after = { ...state.bag, [sym]: state.bag[sym] + 1 };
       // 横に3枚並べるカード：絵・名前・効き目・袋の割合・選ぶ
-      return `<button class="item affordable offer-item${isRareOffer(id) ? ' rare-offer' : ''}" data-take="${id}">${isRareOffer(id) ? `<span class="pivot-tag">${L('レア', 'Rare')}</span>` : ''}<span class="ico">${symHtml(sym)}</span>
+      // スーパーレアは金の札・金の「超レア」札。レアは「レア」札
+      const sup = isSuperOffer(id);
+      return `<button class="item affordable offer-item${isRareOffer(id) ? ' rare-offer' : ''}${sup ? ' super-offer' : ''}" data-take="${id}">${sup ? `<span class="pivot-tag super-tag">${L('超レア', 'Super rare')}</span>` : isRareOffer(id) ? `<span class="pivot-tag">${L('レア', 'Rare')}</span>` : ''}<span class="ico">${symHtml(sym)}</span>
         <span class="name">${def.name}${def.shape ? `<span class="oc-shape">${shapeIcon(def.shape)}</span>` : ''}</span>
         <span class="effect">${def.desc}</span><span class="odds">${art('seed')}${bagPct(state.bag, sym)}→<b>${bagPct(after, sym)}%</b></span>
         <span class="cost free"><b>${L('選ぶ', 'Pick')}</b></span></button>`;

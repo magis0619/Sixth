@@ -41,7 +41,11 @@ export type SymbolId =
   | 'egg'
   | 'swallow'
   // タカ（袋のカラスを追い出す）
-  | 'hawk';
+  | 'hawk'
+  // スーパーレア（市の仕入れにまれに並ぶ金の札）
+  | 'blessRain'
+  | 'amaterasu'
+  | 'mallet';
 
 export type UpgradeId =
   | 'addSeed'
@@ -55,6 +59,9 @@ export type UpgradeId =
   | 'addMerchant'
   | 'addClover'
   | 'addMoon'
+  | 'addBlessRain'
+  | 'addAmaterasu'
+  | 'addMallet'
   | 'addMelonSeed'
   | 'addThunder'
   | 'addWatermelonSeed'
@@ -139,7 +146,7 @@ export interface SymbolDef {
   /** フィーバー時の効果 */
   feverDesc: string;
   /** 演出用のレア度 */
-  rarity: 'normal' | 'rare' | 'bad';
+  rarity: 'normal' | 'rare' | 'super' | 'bad';
   /** 合体した絵柄なら、元の絵柄（組み合わせ・お守りの条件・フィーバーの役は元の絵柄として数える） */
   base?: SymbolId;
 }
@@ -181,6 +188,9 @@ export const SYMBOLS: Record<SymbolId, SymbolDef> = {
   superFert: { id: 'superFert', name: '極上の肥料', emoji: '🧪', kind: 'manual', shape: 'plus', desc: '十字 売値×1.5', feverDesc: '堆肥：畑の全作物に肥料', rarity: 'rare', base: 'fertilizer' },
   can: { id: 'can', name: 'じょうろ', emoji: '🚿', kind: 'manual', shape: 'one', desc: '1マス 成長+2', feverDesc: '大当たり×3', rarity: 'normal' },
   egg: { id: 'egg', name: '卵', emoji: '🥚', kind: 'auto', desc: 'スロットに3回出ると孵ってツバメになる', feverDesc: '大当たり×3', rarity: 'normal' },
+  blessRain: { id: 'blessRain', name: '豊穣の雨', emoji: '🌈', kind: 'manual', shape: 'all', desc: '畑全部 成長+1', feverDesc: '虹：全作物の成長＋1', rarity: 'super', base: 'rain' },
+  amaterasu: { id: 'amaterasu', name: '天照', emoji: '🌞', kind: 'manual', shape: 'cross', desc: '縦横の列 成長+2', feverDesc: '夏祭り：今日の売値×2', rarity: 'super', base: 'sun' },
+  mallet: { id: 'mallet', name: '打出の小槌', emoji: '🔨', kind: 'auto', desc: '今日の売値×2', feverDesc: '大当たり×3', rarity: 'super' },
   hawk: { id: 'hawk', name: 'タカ', emoji: '🦅', kind: 'auto', desc: '袋のカラスを1枚追い出す', feverDesc: '大当たり×3', rarity: 'normal' },
   swallow: { id: 'swallow', name: 'ツバメ', emoji: '🐦', kind: 'auto', desc: '袋の虫を1枚追い出す（虫がいなければ+2）', feverDesc: '大当たり×3', rarity: 'normal' },
   koban: { id: 'koban', name: '小判', emoji: '🪙', kind: 'auto', desc: '+12（年貢を納めるたびに+3）', feverDesc: '大当たり×3', rarity: 'rare', base: 'coin' },
@@ -189,7 +199,7 @@ export const SYMBOLS: Record<SymbolId, SymbolDef> = {
 
 /** 絵柄袋・ショップでの表示順 */
 export const SYMBOL_ORDER: SymbolId[] = [
-  'seed', 'oniSeed', 'berrySeed', 'heartSeed', 'pumpkinSeed', 'lanternSeed', 'melonSeed', 'watermelonSeed', 'boxSeed', 'goldSeed', 'rain', 'bigRain', 'sun', 'bigSun', 'thunder', 'raijin', 'hoe', 'fertilizer', 'superFert', 'bee', 'queenBee', 'coin', 'koban', 'can', 'egg', 'swallow', 'hawk', 'merchant', 'clover', 'moon', 'crow', 'bug', 'weed', 'tanuki', 'frost', 'mole', 'locust',
+  'seed', 'oniSeed', 'berrySeed', 'heartSeed', 'pumpkinSeed', 'lanternSeed', 'melonSeed', 'watermelonSeed', 'boxSeed', 'goldSeed', 'rain', 'bigRain', 'sun', 'bigSun', 'thunder', 'raijin', 'hoe', 'fertilizer', 'superFert', 'bee', 'queenBee', 'coin', 'koban', 'can', 'egg', 'swallow', 'hawk', 'blessRain', 'amaterasu', 'mallet', 'merchant', 'clover', 'moon', 'crow', 'bug', 'weed', 'tanuki', 'frost', 'mole', 'locust',
 ];
 
 // ---- 作物 ----
@@ -320,7 +330,7 @@ export const CONFIG = {
   initialBag: {
     seed: 3, berrySeed: 0, pumpkinSeed: 0, melonSeed: 0, goldSeed: 0, rain: 2, sun: 1, thunder: 0, fertilizer: 0, bee: 0,
     crow: 1, bug: 0, coin: 1, merchant: 0, clover: 0, moon: 0, weed: 0, tanuki: 0, frost: 0, watermelonSeed: 0, hoe: 0, mole: 0, locust: 0,
-    oniSeed: 0, heartSeed: 0, lanternSeed: 0, boxSeed: 0, bigRain: 0, bigSun: 0, raijin: 0, queenBee: 0, superFert: 0, koban: 0, can: 0, egg: 0, swallow: 0, hawk: 0,
+    oniSeed: 0, heartSeed: 0, lanternSeed: 0, boxSeed: 0, bigRain: 0, bigSun: 0, raijin: 0, queenBee: 0, superFert: 0, koban: 0, can: 0, egg: 0, swallow: 0, hawk: 0, blessRain: 0, amaterasu: 0, mallet: 0,
   } as Record<SymbolId, number>,
   /** 合体に要る同じ絵柄の枚数（市で1回に1種類まで） */
   /** 市の日（水・土）に売ると売値がこの倍率 */
@@ -478,6 +488,9 @@ export const CONFIG = {
     addMerchant: 15,
     addClover: 20,
     addMoon: 60,
+    addBlessRain: 0,
+    addAmaterasu: 0,
+    addMallet: 0,
     // カラスは消すより守る相手（高め）
     removeCrow: 30,
     removeBug: 12,
@@ -519,6 +532,10 @@ export const CONFIG = {
   /** 市の仕入れの出やすさ（書いていない札は1） */
   offerWeights: { addRain: 4, addSun: 4, addSeed: 2 } as Partial<Record<AddUpgradeId, number>>,
   rareOfferChance: 0.08,
+  /** スーパーレア（金の札）：仕入れにまれに1つ混ざる。年貢を納めるたびに出やすくなる（2%＋納めた回数×1%） */
+  superOffers: ['addBlessRain', 'addAmaterasu', 'addMallet'] as UpgradeId[],
+  superOfferChance: 0.02,
+  superOfferStep: 0.01,
   /** 毎週1つは必ず並ぶ「作戦が変わる品」と、その作戦のひと言 */
   pivotAdds: {
     addBerrySeed: '苺：2日で実る。巣箱の周りで毎晩育つ',
@@ -598,6 +615,9 @@ export const UPGRADES: { id: UpgradeId; name: string; emoji: string; desc: strin
   { id: 'addBee', name: '蜂を足す', emoji: '🐝', desc: '絵柄袋に蜂を1枚追加' },
   { id: 'addMerchant', name: '商人を足す', emoji: '🧑‍🌾', desc: '絵柄袋に商人を1枚追加' },
   { id: 'addClover', name: '四つ葉を足す', emoji: '🍀', desc: '絵柄袋に四つ葉を1枚追加' },
+  { id: 'addBlessRain', name: '豊穣の雨を足す', emoji: '🌈', desc: '絵柄袋に豊穣の雨（畑全部 成長+1）を1枚追加' },
+  { id: 'addAmaterasu', name: '天照を足す', emoji: '🌞', desc: '絵柄袋に天照（縦横の列いっぱい 成長+2）を1枚追加' },
+  { id: 'addMallet', name: '打出の小槌を足す', emoji: '🔨', desc: '絵柄袋に打出の小槌（今日の売値×2）を1枚追加' },
   { id: 'addMoon', name: '月を足す', emoji: '🌕', desc: '絵柄袋に月（満ち欠けして、満月で全作物＋1）を1枚追加。足すたびに高くなる' },
   { id: 'removeCrow', name: 'カラスを消す', emoji: '🐦', desc: '絵柄袋からカラスを1枚削除' },
   { id: 'removeBug', name: '虫を消す', emoji: '🐛', desc: '絵柄袋から虫を1枚削除' },
@@ -628,6 +648,9 @@ export const UPGRADE_SYMBOL: Partial<Record<UpgradeId, { symbol: SymbolId; delta
   addMerchant: { symbol: 'merchant', delta: 1 },
   addClover: { symbol: 'clover', delta: 1 },
   addMoon: { symbol: 'moon', delta: 1 },
+  addBlessRain: { symbol: 'blessRain', delta: 1 },
+  addAmaterasu: { symbol: 'amaterasu', delta: 1 },
+  addMallet: { symbol: 'mallet', delta: 1 },
   removeCrow: { symbol: 'crow', delta: -1 },
   removeBug: { symbol: 'bug', delta: -1 },
   removeWeed: { symbol: 'weed', delta: -1 },
@@ -890,6 +913,9 @@ export const META = {
     addWatermelonSeed: { unlock: 40, cost: 3 },
     // 満月・金の種はレア仕入れ（準備では選べない。rareOffers）
     addMoon: { unlock: 0, cost: 0 },
+    addBlessRain: { unlock: 0, cost: 0 },
+    addAmaterasu: { unlock: 0, cost: 0 },
+    addMallet: { unlock: 0, cost: 0 },
   } as Record<AddUpgradeId, { unlock: number; cost: number }>,
   /** レアのお守りは解放するまで出ない */
   // あとから足したお守りも、解放するまで出ない（初めのうちは3択が薄まらない）
@@ -942,6 +968,9 @@ if (EN) {
     clover: ['Clover', 'Golden seed more likely tomorrow', 'Luck: pick a charm'],
     thunder: ['Thunder', 'Row: growth +2', 'Great thunder: all crops +1'],
     hoe: ['Hoe', 'Clears weeds/frost in a row and tills (next crop +1)', 'Great tilling: till the whole field'],
+    blessRain: ['Bountiful Rain', 'Whole field +1', 'Rainbow: all crops +1'],
+    amaterasu: ['Amaterasu', 'Full row and column +2', 'Festival: today ×2'],
+    mallet: ['Lucky Mallet', "Today's prices ×2", 'Jackpot ×3'],
     moon: ['Moon', 'Waxes each time it appears (new → crescent → half → full). Only a full moon works: all crops +1, then back to new', 'Moon feast: all crops +1 more'],
     weed: ['Weed', 'Blocks empty plots next to crops and spreads', 'Overgrowth: sprouts in 2 places'],
     tanuki: ['Tanuki', 'Steals ripe crops', 'Pack: takes 2'],
@@ -1006,7 +1035,7 @@ if (EN) {
   const up: Partial<Record<UpgradeId, string>> = {
     addSeed: 'Tomato Seed', addBerrySeed: 'Strawberry Seed', addPumpkinSeed: 'Pumpkin Seed', addRain: 'Rain', addSun: 'Sun', addFertilizer: 'Fertilizer',
     addGoldSeed: 'Golden Seed', addMelonSeed: 'Melon Seed', addThunder: 'Thunder', addWatermelonSeed: 'Watermelon Seed', addHoe: 'Hoe', addBee: 'Bee',
-    addMerchant: 'Merchant', addClover: 'Clover', addMoon: 'Moon', addCan: 'Watering Can', addEgg: 'Egg', addHawk: 'Hawk',
+    addMerchant: 'Merchant', addClover: 'Clover', addMoon: 'Moon', addBlessRain: 'Bountiful Rain', addAmaterasu: 'Amaterasu', addMallet: 'Lucky Mallet', addCan: 'Watering Can', addEgg: 'Egg', addHawk: 'Hawk',
     removeCrow: 'Crow', removeBug: 'Bug', removeWeed: 'Weed', removeTanuki: 'Tanuki', removeFrost: 'Frost', removeMole: 'Mole', removeLocust: 'Locust',
   };
   UPGRADES.forEach((u) => {

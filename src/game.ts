@@ -1200,12 +1200,22 @@ export function rollOffer(state: GameState, rng: Rng): AddUpgradeId[] {
     const rare = rares[Math.floor(rng() * rares.length)] as AddUpgradeId;
     picks.splice(Math.min(picks.length, n - 1), 1, rare);
   }
+  // ごくまれにスーパーレア（金の札）が1つ混ざる（いちばん左に）
+  if (rng() < CONFIG.superOfferChance + CONFIG.superOfferStep * state.taxesPaid) {
+    const sup = CONFIG.superOffers[Math.floor(rng() * CONFIG.superOffers.length)] as AddUpgradeId;
+    picks.splice(0, 1, sup);
+  }
   return picks;
 }
 
 /** レア仕入れ（準備では選べず、毎日の仕入れにたまに混ざる） */
 export function isRareOffer(id: UpgradeId): boolean {
-  return CONFIG.rareOffers.includes(id);
+  return CONFIG.rareOffers.includes(id) || CONFIG.superOffers.includes(id);
+}
+
+/** スーパーレアの仕入れ（金の札） */
+export function isSuperOffer(id: UpgradeId): boolean {
+  return CONFIG.superOffers.includes(id);
 }
 
 /** 仕入れから1つ選んで袋に入れる（タダ）。その日の仕入れは終わり */
@@ -1493,6 +1503,10 @@ function resolveAutoRaw(state: GameState, reel: number, rng: Rng): AutoEvent | n
       earn(state, amount);
       return { type: 'coin', amount };
     }
+    case 'mallet':
+      // 打出の小槌：今日の売値×2（商人と重ねると足し合わせ）
+      state.priceMult += 1 * r.power;
+      return { type: 'merchant', mult: state.priceMult };
     case 'merchant':
       state.priceMult += CONFIG.merchantBonus * r.power;
       return { type: 'merchant', mult: state.priceMult };
@@ -1840,6 +1854,16 @@ function useSymbolRaw(state: GameState, reel: number, cell: number | null): numb
       return affected;
     case 'thunder':
       shapeCells(state, symbolShape(state, 'thunder')!, cell!).forEach((i) => grow(state, i, (2 + lv(state, 'thunderGod')) * r.power, affected));
+      return affected;
+    case 'blessRain':
+      // 豊穣の雨：畑全部に+1（満月と違い、いつでも使える）
+      fieldCells(state).forEach((i) => grow(state, i, r.power, affected));
+      state.today.rain.push(...fieldCells(state));
+      return affected;
+    case 'amaterasu':
+      // 天照：縦横の列いっぱいに+2
+      shapeCells(state, 'cross', cell!).forEach((i) => grow(state, i, 2 * r.power + state.charms.sunBlessing, affected));
+      state.today.sun.push(...shapeCells(state, 'cross', cell!));
       return affected;
     case 'moon':
       fieldCells(state).forEach((i) => grow(state, i, r.power + (comboOn(state, 'moonFeast') ? 1 : 0), affected));

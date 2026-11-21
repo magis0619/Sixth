@@ -1089,6 +1089,21 @@ const G = (t: string, inner: string, extra = '') => `<g transform="${t}" ${extra
 const shadow = (inner: string, op = 0.9) => `<g style="filter:brightness(0.15)" opacity="${op}">${inner}</g>`;
 /** 赤く光る目 */
 const redEye = (x: number, y: number, r = 3.2) => `<circle cx="${x}" cy="${y}" r="${r + 2.5}" fill="#ff2a2a" opacity="0.35"/><circle cx="${x}" cy="${y}" r="${r}" fill="#ff3b30" stroke="${INK}" stroke-width="1.5"/><circle cx="${x - 1}" cy="${y - 1}" r="${r * 0.35}" fill="#fff"/>`;
+// ---- スーパーレアの絵柄（金の輪・虹・きらめきで、ふつうの札と一目で分ける） ----
+const goldRing = `<circle cx="32" cy="32" r="29" fill="none" stroke="#f2b91a" stroke-width="3" opacity="0.9"/><circle cx="32" cy="32" r="29" fill="none" stroke="${INK}" stroke-width="1" opacity="0.5"/>`;
+const rainbowArc = `<path d="M6 40A26 26 0 0 1 58 40" fill="none" stroke="#ff6b6b" stroke-width="4"/><path d="M10 40A22 22 0 0 1 54 40" fill="none" stroke="#ffd84a" stroke-width="4"/><path d="M14 40A18 18 0 0 1 50 40" fill="none" stroke="#7dd36a" stroke-width="4"/><path d="M18 40A14 14 0 0 1 46 40" fill="none" stroke="#5ab0ff" stroke-width="4"/>`;
+const SUPER_ART = {
+  // 豊穣の雨：虹の上の雨雲＋金のきらめき
+  blessRain: `${goldRing}${rainbowArc}${G('translate(8 6) scale(0.75)', SYMBOL_ART.rain)}${sparkle(10, 12, 4)}${sparkle(54, 14, 3.5)}${sparkle(52, 50, 3)}`,
+  // 天照：後光の差す金の太陽
+  amaterasu: `${goldRing}<g opacity="0.9">${Array.from({ length: 12 }, (_, k) => `<path d="M32 32L${(32 + 30 * Math.cos((k * Math.PI) / 6 - 0.13)).toFixed(1)} ${(32 + 30 * Math.sin((k * Math.PI) / 6 - 0.13)).toFixed(1)}L${(32 + 30 * Math.cos((k * Math.PI) / 6 + 0.13)).toFixed(1)} ${(32 + 30 * Math.sin((k * Math.PI) / 6 + 0.13)).toFixed(1)}Z" fill="#ffe680"/>`).join('')}</g>${G('translate(6 6) scale(0.82)', SYMBOL_ART.sun)}${sparkle(54, 10, 3.5)}${sparkle(10, 54, 3)}`,
+  // 打出の小槌：赤い槌に金の帯、金貨がこぼれる
+  mallet: `${goldRing}
+    <path d="M36 30L54 52" stroke="${INK}" stroke-width="7" stroke-linecap="round"/><path d="M36 30L54 52" stroke="#c98d4e" stroke-width="4" stroke-linecap="round"/>
+    <g transform="rotate(-40 26 24)"><rect x="10" y="14" width="32" height="20" rx="6" fill="#d94a3a" stroke="${INK}" stroke-width="3"/><rect x="22" y="14" width="8" height="20" fill="#f2b91a" stroke="${INK}" stroke-width="2"/><ellipse cx="14" cy="20" rx="2.4" ry="5" fill="#ff9a8a" opacity="0.7"/></g>
+    ${G('translate(6 38) scale(0.3)', SYMBOL_ART.coin)}${G('translate(18 46) scale(0.24)', SYMBOL_ART.coin)}${sparkle(52, 12, 3.5)}`,
+};
+
 const DREAD_ART = {
   // 1：こちらを見張るカラス（目が赤い）
   dread1: `${SYMBOL_ART.crow}${redEye(46.8, 23, 3)}`,
@@ -1104,6 +1119,7 @@ const DREAD_ART = {
 
 export const ART = {
   ...DREAD_ART,
+  ...SUPER_ART,
   ...CROP_ART,
   ...SYMBOL_ART,
   ...CHARM_ART,

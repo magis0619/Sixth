@@ -13,7 +13,7 @@ import {
   takeOffer, upgradePrice, useSymbol, validTargets, type GameState,
 } from '../src/game.ts';
 
-const GROW: SymbolId[] = ['rain', 'sun', 'bee', 'thunder', 'can', 'moon', 'bigRain', 'bigSun', 'raijin', 'queenBee'];
+const GROW: SymbolId[] = ['rain', 'sun', 'bee', 'thunder', 'can', 'moon', 'bigRain', 'bigSun', 'raijin', 'queenBee', 'blessRain', 'amaterasu'];
 const PESTS: SymbolId[] = ['crow', 'bug', 'weed', 'tanuki', 'frost', 'mole', 'locust'];
 const DIRS: [number, number][] = [[1, 0], [0, 1], [1, 1], [1, -1]];
 
