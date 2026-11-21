@@ -1,0 +1,1018 @@
+/* ---- 演出 ---- */
+#fx {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 40;
+  overflow: hidden;
+  /* 演出の粒をたくさん足しても、配置の計算をこの層の中だけで済ませる（画面いっぱいなので座標は変わらない） */
+  contain: strict;
+}
+
+.fx {
+  position: fixed;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.fx-text {
+  font-weight: 700;
+  color: #fff;
+  /* 畑の土の上でも読めるよう、太い縁取り（縁は文字の外側だけに出る） */
+  -webkit-text-stroke: 0.22em var(--ink);
+  paint-order: stroke fill;
+  text-shadow: 0 0.12em 0 var(--ink), 0 0 0.5em rgba(0, 0, 0, 0.35);
+  white-space: nowrap;
+}
+
+.fx-text.gold {
+  color: #ffd84a;
+}
+
+.fx-text.bad {
+  color: #ff8a7a;
+}
+
+.fx-text.good {
+  color: #b8f27a;
+}
+
+.fx-text.combo {
+  color: #ff7ad9;
+}
+
+.fx-flash {
+  inset: 0;
+  transform: none;
+  width: 100vw;
+  height: 100vh;
+  left: 0;
+  top: 0;
+}
+
+.fx-fly {
+  font-size: 1.75rem;
+}
+
+.art {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.14em;
+  overflow: visible;
+}
+
+@keyframes pulse {
+  50% {
+    transform: scale(1.04);
+  }
+}
+
+@keyframes bob {
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes target {
+  50% {
+    transform: scale(1.04);
+  }
+}
+
+@keyframes shimmer {
+  50% {
+    filter: brightness(1.15);
+  }
+}
+
+@keyframes shiver {
+  25% {
+    transform: translateX(-1px);
+  }
+  75% {
+    transform: translateX(1px);
+  }
+}
+
+@keyframes reel-in {
+  from {
+    transform: scale(0) rotate(-20deg);
+    opacity: 0;
+  }
+}
+
+@keyframes modal-in {
+  from {
+    transform: scale(0.7);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .stat {
+    font-size: 1.125rem;
+  }
+}
+
+/* 横長の画面：畑とスロットを横に並べる */
+@media (min-width: 860px) and (orientation: landscape) {
+  #app {
+    max-width: 960px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto auto 1fr;
+    column-gap: 24px;
+    align-items: center;
+  }
+  .hud,
+  .status,
+  .hint {
+    grid-column: 1 / -1;
+  }
+  .farm {
+    grid-column: 1;
+    grid-row: 4;
+  }
+  .machine {
+    grid-column: 2;
+    grid-row: 4;
+    margin-top: 0;
+    --reel-h: clamp(90px, 17vh, 140px);
+    padding: 14px 18px 18px;
+    gap: 14px;
+  }
+  .machine .reel {
+    max-width: 150px;
+  }
+  .machine .tag {
+    font-size: 0.875rem;
+  }
+  .machine .spin {
+    font-size: 1.75rem;
+    padding: 14px;
+  }
+  .tabs,
+  .sheet {
+    max-width: 960px;
+  }
+}
+
+/* 使えない出目は役割の色を消して灰色に（緑のままだと使えそうに見える） */
+.reel.dead .tag {
+  background: #8b7a62;
+}
+
+/* 背の低い画面（ブラウザの帯が大きいときなど）も、並びは同じ。収まらない分は畑のマスを小さくする（fitLayout） */
+
+/* ---- 注文の札 ---- */
+.order {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--cloth);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 0.875rem;
+  box-shadow: 0 2px 0 rgba(110, 66, 36, 0.3), inset 0 0 0 2px #fff;
+}
+
+.order[hidden] {
+  display: none;
+}
+
+.order-ico {
+  font-size: 1.375rem;
+  display: flex;
+}
+
+.order-reward {
+  font-weight: 700;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  color: #6b4a00;
+  background: var(--gold-soft);
+  border-radius: 8px;
+  padding: 0 8px;
+}
+
+.order.done {
+  background: #f0f9e6;
+  box-shadow: 0 2px 0 #2f7a22, inset 0 0 0 2px var(--role-manual);
+}
+
+/* ---- 作物の種類と相性 ---- */
+.badge-kind {
+  position: absolute;
+  top: 5%;
+  left: 5%;
+  font-size: max(0.875rem, calc(var(--cell) * 0.17));
+  display: flex;
+  background: rgba(255, 250, 240, 0.85);
+  border-radius: 50%;
+  padding: 2px;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+}
+
+.price small {
+  display: block;
+  font-size: 0.75em;
+  line-height: 1;
+  color: #a1145a;
+}
+
+/* ---- お邪魔：雑草・霜 ---- */
+.plot.weedy {
+  background-color: #5d4a22;
+}
+
+.plot .pull {
+  position: absolute;
+  bottom: 5%;
+  font-size: max(0.875rem, calc(var(--cell) * 0.11));
+  font-weight: 700;
+  background: rgba(255, 250, 240, 0.9);
+  border-radius: 8px;
+  padding: 0 6px;
+}
+
+.plot.frozen .crop {
+  filter: saturate(0.4) brightness(1.1);
+}
+
+.plot .ice {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.55) 0 18%, transparent 19% 45%, rgba(255, 255, 255, 0.35) 46% 52%, transparent 53%),
+    rgba(190, 228, 255, 0.55);
+  box-shadow: inset 0 0 0 3px #bfe3ff;
+  pointer-events: none;
+}
+
+.badge-frost {
+  position: absolute;
+  top: 5%;
+  right: 5%;
+  z-index: 2;
+  display: flex;
+  white-space: nowrap;
+  align-items: center;
+  gap: 2px;
+  font-size: max(0.875rem, calc(var(--cell) * 0.11));
+  font-weight: 700;
+  color: #1f5f8f;
+  background: #eef8ff;
+  border-radius: 8px;
+  padding: 1px 6px 1px 3px;
+}
+
+/* 週替わりの品 */
+.item {
+  position: relative;
+}
+
+.item.weekly {
+  box-shadow: 0 3px 0 rgba(110, 66, 36, 0.3), inset 0 0 0 2px var(--tier-uncommon);
+}
+
+/* ---- スロットの演出（リーチ・カットイン・フリーズ） ---- */
+.modal .secondary small {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  opacity: 0.7;
+}
+
+/* 回転中は筐体が細かく震える */
+.machine.rumble {
+  animation: rumble 0.09s linear infinite;
+}
+
+@keyframes rumble {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(0.7px, -0.5px); }
+  50% { transform: translate(-0.6px, 0.6px); }
+  75% { transform: translate(0.5px, 0.4px); }
+  100% { transform: translate(0, 0); }
+}
+
+/* リーチ：残りのリールに光を当て、ほかは暗くする */
+.reel {
+  position: relative;
+}
+
+.machine.spotlight .reel:not(.reach) .window {
+  filter: brightness(0.4) saturate(0.6);
+  transition: filter 0.2s;
+}
+
+.reel.reach .window {
+  animation: reach-pulse 0.32s ease-in-out infinite;
+}
+
+.reel.reach::before {
+  content: '';
+  position: absolute;
+  left: -30%;
+  right: -30%;
+  top: -60px;
+  bottom: 0;
+  background: linear-gradient(rgba(255, 250, 200, 0.7), rgba(255, 250, 200, 0));
+  clip-path: polygon(42% 0, 58% 0, 100% 100%, 0 100%);
+  pointer-events: none;
+  z-index: 4;
+  animation: spot-in 0.25s ease-out;
+}
+
+@keyframes reach-pulse {
+  0%, 100% { box-shadow: inset 0 0 0 4px #ff2a2a, 0 0 0 3px #ff2a2a, 0 0 0 3px var(--ink); }
+  50% { box-shadow: inset 0 0 0 4px #ffd0d0, 0 0 0 5px #ff2a2a, 0 0 0 3px var(--ink); }
+}
+
+@keyframes spot-in {
+  from { opacity: 0; transform: scaleX(0.3); }
+}
+
+/* カットイン：斜めの帯にキャラと期待度 */
+.cutin {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  pointer-events: none;
+  background: rgba(20, 8, 0, 0.35);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.cutin-band {
+  width: 100%;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background:
+    repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.18) 0 14px, transparent 14px 34px),
+    var(--cutin);
+  box-shadow: 0 0 0 4px #fff, 0 0 0 8px var(--cutin), 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.cutin.lv-0 { --cutin: #2f6fe8; }
+.cutin.lv-1 { --cutin: #1fa553; }
+.cutin.lv-2 { --cutin: #e3262b; }
+.cutin.lv-3 { --cutin: linear-gradient(90deg, #ff3b3b, #ffb321, #f6ff3b, #3bff6f, #3bc9ff, #8a5bff, #ff3bd4); }
+.cutin.lv-3 .cutin-band { box-shadow: 0 0 0 4px #fff, 0 0 0 3px var(--ink); }
+
+.cutin-face {
+  font-size: 84px;
+  line-height: 1;
+  background: #fff;
+  border-radius: 50%;
+  padding: 6px;
+  box-shadow: 0 0 0 4px var(--wood-darker, #3b1a0e);
+  transform: rotate(-8deg);
+}
+
+.cutin-band b {
+  font-size: 2.6rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.05em;
+  -webkit-text-stroke: 2px #2a1000;
+  text-shadow: 0 4px 0 #2a1000;
+  transform: skewX(-10deg);
+}
+
+.cutin.lv-2 .cutin-band b,
+.cutin.lv-3 .cutin-band b {
+  animation: pulse 0.3s ease-in-out infinite;
+}
+
+/* フリーズ：暗転と、ブラウン管が消えるような白い線 */
+
+/* 割れた筐体のガラス */
+.crack {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 6;
+  fill: none;
+  stroke: #fff;
+  stroke-width: 2.2;
+  stroke-linejoin: bevel;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.7));
+  opacity: 0.85;
+}
+
+.crack polyline {
+  vector-effect: non-scaling-stroke;
+}
+
+.crack circle {
+  fill: #fff;
+}
+
+/* フリーズ後：筐体と出目が虹色に光る */
+.machine.rainbow {
+  animation: rainbow-glow 1.2s linear infinite;
+}
+
+@keyframes rainbow-glow {
+  0% { box-shadow: 0 5px 0 #7d2a14, inset 0 0 0 4px #ff3b3b, 0 0 0 3px var(--ink); }
+  20% { box-shadow: 0 5px 0 #7d2a14, inset 0 0 0 4px #ffb321, 0 0 0 3px var(--ink); }
+  40% { box-shadow: 0 5px 0 #7d2a14, inset 0 0 0 4px #3bff6f, 0 0 0 3px var(--ink); }
+  60% { box-shadow: 0 5px 0 #7d2a14, inset 0 0 0 4px #3bc9ff, 0 0 0 3px var(--ink); }
+  80% { box-shadow: 0 5px 0 #7d2a14, inset 0 0 0 4px #8a5bff, 0 0 0 3px var(--ink); }
+  100% { box-shadow: 0 5px 0 #7d2a14, inset 0 0 0 4px #ff3b3b, 0 0 0 3px var(--ink); }
+}
+
+.reel.rainbow-sym .window {
+  background: linear-gradient(120deg, #ffd6d6, #fff1c4, #e2ffd0, #d0f3ff, #e6d8ff, #ffd6f3, #ffd6d6);
+  background-size: 300% 100%;
+  animation: rainbow-bg 1.5s linear infinite;
+}
+
+.reel.rainbow-sym .cell-sym {
+  animation: rainbow-hue 1.2s linear infinite;
+}
+
+@keyframes rainbow-bg {
+  to { background-position: 300% 0; }
+}
+
+@keyframes rainbow-hue {
+  0% { filter: hue-rotate(0deg) drop-shadow(0 0 6px #fff); }
+  100% { filter: hue-rotate(360deg) drop-shadow(0 0 6px #fff); }
+}
+
+/* 演出控えめ：揺れ・点滅を止める */
+.calm .machine.rumble,
+.calm .machine.rainbow,
+.calm .reel.reach .window,
+.calm .cutin-band b,
+.calm .reel.rainbow-sym .cell-sym,
+.calm .reel.rainbow-sym .window {
+  animation: none;
+}
+
+/* ---- 陣取り：畑の広さ・道具・特別なマス・出目の形 ---- */
+.plot.off {
+  display: none;
+}
+
+/* 単品（列に入らない実）は半値なので控えめに */
+
+/* 道具：木の台に置いたように見せる */
+.plot.tool {
+  background-color: #b98a55;
+  background-image: repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.08) 0 2px, transparent 2px 12px);
+  box-shadow: inset 0 0 0 3px #8a5a33, inset 0 -6px 0 rgba(0, 0, 0, 0.15);
+}
+
+.plot.tool .crop {
+  font-size: calc(var(--cell) * 0.55);
+}
+
+.tool-name {
+  position: absolute;
+  bottom: 4%;
+  font-size: max(0.875rem, calc(var(--cell) * 0.1));
+  font-weight: 700;
+  color: #fff;
+  background: rgba(61, 51, 38, 0.7);
+  border-radius: 8px;
+  padding: 0 4px;
+  white-space: nowrap;
+}
+
+/* 特別なマス：土の色を変え、隅に印 */
+.plot.tile-compost {
+  background-color: #4b2c14;
+  box-shadow: inset 0 0 0 3px #c9a227;
+}
+
+.plot.tile-water {
+  background-color: #5a6f7a;
+  box-shadow: inset 0 0 0 3px #5aa6e0;
+}
+
+/* 出目の形の範囲（指しているマスを中心に） */
+.plot.preview {
+  outline: 4px solid #fff;
+  outline-offset: -4px;
+  filter: brightness(1.25);
+}
+
+.plot.preview::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(120, 220, 255, 0.28);
+  pointer-events: none;
+}
+
+.hint.place {
+  background: #e7f6d8;
+  color: #2f5a14;
+  font-weight: 700;
+}
+
+/* ---- 収穫・フィーバーの演出（第2弾） ---- */
+.hitstop *,
+.hitstop *::before,
+.hitstop *::after {
+  animation-play-state: paused !important;
+}
+
+.fx-roll {
+  display: flex;
+  align-items: center;
+  font-weight: 700;
+  color: #ffd84a;
+  -webkit-text-stroke: 2px var(--ink);
+  paint-order: stroke fill;
+  text-shadow: 0 4px 0 var(--ink);
+  z-index: 3;
+}
+
+.roll-digit {
+  display: inline-block;
+  height: 1.3em;
+  line-height: 1.3em;
+  width: 0.8em;
+  text-align: center;
+  /* 上下だけ切る（左右は縁取りと太い数字がはみ出しても切らない） */
+  clip-path: inset(0 -0.3em);
+}
+
+.roll-strip {
+  display: flex;
+  flex-direction: column;
+}
+
+.roll-strip i {
+  font-style: normal;
+  height: 1.3em;
+}
+
+.roll-prefix,
+.roll-unit {
+  font-size: 0.6em;
+  margin: 0 0.1em;
+}
+
+.fx-mults {
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+}
+
+.mult-chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  background: #ff5fa2;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.125rem;
+  border-radius: 8px;
+  padding: 2px 8px;
+  box-shadow: 0 3px 0 #b8336f, 0 0 0 2px #fff;
+}
+
+.mult-chip small {
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.mult-chip.total {
+  background: #ffd84a;
+  color: #5a3d00;
+  font-size: 1.375rem;
+  box-shadow: 0 3px 0 #a87a00, 0 0 0 2px #fff, 0 0 0 3px var(--ink);
+}
+
+.fx-speedlines {
+  inset: 0;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  transform: none;
+  background: repeating-conic-gradient(from 0deg at 50% 45%, var(--line) 0deg 2deg, transparent 2deg 9deg);
+  -webkit-mask-image: radial-gradient(circle at 50% 45%, transparent 0 22%, #000 55%);
+  mask-image: radial-gradient(circle at 50% 45%, transparent 0 22%, #000 55%);
+  animation: speed-spin 0.35s linear infinite;
+  z-index: 1;
+}
+
+@keyframes speed-spin {
+  to { transform: rotate(3deg) scale(1.02); }
+}
+
+.fx-scan {
+  inset: 0;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  transform: none;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.28) 0 2px, transparent 2px 4px);
+  mix-blend-mode: multiply;
+  z-index: 2;
+}
+
+.fx-slam {
+  font-weight: 700;
+  color: #ffd84a;
+  -webkit-text-stroke: 3px #7a1500;
+  paint-order: stroke fill;
+  text-shadow: 0 6px 0 #7a1500, 0 0 30px #ff7a00;
+  letter-spacing: 0.04em;
+  z-index: 4;
+}
+
+.fx-slam.bad {
+  color: #d8c8ff;
+  -webkit-text-stroke-color: #1a0030;
+  text-shadow: 0 6px 0 #1a0030, 0 0 30px #8000ff;
+}
+
+/* フィーバー中：筐体の枠が燃える */
+.machine.burning {
+  animation: burn 0.22s ease-in-out infinite alternate;
+}
+
+.machine.burning::after {
+  content: '';
+  position: absolute;
+  left: -6px;
+  right: -6px;
+  top: -26px;
+  height: 40px;
+  pointer-events: none;
+  background:
+    radial-gradient(14px 26px at 8% 100%, #ffd84a, #ff7a00 55%, transparent 70%),
+    radial-gradient(16px 32px at 22% 100%, #ffe680, #ff5a00 55%, transparent 70%),
+    radial-gradient(12px 22px at 38% 100%, #ffd84a, #ff7a00 55%, transparent 70%),
+    radial-gradient(18px 34px at 54% 100%, #fff1a8, #ff5a00 55%, transparent 70%),
+    radial-gradient(13px 24px at 70% 100%, #ffd84a, #ff7a00 55%, transparent 70%),
+    radial-gradient(16px 30px at 86% 100%, #ffe680, #ff5a00 55%, transparent 70%),
+    radial-gradient(12px 22px at 97% 100%, #ffd84a, #ff7a00 55%, transparent 70%);
+  animation: flames 0.18s steps(2) infinite;
+  filter: blur(0.5px);
+}
+
+@keyframes burn {
+  from { box-shadow: 0 5px 0 #7d2a14, inset 0 0 0 4px #ffb321, 0 0 0 3px var(--ink); }
+  to { box-shadow: 0 5px 0 #7d2a14, inset 0 0 0 4px #ffe680, 0 0 0 3px var(--ink); }
+}
+
+@keyframes flames {
+  0% { transform: scaleY(1) translateY(0); }
+  50% { transform: scaleY(1.25) translateY(-4px); }
+  100% { transform: scaleY(0.9) translateY(2px); }
+}
+
+.calm .machine.burning,
+.calm .machine.burning::after {
+  animation: none;
+}
+
+.fx-ghost {
+  line-height: 1;
+  filter: drop-shadow(0 0 8px #ffe680);
+  animation: ghost-shiver 0.2s linear infinite;
+}
+
+/* 軽量化：margin を動かすと毎コマ配置と描き直しが走るので、translate で震わせる */
+@keyframes ghost-shiver {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 1px 0; }
+}
+
+/* ---- 演出（第3弾）：空・季節・実り・天気・年貢・クリア・枯れ畑 ---- */
+/* 空と草の色は body（背景）と丘だけが使う。inherits: false にして、時間帯が変わる遷移で画面全体を毎コマ計算し直さない */
+@property --sky { syntax: '<color>'; inherits: false; initial-value: #bfe3f7; }
+@property --sky2 { syntax: '<color>'; inherits: false; initial-value: #e3f4fc; }
+@property --grass { syntax: '<color>'; inherits: false; initial-value: #8fcf5c; }
+@property --grass2 { syntax: '<color>'; inherits: false; initial-value: #84c653; }
+
+body, .scene-hill { --sky: #bfe3f7; --sky2: #e3f4fc; --grass: #8fcf5c; --grass2: #84c653; }
+:root[data-time='morning'] :is(body, .scene-hill) { --sky: #ffd2b0; --sky2: #fff0dc; }
+:root[data-time='evening'] :is(body, .scene-hill) { --sky: #ff9a6a; --sky2: #ffd0a0; }
+:root[data-time='night'] :is(body, .scene-hill) { --sky: #5a6aa8; --sky2: #8d9ccc; }
+:root[data-season='summer'] :is(body, .scene-hill) { --grass: #6cc23a; --grass2: #58ad2a; }
+:root[data-season='autumn'] :is(body, .scene-hill) { --grass: #c9a64e; --grass2: #b08a3a; }
+:root[data-season='winter'] :is(body, .scene-hill) { --grass: #dbe7ee; --grass2: #c4d4de; }
+
+#ambient {
+  position: fixed;
+  inset: 0;
+  z-index: 13;
+  opacity: 0.85;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+#ambient i {
+  position: absolute;
+  top: -20px;
+  width: 10px;
+  height: 7px;
+  animation: drift linear infinite;
+}
+
+#ambient.spring i { background: #ffc4dc; border-radius: 60% 0 60% 0; }
+#ambient.autumn i { background: #e0782c; border-radius: 0 70% 0 70%; width: 12px; height: 9px; }
+#ambient.winter i { background: #fff; border-radius: 50%; width: 7px; height: 7px; box-shadow: 0 0 4px #fff; }
+
+@keyframes drift {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  50% { transform: translate(30px, 55vh) rotate(180deg); }
+  100% { transform: translate(-10px, 110vh) rotate(360deg); }
+}
+
+.calm #ambient { display: none; }
+
+/* 実った作物：ときどきぷるぷる揺れて呼び、キラリと光る */
+.plot.ripe .crop {
+  animation: bob 1.2s ease-in-out infinite, call 3.2s ease-in-out infinite;
+}
+
+.plot:nth-child(2n).ripe .crop { animation-delay: 0s, 0.8s; }
+.plot:nth-child(3n).ripe .crop { animation-delay: 0s, 1.7s; }
+.plot:nth-child(5n).ripe .crop { animation-delay: 0s, 2.4s; }
+
+@keyframes call {
+  0%, 82%, 100% { rotate: 0deg; }
+  85% { rotate: -9deg; }
+  88% { rotate: 8deg; }
+  91% { rotate: -6deg; }
+  94% { rotate: 4deg; }
+}
+
+.plot.ripe::after {
+  content: '';
+  position: absolute;
+  top: 12%;
+  right: 16%;
+  width: 14px;
+  height: 14px;
+  background: radial-gradient(circle, #fff 0 18%, transparent 20%), conic-gradient(from 45deg, transparent 0 10%, #fff 12% 13%, transparent 15% 35%, #fff 37% 38%, transparent 40% 60%, #fff 62% 63%, transparent 65% 85%, #fff 87% 88%, transparent 90%);
+  border-radius: 50%;
+  pointer-events: none;
+  animation: twinkle 2.6s ease-in-out infinite;
+}
+
+.plot:nth-child(2n).ripe::after { animation-delay: 1.1s; }
+.plot:nth-child(3n).ripe::after { animation-delay: 1.9s; }
+
+@keyframes twinkle {
+  0%, 70%, 100% { opacity: 0; transform: scale(0.3) rotate(0deg); }
+  80% { opacity: 1; transform: scale(1.2) rotate(45deg); }
+  90% { opacity: 0; transform: scale(0.6) rotate(90deg); }
+}
+
+/* 実った瞬間：ポンッと弾けて光の輪が広がる */
+.plot.just-ripe .crop {
+  animation: pon 0.5s cubic-bezier(.3,1.8,.5,1) !important;
+}
+
+.plot.just-ripe::before {
+  content: '';
+  position: absolute;
+  inset: 10%;
+  border-radius: 50%;
+  border: 4px solid #fff6b0;
+  animation: ring 0.6s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes pon {
+  0% { transform: scale(0.4); }
+  50% { transform: scale(1.4); }
+  100% { transform: scale(1); }
+}
+
+@keyframes ring {
+  from { transform: scale(0.4); opacity: 1; }
+  to { transform: scale(1.5); opacity: 0; }
+}
+
+.calm .plot.ripe .crop { animation: none; }
+.calm .plot.ripe::after { display: none; }
+
+/* 雨・太陽・蜂 */
+.fx-rainfall {
+  transform: none;
+  border-radius: 8px;
+  background: repeating-linear-gradient(105deg, transparent 0 9px, rgba(120, 190, 255, 0.85) 9px 11px, transparent 11px 20px);
+  background-size: 40px 40px;
+  animation: rain-fall 0.25s linear infinite;
+}
+
+@keyframes rain-fall {
+  from { background-position: 0 0; }
+  to { background-position: -10px 40px; }
+}
+
+.fx-sunbeam {
+  transform: none;
+  transform-origin: 50% 0;
+  background: linear-gradient(rgba(255, 246, 170, 0.1), rgba(255, 236, 120, 0.75) 60%, rgba(255, 246, 170, 0.35));
+  clip-path: polygon(20% 0, 80% 0, 100% 100%, 0 100%);
+  mix-blend-mode: screen;
+}
+
+.fx-bee {
+  font-size: 1.75rem;
+}
+
+/* 飛ぶ動き（translate）と重ならないよう、羽音の揺れは中の絵に */
+.fx-bee > * {
+  animation: buzz 0.12s linear infinite;
+}
+
+@keyframes buzz {
+  50% { translate: 0 -3px; }
+}
+
+/* 年貢が払えそうにない：画面のふちが赤く脈打つ */
+html.tax-danger body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 14;
+  box-shadow: inset 0 0 70px 24px rgba(230, 0, 0, 0.75);
+  animation: heart-vignette 1.1s ease-in-out infinite;
+}
+
+@keyframes heart-vignette {
+  0%, 40%, 100% { opacity: 0.55; }
+  10% { opacity: 1; }
+  25% { opacity: 0.9; }
+}
+
+.calm.tax-danger body::after { animation: none; opacity: 0.6; }
+
+/* 年貢の役人 */
+.official {
+  position: fixed;
+  right: 4%;
+  top: 22%;
+  z-index: 31;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+
+.official-body {
+  font-size: 7rem;
+  line-height: 1;
+  filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.3));
+}
+
+.official-say {
+  order: -1;
+  background: #fff;
+  border-radius: 12px;
+  padding: 4px 10px;
+  font-weight: 700;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.2);
+  margin-bottom: 4px;
+}
+
+.official.angry .official-say {
+  background: #ffe0dc;
+  color: #b0281a;
+}
+
+/* 花火 */
+.fx-rocket {
+  width: 5px;
+  height: 14px;
+  border-radius: 4px;
+  box-shadow: 0 10px 12px rgba(255, 220, 150, 0.8);
+}
+
+.fx-spark {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+/* ゲームオーバー：畑が枯れる */
+.field.withered .plot {
+  filter: grayscale(0.85) sepia(0.6) brightness(0.75);
+  transition: filter 1.4s;
+}
+
+.field.withered .crop {
+  transition: transform 1.4s ease-in;
+  transform: rotate(24deg) translateY(14%) scale(0.8);
+  animation: none !important;
+}
+
+/* 朝・夕方・夜は画面全体に空の色をかぶせる（UIは読める濃さに抑える） */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 13;
+  /* 重ね方の計算（multiply）は画面全体を毎フレーム合成し直すので重い。薄い色を重ねるだけにする */
+  background: transparent;
+  /* 軽量化：画面いっぱいなので色をゆっくり変えない */
+}
+
+:root[data-time='morning'] body::before { background: rgba(255, 200, 170, 0.12); }
+:root[data-time='evening'] body::before { background: rgba(255, 150, 80, 0.12); }
+:root[data-time='night'] body::before { background: rgba(70, 90, 170, 0.1); }
+
+/* マスの中身は押せない（押した要素が描き直しで入れ替わってもクリックがマスに届くように） */
+.plot > * {
+  pointer-events: none;
+}
+
+/* 育ち具合：段階の名前と、実るまでの残りを文字で */
+
+.pips {
+  bottom: 5%;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px 5px;
+  border-radius: 999px;
+}
+
+/* 特別なマス：土の色だけでなく名前の札を出す */
+
+.plot .empty small {
+  display: block;
+  font-size: 0.72em;
+  opacity: 0.9;
+}
+
+.plot.tile-compost .empty,
+.plot.tile-water .empty {
+  font-size: max(0.875rem, calc(var(--cell) * 0.16));
+  font-weight: 700;
+  color: #fff;
+}
+
+.plot.tile-compost {
+  background-color: #6a3f1c;
+  background-image: radial-gradient(circle, rgba(255, 220, 120, 0.35) 0 2px, transparent 3px);
+  background-size: 14px 14px;
+}
+
+.plot.tile-water {
+  background-color: #4f86a8;
+  background-image: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.22) 0 2px, transparent 2px 9px);
+}
+
+/* 作物が植わっているマスでは、特別なマスの札を左の中段へ（左上は作物の種類札） */
+
+/* 特別なマス（作物・道具があるときは右下に小さな印、空きマスは中央に名札） */
+
+.tile-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  font-size: max(0.875rem, calc(var(--cell) * 0.17));
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.55);
+  white-space: nowrap;
+}
+
+.tile-label small {
+  font-size: 0.66em;
+  font-weight: 700;
+}
+
+.tile-ico {
+  font-size: 1.9em;
+  line-height: 1;
+}
+

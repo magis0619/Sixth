@@ -139,3 +139,7 @@ export function upgradeEffect(id: UpgradeId): string {
   // 袋の絵と「今→買ったあと」の数字だけで、出やすさの変化を見せる
   return `<span class="odds">${art('seed')} ${bagPct(state.bag, symbol)}% → <b>${bagPct(after, symbol)}%</b></span>`;
 }
+
+/** 売値の倍率の印：3つ並んだ点（列）と1つの点（単品） */
+export const MARK_LINE = '<svg class="mk" viewBox="0 0 26 10" aria-hidden="true"><path d="M4 5H22" stroke="currentColor" stroke-width="2.4"/><circle cx="4" cy="5" r="3.4" fill="currentColor"/><circle cx="13" cy="5" r="3.4" fill="currentColor"/><circle cx="22" cy="5" r="3.4" fill="currentColor"/></svg>';
+export const MARK_SINGLE = '<svg class="mk" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="3.4" fill="currentColor"/></svg>';

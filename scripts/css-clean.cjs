@@ -1,9 +1,12 @@
-// 使い方：node scripts/css-clean.cjs（src/style.css を書き換える）。前後で SEED=1 DUMPSTYLE=フォルダ の画面の点検を取り、計算後のスタイルが同じか比べること
+// 使い方：node scripts/css-clean.cjs（src/style.css が読み込む src/styles/*.css を、読み込む順に1つの並びとして整理して書き換える）。前後で SEED=1 DUMPSTYLE=フォルダ の画面の点検を取り、計算後のスタイルが同じか比べること
 // CSS の整理：1) どこにも出てこないクラス・id だけを指す規則を消す 2) 後ろに同じセレクタ・同じ性質があって、絶対に効かない宣言を消す
 const fs = require('fs');
 const postcss = require('postcss');
-const css = fs.readFileSync('src/style.css', 'utf8');
-const files = ['index.html', ...fs.readdirSync('src').filter((f) => f.endsWith('.ts')).map((f) => 'src/' + f), ...fs.readdirSync('src/ui').filter((f) => f.endsWith('.ts')).map((f) => 'src/ui/' + f)];
+const path = require('path');
+// 読み込む順（style.css の @import の順）。後ろの決まりが前を上書きするので、この順のまま1つの並びとして扱う
+const cssFiles = [...fs.readFileSync('src/style.css', 'utf8').matchAll(/@import '\.\/([^']+)'/g)].map((m) => path.join('src', m[1]));
+const tsFiles = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? tsFiles(path.join(dir, e.name)) : e.name.endsWith('.ts') ? [path.join(dir, e.name)] : []));
+const files = ['index.html', ...tsFiles('src')];
 const code = files.map((f) => fs.readFileSync(f, 'utf8')).join('\n');
 // クラスが生きているか：そのまま出てくる、または「前半-${」の形で組み立てられている
 const alive = new Map();
@@ -20,7 +23,9 @@ function selAlive(sel) {
   const need = [...outside.matchAll(/[.#]([a-zA-Z_][\w-]*)/g)].map((m) => m[1]);
   return need.every(isAlive) || toks.length === 0;
 }
-const root = postcss.parse(css);
+const roots = cssFiles.map((f) => postcss.parse(fs.readFileSync(f, 'utf8')));
+// 全部のファイルをまとめて歩く（順番は読み込む順）
+const root = { walkRules: (fn) => roots.forEach((r) => r.walkRules(fn)), walkAtRules: (fn) => roots.forEach((r) => r.walkAtRules(fn)) };
 let removedSel = 0, removedRules = 0, removedDecl = 0;
 // 1) 死んだセレクタ
 root.walkRules((rule) => {
@@ -52,5 +57,5 @@ for (let i = rules.length - 1; i >= 0; i--) {
 // 中身が空になった規則・@media を消す
 root.walkRules((r) => { if (!r.nodes.some((n) => n.type === 'decl')) { if (!r.nodes.length || r.nodes.every((n) => n.type === 'comment')) { r.remove(); removedRules++; } } });
 root.walkAtRules((a) => { if (a.nodes && !a.nodes.some((n) => n.type !== 'comment')) a.remove(); });
-fs.writeFileSync('src/style.css', root.toString());
+cssFiles.forEach((f, i) => fs.writeFileSync(f, roots[i].toString()));
 console.log({ removedSel, removedRules, removedDecl });

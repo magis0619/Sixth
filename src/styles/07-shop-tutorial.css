@@ -1,0 +1,621 @@
+/* ==== ショップ：屋台。畑・足す・消すを1つの画面に、日よけつきの見出しで分ける ==== */
+.stall {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stall-sec {
+  position: relative;
+  background: #fffdf7;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 3px 0 #e2d2ad;
+}
+
+/* 屋台の日よけ（赤白の縞） */
+.awning {
+  height: 14px;
+  background: repeating-linear-gradient(90deg, #e0453a 0 22px, #fff 22px 44px);
+  border-bottom: 2px solid rgba(0, 0, 0, 0.08);
+}
+
+.stall-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 8px 12px 2px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #5e3d22;
+}
+
+.stall-head .tab-ico {
+  font-size: 1.375rem;
+  align-self: center;
+}
+
+.stall-head small {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #8a7a5c;
+}
+
+.stall .shop {
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+
+.stall .shop .item {
+  grid-template-columns: 52px 1fr 72px;
+  border-radius: 0;
+  background: transparent;
+  border-bottom: 1px dashed #ead9b0;
+  padding: 10px 10px 10px 8px;
+}
+
+.stall .shop .item:last-child {
+  border-bottom: none;
+}
+
+.stall .shop .item .ico {
+  font-size: 2.6rem;
+}
+
+.stall .shop .item .name {
+  font-size: 1rem;
+}
+
+.stall-empty {
+  margin: 10px 12px 14px;
+  text-align: center;
+  font-weight: 700;
+  color: #5aae35;
+}
+
+/* 市は画面の上の方まで開く（上にすき間を少しだけ残して、引き出しだと分かるように）。
+   タブを切り替えても高さが変わらないよう、高さを固定する */
+.sheet[data-pane='shop'] {
+  height: calc(100dvh - 20px - env(safe-area-inset-top));
+  max-height: none;
+}
+
+
+/* リーチの呼び込み：何がそろいそうかを筐体の上に札で出す */
+.machine > .reach-call {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  z-index: 6;
+  translate: -50% -60%;
+  white-space: nowrap;
+  padding: 5px 16px;
+  border-radius: 8px;
+  background: #c8102e;
+  color: #fff6c8;
+  font-weight: 700;
+  font-size: 1rem;
+  box-shadow: 0 3px 0 #7a0a1c, 0 0 0 3px var(--ink);
+  animation: reach-call-in 0.3s cubic-bezier(0.2, 1.6, 0.4, 1) both, reach-call-beat 0.32s 0.3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.machine > .reach-call .art {
+  font-size: 1.4em;
+  vertical-align: -0.28em;
+}
+
+@keyframes reach-call-in {
+  from { scale: 0.3; opacity: 0; }
+}
+
+@keyframes reach-call-beat {
+  50% { scale: 1.06; }
+}
+
+.machine > .reach-call {
+  text-align: center;
+  line-height: 1.25;
+}
+
+.machine > .reach-call small {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #ffe08a;
+}
+
+/* 作戦が変わる品：目立つ札と縁 */
+.shop .item.pivot {
+  background: linear-gradient(90deg, #fff4d6, #fffdf7 70%);
+  box-shadow: inset 4px 0 0 #e8a33a;
+}
+
+.pivot-tag {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #fff;
+  background: #e8a33a;
+  border-radius: 8px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+
+/* 倍率の札：印と数字だけ（文字は使わない） */
+.badge-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: max(0.875rem, calc(var(--cell) * 0.14));
+}
+
+.badge-line .mk {
+  height: 0.62em;
+  width: auto;
+}
+
+/* 特別なマス：絵と数字だけ */
+.tile-label {
+  font-size: max(1rem, calc(var(--cell) * 0.22));
+}
+
+.tile-label .tile-ico {
+  font-size: 1.5em;
+}
+
+/* ショップの出やすさ：袋の絵と「今→買ったあと」 */
+.odds {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.odds .art {
+  font-size: 1.15em;
+}
+
+.odds b {
+  color: #357520;
+}
+
+/* 植える前の列の予告：ここに植えると列になる */
+.plot .line-hint {
+  position: absolute;
+  bottom: 6%;
+  left: 50%;
+  translate: -50% 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 7px;
+  border-radius: 8px;
+  background: var(--pink);
+  color: #fff;
+  font-weight: 700;
+  font-size: max(0.875rem, calc(var(--cell) * 0.15));
+  box-shadow: 0 2px 0 #b8336f;
+  white-space: nowrap;
+  animation: line-hint-bob 0.9s ease-in-out infinite;
+}
+
+.plot .line-hint.same {
+  background: #e8a33a;
+  box-shadow: 0 2px 0 #b07415;
+}
+
+.plot .line-hint .mk {
+  height: 0.62em;
+  width: auto;
+}
+
+@keyframes line-hint-bob {
+  50% { translate: -50% -3px; }
+}
+
+/* ==== チュートリアル：吹き出しと、光らせる場所 ==== */
+.coach {
+  position: fixed;
+  left: 50%;
+  top: calc(84px + env(safe-area-inset-top));
+  translate: -50% 0;
+  z-index: 40;
+  width: min(92vw, 420px);
+  padding: 12px 14px 10px;
+  border-radius: 20px;
+  background: #fffdf3;
+  color: #3d3326;
+  box-shadow: 0 6px 0 #d9c69c, 0 10px 24px rgba(0, 0, 0, 0.25);
+  border: 3px solid #5aae35;
+  font-size: 1rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.coach.low {
+  top: auto;
+  bottom: calc(110px + env(safe-area-inset-bottom));
+}
+
+.coach p b {
+  color: #a8301f;
+}
+
+.coach .art,
+.coach .mk {
+  font-size: 1.4em;
+  height: 0.8em;
+  width: auto;
+  vertical-align: -0.2em;
+}
+
+.coach .art {
+  height: 1em;
+  width: 1em;
+}
+
+.coach-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.coach-actions .primary {
+  padding: 8px 22px;
+  font-size: 1rem;
+}
+
+.coach-skip {
+  border: none;
+  background: none;
+  color: #8a7a5c;
+  font: inherit;
+  font-size: 0.875rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.coach-focus {
+  position: relative;
+  z-index: 5;
+  outline: 4px solid #ffd84a;
+  outline-offset: 2px;
+  border-radius: 12px;
+  animation: coach-pulse 1s ease-in-out infinite;
+}
+
+@keyframes coach-pulse {
+  50% { outline-color: #ff8a3a; outline-offset: 5px; }
+}
+
+.coach .coach-next {
+  border: none;
+  border-radius: 12px;
+  background: #5aae35;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  box-shadow: 0 3px 0 #3f8a26;
+  cursor: pointer;
+}
+
+/* ==== 押した瞬間の手応え：触れたらへこみ、離すと跳ね返る ==== */
+.plot.pressing,
+.reel.pressing .window,
+.item.pressing,
+.tab.pressing {
+  scale: 0.9;
+  filter: brightness(1.1);
+  transition: scale 40ms ease-out, filter 40ms;
+}
+
+.plot.released,
+.reel.released .window,
+.item.released,
+.tab.released {
+  animation: press-back 240ms cubic-bezier(0.3, 1.8, 0.5, 1);
+}
+
+@keyframes press-back {
+  0% { scale: 0.9; }
+  55% { scale: 1.06; }
+  100% { scale: 1; }
+}
+
+/* 早送り中：筐体の隅に印 */
+.hurry .machine::after {
+  content: '⏩';
+  position: absolute;
+  right: 10px;
+  top: 6px;
+  font-size: 1.125rem;
+  z-index: 7;
+  opacity: 0.85;
+}
+
+.calm .plot.released,
+.calm .reel.released .window,
+.calm .item.released,
+.calm .tab.released {
+  animation: none;
+}
+
+/* なぞる・引っぱるの最中にページがスクロールしないように */
+.field .plot,
+.reels .reel {
+  touch-action: none;
+}
+
+/* リールから引っぱっている絵柄 */
+.drag-ghost {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 60;
+  font-size: 3.2rem;
+  line-height: 1;
+  margin: -1.2em 0 0 -0.5em;
+  pointer-events: none;
+  filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.35));
+  animation: ghost-in 0.15s ease-out;
+}
+
+@keyframes ghost-in {
+  from { scale: 0.4; opacity: 0; }
+}
+
+.fx-text .mk {
+  height: 0.6em;
+  width: auto;
+  vertical-align: 0.05em;
+}
+
+/* 大事な出来事の文字は、色つきの札に白抜き（どんな背景の上でも読める） */
+.fx-text.pill {
+  padding: 0.12em 0.6em 0.16em;
+  border-radius: 8px;
+  background: #5a4630;
+  color: #fff;
+  -webkit-text-stroke: 0;
+  text-shadow: none;
+  box-shadow: 0 0.12em 0 rgba(0, 0, 0, 0.35), 0 0 0 0.12em rgba(255, 255, 255, 0.85);
+}
+
+.fx-text.pill.gold {
+  background: #e8a33a;
+}
+
+.fx-text.pill.good {
+  background: #4f9e2a;
+}
+
+.fx-text.pill.combo {
+  background: #e0458f;
+}
+
+/* ==== ボタンの成功・失敗（どの部品も同じ見せ方） ==== */
+.is-ok {
+  animation: state-ok 0.6s ease-out;
+}
+
+.is-ng {
+  animation: state-ng 0.5s ease-out;
+}
+
+@keyframes state-ok {
+  0% { box-shadow: 0 0 0 0 rgba(79, 158, 42, 0.9), inset 0 0 0 3px #4f9e2a; }
+  100% { box-shadow: 0 0 0 14px rgba(79, 158, 42, 0), inset 0 0 0 3px rgba(79, 158, 42, 0); }
+}
+
+@keyframes state-ng {
+  0%, 60% { box-shadow: 0 0 0 3px #d64545, inset 0 0 0 3px #d64545; filter: saturate(1.2); }
+  100% { box-shadow: 0 0 0 3px rgba(214, 69, 69, 0), inset 0 0 0 3px rgba(214, 69, 69, 0); }
+}
+
+.fx-text.pill.bad {
+  background: #c8392f;
+}
+
+/* ==== 手の感じ：枠の内側に手描き風の線（角の丸みを不ぞろいに）、札とカードを少し傾ける ==== */
+/* 重いフィルタ（揺らぎ・紙のかすれ）は使わない。線の形だけで手描きらしさを出す */
+.coach::after,
+.stall-sec::after,
+.info-pop::after,
+.charm-card::after,
+.order-tag::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 2px solid rgba(94, 61, 36, 0.3);
+  border-radius: 14px 9px 16px 8px / 9px 15px 8px 13px;
+  pointer-events: none;
+}
+
+/* 札・カードのわずかな傾き */
+.coach {
+  rotate: -0.5deg;
+}
+
+.info-pop {
+  rotate: 0.4deg;
+}
+
+.charm-card:nth-child(1) { rotate: -0.4deg; }
+.charm-card:nth-child(2) { rotate: 0.3deg; }
+.charm-card:nth-child(3) { rotate: -0.2deg; }
+
+.stall .shop .item:nth-child(odd) .ico { rotate: -4deg; }
+.stall .shop .item:nth-child(even) .ico { rotate: 3deg; }
+
+.pivot-tag,
+.tab-note,
+.st {
+  rotate: -2deg;
+}
+
+.fx-text.pill {
+  rotate: -2deg;
+}
+
+/* ==== いま選んでいる出目 ==== */
+/* 畑の右上の札：絵柄・名前・効く形 */
+.pick-tag {
+  position: absolute;
+  right: -6px;
+  top: -26px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px 3px 4px;
+  border-radius: 8px;
+  background: #fff8e7;
+  box-shadow: 0 2px 0 #b07415, inset 0 0 0 3px #ffb52e;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--ink);
+  animation: pick-in 0.2s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+
+.pick-tag[hidden] {
+  display: none;
+}
+
+.pick-label {
+  font-size: 0.875rem;
+  color: #fff;
+  background: #e8a33a;
+  border-radius: 8px;
+  padding: 1px 7px;
+}
+
+.pick-sym .art {
+  font-size: 1.75rem;
+  display: block;
+}
+
+@keyframes pick-in {
+  from { scale: 0.6; opacity: 0; }
+}
+
+/* 選んだリール：大きく持ち上げ、金色の太い縁と「選択中」の札。ほかの使えるリールは控えめに */
+.reel.selected .window {
+  transform: translateY(-12px) scale(1.08);
+  box-shadow: inset 0 0 0 5px #ffb52e, 0 0 0 4px #fff, 0 0 0 3px var(--ink), 0 10px 16px rgba(0, 0, 0, 0.45);
+  animation: none;
+}
+
+.reel.selected::before {
+  content: '選択中';
+  position: absolute;
+  top: -30px;
+  left: 50%;
+  translate: -50% 0;
+  z-index: 5;
+  padding: 1px 9px;
+  border-radius: 8px;
+  background: #e8a33a;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 2px 0 #b07415;
+}
+
+.reels:has(.reel.selected) .reel.usable:not(.selected) .window {
+  opacity: 0.6;
+  scale: 0.94;
+}
+
+/* 自動の出目が動いている間：そのリールを光らせる */
+.reel.acting .window {
+  box-shadow: inset 0 0 0 4px #fff, 0 0 0 3px var(--role), 0 0 0 3px var(--ink);
+  transform: translateY(-6px);
+}
+
+/* ==== 書体：見出し・数字・ボタン・札は Mochiy Pop One（ポップで数字が読みやすい）。説明文は M PLUS Rounded 1c ==== */
+:root {
+  --font-pop: 'M PLUS Rounded 1c', 'Zen Maru Gothic', 'Hiragino Maru Gothic ProN', 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', sans-serif;
+}
+
+h1,
+h2,
+h3,
+.stat,
+.tax b,
+.hud b,
+.cost b,
+.price b,
+.fx-text,
+.fx-slam,
+.fx-roll,
+.mult-chip,
+.machine-top,
+.spin-go b,
+.reach-call,
+.pick-tag b,
+.stall-head,
+.tab,
+.order-tag,
+.tag,
+.count,
+.shop .item .name,
+.charm-card b,
+.coach p b,
+.primary,
+.title-start {
+  font-family: var(--font-pop);
+  font-weight: 700;
+}
+
+/* ==== 終わりの振り返り ==== */
+.review {
+  list-style: none;
+  margin: 8px 0 4px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+}
+
+.review li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #fffdf7;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.9375rem;
+}
+
+.review li .art {
+  font-size: 1.375rem;
+  flex: none;
+}
+
+.review li.short {
+  background: #ffe9e4;
+  color: #a1281f;
+}
+
+.review b {
+  font-family: var(--font-pop);
+  font-weight: 700;
+}
+
+.tip {
+  margin: 6px 0 2px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #fff4d6;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #7a4a00;
+  text-align: left;
+}
+

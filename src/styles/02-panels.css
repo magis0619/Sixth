@@ -1,0 +1,734 @@
+/* ---- 引き出し ---- */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 16;
+  background: rgba(61, 51, 38, 0.45);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+.sheet-backdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 17;
+  max-width: 480px;
+  max-height: 72dvh;
+  margin: 0 auto;
+  overflow: auto;
+  padding: 10px 14px calc(16px + env(safe-area-inset-bottom));
+  background: var(--cloth);
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.3);
+  outline: 2px dashed var(--stitch);
+  outline-offset: -7px;
+  transform: translateY(105%);
+  transition: transform 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.05);
+}
+
+.sheet.open {
+  transform: none;
+}
+
+/* 閉じていても配置の計算はされるので、中の書き換えがページ全体に広がらないよう閉じ込める */
+.sheet {
+  contain: content;
+}
+
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: -10px -14px 4px;
+  padding: 10px 14px 6px;
+  /* 中身が長くても閉じるボタンが見えるように、見出しは上に貼り付ける */
+  position: sticky;
+  top: -10px;
+  z-index: 2;
+  background: var(--cloth);
+  border-radius: 20px 20px 0 0;
+}
+
+.sheet-head h2 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.sheet-close {
+  border: none;
+  background: var(--cloth-deep);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.sheet-lead {
+  font-size: 0.875rem;
+  color: var(--ink-soft);
+  margin: 0 0 10px;
+}
+
+.shop {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 8px;
+}
+
+.item {
+  border: none;
+  background: #fff;
+  border-radius: 12px;
+  padding: 8px;
+  text-align: left;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 6px;
+  row-gap: 2px;
+  align-items: center;
+  min-height: 92px;
+  box-shadow: 0 3px 0 rgba(110, 66, 36, 0.3), inset 0 0 0 2px var(--cloth-deep);
+}
+
+.item .ico {
+  grid-row: 1 / 3;
+  font-size: 1.75rem;
+  display: flex;
+}
+
+.item .name {
+  font-weight: 700;
+  font-size: 0.9375rem;
+}
+
+.item .effect {
+  font-size: 0.875rem;
+  color: var(--ink-soft);
+}
+
+.item .cost {
+  grid-column: 1 / 3;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 8px;
+  padding: 3px 6px;
+  text-align: center;
+  background: var(--cloth-deep);
+  color: var(--ink-soft);
+}
+
+.item.affordable {
+  box-shadow: 0 3px 0 #2f7a22, inset 0 0 0 2px var(--role-manual);
+}
+
+.item.affordable .cost {
+  background: var(--role-manual);
+  color: #fff;
+}
+
+.item.affordable:active {
+  transform: translateY(2px);
+}
+
+.item.soldout {
+  opacity: 0.5;
+}
+
+.bag {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 6px;
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 4px 8px 4px 6px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  box-shadow: inset 0 0 0 2px var(--cloth-deep), 0 2px 0 rgba(110, 66, 36, 0.25);
+}
+
+.chip .e {
+  font-size: 1.375rem;
+  display: flex;
+}
+
+.chip .pct {
+  margin-left: auto;
+  color: var(--ink-soft);
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.chip.bad {
+  box-shadow: inset 0 0 0 2px #e3bccb, 0 2px 0 rgba(154, 31, 74, 0.35);
+  background: #fbeef2;
+}
+
+.chip.zero {
+  opacity: 0.4;
+}
+
+.charms {
+  display: grid;
+  gap: 6px;
+}
+
+.charm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 6px 10px;
+  box-shadow: inset 0 0 0 2px var(--tier-common), 0 2px 0 rgba(110, 66, 36, 0.25);
+}
+
+.charm .e {
+  font-size: 1.75rem;
+  display: flex;
+}
+
+.charm b {
+  display: block;
+  font-size: 0.9375rem;
+}
+
+.charm small {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--ink-soft);
+}
+
+.charm.tier-uncommon {
+  box-shadow: inset 0 0 0 2px var(--tier-uncommon), 0 2px 0 rgba(43, 179, 163, 0.4);
+}
+
+.charm.tier-rare {
+  box-shadow: inset 0 0 0 2px var(--tier-rare), 0 2px 0 var(--gold-dark);
+  background: #fffbe6;
+}
+
+/* ---- モーダル（布のカード） ---- */
+#overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(61, 51, 38, 0.55);
+}
+
+#overlay.show {
+  display: flex;
+}
+
+.modal {
+  background: var(--cloth);
+  border-radius: 20px;
+  padding: 18px;
+  width: 100%;
+  max-width: 420px;
+  max-height: 90dvh;
+  overflow: auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  outline: 2px dashed var(--stitch);
+  outline-offset: -7px;
+  animation: modal-in 0.4s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+
+.modal h2 {
+  margin: 0 0 4px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.modal h3 {
+  font-size: 0.9375rem;
+  margin: 14px 0 6px;
+}
+
+.modal .big {
+  text-align: center;
+  font-size: 2.6rem;
+  margin: 4px 0;
+}
+
+.modal .record {
+  text-align: center;
+  font-weight: 700;
+  font-size: 1rem;
+  margin-bottom: 10px;
+}
+
+.modal table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+  margin: 8px 0;
+}
+
+.modal td {
+  padding: 4px 2px;
+  border-bottom: 1px dashed var(--stitch);
+}
+
+.modal td:last-child {
+  text-align: right;
+  font-weight: 700;
+}
+
+.modal ol {
+  margin: 0;
+  padding-left: 1.4em;
+  font-size: 0.875rem;
+  max-height: 140px;
+  overflow: auto;
+}
+
+.modal .sub {
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--ink-soft);
+  margin: 8px 0;
+}
+
+.modal .primary {
+  margin-top: 14px;
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(#ffe45c, #f5b800);
+  box-shadow: 0 5px 0 #a87a00, inset 0 2px 0 rgba(255, 255, 255, 0.7);
+  padding: 12px;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #5a3d00;
+}
+
+.modal .primary:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 1px 0 #a87a00;
+}
+
+.modal .primary:disabled {
+  filter: grayscale(0.6);
+}
+
+.modal .secondary {
+  margin-top: 8px;
+  width: 100%;
+  border: none;
+  background: #fff;
+  border-radius: 12px;
+  padding: 10px;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  box-shadow: 0 3px 0 rgba(110, 66, 36, 0.3), inset 0 0 0 2px var(--cloth-deep);
+}
+
+.modal .secondary:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* 年貢のハンコ */
+.stamp {
+  position: fixed;
+  left: 50%;
+  top: 40%;
+  /* 役人より手前に（判子の文字が隠れないように） */
+  z-index: 45;
+  transform: translate(-50%, -50%);
+  max-width: 94vw;
+  background: #fff8e7;
+  /* 大きな朱肉の判子：太い二重の枠 */
+  border: 9px solid var(--danger);
+  outline: 3px solid var(--danger);
+  outline-offset: -18px;
+  color: var(--danger);
+  border-radius: 20px;
+  padding: 26px 40px 22px;
+  font-family: var(--font-pop);
+  font-size: clamp(2.1rem, 9.5vw, 3.4rem);
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.3;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.stamp small {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.42em;
+  color: var(--ink);
+}
+
+.stamp .art {
+  font-size: 1.1em;
+  vertical-align: -0.15em;
+}
+
+.stamp.ok {
+  border-color: var(--role-manual);
+  outline-color: var(--role-manual);
+  color: #2f7a22;
+}
+
+.fever-banner {
+  position: fixed;
+  left: 50%;
+  top: 35%;
+  z-index: 30;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(135deg, var(--pink), #ffb347);
+  color: #fff;
+  border: 4px solid #fff;
+  border-radius: 20px;
+  padding: 12px 22px;
+  font-size: 2rem;
+  font-weight: 700;
+  text-align: center;
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.2);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.fever-banner small {
+  display: block;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  margin-top: 4px;
+}
+
+.fever-banner.bad {
+  background: linear-gradient(135deg, #2b0a14, #6e1230);
+  border-color: #ff6b6b;
+  color: #ffd0d0;
+}
+
+/* ---- お守り選び ---- */
+.charm-modal .sub {
+  margin: 4px 0 12px;
+}
+
+.charm-choices {
+  display: grid;
+  gap: 10px;
+}
+
+.charm-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 10px;
+  align-items: center;
+  text-align: left;
+  border: none;
+  background: #fff;
+  border-radius: 20px;
+  padding: 12px 14px;
+  box-shadow: inset 0 0 0 3px var(--tier-common), 0 4px 0 rgba(110, 66, 36, 0.3);
+}
+
+.charm-card:disabled {
+  cursor: default;
+}
+
+.charm-card:active:not(:disabled) {
+  transform: translateY(3px);
+}
+
+.charm-card .e {
+  grid-row: 1 / 3;
+  font-size: 2.4rem;
+  display: flex;
+}
+
+.charm-card b {
+  font-size: 1rem;
+}
+
+.charm-card small {
+  font-size: 0.875rem;
+  color: var(--ink-soft);
+}
+
+.charm-card .lv {
+  font-size: 0.875rem;
+  background: var(--role-manual);
+  color: #fff;
+  border-radius: 8px;
+  padding: 0 5px;
+}
+
+.charm-card .tier {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  border-radius: 8px;
+  padding: 1px 8px;
+  background: var(--tier-common);
+  color: #fff;
+}
+
+.charm-card.tier-uncommon {
+  box-shadow: inset 0 0 0 3px var(--tier-uncommon), 0 4px 0 #1d8679;
+}
+
+.charm-card.tier-uncommon .tier {
+  background: var(--tier-uncommon);
+}
+
+.charm-card.tier-rare {
+  background: linear-gradient(#fffdf2, #fff3c4);
+  box-shadow: inset 0 0 0 3px var(--tier-rare), 0 4px 0 var(--gold-dark), 0 0 0 3px var(--ink);
+  animation: shimmer 1.2s ease-in-out infinite;
+}
+
+.charm-card.tier-rare .tier {
+  background: var(--tier-rare);
+  color: #4a3200;
+}
+
+.clear-modal .primary {
+  animation: pulse 1s ease-in-out infinite;
+}
+
+/* ---- 準備画面 ---- */
+.prep-modal h2 {
+  font-size: 1.375rem;
+}
+
+.prep-modal h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.prep-modal .points {
+  text-align: center;
+  background: var(--gold-soft);
+  border-radius: 12px;
+  padding: 6px 10px;
+  margin: 6px 0 4px;
+  box-shadow: inset 0 0 0 2px var(--gold);
+}
+
+.prep-modal .points b {
+  font-size: 1.375rem;
+}
+
+.prep-modal .points small {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--ink-soft);
+}
+
+.prep-modal .cap {
+  font-size: 0.875rem;
+  background: var(--role-manual);
+  color: #fff;
+  border-radius: 8px;
+  padding: 1px 10px;
+}
+
+.prep-modal .cap.over {
+  background: var(--danger);
+}
+
+.prep-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 6px;
+}
+
+.prep-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  border: none;
+  background: #fff;
+  border-radius: 12px;
+  padding: 8px 4px 6px;
+  text-align: center;
+  box-shadow: inset 0 0 0 2px var(--cloth-deep), 0 2px 0 rgba(110, 66, 36, 0.25);
+}
+
+.prep-item .e {
+  font-size: 1.75rem;
+  display: flex;
+}
+
+.prep-item b {
+  font-size: 0.875rem;
+}
+
+.prep-item small {
+  font-size: 0.875rem;
+  color: var(--ink-soft);
+}
+
+.prep-item .cost {
+  font-size: 0.875rem;
+  font-weight: 700;
+  background: var(--cloth-deep);
+  border-radius: 8px;
+  padding: 0 6px;
+}
+
+.prep-item.on {
+  background: #f0f9e6;
+  box-shadow: inset 0 0 0 3px var(--role-manual), 0 3px 0 #2f7a22;
+}
+
+.prep-item.full {
+  opacity: 0.5;
+}
+
+.prep-item.locked {
+  background: var(--cloth-deep);
+}
+
+.prep-item.locked .e {
+  filter: grayscale(1);
+  opacity: 0.55;
+}
+
+.prep-item.locked:not(:disabled) {
+  box-shadow: inset 0 0 0 3px var(--gold), 0 2px 0 var(--gold-dark);
+  background: #fffbe6;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.prep-item:disabled {
+  cursor: default;
+}
+
+/* ---- 遊び方・図鑑 ---- */
+.help-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.help-tabs button {
+  border: none;
+  background: #fff;
+  border-radius: 12px;
+  padding: 8px;
+  font-weight: 700;
+  box-shadow: inset 0 0 0 2px var(--cloth-deep);
+}
+
+.help-tabs button.on {
+  background: var(--wood);
+  color: #fff8e7;
+  box-shadow: 0 2px 0 var(--wood-dark);
+}
+
+.help-body {
+  max-height: 55dvh;
+  overflow: auto;
+}
+
+.help-list {
+  margin: 0;
+  padding-left: 1.4em;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+.help-list li {
+  margin-bottom: 6px;
+}
+
+.dex-row {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px dashed var(--stitch);
+  padding: 6px 2px;
+}
+
+.dex-row .e {
+  font-size: 1.75rem;
+  display: flex;
+  justify-content: center;
+}
+
+.dex-row b {
+  font-size: 0.9375rem;
+}
+
+.dex-row small {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--ink-soft);
+}
+
+.dex-row small.fv {
+  color: #a1145a;
+}
+
+.dex-row .tag-k {
+  font-size: 0.875rem;
+  font-weight: 700;
+  background: var(--tier-common);
+  color: #fff;
+  border-radius: 8px;
+  padding: 0 5px;
+}
+
+.dex-row .own {
+  font-size: 0.875rem;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.dex-row.bad b {
+  color: var(--role-bad);
+}
+
+.dex-row.tier-uncommon .tag-k {
+  background: var(--tier-uncommon);
+}
+
+.dex-row.tier-rare .tag-k {
+  background: var(--tier-rare);
+  color: #4a3200;
+}
+
+.dex-row.locked {
+  opacity: 0.55;
+}
+

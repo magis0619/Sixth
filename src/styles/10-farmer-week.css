@@ -1,0 +1,829 @@
+/* ==== 農家を選ぶ（準備画面） ==== */
+.fm-lead {
+  margin: 8px 0 6px;
+  text-align: center;
+  font-family: var(--font-pop);
+  font-weight: 700;
+  font-size: 1.125rem;
+}
+.farmers {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 4px 8px;
+}
+.farmer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  text-align: left;
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  box-shadow: 3px 3px 0 var(--ink);
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+}
+.farmer.on {
+  background: var(--gold-soft);
+  box-shadow: 0 0 0 3px var(--gold), 4px 4px 0 var(--ink);
+}
+.fm-art {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  display: flex;
+}
+.fm-art svg { width: 100%; height: 100%; }
+.fm-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.fm-text > b { font-family: var(--font-pop); font-weight: 700; font-size: 1.125rem; }
+.fm-desc { font-size: 0.9375rem; font-weight: 700; color: var(--ink-soft); }
+.fm-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 2px; }
+.fm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 1px 5px 1px 2px;
+  background: var(--cloth-deep);
+  border-radius: 8px;
+  font-size: 0.9375rem;
+}
+.fm-chip svg { width: 22px; height: 22px; }
+.farmer .tag-stamp { position: absolute; top: -8px; right: 8px; }
+
+/* ==== 年貢を納めたあと：クリアまでの道のり（数秒で消える） ==== */
+.tax-progress {
+  position: fixed;
+  inset: 0;
+  z-index: 85;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.tp-card {
+  width: min(92vw, 420px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 14px 14px;
+  background: var(--cloth);
+  border: 4px solid var(--ink);
+  border-radius: 20px;
+  box-shadow: 6px 6px 0 var(--ink);
+  opacity: 0;
+}
+.tp-title { font-family: var(--font-pop); font-weight: 900; font-size: 1.75rem; }
+.tp-sub { font-size: 1.125rem; font-weight: 700; }
+.tp-track {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+.tp-line {
+  flex: 1;
+  height: 4px;
+  min-width: 4px;
+  background: repeating-linear-gradient(90deg, var(--ink-soft) 0 4px, transparent 4px 8px);
+}
+.tp-step, .tp-goal {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid var(--ink);
+  border-radius: 50%;
+  background: #e6dfd1;
+}
+.tp-step svg, .tp-goal svg { width: 22px; height: 22px; opacity: 0.35; filter: grayscale(1); }
+.tp-step.done, .tp-step.stamped { background: var(--gold); }
+.tp-step.done svg, .tp-step.stamped svg { opacity: 1; filter: none; }
+.tp-step.now:not(.stamped) { border-style: dashed; }
+.tp-goal { width: 42px; height: 42px; margin-left: 6px; background: #fff; }
+.tp-goal svg { width: 28px; height: 28px; }
+.tp-goal.reached { background: var(--gold); }
+.tp-goal.reached svg { opacity: 1; filter: none; }
+
+/* 農家の札：袋に入るカードを全部、市に出やすい品を別の行に */
+.fm-row { display: flex; align-items: flex-start; gap: 6px; margin-top: 3px; }
+.fm-k {
+  flex: none;
+  min-width: 2.4em;
+  text-align: center;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #fff;
+  background: var(--ink-soft);
+  border-radius: 8px;
+  padding: 1px 4px;
+  margin-top: 4px;
+}
+.fm-row .fm-chips { margin-top: 0; }
+.fm-chip.up { background: #d8f0c4; box-shadow: inset 0 0 0 2px #5a9e33; }
+.fm-chip.down { opacity: 0.75; }
+.fm-chip.bad { background: #f6dde6; }
+
+/* まだ解放していない農家：影と条件だけ */
+.farmer.locked {
+  background: #ece5d6;
+  box-shadow: 2px 2px 0 var(--ink-soft);
+  border-color: var(--ink-soft);
+  cursor: default;
+}
+.farmer.locked .fm-desc { display: inline-flex; align-items: center; gap: 4px; }
+.farmer.locked .fm-desc svg { width: 16px; height: 16px; }
+
+/* ==== その場のヒント（初めて出会ったときに1回だけ） ==== */
+.hint-card {
+  position: fixed;
+  left: 50%;
+  top: calc(124px + env(safe-area-inset-top));
+  z-index: 45;
+  width: min(92vw, 420px);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #fffdf3;
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  box-shadow: 4px 4px 0 var(--ink);
+  opacity: 0;
+  cursor: pointer;
+}
+.hint-card p { margin: 0; font-size: 0.9375rem; font-weight: 700; line-height: 1.5; }
+.hint-card p b { color: #a8301f; }
+.hint-card p .art, .hint-card p svg { width: 1.4em; height: 1.4em; vertical-align: -0.35em; }
+.hc-badge { flex: none; width: 26px; height: 26px; display: flex; }
+.hc-badge svg { width: 100%; height: 100%; }
+.coach.mid {
+  top: 38%;
+}
+
+/* 試し用のボタン（一時的）：点線で囲んで「試し用」の札 */
+.dev-swap {
+  position: relative;
+  margin: 10px 0 4px;
+  padding: 10px 8px 4px;
+  border: 2px dashed var(--stitch);
+  border-radius: 12px;
+}
+.dev-tag {
+  position: absolute;
+  top: -10px;
+  left: 10px;
+  padding: 0 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: var(--cloth);
+  color: var(--ink-soft);
+}
+/* チュートリアル：フィーバーの見本（同じ絵柄が3つ） */
+
+/* ==== チュートリアル：暗幕と穴・指・案内役・進み具合 ==== */
+.tut-dim {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  pointer-events: none;
+  background: rgba(30, 20, 10, 0.55);
+}
+.tut-hand {
+  position: fixed;
+  z-index: 41;
+  width: 58px;
+  height: 58px;
+  margin: 0 0 0 -12px;
+  pointer-events: none;
+  transition: left 0.25s, top 0.25s;
+  animation: tut-tap 0.9s ease-in-out infinite;
+  filter: drop-shadow(3px 3px 0 var(--ink));
+}
+.tut-hand svg { width: 100%; height: 100%; }
+@keyframes tut-tap {
+  0%, 100% { transform: translate(0, 8px) scale(1); }
+  45% { transform: translate(0, 0) scale(0.9); }
+}
+/* 光らせる物は枠だけ（動くのは指だけ） */
+.coach-focus { animation: none; }
+.coach {
+  z-index: 42;
+  padding: 12px 14px 10px;
+  border: 4px solid var(--ink);
+  box-shadow: 5px 5px 0 var(--ink);
+}
+.coach-body { display: flex; align-items: center; gap: 10px; text-align: left; }
+.coach-guide { flex: none; width: 56px; height: 56px; display: flex; }
+.coach .coach-guide .art, .coach .coach-guide svg { width: 100%; height: 100%; }
+.coach p { margin: 0; font-size: 1.25rem; font-weight: 700; line-height: 1.45; word-break: keep-all; overflow-wrap: anywhere; }
+.coach p b { color: #a8301f; }
+.coach p .art, .coach p svg { width: 1.3em; height: 1.3em; vertical-align: -0.3em; }
+.coach-dots { display: flex; justify-content: center; gap: 5px; margin: 8px 0 2px; }
+.coach-dots i { width: 8px; height: 8px; border-radius: 50%; background: #e3d9c4; }
+.coach-dots i.done { background: #8fcf5c; }
+.coach-dots i.now { background: var(--gold); box-shadow: 0 0 0 2px var(--ink); }
+.coach-actions { gap: 12px; }
+.coach .coach-next { font-size: 1.125rem; min-height: 44px; padding: 8px 22px; }
+.coach .coach-skip { font-size: 1rem; min-height: 40px; padding: 4px 14px; }
+.coach-good {
+  position: absolute;
+  left: 6px;
+  top: -14px;
+  padding: 2px 10px;
+  font-family: var(--font-pop);
+  font-weight: 700;
+  font-size: 1rem;
+  color: #fff;
+  background: #e8743b;
+  border: 3px solid var(--ink);
+  border-radius: 8px;
+  pointer-events: none;
+}
+/* チュートリアル中は、指はチュートリアルの1本だけ（「次の日へ」の札の指は隠す） */
+.in-tutorial .go-hand { display: none; }
+
+/* 畑の上の札（注文・選んだ出目）が上の曜日に重ならないよう、景色の場所は最低限残す */
+.scene {
+  min-height: 24px;
+}
+
+/* ==== 曜日（作り直し）：木の板の上に丸い札が道のりのように並ぶ。今日は金の札が大きく、上に▼ ==== */
+.week {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  align-items: center;
+  gap: 0;
+  margin: 8px auto 0;
+  max-width: 440px;
+  padding: 6px 8px;
+  background:
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.05) 0 2px, transparent 2px 46px),
+    linear-gradient(#c98c57, #b07444);
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  box-shadow: 4px 4px 0 var(--ink);
+}
+/* 札をつなぐ点線（道のり） */
+.week::before {
+  content: '';
+  position: absolute;
+  left: 7%;
+  right: 7%;
+  top: 50%;
+  border-top: 3px dashed rgba(61, 51, 38, 0.45);
+  translate: 0 -50%;
+}
+.wd {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  height: auto;
+  background: none;
+  border-radius: 0;
+  transform: none;
+  box-shadow: none;
+}
+.wd-plate {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--cloth);
+  border: 3px solid var(--ink);
+  color: var(--ink);
+  transition: transform 0.3s cubic-bezier(.3, 1.4, .5, 1), background-color 0.3s;
+}
+.wd-plate b {
+  font-family: var(--font-pop);
+  font-weight: 700;
+  font-size: 1rem;
+  line-height: 1;
+}
+/* 市・年貢の小さな印（札の右下） */
+.wd-plate i {
+  position: absolute;
+  right: -7px;
+  bottom: -6px;
+  display: flex;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  padding: 1px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--ink);
+}
+.wd-plate i svg { width: 100%; height: 100%; opacity: 1; filter: none; }
+/* 過ぎた日：くすんだ札に緑の済み印 */
+.wd.past .wd-plate { background: #e6dccb; color: #6e6250; }
+.wd.past .wd-plate::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 14px;
+  height: 7px;
+  border-left: 3px solid #4e9230;
+  border-bottom: 3px solid #4e9230;
+  translate: -50% -50%;
+  rotate: -45deg;
+}
+.wd.past .wd-plate b { opacity: 0.35; }
+/* 今日：金の札が大きく、上に▼ */
+.wd.now .wd-plate {
+  background: var(--gold);
+  transform: scale(1.22);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.wd.now::before {
+  content: '';
+  position: absolute;
+  top: -11px;
+  left: 50%;
+  translate: -50% 0;
+  border: 6px solid transparent;
+  border-top: 8px solid var(--ink);
+  z-index: 2;
+}
+/* 日曜（年貢）：赤い縁。お金が足りないと赤く */
+.wd.tax .wd-plate { border-color: #a8301f; }
+.wd.tax .wd-plate b { color: #a8301f; }
+.wd.tax.short .wd-plate { background: #ffd9d2; }
+.wd.tax.now .wd-plate b { color: var(--ink); }
+.wd.tax.now.short .wd-plate { background: #ff8a7a; }
+/* 前の見た目の名残を消す */
+.wd b { color: inherit; }
+.wd.market b, .wd.tax b { color: inherit; }
+.wd:not(.now) i svg { opacity: 1; filter: none; }
+.wd.past { background: none; }
+.wd.now { background: none; box-shadow: none; transform: none; }
+
+/* 横持ち：曜日は上の帯の空いた真ん中に重ねる（新しい見た目のあとでもう一度） */
+@media (max-height: 480px) and (orientation: landscape) {
+  .week {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    margin: 0;
+    width: min(330px, 38vw);
+    padding: 3px 6px;
+    box-shadow: 2px 2px 0 var(--ink);
+    z-index: 2;
+  }
+  .wd-plate { width: 26px; height: 26px; border-width: 2px; }
+  .wd-plate b { font-size: 0.875rem; }
+  .wd-plate i { width: 14px; height: 14px; right: -5px; bottom: -5px; }
+  .wd.now::before { top: -9px; }
+}
+
+/* ==== 週契約 ==== */
+/* 月曜の3択 */
+.contract-modal h2 { display: flex; align-items: center; gap: 8px; }
+.contract-modal h2 .art { width: 1.4em; height: 1.4em; }
+.ct-sub { margin: 2px 0 8px; font-size: 1rem; line-height: 1.5; color: var(--ink); }
+/* 「今週だけ」を見せる小さな月〜日の帯 */
+.ct-week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin: 0 0 10px;
+  padding: 3px 4px;
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  background: #a8301f;
+  color: #fff;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.ct-week i { font-style: normal; text-align: center; font-family: var(--font-pop);
+  font-weight: 700; font-size: 0.9375rem; line-height: 1.4; }
+.ct-choices { display: grid; gap: 10px; }
+.ct-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  grid-template-areas: 'ico name' 'ico rule' 'reward reward';
+  column-gap: 10px;
+  row-gap: 2px;
+  align-items: center;
+  text-align: left;
+  padding: 10px 12px;
+  background: #fff;
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.ct-card:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+.ct-card:disabled { cursor: default; }
+.ct-card.s2 { background: #fff6dc; }
+.ct-card.s3 { background: #ffe9e4; }
+.ct-ico { grid-area: ico; display: flex; width: 52px; height: 52px; }
+.ct-ico .art { width: 100%; height: 100%; }
+.ct-name { grid-area: name; font-size: 1.0625rem; padding-right: 54px; }
+.ct-rule { grid-area: rule; font-size: 1rem; line-height: 1.45; }
+.ct-rule b { color: #a8301f; }
+.ct-stars {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 1rem;
+  letter-spacing: 1px;
+  color: var(--gold-dark);
+  -webkit-text-stroke: 0.5px var(--ink);
+}
+.ct-stars.s3 { color: #e0452f; }
+.ct-reward {
+  grid-area: reward;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 4px 8px;
+  border-radius: 10px;
+  background: var(--gold-soft);
+  border: 2px dashed var(--gold-dark);
+}
+.ct-reward-h { font-size: 0.875rem; font-weight: 700; color: var(--wood-dark); }
+.ct-reward-t { font-size: 0.9375rem; font-weight: 700; }
+.ct-rw { display: inline-flex; align-items: center; gap: 2px; font-weight: 700; }
+.ct-rw .art { width: 1.5em; height: 1.5em; }
+.ct-rw b { font-size: 1rem; }
+
+/* 日曜：果たした */
+.contract-done { text-align: center; }
+.contract-done h2 { justify-content: center; color: #a8301f; }
+.ct-done-card {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 8px 54px 8px 12px;
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+}
+.ct-done-card .ct-ico { width: 40px; height: 40px; }
+.ct-done-reward {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin: 6px 0 12px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+.ct-done-reward .ct-rw { font-size: 1.6rem; }
+.ct-ok {
+  padding: 10px 28px;
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  background: var(--gold);
+  color: var(--ink);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+/* 曜日の板の下に伸びる帯（月から日まで）。日曜の端に見返り */
+.week.has-contract { padding-bottom: 4px; row-gap: 6px; }
+.wk-ribbon {
+  grid-column: 1 / -1;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  margin: 0 -2px;
+  padding: 2px 4px 2px 4px;
+  background: #a8301f;
+  color: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  box-shadow: 2px 2px 0 var(--ink);
+  font: inherit;
+  text-align: left;
+}
+.rb-tag {
+  flex: none;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: #fff;
+  color: #a8301f;
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.6;
+}
+.rb-ico { display: flex; width: 22px; height: 22px; flex: none; }
+.rb-ico .art { width: 100%; height: 100%; }
+.rb-name { flex: 1; min-width: 0; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rb-end {
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: var(--gold-soft);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+}
+.rb-end .ct-rw .art { width: 1.2em; height: 1.2em; }
+.rb-end .ct-rw b { font-size: 0.875rem; }
+
+/* 長雨：水びたしのマス */
+.plot.flooded {
+  background:
+    repeating-linear-gradient(170deg, rgba(255, 255, 255, 0.25) 0 3px, transparent 3px 12px),
+    #5f9fc9 !important;
+}
+.plot.flooded .empty { display: none; }
+.plot .flood { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; opacity: 0.55; pointer-events: none; }
+.plot .flood .art { width: 40%; height: 40%; }
+
+/* 霧の週：霧に隠れたリール */
+.window { position: relative; }
+.fog-cover {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: inherit;
+  background: radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.55), rgba(214, 220, 228, 0.35) 70%);
+  pointer-events: none;
+}
+.fog-cover .art { position: absolute; width: 70%; height: 70%; opacity: 0.8; }
+.fog-cover .art:first-child { left: -12%; top: 4%; }
+.fog-cover .art:nth-child(2) { right: -14%; bottom: 0; }
+.fog-cover.lost { background: radial-gradient(circle at 50% 45%, rgba(250, 251, 253, 0.97), rgba(214, 220, 228, 0.92) 75%); }
+.fog-cover.lost .art { opacity: 1; }
+.fog-cover b {
+  position: relative;
+  font-family: var(--font-pop);
+  font-weight: 900;
+  font-size: 1.5rem;
+  color: #6c7383;
+}
+.reel.fog-lost { filter: none; }
+
+@media (max-height: 480px) and (orientation: landscape) {
+  .week.has-contract { top: 4px; transform: translate(-50%, 0); }
+  .wk-ribbon { min-height: 20px; }
+  .rb-name { font-size: 0.875rem; }
+}
+
+/* ==== 合体（同じ札4枚→1枚） ==== */
+.merge-item {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  min-height: 72px;
+  background: linear-gradient(#fffbe6, #fff1b8) !important;
+  box-shadow: 0 3px 0 rgba(110, 66, 36, 0.3), inset 0 0 0 2px var(--gold-dark) !important;
+}
+.merge-from { display: flex; flex: none; }
+.merge-from i { display: flex; width: 30px; height: 30px; margin-left: -14px; font-style: normal; }
+.merge-from i:first-child { margin-left: 0; }
+.merge-from i .art, .merge-from i svg { width: 100%; height: 100%; }
+.merge-arrow { flex: none; font-size: 1rem; color: var(--gold-dark); }
+.merge-item .ico { flex: none; font-size: 2.6rem; }
+.merge-item .text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.merge-item .name { font-size: 1rem; font-weight: 700; }
+.merge-item .effect { font-size: 0.9375rem; line-height: 1.4; }
+
+/* 年貢が足りないとき：帯は大きくせず、赤い縁を光らせる（横持ちで右のメニューに重ならないように） */
+.hud-tax.warn { animation: tax-glow 0.9s ease-in-out infinite; }
+@keyframes tax-glow {
+  50% { box-shadow: inset 0 0 0 3px var(--danger), 0 0 0 3px rgba(214, 69, 69, 0.35); }
+}
+
+/* ==== 開発用：プレイログ ==== */
+.log-sub { margin: 4px 0 8px; font-size: 1rem; }
+.log-text {
+  width: 100%;
+  height: min(48dvh, 420px);
+  padding: 8px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  font: 0.875rem/1.45 ui-monospace, Menlo, monospace;
+  white-space: pre;
+  resize: none;
+}
+.log-btns { display: flex; gap: 8px; margin: 10px 0; }
+.log-btns .primary { flex: 1; }
+
+/* ==== 一枚絵の説明カード ==== */
+.explain-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(40, 28, 16, 0.55);
+}
+.explain-card {
+  width: min(400px, 100%);
+  max-height: 92dvh;
+  overflow: auto;
+  padding: 16px 16px 10px;
+  background: var(--cloth);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  border-radius: 20px;
+  box-shadow: 5px 5px 0 var(--ink);
+  text-align: center;
+}
+.ex-kicker {
+  display: inline-block;
+  margin: 0 0 6px;
+  padding: 2px 12px;
+  border-radius: 999px;
+  background: var(--gold);
+  border: 2px solid var(--ink);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+.ex-title { margin: 2px 0 6px; font-family: var(--font-pop); font-weight: 900; font-size: 1.5rem; }
+.ex-tag { display: inline-block; margin-bottom: 8px; padding: 1px 10px; border-radius: 999px; font-size: 0.875rem; font-weight: 700; color: #fff; }
+.ex-tag.manual { background: var(--role-manual); }
+.ex-tag.auto { background: var(--role-good); }
+.ex-tag.bad { background: var(--role-bad); }
+.ex-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 6px 0 10px; }
+.ex-art { display: flex; width: 96px; height: 96px; }
+.ex-art .art { width: 100%; height: 100%; }
+.ex-art.small { width: 64px; height: 64px; }
+.ex-art.bad { filter: drop-shadow(0 0 8px rgba(154, 31, 74, 0.45)); }
+.ex-arrow, .ex-plus { font-size: 1.5rem; font-weight: 700; color: var(--wood-dark); }
+.ex-num { font-family: var(--font-pop); font-weight: 900; font-size: 1.6rem; }
+.ex-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 24px);
+  gap: 3px;
+  padding: 6px;
+  background: var(--soil);
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+}
+.ex-grid i {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  background: var(--soil-dark);
+  font-style: normal;
+}
+.ex-grid i.on { background: #8fcf5c; }
+.ex-grid i.mid { outline: 3px solid var(--gold); outline-offset: -1px; }
+.ex-grid i b { font-size: 0.875rem; color: #fff; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5); }
+.ex-line { margin: 4px 0; font-size: 1.0625rem; font-weight: 700; line-height: 1.5; }
+.ex-note, .ex-fever { margin: 4px 0; font-size: 0.9375rem; color: var(--ink-soft); }
+.ex-note .art, .ex-fever .art { width: 1.3em; height: 1.3em; vertical-align: -0.3em; }
+.ex-tap { margin: 10px 0 0; font-size: 0.875rem; color: var(--ink-soft); }
+/* 全体像 */
+.ov-loop { display: flex; align-items: stretch; justify-content: center; gap: 4px; margin: 4px 0 12px; }
+.ov-step {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 4px 8px;
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+}
+.ov-step b { font-size: 0.9375rem; line-height: 1.3; }
+.ov-n {
+  position: absolute;
+  top: -10px;
+  left: -6px;
+  width: 22px;
+  height: 22px;
+  line-height: 18px;
+  border-radius: 50%;
+  background: var(--gold);
+  border: 2px solid var(--ink);
+  font-weight: 700;
+  font-size: 0.875rem;
+}
+.ov-pic { display: flex; }
+.ov-pic .art { width: 30px; height: 30px; margin: 0 -3px; }
+.ov-arrow { align-self: center; font-size: 1rem; color: var(--wood-dark); }
+.ov-week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  padding: 6px;
+  background: linear-gradient(#c98c57, #b07444);
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+}
+.ov-week span {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--cloth);
+  border: 2px solid var(--ink);
+}
+.ov-week b { font-family: var(--font-pop); font-weight: 700; }
+.ov-week .art { position: absolute; right: -4px; bottom: -4px; width: 18px; height: 18px; background: #fff; border-radius: 50%; border: 2px solid var(--ink); }
+.ov-week .tx { border-color: #a8301f; }
+.ov-legend { display: flex; flex-direction: column; gap: 2px; margin: 8px 0; font-size: 0.9375rem; text-align: left; }
+.ov-legend .art { width: 1.3em; height: 1.3em; vertical-align: -0.3em; }
+.ov-goal {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  column-gap: 8px;
+  padding: 8px 12px;
+  background: var(--gold-soft);
+  border: 2px dashed var(--gold-dark);
+  border-radius: 12px;
+  text-align: left;
+}
+.ov-goal .art { grid-row: 1 / 3; width: 44px; height: 44px; }
+.ov-goal b { font-size: 1rem; }
+.ov-goal span { font-size: 0.875rem; color: #a8301f; font-weight: 700; }
+.help-overview { margin-bottom: 10px; }
+.dex-row[data-ex-sym] { cursor: pointer; }
+/* 横持ち：説明カードを横に広げて詰める（下が切れないように） */
+@media (max-height: 480px) and (orientation: landscape) {
+  .explain-card { width: min(760px, 100%); padding: 10px 14px 6px; }
+  .ex-title { font-size: 1.15rem; margin: 0 0 4px; }
+  .ex-kicker { margin-bottom: 2px; }
+  .ex-art { width: 72px; height: 72px; }
+  .ov-loop { margin: 2px 0 6px; }
+  .ov-step { flex-direction: row; padding: 6px; }
+  .ov-pic .art { width: 24px; height: 24px; }
+  .ov-week span { width: 30px; height: 30px; justify-self: center; }
+  .ov-legend { flex-direction: row; justify-content: center; gap: 16px; margin: 4px 0; }
+  .ov-goal { padding: 4px 10px; }
+  .ov-goal .art { width: 32px; height: 32px; }
+  .ex-tap { margin-top: 4px; }
+}
+
+/* ==== 道のり（点線をやめて、木の溝と金の進み具合に）。位置は main.ts が札の中心を測って入れる ==== */
+.week::before {
+  left: var(--wk-x0, 7%);
+  right: auto;
+  width: var(--wk-w, 86%);
+  top: var(--wk-y, 23px);
+  height: 10px;
+  border: none;
+  border-radius: 5px;
+  background: #6e4224;
+  box-shadow: inset 0 2px 0 rgba(0, 0, 0, 0.35), 0 1px 0 rgba(255, 230, 190, 0.35);
+  translate: 0 -50%;
+}
+.week::after {
+  content: '';
+  position: absolute;
+  left: var(--wk-x0, 7%);
+  top: var(--wk-y, 23px);
+  /* 軽量化：幅は動かさず、横に縮めて進み具合を見せる（scale は描き直さずに動かせる） */
+  width: var(--wk-w, 86%);
+  height: 10px;
+  border-radius: 5px;
+  background: linear-gradient(#ffe27a, #f2b91a 60%, #d99b06);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.15);
+  translate: 0 -50%;
+  transform-origin: 0 50%;
+  scale: var(--wk-p, 0) 1;
+  transition: scale 0.5s cubic-bezier(.3, .9, .4, 1);
+}
+.week > .wd { position: relative; z-index: 1; }
+/* 年貢の道のり：溝の区間、済んだ区間は金 */
+.tp-line {
+  height: 8px;
+  margin: 0 -3px;
+  border-radius: 4px;
+  background: #d9cdb5;
+  box-shadow: inset 0 2px 0 rgba(0, 0, 0, 0.18);
+}
+.tp-line.done { background: linear-gradient(#ffe27a, #f2b91a 60%, #d99b06); box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.15); }
+.tp-step, .tp-goal { position: relative; z-index: 1; }
+

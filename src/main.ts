@@ -1,123 +1,58 @@
-import { activeLineFx, lineFxBits, playLineFx } from './ui/linefx.ts';
-import { applyStaticLang, EN, gold, L } from './i18n.ts';
+import { applyStaticLang, gold, L } from './i18n.ts';
 import './style.css';
 import {
-  CHARMS, CHARM_ORDER, curseText, symbolBase, cropBase, MERGES, SHAPE_NAMES, type ShapeId, type CharmId, DIFFICULTIES, FARMERS, TOOL_EVOLVE, CONFIG, CROPS, PLACES, PLACE_ORDER, SEEDS, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL, type AddUpgradeId, type PlaceId, type SymbolId, type UpgradeId,
+  symbolBase, type ShapeId, DIFFICULTIES, FARMERS, TOOL_EVOLVE, CONFIG, CROPS, PLACES, SEEDS, SYMBOLS, UPGRADE_SYMBOL, type PlaceId, type SymbolId,
 } from './config.ts';
 import {
-  isGolden, singleMult, type Notice, bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, canUse, cellMultiplier, cropPrice, drawSymbol, endDay, expand, expandPrice, inField, inSameCropLine, isRipe, place, placePrice, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, type SellResult, upgradeAvailable, upgradePrice, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, hasRanch, isColorful, wheelGold, animalGold, isPivotAdd, isPivotPlace, plantLineMult, mustPlace, hasRoomFor, takeOffer, roomLeft, refreshCombos, symbolShape, isRareOffer, isMarketDay, shopOpen, nextMarketDay, beginDay, spinDay, sellBlock, isFlooded, mergeable, mergeSymbol, mergeCost, discard, discardPrice, canDiscard, PREMIUM, PREMIUM_ORDER, type PremiumId, premiumShown, premiumPrice, canBuyPremium, buyPremium,
-  taxCursePct,
-  isSuperOffer,
+  canPlace, canUse, cellMultiplier, cropPrice, drawSymbol, endDay, inField, inSameCropLine, isRipe, place, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, wheelGold, animalGold, plantLineMult, mustPlace, refreshCombos, symbolShape, isRareOffer, isMarketDay, shopOpen, nextMarketDay, beginDay, spinDay, sellBlock, isFlooded,
 } from './game.ts';
-import { duckBgm, isMuted, sfx, suspendAudio, toggleMute, unlockAudio } from './audio.ts';
+import { isMuted, sfx, suspendAudio, toggleMute, unlockAudio } from './audio.ts';
 import { saveMeta, setupFrom } from './meta.ts';
 import { art, gradientDefs, type ArtId } from './art.ts';
 import { track } from './telemetry.ts';
 import {
-  burst, center, coinRain, dropIn, PEST_SPEED, rays, ripple, dim, firework, confetti, flash, floatText, flyTo, hitStop, isCalm, pop, rollNumber, scanlines, shake, shakeFor, sleep, slamText, slowFactor, speedLines, stackMultipliers, toggleCalm, vibrate, rainShower, setHurry, later, fmtMult, travel, sunBeam, beeFlight, growUp,
+  burst, center, coinRain, dropIn, PEST_SPEED, ripple, confetti, flash, floatText, flyTo, isCalm, pop, rollNumber, scanlines, shake, shakeFor, sleep, toggleCalm, vibrate, rainShower, setHurry, later, fmtMult, travel, sunBeam, beeFlight, growUp,
 } from './fx.ts';
 import {
-  FRUIT, PLACE_ART, setHtml, STAGE_NAMES, type SheetName, bagPct, closeSheet, costHtml, cropEmoji, openSheet, openSheetName, roleClass, say, shapeIcon, stageOf, symHtml, upgradeArt, upgradeEffect, visibleOr,
+  FRUIT, PLACE_ART, setHtml, STAGE_NAMES, type SheetName, closeSheet, cropEmoji, openSheet, openSheetName, roleClass, say, shapeIcon, stageOf, symHtml, visibleOr, MARK_LINE, MARK_SINGLE,
 } from './ui/view.ts';
 import { applySkin, showClear, showGameOver, showHelp, showTitle } from './ui/screens.ts';
 import { clearRun, saveRun } from './ui/save.ts';
 import { $, el, hooks, meta, rng, setState, state, ui } from './ui/store.ts';
+import { done, play } from './ui/play.ts';
 import { pressable } from './ui/press.ts';
 import { applySettings, showSettings } from './ui/settings.ts';
-import { accept, reject } from './ui/states.ts';
+import { reject } from './ui/states.ts';
 import { renderDanger, renderSky, setupScene } from './ui/scene.ts';
 import { blockLongPress, setupLongPress } from './ui/info.ts';
-import { comboCard, contractCard, explainOnce, feverCard, markTutorialSymbols, marketCard, mergeCard, offerCard, symbolCard, taxCard } from './ui/explain.ts';
-import { contractRibbon, contractSay, showContractDone, showContractOffer } from './ui/contract-ui.ts';
-import { CUTIN_MS, comboBanner, feverBanner, playCutIn, showCharmOffer, showTaxStamp, witherField } from './ui/shows.ts';
+import { comboCard, contractCard, explainOnce, feverCard, markTutorialSymbols, symbolCard, taxCard } from './ui/explain.ts';
+import { contractSay, showContractDone, showContractOffer } from './ui/contract-ui.ts';
+import { comboBanner, feverBanner, showCharmOffer, showTaxStamp, witherField } from './ui/shows.ts';
+import { syncGold, holdGold } from './ui/gold-display.ts';
+import { noteSeen, PEST_HINTS, flushNotices, showHintCard, EVENT_GAP } from './ui/notices.ts';
+import { fitLayout, renderGuide, fieldCells, usableReels, renderGoal, renderTax, renderCharms, renderStatus } from './ui/hud.ts';
+import { reelTag, renderCount, spinReels, resultArt, type SpinShow } from './ui/reel-spin.ts';
+import { playLineHarvest, money } from './ui/harvest-fx.ts';
+import { TUT_OFFER, tutAllowsCell, tutStep, TUT_STEPS, tutAllowsSpin, tutAllowsReel, placeTutSpot } from './ui/tutorial.ts';
+import { renderBag, openMarket, renderFarmShop, needGold, holdMarket, forcedOffer, longTotal, renderShop, placeFirst } from './ui/market.ts';
 
-let selected: number | null = null;
-let armedNextDay = false;
-/** 列で売る・列ができたの演出の数（0より多い間は、チュートリアルの吹き出しを隠し、その手順を先へ進めない） */
-let fxRunning = 0;
-const harvestPlaying = (): boolean => fxRunning > 0;
 /** 演出を1つ始める。終わったら戻す関数を返す（吹き出しの表示もすぐ合わせる） */
 function holdCoach(): () => void {
-  fxRunning++;
+  play.fxRunning++;
   document.getElementById('coach')?.classList.add('quiet');
   let done = false;
   return () => {
     if (done) return;
     done = true;
-    fxRunning = Math.max(0, fxRunning - 1);
-    if (!fxRunning) {
+    play.fxRunning = Math.max(0, play.fxRunning - 1);
+    if (!play.fxRunning) {
       document.getElementById('coach')?.classList.remove('quiet');
-      if (tut) render();
+      if (play.tut) render();
     }
   };
 }
-let shownGold = state.gold;
-/**
- * まだ財布に届いていないお金（金貨や作物が飛んでいる途中の分）。
- * 左上の所持金は「本当の額 − 届いていない分」を出し、届いたときに増やす
- */
-let goldInFlight = 0;
-/**
- * 引かれたけれど、まだ判子を押していない年貢。夜の収入（飛んでいる金貨）が届いてから引いて見せる
- * （先に引くと、届く前の表示がマイナスになったり、足りないように見えたまま通ったりする）
- */
-let taxPending = 0;
-let goldTween = 0;
-let combo = 0;
-let lastSellAt = 0;
-/** 一度でもやった操作。ヒントを順に出すため */
-const done = { spin: false, use: false, sell: false, buy: false, next: false, line: false };
-/** その日の自動の絵柄の結果表示（リール番号ごと） */
-let autoOutcome: Record<number, string> = {};
 
 // ---- 表示ヘルパー ----
-
-/**
- * 増えたお金を「飛んでいる途中」にしておく。返した関数を呼ぶと届いて、所持金が増える。
- * 呼び忘れても数秒で届いた扱いにする（表示がずれたままにならないように）
- */
-function holdGold(amount: number): () => void {
-  if (amount <= 0) return () => {};
-  goldInFlight += amount;
-  let landed = false;
-  const land = () => {
-    if (landed) return;
-    landed = true;
-    goldInFlight = Math.max(0, goldInFlight - amount);
-    syncGold();
-  };
-  window.setTimeout(land, 8000);
-  return land;
-}
-
-/** 所持金の表示を、届いた分までに合わせる */
-function syncGold(): void {
-  const shown = state.gold - goldInFlight + taxPending;
-  if (shown !== shownGold) setGold(shown);
-}
-
-function setGold(value: number): void {
-  const from = shownGold;
-  shownGold = value;
-  cancelAnimationFrame(goldTween);
-  const start = performance.now();
-  const dur = Math.min(700, 200 + Math.abs(value - from) * 15);
-  const step = (t: number) => {
-    const k = Math.min(1, (t - start) / dur);
-    el.gold.textContent = String(Math.round(from + (value - from) * (1 - Math.pow(1 - k, 3))));
-    if (k < 1) goldTween = requestAnimationFrame(step);
-  };
-  goldTween = requestAnimationFrame(step);
-  if (value !== from) pop(el.goldBox, value > from ? 1.15 : 0.9);
-  // お金が増えたら財布がジャラッと揺れて光る
-  if (value > from) {
-    el.goldBox.classList.remove('jingle');
-    void el.goldBox.offsetWidth;
-    el.goldBox.classList.add('jingle');
-    const c = center(el.goldBox.querySelector('.stat-icon') ?? el.goldBox);
-    burst(c.x, c.y, ['✨'], value - from >= 20 ? 6 : 3, 26);
-  }
-}
 
 // ---- 描画 ----
 
@@ -152,195 +87,17 @@ function render(): void {
   renderTutorial();
   noteSeen();
 }
-
-/** 出会った絵柄（袋・リール・仕入れ）とお守り（3択・持ち物）を図鑑に記録する。まだのものは図鑑で秘密 */
-function noteSeen(): void {
-  let changed = false;
-  const syms = new Set<SymbolId>([
-    ...SYMBOL_ORDER.filter((id) => state.bag[id] > 0),
-    ...state.results.map((r) => r.symbol),
-    ...state.offer.map((id) => UPGRADE_SYMBOL[id]!.symbol),
-  ]);
-  syms.forEach((id) => {
-    if (!meta.seenSymbols.includes(id)) {
-      meta.seenSymbols.push(id);
-      changed = true;
-    }
-  });
-  const charms = new Set<CharmId>([...(state.charmOffer ?? []), ...CHARM_ORDER.filter((id) => state.charms[id] > 0)]);
-  charms.forEach((id) => {
-    if (!meta.seenCharms.includes(id)) {
-      meta.seenCharms.push(id);
-      changed = true;
-    }
-  });
-  if (changed) saveMeta(meta);
-}
-
-/** 先に置く物があるときの断りのひと言 */
-const placeFirst = () => L(`先に${PLACES[state.stock[0]].name}を置く`, `Place the ${PLACES[state.stock[0]].name} first`);
-/** お金が足りないときのひと言 */
-const needGold = (price: number) => L(`あと${price - state.gold}`, `${price - state.gold}g short`);
-
-/** 出来事と出来事の間の小さな間（同時に起こさず、順番に見せる） */
-const EVENT_GAP = 260;
 /** 1つの出来事を見せておく長さ（次の出来事はこのあと） */
 const EVENT_HOLD = 650;
-let noticeChain: Promise<void> = Promise.resolve();
 /** いま出来事を見せている自動の出目のリール */
 let actingReel: number | null = null;
-
-/** ルール側から届いた知らせ（特別なお守り・金色・進化・大当たり）を演出する */
-function flushNotices(): void {
-  const list = state.notices.splice(0);
-  // 知らせは1つずつ順番に（直前の操作の演出と重ならないよう、少し間を空けてから）
-  list.forEach((n: Notice) => {
-    noticeChain = noticeChain.then(() => sleep(EVENT_GAP + 500)).then(() => playNotice(n)).then(() => sleep(900));
-  });
-}
-
-function playNotice(n: Notice): void {
-  const top = { x: window.innerWidth / 2, y: window.innerHeight * 0.3 };
-  const tab = visibleOr(null, 'charms');
-  if (n.kind === 'ready') {
-    sfx.rare();
-    floatText(top.x, top.y, L(`${CHARMS[n.id].name} 解放！`, `${CHARMS[n.id].name} unlocked!`), { cls: 'gold', size: 1.2, dur: 1800 });
-    floatText(top.x, top.y + 34, L('次の年貢で選べる', 'Pickable after the next tax'), { size: 0.7, dur: 1800 });
-    burst(top.x, top.y, [art(n.id), '✨', '⭐'], 14, 110);
-    pop(tab, 1.2);
-  } else if (n.kind === 'got') {
-    sfx.charmGet();
-    sfx.rare();
-    flash('#ffe680', 400);
-    void slamText(`${CHARMS[n.id].name}！`, { size: 0.7, dur: 1500 });
-    burst(top.x, top.y + 40, [art(n.id), '✨', '🌟'], 18, 140);
-    vibrate([40, 30, 80]);
-    pop(tab, 1.3);
-  } else if (n.kind === 'golden') {
-    sfx.fever();
-    flash('#ffd84a', 500);
-    void slamText(L(`✦ ${CHARMS[n.id].name} 金色！`, `✦ ${CHARMS[n.id].name} golden!`), { size: 0.6, dur: 1500 });
-    coinRain(20);
-    // 何が変わったか：効き目が2倍（前 → 今）
-    const c = CHARMS[n.id];
-    const k = state.charms[n.id];
-    later(() => showHintCard(`${art(n.id)} <b>${c.name}</b> ${L('金色：効き目2倍', 'Golden: double effect')}<br>${c.desc(k)} → <b>${c.desc(k * 2)}</b>`, 7000), 1600);
-  } else if (n.kind === 'toolLevel') {
-    const plot = el.field.children[n.cell];
-    if (!plot) return;
-    const q = center(plot);
-    sfx.rare();
-    burst(q.x, q.y, ['✨', '⭐'], 10, 70);
-    pop(plot, 1.2);
-    floatText(q.x, q.y - 30, `${PLACES[n.tool].name} Lv${n.lv + 1}`, { cls: 'gold', size: 1, dur: 1500 });
-  } else if (n.kind === 'evolve') {
-    const plot = el.field.children[n.cell];
-    if (!plot) return;
-    const q = center(plot);
-    sfx.newReel();
-    sfx.rare();
-    burst(q.x, q.y, ['✨', '🌟', '⭐'], 16, 90);
-    pop(plot, 1.3);
-    floatText(q.x, q.y - 30, L(`${PLACES[n.to].name}に進化！`, `Evolved into ${PLACES[n.to].name}!`), { cls: 'gold', size: 1, dur: 1600 });
-  }
-}
-
-/** 大豊作の幕開け：畑いっぱいの実が真ん中から順に跳ね、後光とともに「大豊作！」 */
-async function bigHarvestIntro(ghosts: HTMLElement[]): Promise<void> {
-  const f = center(el.field);
-  duckBgm(7000);
-  sfx.reach();
-  await hitStop(220);
-  const order = ghosts
-    .map((g) => ({ g, d: Math.hypot(parseFloat(g.style.left) - f.x, parseFloat(g.style.top) - f.y) }))
-    .sort((a, b) => a.d - b.d);
-  order.forEach(({ g }, k) => {
-    later(() => {
-      g.animate([{ scale: 1 }, { scale: 1.6, offset: 0.4 }, { scale: 0.9, offset: 0.75 }, { scale: 1.1 }], { duration: 420, easing: 'cubic-bezier(.3,1.6,.5,1)', fill: 'forwards' });
-      burst(parseFloat(g.style.left), parseFloat(g.style.top), ['🌾', '✨'], 4, 40);
-      sfx.pon();
-    }, k * 55);
-  });
-  await sleep(order.length * 55 + 300);
-  dim(3400, 0.55);
-  rays(3200);
-  flash('#fff2a0', 600);
-  shake(el.app, 16);
-  vibrate([80, 40, 80, 40, 200]);
-  sfx.fanfare();
-  await slamText(L('大豊作！', 'BIG HARVEST!'), { cls: 'harvest', size: 1.5, dur: 2600 });
-}
-
-/** 大豊作の締め：花火・金貨の雨・紙吹雪の中で大当たりの額 */
-let landBumper: () => void = () => {};
-async function bigHarvestFinale(amount: number): Promise<void> {
-  const f = center(el.field);
-  sfx.fever();
-  flash('#ffe680', 500);
-  shake(el.app, 12);
-  coinRain(90);
-  confetti(110);
-  const colors = ['#ffd84a', '#ff6a4a', '#7fe07f', '#6ac8ff', '#ff9ae0', '#ffd84a'];
-  colors.forEach((c, i) =>
-    later(() => {
-      firework(window.innerWidth * (0.15 + (0.7 * ((i * 2) % 5)) / 4), window.innerHeight * (0.16 + 0.1 * (i % 2)), c);
-      sfx.firework();
-    }, i * 300),
-  );
-  flyTo(f, el.goldBox, '🪙', 16, () => landBumper(), true);
-  await rollNumber(f.x, f.y, amount, { prefix: L('大豊作 +', 'Big harvest +'), size: 1.5, hold: 1400, rise: true });
-}
 
 // ---- 画面の高さに合わせて畑のマスの大きさを決める（まわすボタンが必ず画面内に入るように） ----
 
 /** 最後にマスの大きさを合わせた畑の広さ */
 let fittedSize = '';
-const WIDE = window.matchMedia('(min-width: 860px) and (orientation: landscape)');
-let fitRaf = 0;
-
-function fitLayout(): void {
-  cancelAnimationFrame(fitRaf);
-  fitRaf = requestAnimationFrame(() => {
-    const root = document.documentElement;
-    // 畑は左右の余白に少しはみ出して広く取る（.farm の負の margin と合わせる）
-    const colWidth = (WIDE.matches ? el.app.clientWidth / 2 - 18 : el.app.clientWidth - 24) + 12;
-    // 畑の枠（縁・溝・マスの間）の実際の幅を測り、残りを列の数で割る
-    const farm = el.field.closest<HTMLElement>('.farm');
-    const fcs = getComputedStyle(el.field);
-    const gap = parseFloat(fcs.columnGap) || 5;
-    // 枠の幅＝畑全体の幅 − マスを並べた中身の幅（今のマスの大きさに関係なく正しく測れる）
-    const inner = el.field.clientWidth - parseFloat(fcs.paddingLeft) - parseFloat(fcs.paddingRight);
-    const frame = farm && inner > 0 ? farm.offsetWidth - inner : 28;
-    let cell = Math.min(150, Math.floor((colWidth - frame - (state.cols - 1) * gap) / state.cols));
-    root.style.setProperty('--cell', `${cell}px`);
-    for (let k = 0; k < 3; k++) {
-      const excess = root.scrollHeight - window.innerHeight;
-      if (excess <= 0) break;
-      cell = Math.max(40, cell - Math.ceil(excess / state.rows));
-      root.style.setProperty('--cell', `${cell}px`);
-    }
-  });
-}
 
 window.addEventListener('resize', fitLayout);
-
-/** 今日だけ・明日だけの効果 */
-function renderStatus(): void {
-  const chips: string[] = [];
-  const good = state.fever.filter((s) => SYMBOLS[s].rarity !== 'bad');
-  const bad = state.fever.filter((s) => SYMBOLS[s].rarity === 'bad');
-  if (good.length) chips.push(`<span class="st fever">${art('flame')} ${L('フィーバー', 'Fever')}：${good.map((s) => SYMBOLS[s].name).join(L('・', ', '))}</span>`);
-  if (bad.length) chips.push(`<span class="st danger">${art('warn')} ${bad.map((s) => L(`${SYMBOLS[s].name}の群れ`, `${SYMBOLS[s].name} swarm`)).join(L('・', ', '))}</span>`);
-  state.combos.forEach((id) => chips.push(`<span class="st combo">${art(id)} ${CHARMS[id].name}</span>`));
-  // 市の日は高く売れる
-  // 市の日の売値は曜日の板（今日の札の下）に出す
-  if (state.priceMult > 1) chips.push(`<span class="st merchant">${art('merchant')} ${L('今日の売値', "Today's prices")} ×${fmtMult(state.priceMult)}</span>`);
-  if (state.cloverBoost > 1) chips.push(`<span class="st clover">${art('clover')} ${L('明日は金の種が出やすい', 'Golden seeds likelier tomorrow')}（×${fmtMult(state.cloverBoost)}）</span>`);
-  // セット効果：そろっている間だけ
-  if (hasRanch(state)) chips.push(`<span class="st set">${art('henhouse')}${art('cowshed')}${art('hive')} ${L('牧場', 'Ranch')} ×2</span>`);
-  if (isColorful(state)) chips.push(`<span class="st set">${art('sunBlessing')} ${L('彩りの畑', 'Colorful field')} +${Math.round(CONFIG.colorfulBonus * 100)}%</span>`);
-  setHtml(el.status, chips.join(''));
-}
 
 /** 道具の育ち：上に経験のゲージ、鶏小屋・牛小屋は段の札（育ちきったら札だけ） */
 function toolGrowHtml(cell: number, tool: PlaceId): string {
@@ -364,7 +121,7 @@ function renderPick(): void {
     setHtml(box, `<span class="pick-label">${L('置く', 'Place')}</span><span class="pick-sym">${art(PLACE_ART[id])}</span><b>${PLACES[id].name}</b>`);
     return;
   }
-  const r = selected !== null ? state.results[selected] : null;
+  const r = play.selected !== null ? state.results[play.selected] : null;
   box.hidden = !r;
   if (!r) return;
   const def = SYMBOLS[r.symbol];
@@ -372,27 +129,6 @@ function renderPick(): void {
   const shapeId = symbolShape(state, r.symbol);
   const shape = shapeId ? `<span class="pick-shape">${shapeIcon(shapeId)}</span>` : '';
   setHtml(box, `<span class="pick-label">${L('選択中', 'Selected')}</span><span class="pick-sym">${symHtml(r.symbol)}</span><b>${def.name}</b>${shape}`);
-}
-
-/** 操作の案内：今なにをすればよいかを、リールのすぐ上に1行で（docs/ui-reading.md：操作の近くに） */
-function renderGuide(): void {
-  const box = $('guide');
-  let html = '';
-  if (state.over || tut) html = '';
-  // 置き待ちの物があるときは、まず置く（1日目の前に、腕前でもらった物も）
-  else if (state.stock.length && mustPlace(state)) {
-    const id = state.stock[0];
-    html = `${art(PLACE_ART[id])}<span>${L(`${PLACES[id].name}を置く → <b>光るマス</b>をタップ`, `Place the ${PLACES[id].name} → tap a <b>glowing plot</b>`)}</span>`;
-  } else if (state.day === 0) html = `${art('hand')}<span>${L('<b>リールをタップ</b>して回す', '<b>Tap the reels</b> to spin')}</span>`; else if (selected !== null && state.results[selected]) {
-    const r = state.results[selected];
-    const shape = symbolShape(state, r.symbol);
-    const what = SEEDS[r.symbol] ? L(`植える 残り${r.left}`, `plant ${r.left}`) : shape ? SHAPE_NAMES[shape] : SYMBOLS[r.symbol].desc;
-    html = `${symHtml(r.symbol)}<span>${L(`${SYMBOLS[r.symbol].name} → <b>光るマス</b>をタップ`, `${SYMBOLS[r.symbol].name} → tap a <b>glowing plot</b>`)}<em>${what}</em></span>`;
-  } else if (usableReels().length) html = `${art('hand')}<span>${L('<b>出目</b>を選ぶ', 'Pick a <b>reel</b>')}</span>`;
-  else if (fieldCells().some((c) => isRipe(state.field[c]))) html = `${art('coin')}<span>${L('<b>実り</b>をタップで売る・リールで次の日へ', 'Tap <b>ripe crops</b> to sell · reels for next day')}</span>`;
-  else html = `${art('calendar')}<span>${L(`<b>リールをタップ</b>で${state.day + 1}日目へ`, `<b>Tap the reels</b> for day ${state.day + 1}`)}</span>`;
-  box.hidden = !html;
-  setHtml(box, html);
 }
 
 function renderMarket(): void {
@@ -405,148 +141,14 @@ function renderMarket(): void {
   setHtml(box, `${up}${down}`);
 }
 
-function renderCharms(): void {
-  const owned = CHARM_ORDER.filter((id) => state.charms[id] > 0);
-  el.charmPanel.hidden = owned.length > 0;
-  el.charmCount.textContent = state.stock.length ? L(`置く待ち${state.stock.length}`, `${state.stock.length} to place`) : owned.length ? `${owned.reduce((n, id) => n + state.charms[id], 0)}` : '';
-  setHtml(
-    el.charms,
-    owned
-      .map((id) => {
-        const c = CHARMS[id];
-        const n = state.charms[id];
-        const gold = isGolden(state, id);
-        return `<span class="charm tier-${c.tier}${gold ? ' golden' : ''}${c.special ? ' special' : ''}" data-charm="${id}"><span class="e">${art(id)}</span><span><b>${c.name}${n > 1 ? ` ×${n}` : ''}${gold ? ` <i class="gold-tag">✦ ${L('金色・2倍', 'Golden ×2')}</i>` : c.max >= CONFIG.goldenAt && n > 0 ? ` <i class="gold-next">${L(`あと${CONFIG.goldenAt - n}個で金色`, `${CONFIG.goldenAt - n} more → golden`)}</i>` : ''}</b><small>${c.desc(gold ? n * 2 : n)}${curseText(id, n) ? `<em class="curse">${curseText(id, n)}</em>` : ''}</small></span></span>`;
-      })
-      .join(''),
-  );
-}
-
 /** 今週の注文：畑の囲いに下げた木の札。作物の絵と「2/5」だけ、タップで詳しく */
-/** 注文の達成の演出が終わるまでは、札をまだ「達成」にしない（報酬の金貨が届くのと同じときに） */
-let orderRevealPending = false;
-
 function renderOrder(): void {
   const o = state.order;
   el.order.hidden = !o;
   if (!o) return;
-  const done = o.done && !orderRevealPending;
+  const done = o.done && !play.orderRevealPending;
   el.order.className = `order-tag${done ? ' done' : ''}`;
   setHtml(el.order, `<span class="sign-nail l"></span><span class="sign-nail r"></span><span class="order-ico">${art(FRUIT[o.crop])}</span><b>${done ? L('達成！', 'Done!') : `${CROPS[o.crop].name} ${o.have}/${o.need}`}</b><span class="order-reward">${done ? '✓' : gold(o.reward)}</span>`);
-}
-
-/** 年貢：「年貢 7 あと2日」を言葉で。払えるときは緑、足りないときは赤 */
-/** 曜日の表示：月〜日のどこにいるか（今日が光る）。水・土は市、日は年貢の印 */
-const WEEKDAYS = EN ? ['M', 'T', 'W', 'T', 'F', 'S', 'S'] : ['月', '火', '水', '木', '金', '土', '日'];
-function renderWeek(): void {
-  const today = state.day > 0 ? ((state.day - 1) % CONFIG.taxPeriod) + 1 : 0;
-  const t = nextTax(state);
-  setHtml(
-    el.week,
-    WEEKDAYS.map((w, k) => {
-      const d = k + 1;
-      // 札の右下に小さな印：市の日は値札、日曜は年貢の俵
-      // 市が閉まる週は市の印を出さない
-      const market = CONFIG.marketDays.includes(d) && state.contract !== 'marketClosed';
-      const mark = d === CONFIG.taxPeriod ? art('bale') : market ? art('bargain') : '';
-      const cls = `wd${d === today ? ' now' : d < today ? ' past' : ''}${d === CONFIG.taxPeriod ? ' tax' : ''}${market ? ' market' : ''}${d === CONFIG.taxPeriod && state.gold < t.amount ? ' short' : ''}`;
-      // 市の日の今日は、札の下に売値の倍率を下げる（畑の上に別の帯を出さない）
-      const sell = d === today && market && state.day > 0 ? `<em class="wd-sell">${L('売値', 'Sell')}×${CONFIG.marketDaySell}</em>` : '';
-      return `<span class="${cls}"><span class="wd-plate"><b>${w}</b>${mark ? `<i>${mark}</i>` : ''}</span>${sell}</span>`;
-    }).join('') + contractRibbon(),
-  );
-  el.week.classList.toggle('has-contract', !!state.contract);
-  // 道のりの進み具合（月＝0、日＝1）。済んだ区間は金色に塗る
-  el.week.style.setProperty('--wk-p', String(today ? (today - 1) / (CONFIG.taxPeriod - 1) : 0));
-  // 溝は札の真ん中を通す（最初と最後の札の中心を測る。今日の札は大きくなるので、ほかの札で測る）
-  requestAnimationFrame(() => {
-    const plates = [...el.week.querySelectorAll<HTMLElement>('.wd:not(.now) .wd-plate')];
-    if (plates.length < 2) return;
-    const box = el.week.getBoundingClientRect();
-    const first = el.week.querySelector<HTMLElement>('.wd:first-child .wd-plate')!.getBoundingClientRect();
-    const last = el.week.querySelector<HTMLElement>('.wd:nth-child(7) .wd-plate')!.getBoundingClientRect();
-    const ref = plates[0].getBoundingClientRect();
-    const border = el.week.clientLeft;
-    const cy = ref.top + ref.height / 2 - box.top - el.week.clientTop;
-    const x0 = first.left + first.width / 2 - box.left - border;
-    const x1 = last.left + last.width / 2 - box.left - border;
-    el.week.style.setProperty('--wk-y', `${cy.toFixed(1)}px`);
-    el.week.style.setProperty('--wk-x0', `${x0.toFixed(1)}px`);
-    el.week.style.setProperty('--wk-w', `${(x1 - x0).toFixed(1)}px`);
-  });
-  el.week.setAttribute('aria-label', today ? L(`今日は${WEEKDAYS[today - 1]}曜日`, `Today: ${WEEKDAYS[today - 1]}`) : '');
-}
-
-function renderTax(): void {
-  const t = nextTax(state);
-  // 今のお金が年貢に足りないときは、所持金を赤字で
-  el.goldBox.classList.toggle('short', state.day > 0 && state.gold < t.amount);
-  // 左上：所持金のあとに「/年貢の額」
-  $('gold-need').textContent = `/${t.amount}`;
-  renderWeek();
-  const short = state.gold < t.amount;
-  const warn = short && t.daysLeft <= CONFIG.taxWarnDays;
-  el.tax.className = `hud-tax${warn ? ' warn' : ''}${short ? ' short' : ' ok'}${state.difficulty ? ' hard' : ''}`;
-  el.tax.innerHTML =
-    // 年貢の額は左上の所持金の横（所持金/年貢）に出す
-    `<span class="tax-label">${art('bale')}<span class="tax-word">${L('年貢', 'Tax')}</span></span>` +
-    // お守りの代償で年貢が上がっているときは、金額の横に「+10%」の印
-    (taxCursePct(state) ? `<em class="tax-curse" title="${L('お守りの代償', 'Charm curse')}">+${taxCursePct(state)}%</em>` : '') +
-    // 足りないときは、いくら足りないか（いつ払うかは曜日の板で分かるので書かない）
-    `<span class="tax-mark">${short ? L(`あと${t.amount - state.gold}`, `${t.amount - state.gold} short`) : L('払える', 'ready')}</span>` +
-    // 何回目の年貢か（クリアまでの7回のうち）
-    `<span class="tax-count">${Math.min(t.index + 1, CONFIG.winTaxes)}<small>/${CONFIG.winTaxes}</small></span>`;
-}
-
-/** 列（縦・横・斜めに3つ以上）にそろった実があるか */
-
-function renderGoal(): void {
-  const available = UPGRADES.filter((u) => upgradeAvailable(state, u.id));
-  const tab = document.querySelector('.tab[data-sheet="shop"]')!;
-  // 市の日だけ開く。それ以外の日は次の市までの日数
-  tab.classList.toggle('closed', !shopOpen(state));
-  if (!shopOpen(state)) {
-    tab.classList.remove('ready');
-    el.goal.textContent = '';
-    return;
-  }
-  const ready = available.some((u) => canBuy(state, u.id));
-  tab.classList.toggle('ready', ready);
-  if (ready) {
-    el.goal.textContent = L('買える', 'Can buy');
-    return;
-  }
-  const next = available.sort((a, b) => upgradePrice(state, a.id) - upgradePrice(state, b.id))[0];
-  el.goal.textContent = next ? L(`あと${upgradePrice(state, next.id) - state.gold}`, `${upgradePrice(state, next.id) - state.gold}g to go`) : '';
-}
-
-function usableReels(): number[] {
-  return state.results.flatMap((_, i) => (canUse(state, i, null) ? [i] : []));
-}
-
-/** 出目の絵（月は満ち欠けの形で） */
-const MOON_PHASE_ART: ArtId[] = ['moonNew', 'moonCrescent', 'moonHalf', 'moon'];
-function resultArt(i: number): string {
-  const r = state.results[i];
-  if (r?.symbol === 'moon' && r.moon !== undefined) return art(MOON_PHASE_ART[r.moon]);
-  return symHtml(r.symbol);
-}
-
-function reelTag(i: number): { text: string; cls: string } {
-  const r = state.results[i];
-  if (!r) return { text: '—', cls: '' };
-  // 満ちていく途中の月：あと何回で満月か
-  if (r.symbol === 'moon' && r.moon !== undefined && r.moon < 3) return { text: L(`満ちる ${r.moon}/3`, `Waxing ${r.moon}/3`), cls: 'used moon-wax' };
-  const def = SYMBOLS[r.symbol];
-  if (def.kind === 'auto') {
-    // 絵柄はイラストで分かるので、札には結果だけを短く書く
-    const text = autoOutcome[i] ?? L('自動', 'Auto');
-    return { text, cls: def.rarity === 'bad' ? 'auto-bad used' : 'used' };
-  }
-  if (r.used) return { text: '', cls: 'used' };
-  if (selected === i) return { text: '', cls: 'selected' };
-  if (canUse(state, i, null)) return { text: '', cls: 'usable' };
-  return { text: '', cls: 'dead' };
 }
 
 /** 手動の出目が今は使えない理由（札とタップしたときに出す） */
@@ -608,24 +210,6 @@ function renderReelStates(): void {
   });
 }
 
-/** 出目の効く形を3×3のマス目で描く（光っているマスに効く） */
-/** 種の残り個数バッジ（×2・×3） */
-function renderCount(reel: HTMLElement, i: number): void {
-  const r = state.results[i];
-  const win = reel.querySelector('.window')!;
-  let badge = win.querySelector('.count');
-  if (!r || r.total <= 1 || r.left <= 0) {
-    badge?.remove();
-    return;
-  }
-  if (!badge) {
-    badge = document.createElement('span');
-    badge.className = 'count';
-    win.appendChild(badge);
-  }
-  badge.textContent = `×${r.left}`;
-}
-
 /** 毎日の仕入れの案内を出したか */
 let offerHinted = (() => {
   try {
@@ -655,7 +239,7 @@ function renderSpinButton(): void {
     : `<span class="go-hand">${art('hand')}</span><span class="go-text">${t.daysLeft === 0 ? `<small>${L(`年貢${t.amount}を納めて`, `Pay ${t.amount}g tax`)}</small>` : ''}<b>${L(`${state.day + 1}日目へ`, `To day ${state.day + 1}`)}</b><small>${L('リールをタップ', 'Tap the reels')}</small></span>`);
   // 筐体の看板：今日の仕入れがあれば、そこに3つの絵柄（押すと袋に入る）。なければ「タップで回す」など
   const cue = document.querySelector('.machine-top') as HTMLElement;
-  const offering = state.offer.length > 0 && state.day > 0 && !state.over && !ui.busy && !tut;
+  const offering = state.offer.length > 0 && state.day > 0 && !state.over && !ui.busy && !play.tut;
   cue.classList.toggle('offer', offering);
   cue.classList.toggle('cue', ready && !offering);
   if (offering) {
@@ -682,10 +266,6 @@ function renderSpinButton(): void {
       : L(`▼ タップで${state.day + 1}日目へ ▼`, `▼ TAP FOR DAY ${state.day + 1} ▼`));
 }
 
-/** 売値の倍率の印：3つ並んだ点（列）と1つの点（単品） */
-const MARK_LINE = '<svg class="mk" viewBox="0 0 26 10" aria-hidden="true"><path d="M4 5H22" stroke="currentColor" stroke-width="2.4"/><circle cx="4" cy="5" r="3.4" fill="currentColor"/><circle cx="13" cy="5" r="3.4" fill="currentColor"/><circle cx="22" cy="5" r="3.4" fill="currentColor"/></svg>';
-const MARK_SINGLE = '<svg class="mk" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="3.4" fill="currentColor"/></svg>';
-
 /** 道具・特別なマスの絵 */
 /** マスに最後に書いた中身（同じなら書き換えない：押している最中に中身が入れ替わるとクリックが消える） */
 const plotHtml = new WeakMap<Element, string>();
@@ -694,8 +274,8 @@ const plotHtml = new WeakMap<Element, string>();
 let previewCell: number | null = null;
 
 function previewCells(): number[] {
-  if (selected === null || previewCell === null) return [];
-  const sym = state.results[selected].symbol;
+  if (play.selected === null || previewCell === null) return [];
+  const sym = state.results[play.selected].symbol;
   // 大物の種は、植わる2×2を下見する
   if (SEEDS[sym] && CROPS[SEEDS[sym]!.crop].big) return bigCells(state, previewCell);
   const shape = symbolShape(state, sym);
@@ -706,9 +286,9 @@ function renderField(): void {
   // 水車は水路の並びの端に立つ
   const wheelEnds = new Set(waterWheels(state).map((w) => w[w.length - 1]));
   const placeable = state.stock.length ? state.field.flatMap((_, i) => (canPlace(state, i) ? [i] : [])) : [];
-  const targets = selected !== null ? validTargets(state, selected) : placeable.length ? placeable : null;
+  const targets = play.selected !== null ? validTargets(state, play.selected) : placeable.length ? placeable : null;
   const preview = previewCells();
-  const selSeed = selected !== null ? SEEDS[state.results[selected].symbol] : undefined;
+  const selSeed = play.selected !== null ? SEEDS[state.results[play.selected].symbol] : undefined;
   const plantKind = selSeed && !CROPS[selSeed.crop].big ? selSeed.crop : null;
   el.field.style.setProperty('--cols', String(state.cols));
   if (el.field.children.length !== state.field.length) {
@@ -719,12 +299,12 @@ function renderField(): void {
       b.addEventListener('click', () => clickAllowed('plot') && onPlotTap(i));
       b.addEventListener('pointerenter', () => {
         previewCell = i;
-        if (selected !== null && SYMBOLS[state.results[selected].symbol].shape) renderField();
+        if (play.selected !== null && SYMBOLS[state.results[play.selected].symbol].shape) renderField();
       });
       b.addEventListener('pointerleave', () => {
         if (previewCell !== i) return;
         previewCell = null;
-        if (selected !== null) renderField();
+        if (play.selected !== null) renderField();
       });
       el.field.appendChild(b);
     });
@@ -843,475 +423,6 @@ function renderField(): void {
   });
 }
 
-/** ショップの値段の札。買えるときは緑の値段、足りないときは灰色の値段と不足額 */
-/** このゲームのショップに並ぶもの（選んだ「足す」強化＋消す＋リール） */
-/** いつも並ぶ品・週替わり・袋に入っているお邪魔を消す品 */
-function shopItems(): typeof UPGRADES {
-  return UPGRADES.filter((u) => {
-    // 毎日の仕入れのときは、ショップで足せる絵柄は満月だけ
-    if (u.id.startsWith('add')) return !CONFIG.dailyPick && state.weekly.includes(u.id as never);
-    return state.bag[UPGRADE_SYMBOL[u.id]!.symbol] > 0;
-  });
-}
-
-/** 市の上の帯：所持金・次の年貢・年貢まで使える額（買う前に比べられるように） */
-function renderBudget(): void {
-  const stall = $('stall');
-  let bar = stall.querySelector<HTMLElement>('.budget-bar');
-  if (!bar) {
-    bar = document.createElement('div');
-    bar.className = 'budget-bar';
-    stall.prepend(bar);
-  }
-  const t = nextTax(state);
-  const free = state.gold - t.amount;
-  const html = `<span class="bb-cell">${art('coin')}<small>${L('所持', 'Gold')}</small><b>${state.gold}</b></span>
-    <span class="bb-cell">${art('bale')}<small>${L(`年貢（${WEEKDAYS[CONFIG.taxPeriod - 1]}）`, 'Tax')}</small><b>${t.amount}</b></span>
-    <span class="bb-cell ${free >= 0 ? 'ok' : 'short'}">${art(free >= 0 ? 'bargain' : 'warn')}<small>${free >= 0 ? L('使える', 'Spendable') : L('年貢まで', 'To tax')}</small><b>${free >= 0 ? free : `−${-free}`}</b></span>`;
-  if (bar.innerHTML !== html) bar.innerHTML = html;
-}
-
-function renderShop(): void {
-  renderBudget();
-  renderOfferShop();
-  // 市を出るボタン：仕入れを選ぶまでは押せない（選ぶと押せるようになる）
-  const next = $('market-next') as HTMLButtonElement;
-  const must = forcedOffer();
-  next.disabled = must;
-  setHtml(next, must ? L('↑ 仕入れを1つ選ぶ', '↑ Pick one first') : `${L('次へ', 'Next')} ▶`);
-  const items = shopItems();
-  const adds = items.filter((u) => !u.id.startsWith('remove'));
-  renderUpgradeList(el.shop, adds);
-  // 毎日の仕入れのときは、ショップに絵柄の区画はいらない
-  (el.shop.closest('.stall-sec') as HTMLElement).hidden = adds.length === 0;
-  renderUpgradeList($('remove-shop'), items.filter((u) => u.id.startsWith('remove')));
-  renderMergeShop();
-  renderPremiumShop();
-  renderDiscardShop();
-  syncStallSecs();
-}
-
-/** 分類の段：中に品が1つもなければ段ごと隠す（お邪魔の段は「いない！」の1行があれば出す） */
-function syncStallSecs(): void {
-  document.querySelectorAll<HTMLElement>('#stall .stall-sec[data-cat]').forEach((sec) => {
-    const parts = [...sec.querySelectorAll<HTMLElement>('.shop, .stall-sub, .stall-empty')].filter((e) => !e.hidden && !e.closest('[hidden]:not(.stall-sec)'));
-    sec.hidden = !parts.some((e) => e.classList.contains('stall-empty') || e.querySelector('.item, .dc-chip'));
-  });
-}
-
-/** 要らない札を捨てる（市で1回・捨てるたびに高くなる）。1回目のタップで選び、もう一度で捨てる */
-let discardArmed: SymbolId | null = null;
-function renderDiscardShop(): void {
-  const box = $('discard-shop');
-  const shown = shopOpen(state) && state.day > 0 && !tut;
-  (box.closest('.stall-sec') as HTMLElement).hidden = !shown;
-  if (!shown) return;
-  const price = discardPrice(state);
-  setHtml($('discard-price'), state.discardedThisMarket ? L('この市はもう捨てた', 'Done this market') : `${art('coin')}${price}・${L('市で1回', 'once per market')}`);
-  const syms = SYMBOL_ORDER.filter((id) => state.bag[id] > 0 && SYMBOLS[id].rarity !== 'bad');
-  const html = syms
-    .map((id) => `<button class="dc-chip${discardArmed === id ? ' armed' : ''}" data-discard="${id}" ${canDiscard(state, id) ? '' : 'disabled'} aria-label="${SYMBOLS[id].name}">${symHtml(id)}<b>×${state.bag[id]}</b></button>`)
-    .join('');
-  if (box.innerHTML !== html) {
-    box.innerHTML = html;
-    box.querySelectorAll<HTMLButtonElement>('[data-discard]').forEach((b) => b.addEventListener('click', () => onDiscard(b)));
-  }
-}
-
-function onDiscard(b: HTMLButtonElement): void {
-  unlockAudio();
-  if (ui.busy || state.over || holdMarket()) return;
-  const sym = b.dataset.discard as SymbolId;
-  if (discardArmed !== sym) {
-    discardArmed = sym;
-    sfx.select();
-    say(`${symHtml(sym)} ${L('もう一度タップで捨てる', 'Tap again to discard')}`, 2000);
-    renderDiscardShop();
-    return;
-  }
-  discardArmed = null;
-  if (!discard(state, sym)) {
-    reject(b, needGold(discardPrice(state)));
-    renderDiscardShop();
-    return;
-  }
-  sfx.buy();
-  const q = center(b);
-  burst(q.x, q.y, ['💨'], 8, 50);
-  render();
-  renderShop();
-}
-
-/** 大きな買い物（4週目から）：お金の使い道。売値+10%の像・リール+1 */
-function renderPremiumShop(): void {
-  const box = $('premium-shop');
-  const shown = premiumShown(state) && shopOpen(state);
-  box.hidden = !shown;
-  if (!shown) return;
-  const html = PREMIUM_ORDER.map((id) => {
-    const p = PREMIUM[id];
-    const price = premiumPrice(state, id);
-    const ok = canBuyPremium(state, id);
-    const n = state.premium?.[id] ?? 0;
-    return `<button class="item premium-item${ok ? ' affordable' : ''}${price === null ? ' soldout' : ''}" data-premium="${id}"><span class="ico">${art(p.art as ArtId)}</span>
-      <span class="text"><span class="name">${p.name}${n ? ` <span class="lv">${n}/${p.max}</span>` : ''}</span><span class="effect">${p.desc}</span></span>${costHtml(price, ok)}</button>`;
-  }).join('');
-  if (box.innerHTML !== html) {
-    box.innerHTML = html;
-    box.querySelectorAll<HTMLButtonElement>('[data-premium]').forEach((b) => b.addEventListener('click', () => onBuyPremium(b)));
-  }
-}
-
-function onBuyPremium(b: HTMLButtonElement): void {
-  unlockAudio();
-  if (ui.busy || state.over) return;
-  const id = b.dataset.premium as PremiumId;
-  const price = premiumPrice(state, id);
-  if (price === null) return;
-  if (!buyPremium(state, id)) {
-    reject(b, needGold(price));
-    return;
-  }
-  sfx.bigBuy();
-  accept(b);
-  const q = center(b);
-  burst(q.x, q.y, ['✨', '⭐', '🌟'], 14, 80);
-  if (id === 'reel') {
-    sfx.newReel();
-    floatText(q.x, q.y - 30, L('リール+1！', 'Reel +1!'), { cls: 'good', size: 1 });
-  }
-  render();
-  renderShop();
-}
-
-/** 合体：同じ札が4枚そろった絵柄を、1枚の上位の札にできる（市で1回に1種類まで） */
-function renderMergeShop(): void {
-  const box = $('merge-shop');
-  const list = mergeable(state);
-  (box.closest('.stall-sec') as HTMLElement).hidden = !list.length;
-  if (list.length) void explainOnce('ex:merge', mergeCard(list[0], MERGES[list[0]]!, mergeCost(state)), !!tut);
-  const cost = mergeCost(state);
-  const key = `${list.join(",")}|${state.mergedThisMarket}|${cost}|${state.gold}`;
-  if (box.dataset.key === key) return;
-  box.dataset.key = key;
-  box.innerHTML = list
-    .map((sym) => {
-      const to = MERGES[sym]!;
-      const def = SYMBOLS[to];
-      return `<button class="item merge-item${state.gold >= cost ? ' affordable' : ' short'}" data-merge="${sym}">
-        <span class="merge-from">${Array.from({ length: CONFIG.mergeNeed }, () => `<i>${symHtml(sym)}</i>`).join('')}</span>
-        <span class="merge-arrow">▶</span>
-        <span class="ico">${symHtml(to)}</span>
-        <span class="text"><span class="name">${def.name}${def.shape ? `<span class="oc-shape">${shapeIcon(def.shape)}</span>` : ''}</span><span class="effect">${def.desc}</span></span>
-        ${costHtml(cost, state.gold >= cost)}
-      </button>`;
-    })
-    .join('');
-  box.querySelectorAll<HTMLButtonElement>('[data-merge]').forEach((b) => b.addEventListener('click', () => onMerge(b)));
-}
-
-function onMerge(b: HTMLButtonElement): void {
-  unlockAudio();
-  if (ui.busy || state.over) return;
-  const sym = b.dataset.merge as SymbolId;
-  const to = MERGES[sym]!;
-  const from = [...b.querySelectorAll<HTMLElement>('.merge-from i')];
-  const target = b.querySelector('.ico') as HTMLElement;
-  const cost = mergeCost(state);
-  if (state.gold < cost) {
-    reject(b, needGold(cost));
-    return;
-  }
-  if (!mergeSymbol(state, sym)) return;
-  // 払ったお金はすぐ減らす
-  syncGold();
-  const pay = center(b.querySelector('.cost') ?? b);
-  floatText(pay.x, pay.y - 10, money(-cost), { cls: 'bad', size: 0.9 });
-  sfx.charmGet();
-  vibrate(30);
-  // 4枚が1か所に集まって、1枚の上位の札になる
-  const t = center(target);
-  from.forEach((f, k) => {
-    const q = center(f);
-    f.animate([{ transform: 'translate(0,0) scale(1)', opacity: 1 }, { transform: `translate(${t.x - q.x}px, ${t.y - q.y}px) scale(.6)`, opacity: 0.2 }], { duration: 380, delay: k * 60, easing: 'cubic-bezier(.5,0,.7,1)', fill: 'forwards' });
-  });
-  later(() => {
-    flash('#fff6c0', 220);
-    burst(t.x, t.y, ['✨', '⭐', '🌟'], 16, 80);
-    pop(target, 1.4);
-    floatText(t.x, t.y - 40, `${SYMBOLS[to].name}！`, { cls: 'good', size: 1.1 });
-    later(() => {
-      render();
-      renderShop();
-    }, 700);
-  }, 380 + CONFIG.mergeNeed * 60);
-}
-
-/** 仕入れの段を畳んでいる最中（終わるまで描き直さない） */
-let offerFolding = false;
-
-/** 市の仕入れ：3つから1つタダで袋へ（見送れない） */
-function renderOfferShop(): void {
-  if (offerFolding) return;
-  const box = $('offer-shop');
-  (box.closest('.stall-sec') as HTMLElement).hidden = !state.offer.length;
-  const html = state.offer
-    .map((id) => {
-      const sym = UPGRADE_SYMBOL[id]!.symbol;
-      const def = SYMBOLS[sym];
-      const after = { ...state.bag, [sym]: state.bag[sym] + 1 };
-      // 横に3枚並べるカード：絵・名前・効き目・袋の割合・選ぶ
-      // スーパーレアは金の札・金の「超レア」札。レアは「レア」札
-      const sup = isSuperOffer(id);
-      return `<button class="item affordable offer-item${isRareOffer(id) ? ' rare-offer' : ''}${sup ? ' super-offer' : ''}" data-take="${id}">${sup ? `<span class="pivot-tag super-tag">${L('超レア', 'Super rare')}</span>` : isRareOffer(id) ? `<span class="pivot-tag">${L('レア', 'Rare')}</span>` : ''}<span class="ico">${symHtml(sym)}</span>
-        <span class="name">${def.name}${def.shape ? `<span class="oc-shape">${shapeIcon(def.shape)}</span>` : ''}</span>
-        <span class="effect">${def.desc}</span><span class="odds">${art('seed')}${bagPct(state.bag, sym)}→<b>${bagPct(after, sym)}%</b></span>
-        <span class="cost free"><b>${L('選ぶ', 'Pick')}</b></span></button>`;
-    })
-    .join('');
-  if (box.dataset.key !== state.offer.join(',')) {
-    box.dataset.key = state.offer.join(',');
-    box.innerHTML = html;
-    box.querySelectorAll<HTMLButtonElement>('[data-take]').forEach((b) => b.addEventListener('click', () => onTakeOffer(b)));
-  }
-}
-
-function onTakeOffer(b: HTMLButtonElement): void {
-  unlockAudio();
-  if (ui.busy || state.over) return;
-  const id = b.dataset.take as AddUpgradeId;
-  const from = center(b.querySelector('.ico')!);
-  // 畳む前の段（render で hidden になる前に、高さを測っておく）
-  const sec = b.closest('.stall-sec') as HTMLElement;
-  if (!takeOffer(state, id)) return;
-  offerFolding = true;
-  const sym = UPGRADE_SYMBOL[id]!.symbol;
-  sfx.buy();
-  accept(b);
-  sec.querySelectorAll<HTMLElement>('.offer-item').forEach((it) => {
-    if (it !== b) it.animate([{ opacity: 1, transform: 'scale(1)' }, { opacity: 0.25, transform: 'scale(0.96)' }], { duration: 220, fill: 'forwards' });
-  });
-  later(() => {
-    // 選んだら画面を薄く消して、市（買い物）を開く
-    const scr = $('offer-screen');
-    scr.animate([{ opacity: 1 }, { opacity: 0 }], { duration: isCalm() ? 120 : 260, easing: 'ease-in' }).onfinish = () => {
-      scr.hidden = true;
-      offerFolding = false;
-      openMarket();
-    };
-  }, 420);
-  later(() => {
-    render();
-    ripple(from.x, from.y, '#ffd84a');
-    const chip = visibleOr(el.bag.querySelector(`[data-sym="${sym}"]`), 'bag');
-    flyTo(from, chip, symHtml(sym), 1, () => {
-      pop(chip, 1.35);
-      burst(center(chip).x, center(chip).y, ['✨'], 6, 30);
-    });
-  }, 260);
-}
-
-/** 絵柄袋の品（足す・消す）を container に並べる */
-function renderUpgradeList(container: HTMLElement, items: typeof UPGRADES): void {
-  const key = items.map((u) => u.id).join(',');
-  // 新しいゲームで中身を空にした場合も作り直す
-  if (container.dataset.key !== key || container.children.length !== items.length) {
-    container.dataset.key = key;
-    container.innerHTML = '';
-    items.forEach((u) => {
-      const b = document.createElement('button');
-      b.className = 'item';
-      b.dataset.id = u.id;
-      b.addEventListener('click', () => onBuy(u.id));
-      container.appendChild(b);
-    });
-  }
-  items.forEach((u, i) => {
-    const b = container.children[i] as HTMLButtonElement;
-    const available = upgradeAvailable(state, u.id);
-    const price = upgradePrice(state, u.id);
-    const affordable = canBuy(state, u.id);
-    b.className = `item${affordable ? ' affordable' : ''}${available ? '' : ' soldout'}`;
-    const ico = upgradeArt(u.id);
-    // 「新しい作戦」の札は出さない
-    const pivot = false && u.id.startsWith('add') && isPivotAdd(state, u.id as AddUpgradeId);
-    b.classList.toggle('pivot', pivot);
-    const html = `<span class="ico">${ico}</span><span class="text"><span class="name">${u.name}${pivot ? `<span class="pivot-tag">${L('新しい作戦', 'New plan')}</span>` : ''}</span><span class="effect">${pivot ? CONFIG.pivotAdds[u.id]!.split(/：|: /)[1] : upgradeEffect(u.id)}</span></span>${costHtml(available ? price : null, affordable, u.id.startsWith('remove') && state.bag[UPGRADE_SYMBOL[u.id]!.symbol] > 0 ? CONFIG.marketDays.length ? L('次の市', 'Next') : L('来週', 'Next wk') : L('完了', 'Done'))}`;
-    if (b.innerHTML !== html) b.innerHTML = html;
-  });
-  if (container.id === 'remove-shop') $('stall-empty').hidden = items.length > 0;
-}
-
-/** 畑が広がった演出（お守り「開墾」） */
-function showExpanded(): void {
-  sfx.bigBuy();
-  flash('#c8f0a0', 400);
-  const f = center(el.field);
-  burst(f.x, f.y, ['🌱', '✨', '⭐'], 18, 160);
-  fieldCells().forEach((c) => pop(el.field.children[c], 1.08));
-}
-
-/** 畑のショップ：道具・特別なマス */
-/** 長い列の倍率（同じ作物の上乗せなし、四捨五入して1桁） */
-const longTotal = (len: number): number => Math.round(CONFIG.lineMult * CONFIG.longLineMult[len] * 10) / 10;
-
-/** 市の畑の品の効き目：1行に1つ、行の頭に絵（docs/ui-reading.md） */
-const PLACE_ROWS: Record<PlaceId, [ArtId, string][]> = {
-  scarecrow: [['crow', L('周り8マスを守る', 'Guards 8 around')], ['coin', L('追い払うと+1', '+1 per shoo')]],
-  bigScarecrow: [['crow', L('2マス以内を守る', 'Guards 2 away')], ['coin', L('追い払うと+2', '+2 per shoo')], ['puff', L('袋のカラス−1（1日1回）', 'Bag crow −1 daily')]],
-  well: [['sprout', L('上下左右 毎晩+1', '4 sides +1 nightly')]],
-  goldenWell: [['sprout', L('周り8マス 毎晩+1', '8 around +1 nightly')]],
-  hive: [['coin', L('周り8マス 売値+20%', '8 around price +20%')], ['strawberry', L('苺が毎晩育つ', 'Strawberries grow nightly')]],
-  queenHive: [['coin', L('周り8マス 売値+50%', '8 around price +50%')], ['strawberry', L('苺が毎晩育つ', 'Strawberries grow nightly')]],
-  henhouse: [['coin', L('毎晩+3', '+3 nightly')], ['bug', L('虫を食べて+3', 'Eats bugs: +3')]],
-  cowshed: [['coin', L('毎晩+4', '+4 nightly')], ['water', L('隣に水路で+2', '+2 next to water')]],
-  compost: [['coin', L('売値×2', 'Price ×2')]],
-  water: [['sprout', L('毎晩+1', '+1 nightly')], ['waterwheel', L('3つ並べて水車', '3 in a row: wheel')]],
-  sprinkler: [['sprout', L('横一列 毎晩+1', 'Its row +1 nightly')]],
-  reservoir: [['sprout', L('縦一列 毎晩+1', 'Its column +1 nightly')]],
-  windmill: [['sprout', L('縦と横の列 毎晩+1', 'Row & column +1 nightly')]],
-};
-const placeRowsHtml = (id: PlaceId): string => PLACE_ROWS[id].map(([ico, t]) => `<span class="fx-row">${art(ico)}<span>${t}</span></span>`).join('');
-
-/** 畑の品の分類：何に効くか（市の段の見出し） */
-type FarmCat = 'grow' | 'earn' | 'guard';
-const PLACE_CAT: Record<PlaceId, FarmCat> = {
-  sprinkler: 'grow', reservoir: 'grow', windmill: 'grow', well: 'grow', goldenWell: 'grow', water: 'grow',
-  compost: 'earn', hive: 'earn', queenHive: 'earn', henhouse: 'earn', cowshed: 'earn',
-  scarecrow: 'guard', bigScarecrow: 'guard',
-};
-const ring = (n: number) => (dx: number, dy: number) => Math.max(Math.abs(dx), Math.abs(dy)) <= n;
-/** 効く範囲（置いた所から見て）。ないものは置いたマスだけに効く */
-const PLACE_RANGE: Partial<Record<PlaceId, (dx: number, dy: number) => boolean>> = {
-  scarecrow: ring(1), bigScarecrow: ring(2), goldenWell: ring(1), hive: ring(1), queenHive: ring(1), henhouse: ring(1),
-  well: (dx, dy) => Math.abs(dx) + Math.abs(dy) === 1,
-  sprinkler: (_dx, dy) => dy === 0,
-  reservoir: (dx) => dx === 0,
-  windmill: (dx, dy) => dx === 0 || dy === 0,
-};
-/** 5×5の小さなマス目で効く範囲を見せる（真ん中が置く所） */
-function rangeGrid(id: PlaceId): string {
-  const f = PLACE_RANGE[id];
-  const cells = Array.from({ length: 25 }, (_, k) => {
-    const dx = (k % 5) - 2;
-    const dy = Math.floor(k / 5) - 2;
-    return `<i class="${!dx && !dy ? (f ? 'me' : 'me on') : f?.(dx, dy) ? 'on' : ''}"></i>`;
-  }).join('');
-  return `<span class="rng" aria-hidden="true">${cells}</span>`;
-}
-
-function renderFarmShop(): void {
-  type FarmItem = { key: string; cat: FarmCat; ico: string; name: string; effect: string; price: number | null; ok: boolean; rng: string };
-  const items: FarmItem[] = [];
-  const ep = expandPrice(state);
-  const nextCols = state.cols <= state.rows ? state.cols + 1 : state.cols;
-  const nextRows = state.cols <= state.rows ? state.rows : state.rows + 1;
-  const expandItem: FarmItem = {
-    key: 'expand',
-    cat: 'grow',
-    ico: art('expand'),
-    name: L('畑を広げる', 'Expand field'),
-    effect: ep === null
-      ? L(`これ以上は広げられない（${CONFIG.fieldCols}×${CONFIG.fieldRows}）`, `Already at max (${CONFIG.fieldCols}×${CONFIG.fieldRows})`)
-      : `<span class="fx-row">${art('expand')}<span>${state.cols}×${state.rows} → ${nextCols}×${nextRows}</span></span>` +
-        // 広げると、初めて4つ・5つの列が作れるようになる
-        (Math.max(nextCols, nextRows) > Math.max(state.cols, state.rows) && CONFIG.longLineMult[Math.max(nextCols, nextRows)]
-          ? `<span class="fx-row">${art('tomato')}<span>${L(`${Math.max(nextCols, nextRows)}つの列 ×${longTotal(Math.max(nextCols, nextRows))}`, `${Math.max(nextCols, nextRows)}-long line ×${longTotal(Math.max(nextCols, nextRows))}`)}</span></span>`
-          : ''),
-    price: ep,
-    ok: canExpand(state),
-    rng: '',
-  };
-  PLACE_ORDER.filter((id) => state.weeklyPlaces.includes(id)).forEach((id) =>
-    items.push({ key: id, cat: PLACE_CAT[id], ico: art(PLACE_ART[id]), name: PLACES[id].name, effect: roomLeft(state, id) > 0 ? placeRowsHtml(id) : PLACES[id].kind === 'tool' ? L('置ける空きマスがない', 'No empty plot to place it') : L('敷けるマスがない', 'No plot to lay it on'), price: placePrice(state, id), ok: canBuyPlace(state, id), rng: rangeGrid(id) }),
-  );
-  // 畑を広げるは「畑を強化する」の最後（広げきったら完了の札で）
-  items.push(expandItem);
-  const lists: Record<FarmCat, HTMLElement> = { grow: el.farmShop, earn: $('farm-earn'), guard: $('farm-guard') };
-  (Object.keys(lists) as FarmCat[]).forEach((cat) => {
-    const box = lists[cat];
-    const list = items.filter((it) => it.cat === cat);
-    // 週が替わって品が入れ替わったら作り直す（数が同じでも、ボタンが前の品のまま押されないように）
-    const key = list.map((it) => it.key).join(',');
-    if (box.dataset.key !== key || box.children.length !== list.length) {
-      box.dataset.key = key;
-      box.innerHTML = '';
-      list.forEach((it) => {
-        const b = document.createElement('button');
-        b.className = 'item';
-        b.dataset.id = it.key;
-        b.addEventListener('click', () => onBuyFarm(it.key as PlaceId | 'expand'));
-        box.appendChild(b);
-      });
-    }
-    list.forEach((it, i) => {
-      const b = box.children[i] as HTMLButtonElement;
-      b.className = `item${it.ok ? ' affordable' : ''}${it.price === null ? ' soldout' : ''}${it.rng ? ' has-rng' : ''}`;
-      // 買って置き待ちの品は、名前の横に緑の札
-      const waiting = state.stock.filter((s) => s === it.key).length;
-      const badge = waiting ? `<span class="stock-badge">${L(`置き待ち ${waiting}`, `To place ${waiting}`)}</span>` : '';
-      const html = `<span class="ico">${it.ico}</span><span class="text"><span class="name">${it.name}${badge}</span><span class="effect">${it.effect}</span></span>${it.rng}${costHtml(it.price, it.ok)}`;
-      if (b.innerHTML !== html) b.innerHTML = html;
-    });
-  });
-  syncStallSecs();
-}
-
-/** 市の畑の品のボタン（3つの段のどれか） */
-const farmCard = (key: string): HTMLElement | null => document.querySelector(`#stall .farm-list [data-id="${key}"]`);
-
-function onBuyFarm(key: PlaceId | 'expand'): void {
-  unlockAudio();
-  if (ui.busy || state.over || holdMarket()) return;
-  if (tut) {
-    reject(farmCard(key), L('チュートリアルのあとで', 'After the tutorial'));
-    return;
-  }
-  const card = farmCard(key) as HTMLElement;
-  if (key === 'expand') {
-    const price = expandPrice(state);
-    if (price === null || !expand(state)) {
-      reject(card, price === null ? L('もう広げられない', 'Max size') : needGold(price));
-      return;
-    }
-    accept(card);
-    // 市は閉じない（続けて買える）
-    render();
-    renderFarmShop();
-    showExpanded();
-    return;
-  }
-  if (!buyPlace(state, key)) {
-    reject(card, roomLeft(state, key) <= 0 ? L('置ける所がない', 'No room') : needGold(placePrice(state, key) ?? 0));
-    return;
-  }
-  accept(card);
-  sfx.buy();
-  selected = null;
-  // 市は閉じずに続けて買える。買った物は置き待ちにたまり、市を出たら置く
-  render();
-  renderFarmShop();
-  say(`${art(PLACE_ART[key])} ${L(`置き待ち ${state.stock.length}（市を出たら置く）`, `To place: ${state.stock.length} (after the market)`)}`);
-}
-
-function fieldCells(): number[] {
-  return state.field.flatMap((_, i) => (inField(state, i) ? [i] : []));
-}
-
-function renderBag(): void {
-  el.bagTotal.textContent = L(`${bagTotal(state.bag)}枚`, `${bagTotal(state.bag)}`);
-  setHtml(
-    el.bag,
-    SYMBOL_ORDER.filter((id) => state.bag[id] > 0 || id === 'crow')
-      .map((id) => {
-        const def = SYMBOLS[id];
-        const cls = `chip${def.rarity === 'bad' ? ' bad' : ''}${state.bag[id] === 0 ? ' zero' : ''}`;
-        return `<span class="${cls}" data-sym="${id}" title="${def.desc}（${L('フィーバー', 'Fever')}：${def.feverDesc}）"><span class="e">${symHtml(id)}</span><b class="chip-name">${def.name}</b><span class="chip-num">×${state.bag[id]}<span class="pct">${bagPct(state.bag, id)}%</span></span></span>`;
-      })
-      .join(''),
-  );
-}
-
 // ---- スロットを回す ----
 
 async function onSpin(): Promise<void> {
@@ -1333,7 +444,7 @@ async function onSpin(): Promise<void> {
   }
   // 月曜の朝：週契約を決めるまで回さない（続きから始めたときなど）
   if (state.morning && state.contractOffer.length) {
-    await explainOnce('ex:contract', contractCard(), !!tut);
+    await explainOnce('ex:contract', contractCard(), !!play.tut);
     await showContractOffer();
     return;
   }
@@ -1345,19 +456,19 @@ async function onSpin(): Promise<void> {
   }
   // 出目が残っているときは確認を出す（はい→armedNextDay を立てて回す）
   const leftover = state.day > 0 ? usableReels().length : 0;
-  if (leftover > 0 && !armedNextDay) {
+  if (leftover > 0 && !play.armedNextDay) {
     sfx.error();
     confirmSkip(leftover);
     return;
   }
   if (state.day > 0) done.next = true;
-  armedNextDay = false;
+  play.armedNextDay = false;
   // リール窓がガコンと押し込まれる
   el.reels.parentElement!.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(4px) scale(0.98)' }, { transform: 'translateY(0)' }], { duration: 220 });
   // 前の日のフリーズの名残（虹の枠・ひび）を片付ける
   el.machine.classList.remove('rainbow', 'burning');
   el.machine.querySelector('.crack')?.remove();
-  selected = null;
+  play.selected = null;
   ui.busy = true;
   done.spin = true;
   renderSpinButton();
@@ -1365,8 +476,8 @@ async function onSpin(): Promise<void> {
 
   const res = endDay(state, rng);
   // 年貢は判子を押すときに引いて見せる（それまでは夜の収入を足した額のまま）
-  if (res.tax !== null && res.ok) taxPending = res.tax;
-  autoOutcome = {};
+  if (res.tax !== null && res.ok) play.taxPending = res.tax;
+  play.autoOutcome = {};
   // 植えきれなかった種は1つ1金で売れる：リールから所持金へ
   if (res.seedGold) {
     const land = holdGold(res.seedGold);
@@ -1406,11 +517,11 @@ async function onSpin(): Promise<void> {
   // 月曜の朝：今週の週契約（回す前に選ぶ）
   if (state.contractOffer.length) {
     render();
-    await explainOnce('ex:contract', contractCard(), !!tut);
+    await explainOnce('ex:contract', contractCard(), !!play.tut);
     await showContractOffer();
   }
   // チュートリアルの水曜の市は、決まった3つ
-  if (tut && isMarketDay(state.day) && state.offer.length) state.offer = [...TUT_OFFER];
+  if (play.tut && isMarketDay(state.day) && state.offer.length) state.offer = [...TUT_OFFER];
   // 市の日の朝：リールを回す前に市を開く。市を閉じるとリールが回る
   if (isMarketDay(state.day) && state.offer.length) {
     endBusy();
@@ -1423,7 +534,7 @@ async function onSpin(): Promise<void> {
 
 /** 朝のリールを回す（演出・フィーバー・自動の絵柄まで） */
 async function spinMorning(): Promise<void> {
-  selected = null;
+  play.selected = null;
   ui.busy = true;
   done.spin = true;
   renderSpinButton();
@@ -1437,19 +548,19 @@ async function spinMorning(): Promise<void> {
   render();
   await spinReels(show);
   // 初めて出た絵柄は、一枚絵で説明（お邪魔は効く前に）
-  for (const s of [...new Set(state.results.map((r) => r.symbol))]) await explainOnce(`ex:sym:${s}`, symbolCard(s), !!tut);
+  for (const s of [...new Set(state.results.map((r) => r.symbol))]) await explainOnce(`ex:sym:${s}`, symbolCard(s), !!play.tut);
   if (state.combos.length) {
     await showCombos();
-    for (const id of state.combos) await explainOnce(`ex:combo:${id}`, comboCard(id), !!tut);
+    for (const id of state.combos) await explainOnce(`ex:combo:${id}`, comboCard(id), !!play.tut);
   }
   if (state.fever.length) {
     await showFever();
     const feverEvents = resolveFever(state, rng);
     await playFeverRoles(feverEvents);
     // 初めてのフィーバー：その絵柄で何が起きたかを、通常 → フィーバー → 大当たりの行で（チュートリアルでは説明しない）
-    for (const ev of feverEvents) await explainOnce(`ex:fever:${symbolBase(ev.symbol)}`, feverCard(ev.symbol, ev.jackpot), !!tut);
+    for (const ev of feverEvents) await explainOnce(`ex:fever:${symbolBase(ev.symbol)}`, feverCard(ev.symbol, ev.jackpot), !!play.tut);
     const badFever = state.fever.find((s) => SYMBOLS[s].rarity === 'bad');
-    if (badFever) await explainOnce('ex:fever:bad', feverCard(badFever, 0), !!tut);
+    if (badFever) await explainOnce('ex:fever:bad', feverCard(badFever, 0), !!play.tut);
     if (state.charmOffer) {
       render();
       await showCharmOffer();
@@ -1460,7 +571,7 @@ async function spinMorning(): Promise<void> {
   autoSelect();
   render();
   // 初めての年貢の日：一枚絵で（日曜の終わりに払う・足りないと終わり）
-  if (nextTax(state).daysLeft === 0) await explainOnce('ex:tax', taxCard(nextTax(state).amount), !!tut);
+  if (nextTax(state).daysLeft === 0) await explainOnce('ex:tax', taxCard(nextTax(state).amount), !!play.tut);
 }
 
 /** 置き終えたら市に戻る（演出の途中なら終わるのを待つ） */
@@ -1477,59 +588,6 @@ function backToMarket(tries = 40): void {
 function leaveMarket(): void {
   closeSheet();
   if (state.morning && !mustPlace(state)) void onSpin();
-}
-
-/** 市を開く（仕入れ・畑の品・お邪魔を消す・広げるが1つの画面） */
-/** 市の日の朝：まず「タダで1つ選ぶ」だけの画面を出す。選ぶと市（買い物）が開く */
-function showOfferScreen(): void {
-  const scr = $('offer-screen');
-  renderOfferShop();
-  if (!scr.hidden) return;
-  scr.hidden = false;
-  scr.animate([{ opacity: 0 }, { opacity: 1 }], { duration: isCalm() ? 120 : 240, easing: 'ease-out' });
-  // 札は動かさずに薄く出す（動いている途中の札を押すとタップが消えるので）
-  scr.querySelectorAll<HTMLElement>('.offer-item').forEach((it, k) => it.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260, delay: 120 + k * 80, fill: 'backwards' }));
-  void explainOnce('ex:offer', offerCard(), !!tut);
-}
-
-function openMarket(): void {
-  // 選んでいない仕入れがあれば、先にその画面
-  if (state.offer.length) {
-    showOfferScreen();
-    return;
-  }
-  renderShop();
-  renderFarmShop();
-  const wasOpen = openSheetName === 'shop';
-  openSheet('shop');
-  if (wasOpen) return;
-  // 初めての市の日：一枚絵で（買い物）
-  if (isMarketDay(state.day)) void explainOnce('ex:market', marketCard(), !!tut);
-  el.sheet.animate([{ transform: 'translateY(105%)' }, { transform: 'translateY(-2%)', offset: 0.75 }, { transform: 'translateY(0)' }], {
-    duration: isCalm() ? 260 : 520,
-    easing: 'cubic-bezier(.2,.8,.3,1)',
-  });
-  [...el.sheet.querySelectorAll<HTMLElement>('[data-pane="shop"] .stall-sec:not([hidden]), .market-foot')].forEach((sec, k) =>
-    // 動かさずに薄く出す（動いている途中の札を押すと、押した札から指がずれてタップが消えるので）
-    sec.animate([{ opacity: 0 }, { opacity: 1 }], {
-      duration: 320,
-      delay: 180 + k * 90,
-      easing: 'cubic-bezier(.2,.8,.3,1)',
-      fill: 'backwards',
-    }),
-  );
-}
-
-/** 仕入れを選ばずに市を閉じようとしたら止める */
-function holdMarket(): boolean {
-  if (!forcedOffer()) return false;
-  reject($('offer-shop'), L('仕入れを1つ選んでから', 'Pick one first'));
-  return true;
-}
-
-/** 選ぶまで進めない仕入れが残っている */
-function forcedOffer(): boolean {
-  return CONFIG.offerForced && state.offer.length > 0 && state.day > 0 && !state.over;
 }
 
 /** 動物がマスからひょっこり出てくる（何の動物か分かる大きさで） */
@@ -1701,12 +759,6 @@ async function playFeverRoles(events: FeverEvent[]): Promise<void> {
   render();
 }
 
-/** 回す前に決める見せ方。結果はもう決まっているので、それに合わせて煽る */
-interface SpinShow {
-  /** カットインの色（0 青・1 緑・2 赤・3 虹）。null は出さない */
-  cutIn: number | null;
-}
-
 function planShow(): SpinShow {
   const goodFever = state.fever.some((s) => SYMBOLS[s].rarity !== 'bad');
   const hot = goodFever || state.results.some((r) => r.symbol === 'goldSeed');
@@ -1716,106 +768,6 @@ function planShow(): SpinShow {
   let r = rng() * weights.reduce((a, b) => a + b, 0);
   const level = weights.findIndex((w) => (r -= w) < 0);
   return { cutIn: level < 0 ? 0 : level };
-}
-
-function spinReels(show: SpinShow = { cutIn: null }): Promise<void> {
-  const reels = [...el.reels.children] as HTMLElement[];
-  const h = reels[0].querySelector('.window')!.clientHeight;
-  const last = state.results.length - 1;
-  // リーチ：最後のリールより前で良い絵柄があと1つでそろう
-  const counts = new Map<SymbolId, number>();
-  state.results.slice(0, last).forEach((r) => counts.set(r.symbol, (counts.get(r.symbol) ?? 0) + 1));
-  const reachSym = [...counts].find(([s, n]) => n >= CONFIG.feverCount - 1 && SYMBOLS[s].rarity !== 'bad')?.[0];
-  const reach = reachSym !== undefined;
-  // 最後のリールが金の種なら溜めを入れる。外れでもたまに溜めて読めないようにする
-  const suspense = reach || state.results[last].symbol === 'goldSeed' || state.fever.some((s) => SYMBOLS[s].rarity !== 'bad') || (state.bag.goldSeed > 0 && rng() < 0.15);
-  // カットインが出る日は、出ている間リールを回し続ける
-  const extra = show.cutIn !== null ? CUTIN_MS : 0;
-  const hold = reach ? 1500 : 600;
-  if (show.cutIn !== null) later(() => void playCutIn(show.cutIn!), 150);
-  el.machine.classList.add('rumble');
-  let tick = window.setInterval(() => sfx.tick(), 70);
-  const promises = reels.map((reel, i) => {
-    const strip = reel.querySelector('.strip') as HTMLElement;
-    const prevSym = reel.querySelector('.cell-sym')!.innerHTML;
-    const dur = CONFIG.timing.spinBase + i * CONFIG.timing.spinStagger + extra + (suspense && i === last ? hold : 0);
-    const fillers = Math.max(8, Math.round(dur / 40));
-    const items = [prevSym, ...Array.from({ length: fillers }, () => symHtml(drawSymbol(state.bag, rng))), resultArt(i)];
-    strip.innerHTML = items.map((s) => `<div class="cell-sym">${s}</div>`).join('');
-    reel.className = 'reel spinning';
-    reel.querySelector('.tag')!.textContent = '…';
-    if (suspense && i === last) {
-      // ひとつ前のリールが止まったところから溜める
-      later(() => {
-        reel.classList.add('suspense');
-        if (reach) {
-          reel.classList.add('reach');
-          el.machine.classList.add('spotlight');
-          sfx.reach();
-          vibrate([30, 290, 30, 290, 30]);
-          // 何がそろいそうで、そろうと何が起きるか
-          const call = document.createElement('div');
-          call.className = 'reach-call';
-          call.innerHTML = L(`リーチ！ あと1つで ${symHtml(reachSym!)}`, `REACH! One more ${symHtml(reachSym!)}`);
-          el.machine.appendChild(call);
-        }
-      }, dur - hold);
-    }
-    const anim = strip.animate([{ transform: 'translateY(0)' }, { transform: `translateY(${-(items.length - 1) * h}px)` }], {
-      duration: dur,
-      easing: 'cubic-bezier(.15,.55,.25,1.04)',
-      fill: 'forwards',
-    });
-    return anim.finished.then(() => {
-      anim.cancel();
-      strip.innerHTML = `<div class="cell-sym">${resultArt(i)}</div>`;
-      reel.classList.remove('spinning', 'suspense', 'reach');
-      sfx.reelStop(i);
-      // 行き過ぎて戻る「ガコッ」
-      strip.firstElementChild!.animate(
-        [
-          { transform: 'translateY(-22%) scale(1, 1.08)' },
-          { transform: 'translateY(9%) scale(1.08, 0.92)', offset: 0.45 },
-          { transform: 'translateY(-3%) scale(1)', offset: 0.75 },
-          { transform: 'translateY(0)' },
-        ],
-        { duration: 260, easing: 'ease-out' },
-      );
-      if (i === reels.length - 1) clearInterval(tick);
-      onReelLanded(i, reel);
-    });
-  });
-  return Promise.all(promises).then(() => {
-    clearInterval(tick);
-    tick = 0;
-    el.machine.classList.remove('rumble', 'spotlight');
-    el.machine.querySelector('.reach-call')?.remove();
-  });
-}
-
-function onReelLanded(i: number, reel: HTMLElement): void {
-  const sym = state.results[i].symbol;
-  const c = center(reel);
-  if (sym === 'goldSeed') {
-    sfx.rare();
-    flash('#ffe680', 500);
-    burst(c.x, c.y, ['✨', '🌟', '💛'], 16, 110);
-    floatText(c.x, c.y - 40, L('レア！金の種', 'Rare! Golden seed'), { cls: 'gold', size: 1 });
-    vibrate([30, 30, 60]);
-  }
-  const total = state.results[i].total;
-  if (total > 1) {
-    renderCount(reel, i);
-    pop(reel.querySelector('.count')!, 1.6);
-    if (total >= 3) {
-      sfx.bonus();
-      burst(c.x, c.y, ['🌰', '✨'], 12, 80);
-      vibrate(40);
-    }
-  }
-  const tag = reelTag(i);
-  reel.className = `reel ${roleClass(sym)} ${sym === 'goldSeed' ? 'rare ' : ''}${SYMBOLS[sym].kind === 'auto' ? '' : tag.cls}`;
-  reel.querySelector('.tag')!.textContent = SYMBOLS[sym].kind === 'auto' ? '…' : tag.text;
 }
 
 /** お邪魔がやって来る出発点：画面の左右の端（空なら上の方、地面なら同じ高さ） */
@@ -1848,38 +800,38 @@ async function resolveAutos(): Promise<void> {
     // 見せておく長さ（金貨はささっと回収するので短く）
     let hold = EVENT_HOLD;
     if (ev.type === 'coin') {
-      autoOutcome[i] = `+${gold(ev.amount)}`;
+      play.autoOutcome[i] = `+${gold(ev.amount)}`;
       hold = 120;
       sfx.coin();
       floatText(from.x, from.y - 30, money(ev.amount), { cls: 'gold', size: 0.9, dur: 700 });
       await new Promise<void>((r) => flyTo(from, el.goldBox, '🪙', Math.min(5, 1 + Math.ceil(ev.amount / 4)), r, true));
       landCoin();
     } else if (ev.type === 'merchant') {
-      autoOutcome[i] = L(`売値×${fmtMult(ev.mult)}`, `Price ×${fmtMult(ev.mult)}`);
+      play.autoOutcome[i] = L(`売値×${fmtMult(ev.mult)}`, `Price ×${fmtMult(ev.mult)}`);
       sfx.merchant();
       burst(from.x, from.y, ['💰', '✨', '🪙'], 10, 70);
       render();
       el.field.querySelectorAll('.plot.ripe').forEach((p) => pop(p, 1.12));
     } else if (ev.type === 'clover') {
-      autoOutcome[i] = L('明日 金の種↑', 'Gold seed↑');
+      play.autoOutcome[i] = L('明日 金の種↑', 'Gold seed↑');
       sfx.rare();
       burst(from.x, from.y, ['🍀', '✨', '🌟'], 12, 80);
       renderStatus();
     } else if (ev.type === 'bug') {
       if (ev.cell === null) {
-        autoOutcome[i] = L('空振り', 'Miss');
+        play.autoOutcome[i] = L('空振り', 'Miss');
       } else {
         const plot = el.field.children[ev.cell] as HTMLElement;
         await travel(from, plot, symHtml('bug'), true);
         const p = center(plot);
         if (ev.warded) {
-          autoOutcome[i] = ev.hen ? L('鶏が食べた', 'Hen ate it') : L('よけた', 'Blocked');
+          play.autoOutcome[i] = ev.hen ? L('鶏が食べた', 'Hen ate it') : L('よけた', 'Blocked');
           sfx.shoo();
           if (ev.hen) critterPop(p, art('henhouse'));
           burst(p.x, p.y, ev.hen ? ['🪶', '✨'] : ['🌿', '✨'], 8, 50);
           floatText(p.x, ev.hen ? p.y + 28 : p.y - 20, ev.hen ? L('鶏が食べた', 'Hen ate it') : L('虫よけ成功', 'Bug blocked'), { cls: 'good pill', size: 0.8 });
         } else {
-          autoOutcome[i] = L(`成長−${ev.damage}`, `Growth −${ev.damage}`);
+          play.autoOutcome[i] = L(`成長−${ev.damage}`, `Growth −${ev.damage}`);
           sfx.bug();
           burst(p.x, p.y, ['🐛', '🍂'], 6, 40);
           renderField();
@@ -1890,12 +842,12 @@ async function resolveAutos(): Promise<void> {
       }
     } else if (ev.type === 'weed') {
       if (ev.warded) {
-        autoOutcome[i] = L('よけた', 'Blocked');
+        play.autoOutcome[i] = L('よけた', 'Blocked');
         sfx.shoo();
       } else if (!ev.cells.length) {
-        autoOutcome[i] = L('空振り', 'Miss');
+        play.autoOutcome[i] = L('空振り', 'Miss');
       } else {
-        autoOutcome[i] = L(`${ev.cells.length}か所`, `${ev.cells.length} spots`);
+        play.autoOutcome[i] = L(`${ev.cells.length}か所`, `${ev.cells.length} spots`);
         sfx.bug();
         for (const c of ev.cells) {
           const plot = el.field.children[c] as HTMLElement;
@@ -1907,11 +859,11 @@ async function resolveAutos(): Promise<void> {
       }
     } else if (ev.type === 'tanuki') {
       if (ev.escaped) {
-        autoOutcome[i] = L('逃げた', 'Fled');
+        play.autoOutcome[i] = L('逃げた', 'Fled');
         sfx.shoo();
         ev.guarded.forEach((c) => pop(el.field.children[c], 1.12));
       } else if (!ev.taken.length) {
-        autoOutcome[i] = ev.stolen ? `−${gold(ev.stolen)}` : L('空振り', 'Miss');
+        play.autoOutcome[i] = ev.stolen ? `−${gold(ev.stolen)}` : L('空振り', 'Miss');
         if (ev.stolen) {
           sfx.crow();
           const g = center(el.goldBox);
@@ -1920,7 +872,7 @@ async function resolveAutos(): Promise<void> {
           shake(el.goldBox, 6);
         }
       } else {
-        autoOutcome[i] = `−${gold(ev.taken.reduce((n, t) => n + t.price, 0))}`;
+        play.autoOutcome[i] = `−${gold(ev.taken.reduce((n, t) => n + t.price, 0))}`;
         for (const t of ev.taken) {
           const plot = el.field.children[t.cell] as HTMLElement;
           // タヌキは畑の横から跳ねながら走ってくる
@@ -1936,7 +888,7 @@ async function resolveAutos(): Promise<void> {
         vibrate(120);
       }
     } else if (ev.type === 'mole') {
-      autoOutcome[i] = ev.moves.length ? L(`${ev.moves.length}つ移動`, `Moved ${ev.moves.length}`) : ev.chased.length ? L('鶏が追い払った', 'Hen chased it') : L('空振り', 'Miss');
+      play.autoOutcome[i] = ev.moves.length ? L(`${ev.moves.length}つ移動`, `Moved ${ev.moves.length}`) : ev.chased.length ? L('鶏が追い払った', 'Hen chased it') : L('空振り', 'Miss');
       // モグラが顔を出したところへ鶏が来て、追い払う
       for (const c of ev.chased) {
         const q = center(el.field.children[c]);
@@ -1964,7 +916,7 @@ async function resolveAutos(): Promise<void> {
         });
       }
     } else if (ev.type === 'frost') {
-      autoOutcome[i] = ev.cells.length ? L(`${ev.cells.length}マス`, `${ev.cells.length} plots`) : L('空振り', 'Miss');
+      play.autoOutcome[i] = ev.cells.length ? L(`${ev.cells.length}マス`, `${ev.cells.length} plots`) : L('空振り', 'Miss');
       if (ev.cells.length) {
         sfx.tax();
         flash('#dff1ff', 400);
@@ -1976,7 +928,7 @@ async function resolveAutos(): Promise<void> {
       }
     } else if (ev.type === 'locust') {
       // イナゴ：袋の中で増える（袋の札が跳ねる）。畑はかじらない
-      autoOutcome[i] = L(`袋+${ev.bred}`, `Bag +${ev.bred}`);
+      play.autoOutcome[i] = L(`袋+${ev.bred}`, `Bag +${ev.bred}`);
       sfx.bug();
       const chip = visibleOr(el.bag.querySelector('[data-sym="locust"]'), 'bag');
       floatText(from.x, from.y - 40, `${symHtml('locust')}+${ev.bred}`, { cls: 'bad', size: 0.9 });
@@ -1994,7 +946,7 @@ async function resolveAutos(): Promise<void> {
     } else if (ev.type === 'egg') {
       // 卵：温まる（あと何回で孵るか）。孵ったらツバメが袋へ飛んでいく
       if (ev.hatched) {
-        autoOutcome[i] = L('孵った！', 'Hatched!');
+        play.autoOutcome[i] = L('孵った！', 'Hatched!');
         sfx.rare();
         burst(from.x, from.y, ['✨', '🪶', '⭐'], 14, 80);
         floatText(from.x, from.y - 40, `${symHtml('swallow')} ${L('ツバメが生まれた', 'A swallow hatched')}`, { cls: 'good', size: 0.9 });
@@ -2002,7 +954,7 @@ async function resolveAutos(): Promise<void> {
         flyTo(from, chip, symHtml('swallow'), 1, () => pop(chip, 1.3));
         renderBag();
       } else {
-        autoOutcome[i] = L(`孵化 ${ev.progress}/${CONFIG.eggHatch}`, `Hatch ${ev.progress}/${CONFIG.eggHatch}`);
+        play.autoOutcome[i] = L(`孵化 ${ev.progress}/${CONFIG.eggHatch}`, `Hatch ${ev.progress}/${CONFIG.eggHatch}`);
         sfx.pon();
         pop(reels[i], 1.06);
       }
@@ -2012,35 +964,35 @@ async function resolveAutos(): Promise<void> {
     } else if (ev.type === 'swallow') {
       // ツバメ：袋の虫を追い出す
       if (ev.removed) {
-        autoOutcome[i] = L('虫を追い出した', 'Bug out');
+        play.autoOutcome[i] = L('虫を追い出した', 'Bug out');
         sfx.shoo();
         const chip = visibleOr(el.bag.querySelector(`[data-sym="${ev.removed}"]`), 'bag');
         flyTo(center(chip), reels[i], symHtml(ev.removed), 1, () => burst(from.x, from.y, ['🪶', '✨'], 8, 50));
         renderBag();
       } else {
-        autoOutcome[i] = `+${gold(ev.amount)}`;
+        play.autoOutcome[i] = `+${gold(ev.amount)}`;
         sfx.coin();
         floatText(from.x, from.y - 30, money(ev.amount), { cls: 'gold', size: 0.8 });
       }
     } else if (ev.type === 'hawk') {
       // タカ：袋のカラスを追い出す（カラスの札が袋からリールへ飛んで、羽が散る）
       if (ev.removed) {
-        autoOutcome[i] = L('カラスを追い出した', 'Crow out');
+        play.autoOutcome[i] = L('カラスを追い出した', 'Crow out');
         sfx.shoo();
         const chip = visibleOr(el.bag.querySelector('[data-sym="crow"]'), 'bag');
         flyTo(center(chip), reels[i], symHtml('crow'), 1, () => burst(from.x, from.y, ['🪶', '✨'], 8, 50));
         renderBag();
       } else {
-        autoOutcome[i] = `+${gold(ev.amount)}`;
+        play.autoOutcome[i] = `+${gold(ev.amount)}`;
         sfx.coin();
         floatText(from.x, from.y - 30, money(ev.amount), { cls: 'gold', size: 0.8 });
       }
     } else if (ev.cell === null) {
-      autoOutcome[i] = state.charms.crowFriend > 0 ? L('仲良し', 'Friend') : L('空振り', 'Miss');
+      play.autoOutcome[i] = state.charms.crowFriend > 0 ? L('仲良し', 'Friend') : L('空振り', 'Miss');
       sfx.crow();
     } else if (ev.pecked) {
       // 重い作物はつつくだけ：売値−20%
-      autoOutcome[i] = L('つついた', 'Pecked');
+      play.autoOutcome[i] = L('つついた', 'Pecked');
       const plot = el.field.children[ev.cell] as HTMLElement;
       await travel(edgeFrom(plot, true), plot, symHtml('crow'), false);
       sfx.crow();
@@ -2050,7 +1002,7 @@ async function resolveAutos(): Promise<void> {
       floatText(p.x, p.y - 20, L('つつかれた −20%', 'Pecked −20%'), { cls: 'bad pill', size: 0.85 });
       renderField();
     } else if (!ev.eaten) {
-      autoOutcome[i] = L('セーフ', 'Safe');
+      play.autoOutcome[i] = L('セーフ', 'Safe');
       const plot = el.field.children[ev.cell] as HTMLElement;
       // カラスは空から羽ばたいて飛んでくる
       await travel(edgeFrom(plot, true), plot, symHtml('crow'), false);
@@ -2059,7 +1011,7 @@ async function resolveAutos(): Promise<void> {
       burst(p.x, p.y, ['💨', '🪶', '✨'], 8, 60);
       pop(plot, 1.12);
     } else {
-      autoOutcome[i] = L('パクッ…', 'Chomp…');
+      play.autoOutcome[i] = L('パクッ…', 'Chomp…');
       const plot = el.field.children[ev.cell] as HTMLElement;
       // カラスは空から羽ばたいて飛んでくる
       await travel(edgeFrom(plot, true), plot, symHtml('crow'), false);
@@ -2126,7 +1078,7 @@ function confirmSkip(left: number): void {
   };
   $('skip-yes').addEventListener('click', () => {
     close();
-    armedNextDay = true;
+    play.armedNextDay = true;
     void onSpin();
   });
   $('skip-no').addEventListener('click', () => {
@@ -2158,28 +1110,28 @@ function onReelTap(i: number): void {
   // 手動の出目が残っているのに今は使えない：理由を出すだけで、次の日へは進めない（進むのはほかのリールか「次の日へ」の札で）
   if (def.kind === 'manual' && !r.used && !canUse(state, i, null)) {
     reject(el.reels.children[i], deadReason(r.symbol));
-    if (selected === i) {
-      selected = null;
+    if (play.selected === i) {
+      play.selected = null;
       render();
     }
     return;
   }
   if (def.kind === 'auto' || r.used) {
-    if (selected !== null) {
-      selected = null;
+    if (play.selected !== null) {
+      play.selected = null;
       render();
     }
     void onSpin();
     return;
   }
   // 自動で選んでおいたリールを押したときは、外さずにそのまま（押した人は「選んだ」つもり）
-  if (selected === i && autoSelected) {
-    autoSelected = false;
+  if (play.selected === i && play.autoSelected) {
+    play.autoSelected = false;
     sfx.select();
     return;
   }
-  if (selected === i) {
-    selected = null;
+  if (play.selected === i) {
+    play.selected = null;
     sfx.cancel();
     render();
     return;
@@ -2188,9 +1140,9 @@ function onReelTap(i: number): void {
     applyMoon(i);
     return;
   }
-  selected = i;
-  autoSelected = false;
-  armedNextDay = false;
+  play.selected = i;
+  play.autoSelected = false;
+  play.armedNextDay = false;
   sfx.select();
   render();
 }
@@ -2199,7 +1151,7 @@ function onReelTap(i: number): void {
 function applyMoon(i: number): void {
   const affected = useSymbol(state, i, null) ?? [];
   done.use = true;
-  armedNextDay = false;
+  play.armedNextDay = false;
   sfx.rare();
   flash('#fff4b8', 500);
   const f = center(el.field);
@@ -2246,7 +1198,7 @@ function onPlotTap(cell: number): void {
       shake(el.field, 3);
     }, 180);
     // 市で買った物を置き終えた：市に自動で戻る（続けて買える。閉じたら朝はそのまま回す）
-    if (!state.stock.length && shopOpen(state) && isMarketDay(state.day) && !tut) later(() => backToMarket(), 650);
+    if (!state.stock.length && shopOpen(state) && isMarketDay(state.day) && !play.tut) later(() => backToMarket(), 650);
     return;
   }
   // 雑草のマスは、出目を選んでいても抜くのが先（抜くつもりで雨を降らせてしまわないように）
@@ -2261,8 +1213,8 @@ function onPlotTap(cell: number): void {
     render();
     return;
   }
-  if (selected !== null) {
-    const reel = selected;
+  if (play.selected !== null) {
+    const reel = play.selected;
     const sym = state.results[reel].symbol;
     if (!canUse(state, reel, cell)) {
       const crop = state.field[cell];
@@ -2276,11 +1228,11 @@ function onPlotTap(cell: number): void {
     const area = (fallback: ShapeId) => shapeCells(state, symbolShape(state, sym) ?? fallback, cell);
     const affected = useSymbol(state, reel, cell) ?? [];
     const left = state.results[reel].left;
-    selected = left > 0 && canUse(state, reel, null) ? reel : null;
-    autoSelected = false;
-    if (selected === null) autoSelect();
+    play.selected = left > 0 && canUse(state, reel, null) ? reel : null;
+    play.autoSelected = false;
+    if (play.selected === null) autoSelect();
     done.use = true;
-    armedNextDay = false;
+    play.armedNextDay = false;
     render();
     if (SEEDS[sym]) {
       sfx.plant();
@@ -2288,7 +1240,7 @@ function onPlotTap(cell: number): void {
       ripple(p.x, p.y, sym === 'goldSeed' ? '#ffd84a' : '#7fd35a');
       burst(p.x, p.y + 10, sym === 'goldSeed' ? ['✨', '🌟'] : ['🌰', '🌱'], 7, 36);
       pop(plot, 1.15);
-      if (left > 0 && selected === null) say(L('空きマスなし', 'No empty plots'));
+      if (left > 0 && play.selected === null) say(L('空きマスなし', 'No empty plots'));
     } else if (kind === 'hoe') {
       sfx.poof();
       affected.forEach((c, k) => {
@@ -2319,7 +1271,7 @@ function onPlotTap(cell: number): void {
         later(() => burst(q.x, q.y, ['🌼'], 3, 30), k * 220);
       });
       afterGrowth(affected, `+${CONFIG.beeGrowth * power}`);
-      if (left > 0 && selected === null) say(L('使える場所なし', 'Nowhere to use it'));
+      if (left > 0 && play.selected === null) say(L('使える場所なし', 'Nowhere to use it'));
     } else if (kind === 'can') {
       sfx.rain();
       rainShower([plot]);
@@ -2382,47 +1334,12 @@ function onPlotTap(cell: number): void {
 
 // ---- その場のヒント：初めて出会ったときに1回だけ、短い札で（遊びは止めない） ----
 
-/** 初めて出会ったお邪魔のひと言 */
-const PEST_HINTS: Partial<Record<SymbolId, string>> = {
-  crow: L('<b>一番大事な作物</b>を狙い、1/2で食べる。かかしの周りは守られる', 'Goes for your <b>most valuable crop</b> and eats it half the time. Scarecrows guard nearby plots'),
-  bug: L('<b>もうすぐ実る作物</b>の成長−1。かかしの周りは守られ、鶏小屋の周りでは食べてくれる', 'Growth −1 on the crop <b>closest to ripe</b>. Henhouses eat nearby bugs'),
-  weed: L('<b>作物に囲まれた空きマス</b>をふさいで広がる。かかしの周りには生えない。タップで抜ける', 'Blocks <b>empty plots between crops</b> and spreads. Tap to pull'),
-  tanuki: L('実った一番高い作物を盗む。かかしの周りには来ない', 'Steals your priciest ripe crop. Stays away from scarecrows'),
-  frost: L('マスが3日凍る。太陽で溶かせる', 'Freezes a plot for 3 days. Sun melts it'),
-  mole: L('作物を隣の空きマスへ押し出す。列が崩れることも', 'Pushes a crop into a nearby empty plot, which can break a line'),
-  locust: L('出るたびに袋で増えることがある。市で消そう', 'May multiply in your bag each time. Remove them at the market'),
-};
-
-let hintTimer = 0;
 /** ヒントを1回だけ出す（key ごと）。チュートリアル中は出さない */
 function hintOnce(key: string, html: string, ms = 5000): void {
-  if (tut || meta.hints.includes(key)) return;
+  if (play.tut || meta.hints.includes(key)) return;
   meta.hints.push(key);
   saveMeta(meta);
   showHintCard(html, ms);
-}
-
-/** 画面の上の方に、絵とひと言の札。数秒で消える（タップでも消える） */
-function showHintCard(html: string, ms = 5000): void {
-  document.getElementById('hint-card')?.remove();
-  window.clearTimeout(hintTimer);
-  const card = document.createElement('div');
-  card.id = 'hint-card';
-  card.className = 'hint-card';
-  card.innerHTML = `<span class="hc-badge">${art('question')}</span><p>${html}</p>`;
-  document.body.appendChild(card);
-  card.animate([{ transform: 'translate(-50%, -12px)', opacity: 0 }, { transform: 'translate(-50%, 0)', opacity: 1 }], { duration: 260, easing: 'cubic-bezier(.2,.9,.3,1)', fill: 'forwards' });
-  const close = () => {
-    window.clearTimeout(hintTimer);
-    card.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 220, fill: 'forwards' }).onfinish = () => card.remove();
-  };
-  card.addEventListener('click', close);
-  hintTimer = window.setTimeout(close, ms);
-}
-
-/** お金の増減の表示：コインの絵と数字だけ（言葉は付けない） */
-function money(n: number): string {
-  return `<span class="money">${art('coin')}${n >= 0 ? '+' : '−'}${Math.abs(n)}</span>`;
 }
 
 /**
@@ -2503,14 +1420,14 @@ function sellCrop(cell: number): void {
   if (res === null) return;
   done.sell = true;
   const now = performance.now();
-  combo = now - lastSellAt < CONFIG.timing.comboWindow ? combo + 1 : 1;
-  lastSellAt = now;
+  play.combo = now - play.lastSellAt < CONFIG.timing.comboWindow ? play.combo + 1 : 1;
+  play.lastSellAt = now;
   const price = res.total;
   const big = price >= CROPS.corn.price || res.line;
   const landSale = holdGold(res.total);
   const landOrder = holdGold(res.orderReward);
-  if (res.orderReward) orderRevealPending = true;
-  landBumper = holdGold(res.bumper);
+  if (res.orderReward) play.orderRevealPending = true;
+  play.landBumper = holdGold(res.bumper);
   render();
   // 単品で売った：並べると高いことを1回だけ
   if (!res.line && res.steps.some((st) => st.x < 1)) hintOnce('single', `${MARK_SINGLE} ${L('並んでいない作物は<b>半値</b>。縦・横・斜めに3つ並べてから売ると高い', 'Crops not in a line sell at <b>half price</b>. Line up 3 first to sell high')}`);
@@ -2524,7 +1441,7 @@ function sellCrop(cell: number): void {
     floatText(o.x, o.y + 30, L(`注文達成！ +${res.orderReward}`, `Order done! +${res.orderReward}g`), { cls: 'gold', size: 1.3, dur: 1600 });
     burst(o.x, o.y, ['🪙', '✨', '⭐'], 16, 90);
     // 札が「達成！」に変わり、報酬の金貨が財布へ届いてから所持金が増える
-    orderRevealPending = false;
+    play.orderRevealPending = false;
     renderOrder();
     flyTo(o, el.goldBox, '🪙', 8, landOrder);
     pop(el.order, 1.1);
@@ -2540,13 +1457,13 @@ function sellCrop(cell: number): void {
       orderDone();
     });
   } else {
-    sfx.sell(price, combo);
+    sfx.sell(price, play.combo);
     const size = Math.min(2, 0.8 + price / 25);
     floatText(p.x, p.y - 10, money(price), { cls: 'gold', size, rise: big ? 110 : 70 });
     floatText(p.x, p.y + 18, L('単品（半値）', 'Single (half price)'), { cls: 'pill', size: 0.6, dur: 900 });
     burst(p.x, p.y, big ? ['🪙', '✨', '🌟', '💰'] : ['🪙', '✨'], big ? 22 : 8, big ? 140 : 60);
   }
-  if (combo >= 2) floatText(p.x, p.y - 60, `COMBO ×${combo}`, { cls: 'combo', size: 0.7 + Math.min(combo, 6) * 0.08, dur: 900 });
+  if (play.combo >= 2) floatText(p.x, p.y - 60, `COMBO ×${play.combo}`, { cls: 'combo', size: 0.7 + Math.min(play.combo, 6) * 0.08, dur: 900 });
   if (res.line) return;
   flyTo(p, el.goldBox, '🪙', Math.min(10, Math.ceil(price / 6)), landSale);
   if (big) {
@@ -2559,146 +1476,30 @@ function sellCrop(cell: number): void {
   }
 }
 
-/**
- * 列の収穫：ヒットストップ → 倍率を1つずつ乗せる → 作物が跳ねて財布へ（大きいほどスロー）→ 合計が桁ごとに回る
- */
-async function playLineHarvest(res: SellResult, centers: { x: number; y: number }[], p: { x: number; y: number }, landSale: () => void): Promise<void> {
-  const level = Math.min(res.lines, 4);
-  const slow = slowFactor(level - 1);
-  // 解放で選んだ列の演出（見た目だけ）
-  const fx = activeLineFx();
-  const f = center(el.field);
-  // 売った実は畑から消えるので、跳ねるまでその場に残して見せる
-  // 大きさは先にまとめて読む（足すたびに読むと、そのたびに配置し直しになる）
-  const sizes = res.cells.map(({ cell: c }) => (el.field.children[c] as HTMLElement).clientWidth);
-  const ghosts = res.cells.map(({ cell: c, kind }, k) => {
-    const g = document.createElement('div');
-    g.className = 'fx fx-ghost';
-    g.innerHTML = art(FRUIT[kind]);
-    g.style.left = `${centers[c].x}px`;
-    g.style.top = `${centers[c].y}px`;
-    g.style.fontSize = `${sizes[k] * 0.62}px`;
-    $('fx').appendChild(g);
-    return g;
-  });
-  if (level >= 2) {
-    await hitStop(90);
-    flash('#ffffff', 250);
-    speedLines(1600 + level * 300, level >= 3 ? 'rgba(255,216,74,0.6)' : 'rgba(255,255,255,0.55)');
-  }
-  if (res.bumper) await bigHarvestIntro(ghosts);
-  sfx.lineHarvest();
-  const name = (EN ? ['', 'LINE!', 'DOUBLE LINE!!', 'GREAT HARVEST!!!', 'NEARLY ALL!!!!'] : ['', '一列そろい！', '二列そろい！！', '大収穫！！！', 'ほぼ全部！！！！'])[level];
-  // 列の名前は畑の上、倍率の札は畑の下に出す（畑の上の作物から出る「+10」と重ならないように）
-  const box = el.field.getBoundingClientRect();
-  if (!res.bumper) floatText(f.x, Math.max(70, box.top - 4), name, { cls: 'combo', size: 1.1 + level * 0.2, rise: 40, dur: 1500 + level * 300 });
-  await stackMultipliers(f.x, box.bottom + 26, res.steps);
-  // 作物が1つずつ跳ねて財布に吸い込まれる
-  const arrivals = res.cells.map(({ cell: c, price: each, kind }, k) =>
-    new Promise<void>((resolve) => {
-      later(() => {
-        const q = centers[c];
-        sfx.sell(each, combo + k);
-        ghosts[k].remove();
-        pop(el.field.children[c], 1.2);
-        // 1つずつの額は短めに見せて、合計が出る前に消す（真ん中の数字と重ならないように）
-        floatText(q.x, q.y - 10, money(each), { cls: 'gold', size: Math.min(1.4, 0.75 + each / 30), dur: 650 });
-        burst(q.x, q.y, lineFxBits(fx), 6, 50);
-        flyTo(q, el.goldBox, art(FRUIT[kind]), 1, () => {
-          sfx.coin();
-          pop(el.goldBox, 1.3);
-          resolve();
-        });
-      }, k * 150 * slow);
-    }),
-  );
-  await Promise.all(arrivals);
-  ghosts.forEach((g) => g.remove());
-  await sleep(250);
-  landSale();
-  // 合計が桁ごとに回って止まる
-  const amount = res.total;
-  shake(el.app, shakeFor(amount));
-  scanlines(Math.min(1, amount / 250));
-  vibrate(level >= 2 ? [40, 30, 120] : [30, 20, 60]);
-  if (level >= 2) confetti(20 + level * 20);
-  if (level >= 3 && fx !== 'coins') coinRain(30 + level * 10);
-  playLineFx(fx, level, f);
-  await rollNumber(f.x, f.y, amount, { prefix: '+', size: 0.9 + level * 0.15, hold: 700 + level * 200, tier: level });
-  if (res.bumper) await bigHarvestFinale(res.bumper);
-}
-
 // ---- 強化 ----
-
-function onBuy(id: UpgradeId): void {
-  unlockAudio();
-  if (ui.busy || state.over) return;
-  const card = $('stall').querySelector(`[data-id="${id}"]`) as HTMLElement;
-  if (mustPlace(state)) {
-    reject(card, placeFirst());
-    return;
-  }
-  if (!upgradeAvailable(state, id)) {
-    const sym = UPGRADE_SYMBOL[id]!.symbol;
-    reject(card, UPGRADE_SYMBOL[id]!.delta < 0 && state.bag[sym] === 0 ? L('もういない', 'None left') : UPGRADE_SYMBOL[id]!.delta < 0 ? L('来週また消せる', 'Again next week') : L('今週は並んでいない', 'Not in stock this week'));
-    return;
-  }
-  if (!canBuy(state, id)) {
-    reject(card, needGold(upgradePrice(state, id)));
-    return;
-  }
-  accept(card);
-  const first = state.stats.purchases.length === 0;
-  const from = center(card);
-  buy(state, id);
-  done.buy = true;
-  render();
-  pop(card, 1.1);
-  if (UPGRADE_SYMBOL[id]!.delta < 0) {
-    const sym = UPGRADE_SYMBOL[id]!.symbol;
-    sfx.buy();
-    sfx.poof();
-    const chip = visibleOr(el.bag.querySelector(`[data-sym="${sym}"]`), 'bag');
-    const c = center(chip);
-    burst(c.x, c.y, ['💨', sym === 'crow' ? '🪶' : '🍃', '✨'], 12, 60);
-    pop(chip, 1.3);
-  } else {
-    sfx.buy();
-    const sym = UPGRADE_SYMBOL[id]!.symbol;
-    const chip = visibleOr(el.bag.querySelector(`[data-sym="${sym}"]`), 'bag');
-    flyTo(from, chip, symHtml(sym), 1, () => {
-      pop(chip, 1.35);
-      burst(center(chip).x, center(chip).y, ['✨'], 6, 30);
-    });
-  }
-  if (first) {
-    sfx.bigBuy();
-    confetti(24);
-  }
-}
 
 // ---- 始める（新しく・続きから） ----
 
 function startGame(resume: GameState | null = null): void {
   setState(resume ?? newGame(setupFrom(meta)));
-  goldInFlight = 0;
-  taxPending = 0;
+  play.goldInFlight = 0;
+  play.taxPending = 0;
   // 所持金の表示は始めの額に合わせる（腕前で0以外から始まることがある）
-  cancelAnimationFrame(goldTween);
-  shownGold = state.gold;
+  cancelAnimationFrame(play.goldTween);
+  play.shownGold = state.gold;
   el.gold.textContent = String(state.gold);
-  orderRevealPending = false;
+  play.orderRevealPending = false;
   el.field.classList.remove('withered');
   if (resume) Object.keys(done).forEach((k) => (done[k as keyof typeof done] = true));
   else clearRun();
-  selected = null;
-  armedNextDay = false;
+  play.selected = null;
+  play.armedNextDay = false;
   if (!resume) done.spin = false;
-  tut = null;
+  play.tut = null;
   document.documentElement.classList.remove('in-tutorial');
   document.getElementById('tut-dim')?.remove();
   document.getElementById('tut-hand')?.remove();
-  window.clearInterval(tutSpotTimer);
+  window.clearInterval(play.tutSpotTimer);
   document.getElementById('coach')?.remove();
   if (!resume && !meta.tutorialDone) startTutorial();
   // 初めて遊ぶ農家は、最初にその農家のこつを出す
@@ -2717,23 +1518,20 @@ function startGame(resume: GameState | null = null): void {
   render();
   // 市の朝に閉じていたら、続きは市から
   if (resume && state.morning && state.offer.length && isMarketDay(state.day)) openMarket();
-  if (resume && state.morning && state.contractOffer.length) void explainOnce('ex:contract', contractCard(), !!tut).then(() => showContractOffer());
+  if (resume && state.morning && state.contractOffer.length) void explainOnce('ex:contract', contractCard(), !!play.tut).then(() => showContractOffer());
 }
-
 // ---- 押す回数を減らす：なぞって植える・リールから畑へ引っぱる・使える出目が1つなら選んでおく ----
 
-/** なぞる・引っぱる操作のあとに1回だけ来る click（押し始めた要素のもの）は無視する */
-let suppressClick: { kind: 'plot' | 'reel'; until: number } | null = null;
 function clickAllowed(kind: 'plot' | 'reel'): boolean {
-  const s = suppressClick;
+  const s = play.suppressClick;
   if (!s || s.kind !== kind) return true;
-  suppressClick = null;
+  play.suppressClick = null;
   return performance.now() > s.until;
 }
 
 // 新しく押し始めたら、前の操作で残った「次の click を無視」は捨てる
 // （最後の種を植えて畑が描き直されると、その click が届かずに残り、次のタップを飲み込んでいた）
-document.addEventListener('pointerdown', () => (suppressClick = null), true);
+document.addEventListener('pointerdown', () => (play.suppressClick = null), true);
 
 /** 指の下にある畑のマス */
 function plotAt(x: number, y: number): number | null {
@@ -2747,15 +1545,15 @@ let drag: { kind: 'plant' | 'reel'; reel: number; x: number; y: number; moved: b
 
 /** 種を選んでいるとき：押したマスから、なぞったマスへ続けて植える */
 el.field.addEventListener('pointerdown', (e) => {
-  if (ui.busy || state.over || selected === null || !SEEDS[state.results[selected].symbol]) return;
+  if (ui.busy || state.over || play.selected === null || !SEEDS[state.results[play.selected].symbol]) return;
   const cell = plotAt(e.clientX, e.clientY);
-  if (cell === null || !canUse(state, selected, cell) || !tutAllowsCell(cell)) return;
+  if (cell === null || !canUse(state, play.selected, cell) || !tutAllowsCell(cell)) return;
   // 自動で選んだだけの種は、押した瞬間には植えない（長押しの説明を見たいだけかもしれない）。
   // なぞり始めたら植える。動かさずに離したら、ふつうのタップとして植わる
-  const pending = autoSelected;
-  drag = { kind: 'plant', reel: selected, x: e.clientX, y: e.clientY, moved: !pending, last: cell, ghost: null };
+  const pending = play.autoSelected;
+  drag = { kind: 'plant', reel: play.selected, x: e.clientX, y: e.clientY, moved: !pending, last: cell, ghost: null };
   if (pending) return;
-  suppressClick = { kind: 'plot', until: Infinity };
+  play.suppressClick = { kind: 'plot', until: Infinity };
   blockLongPress();
   onPlotTap(cell);
 });
@@ -2774,14 +1572,14 @@ document.addEventListener('pointermove', (e) => {
   if (!drag) return;
   if (drag.kind === 'plant') {
     const cell = plotAt(e.clientX, e.clientY);
-    if (cell === null || cell === drag.last || selected !== drag.reel || !canUse(state, drag.reel, cell) || !tutAllowsCell(cell)) return;
+    if (cell === null || cell === drag.last || play.selected !== drag.reel || !canUse(state, drag.reel, cell) || !tutAllowsCell(cell)) return;
     if (!drag.moved) {
       // なぞり始め：押したマスにも植える
       drag.moved = true;
-      suppressClick = { kind: 'plot', until: Infinity };
+      play.suppressClick = { kind: 'plot', until: Infinity };
       blockLongPress();
       onPlotTap(drag.last!);
-      if (selected !== drag.reel || !canUse(state, drag.reel, cell)) return;
+      if (play.selected !== drag.reel || !canUse(state, drag.reel, cell)) return;
     }
     drag.last = cell;
     onPlotTap(cell);
@@ -2791,11 +1589,11 @@ document.addEventListener('pointermove', (e) => {
     if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 12) return;
     // 引っぱり始め：その出目を選んで、指に絵柄を持たせる
     drag.moved = true;
-    autoSelected = false;
-    suppressClick = { kind: 'reel', until: Infinity };
+    play.autoSelected = false;
+    play.suppressClick = { kind: 'reel', until: Infinity };
     blockLongPress();
-    selected = drag.reel;
-    armedNextDay = false;
+    play.selected = drag.reel;
+    play.armedNextDay = false;
     sfx.select();
     drag.ghost = document.createElement('div');
     drag.ghost.className = 'drag-ghost';
@@ -2819,109 +1617,50 @@ function endDrag(e: PointerEvent): void {
   if (d.kind === 'reel' && d.moved) {
     const cell = plotAt(e.clientX, e.clientY);
     // 使えるマスで離したら使う。ほかで離したら選んだままにする（あとでマスをタップできる）
-    if (cell !== null && selected === d.reel && canUse(state, d.reel, cell) && tutAllowsCell(cell)) onPlotTap(cell);
+    if (cell !== null && play.selected === d.reel && canUse(state, d.reel, cell) && tutAllowsCell(cell)) onPlotTap(cell);
   }
-  if (suppressClick) suppressClick.until = performance.now() + 350;
+  if (play.suppressClick) play.suppressClick.until = performance.now() + 350;
 }
 document.addEventListener('pointerup', endDrag);
 document.addEventListener('pointercancel', endDrag);
 
-/** 今選ばれているリールは、自動で選んだもの */
-let autoSelected = false;
-
 /** 使える出目が1つだけなら、最初から選んでおく（リールを押す手間を省く） */
 function autoSelect(): void {
-  if (tut || selected !== null || state.over) return;
+  if (play.tut || play.selected !== null || state.over) return;
   const usable = usableReels();
   if (usable.length !== 1) return;
   const r = state.results[usable[0]];
   if (SYMBOLS[r.symbol].shape === 'all') return;
-  selected = usable[0];
-  autoSelected = true;
+  play.selected = usable[0];
+  play.autoSelected = true;
 }
 
 // ---- チュートリアル：初めての人の最初の2日を案内する ----
 
-interface TutStep {
-  /** 吹き出しの文 */
-  text: string;
-  /** 光らせる要素 */
-  focus: () => Element[];
-  /** タップしてよいリール（なければリールは「回す」だけ、spin も false なら触れない） */
-  reel?: number;
-  /** リールで次の日へ回してよい */
-  spin?: boolean;
-  /** タップしてよいマス */
-  cells?: number[];
-  /** 終わったか（ボタンで進む手順は undefined） */
-  done?: () => boolean;
-  /** 押して進むボタン */
-  button?: string;
-  /** 指で示す場所（なければ光らせる物の1つ目。ボタンで進む手順は指を出さない） */
-  point?: () => Element | null;
-}
-
-/** 横一列（真ん中の行）の3マス */
-const tutRow = (): number[] => [0, 1, 2].map((x) => CONFIG.fieldCols + x);
-const reelEl = (i: number): Element[] => (el.reels.children[i] ? [el.reels.children[i]] : []);
-const plotEls = (cells: number[]): Element[] => cells.map((c) => el.field.children[c]).filter(Boolean);
-
-/** まだ植えていない、横一列のいちばん左のマス */
-const nextRowPlot = (): Element | null => el.field.children[tutRow().find((c) => !state.field[c]) ?? tutRow()[1]] ?? null;
-
-const TUT_STEPS: TutStep[] = [
-  // 1日目：回す → 種を横一列に植える → 雨で育てる
-  { text: L('<b>リールをタップ</b>して回そう', '<b>Tap the reels</b> to spin'), focus: () => [el.reels], spin: true, done: () => state.day >= 1 && !state.morning && !ui.busy },
-  { text: `${symHtml('seed')} ${L('種が出た！<br><b>種のリール</b>をタップ', 'A seed!<br>Tap the <b>seed reel</b>')}`, focus: () => reelEl(0), reel: 0, done: () => selected === 0 || tutRow().some((c) => state.field[c]) },
-  { text: L('光る<b>横一列の3マス</b>に<br>植えよう（並ぶと高い）', 'Plant in the <b>3 glowing plots</b><br>3 in a row sell high'), focus: () => plotEls(tutRow()), point: nextRowPlot, reel: 0, cells: tutRow(), done: () => tutRow().every((c) => state.field[c]) },
-  { text: `${symHtml('rain')} ${L('<b>雨のリール</b> → <b>真ん中</b>へ<br>縦横に育つ', 'Tap the <b>rain reel</b> → the <b>middle</b><br>It grows a cross')}`, focus: () => (selected === 1 ? plotEls([tutRow()[1]]) : reelEl(1)), reel: 1, cells: [tutRow()[1]], done: () => !!state.results[1]?.used },
-  { text: L('○が増えた＝育った<br><b>リールをタップ</b>で次の日へ', 'More ○ = grown<br><b>Tap the reels</b> for the next day'), focus: () => [el.reels], spin: true, done: () => state.day >= 2 && !state.morning && !ui.busy },
-  // 2日目：雷で実らせて、列で売る
-  { text: `${symHtml('thunder')} ${L('<b>雷</b> → <b>トマトの列</b>へ<br>横一列が+2育つ', 'Tap <b>thunder</b> → the <b>tomato row</b><br>The row grows +2')}`, focus: () => (selected === 0 ? plotEls(tutRow()) : reelEl(0)), point: () => (selected === 0 ? el.field.children[tutRow()[1]] : reelEl(0)[0]) ?? null, reel: 0, cells: tutRow(), done: () => !!state.results[0]?.used && !harvestPlaying() },
-  { text: L('実った！<br><b>タップで列ごと売ろう</b>', 'Ripe!<br><b>Tap to sell the whole line</b>'), focus: () => plotEls(tutRow()), point: () => el.field.children[tutRow()[1]] ?? null, cells: tutRow(), done: () => state.stats.lineHarvests >= 1 && !ui.busy && !harvestPlaying() },
-  { text: L(`${MARK_LINE} 列は<b>×1.3</b><br>同じ作物の列は<b>さらに×1.3</b><br>${MARK_SINGLE} 並ばない<b>単品は半値</b>`, `${MARK_LINE} Lines <b>×1.3</b> · same crop <b>×1.3 more</b><br>${MARK_SINGLE} Singles sell at <b>half price</b>`), focus: () => [], button: L('次へ', 'Next') },
-  // 3日目（水曜）：朝に市が開く → 1つ選ぶ → 次へでリールが回る
-  { text: L('上の曜日が今日。<b>水曜は市</b><br><b>リールをタップ</b>で次の日へ', 'The top shows today. <b>Wed = market</b><br><b>Tap the reels</b> for the next day'), focus: () => [el.week, el.reels], point: () => el.reels, spin: true, done: () => state.day >= 3 },
-  { text: L('<b>3つから1つ</b>選ぶ', 'Pick <b>1 of 3</b>'), focus: () => [document.querySelector('.offer-sec')!], point: () => document.querySelector('#offer-shop [data-take] .cost'), done: () => state.day >= 3 && !state.offer.length },
-  { text: L('<b>次へ</b>で市を出ると<br>リールが回る', 'Press <b>Next</b> to leave<br>and spin'), focus: () => [$('market-next')], spin: true, done: () => state.day >= 3 && !state.morning && !ui.busy },
-  { text: `${art('bale')} ${L('<b>日曜の終わりに年貢</b><br>足りないと赤くなる', '<b>Tax at the end of Sunday</b><br>Turns red when short')}`, focus: () => [el.week, el.tax], button: L('次へ', 'Next') },
-  { text: L('あとは自由に！<br><b>年貢を7回</b>納めるとクリア', "You're on your own!<br>Pay the tax <b>7 times</b> to win"), focus: () => [], button: L('はじめる', "Let's go") },
-];
-
-/** チュートリアルの水曜の市（決まった3つ） */
-const TUT_OFFER: AddUpgradeId[] = ['addRain', 'addSun', 'addSeed'];
-
-let tut: { step: number } | null = null;
-let tutFocus: Element[] = [];
-
-function tutStep(): TutStep | null {
-  return tut ? TUT_STEPS[tut.step] : null;
-}
-
 function startTutorial(): void {
-  tut = { step: 0 };
+  play.tut = { step: 0 };
   document.documentElement.classList.add('in-tutorial');
 }
 
 function endTutorial(): void {
-  tut = null;
+  play.tut = null;
   document.documentElement.classList.remove('in-tutorial');
-  window.clearInterval(tutSpotTimer);
+  window.clearInterval(play.tutSpotTimer);
   document.getElementById('tut-dim')?.remove();
   document.getElementById('tut-hand')?.remove();
   meta.tutorialDone = true;
   saveMeta(meta);
   // チュートリアルで教えた絵柄は、説明カードを出さない
   markTutorialSymbols();
-  tutFocus.forEach((e) => e.classList.remove('coach-focus'));
-  tutFocus = [];
+  play.tutFocus.forEach((e) => e.classList.remove('coach-focus'));
+  play.tutFocus = [];
   document.getElementById('coach')?.remove();
   render();
 }
 
 /** チュートリアルの日は出目を決めておく（1日目：種×3・雨・金貨、2日目：雷・金貨・金貨、3日目：種×2・太陽・金貨） */
 function tutScript(): void {
-  if (!tut) return;
+  if (!play.tut) return;
   const mk = (symbol: SymbolId, total = 1) => ({ symbol, used: false, total, left: total, power: 1 });
   const plan: Record<number, ReturnType<typeof mk>[]> = { 1: [mk('seed', 3), mk('rain'), mk('coin')], 2: [mk('thunder'), mk('coin'), mk('coin')], 3: [mk('seed', 2), mk('sun'), mk('coin')] };
   const r = plan[state.day];
@@ -2930,126 +1669,16 @@ function tutScript(): void {
   state.fever = [];
 }
 
-/** そのリールに触れてよいか */
-function tutAllowsReel(i: number): boolean {
-  const s = tutStep();
-  return !s || s.reel === i || (!!s.spin && s.reel === undefined);
-}
-
-/** 次の日へ回してよいか */
-function tutAllowsSpin(): boolean {
-  const s = tutStep();
-  return !s || !!s.spin;
-}
-
-function tutAllowsCell(cell: number): boolean {
-  const s = tutStep();
-  return !s || !!s.cells?.includes(cell);
-}
-
-/** 暗幕：画面を暗くして、光らせる物のところだけ穴をあける。指：押す場所でトントン */
-let tutSpotTimer = 0;
-function placeTutSpot(): void {
-  const s = tutStep();
-  let dim = document.getElementById('tut-dim');
-  let hand = document.getElementById('tut-hand');
-  // 見えている物だけ（大きさのある物）
-  const targets = (s?.focus() ?? []).filter((e) => {
-    if (!e) return false;
-    const r = e.getBoundingClientRect();
-    return r.width > 0 && r.height > 0;
-  });
-  if (!s || !targets.length) {
-    dim?.remove();
-    hand?.remove();
-    return;
-  }
-  if (!dim) {
-    dim = document.createElement('div');
-    dim.id = 'tut-dim';
-    dim.className = 'tut-dim';
-    document.body.appendChild(dim);
-  }
-  // 光らせる物ごとに穴をあける（離れた2か所でも、それぞれだけ明るく）。画面全体の四角から穴の四角をくり抜く
-  const W = window.innerWidth;
-  const H = window.innerHeight;
-  const holes = targets
-    .map((e) => {
-      const r = e.getBoundingClientRect();
-      const x = Math.round(r.left - 6);
-      const y = Math.round(r.top - 6);
-      return `M${x} ${y} h${Math.round(r.width + 12)} v${Math.round(r.height + 12)} h${-Math.round(r.width + 12)} Z`;
-    })
-    .join(' ');
-  dim.style.clipPath = `path(evenodd, 'M0 0 H${W} V${H} H0 Z ${holes}')`;
-  placeCoach(targets);
-  // 指はボタンで進む手順には出さない（押すのは吹き出しのボタン）
-  const point = s.button ? null : (s.point?.() ?? targets[0]);
-  if (!point) {
-    hand?.remove();
-    return;
-  }
-  if (!hand) {
-    hand = document.createElement('div');
-    hand.id = 'tut-hand';
-    hand.className = 'tut-hand';
-    hand.innerHTML = art('hand');
-    document.body.appendChild(hand);
-  }
-  const r = point.getBoundingClientRect();
-  Object.assign(hand.style, { left: `${r.left + r.width / 2}px`, top: `${r.top + r.height * 0.55}px` });
-}
-
-
-/**
- * 吹き出しを、光らせる物とかぶらない側へ置く（上下で空きの広い方）。しっぽを光らせる物の方へ向ける。
- * 目は「吹き出しを読む → しっぽの先 → 光っている物」の順に動く
- */
-function placeCoach(targets: Element[]): void {
-  const coach = document.getElementById('coach');
-  if (!coach || !targets.length) return;
-  // 収穫などの演出の最中は吹き出しを隠す（演出の上にかぶらない）
-  coach.classList.toggle('quiet', harvestPlaying());
-  // 置き場所は、いちばん目の光らせる物に合わせる（曜日とリールの両方を光らせても、曜日の近くに出す）
-  const rs = [targets[0].getBoundingClientRect()];
-  const top = Math.min(...rs.map((r) => r.top)) - 8;
-  const bottom = Math.max(...rs.map((r) => r.bottom)) + 8;
-  const cx = (Math.min(...rs.map((r) => r.left)) + Math.max(...rs.map((r) => r.right))) / 2;
-  const H = window.innerHeight;
-  const h = coach.offsetHeight;
-  const gap = 14;
-  const safeTop = 8;
-  const roomAbove = top - safeTop;
-  const roomBelow = H - bottom - 8;
-  let y: number;
-  let side: 'above' | 'below';
-  // タダで1つ選ぶ画面では、上に題があるので札の下に出す
-  const preferBelow = !$('offer-screen').hidden && roomBelow >= h + gap;
-  if (!preferBelow && (roomAbove >= h + gap || roomAbove >= roomBelow)) {
-    side = 'above';
-    y = Math.max(safeTop, top - gap - h);
-  } else {
-    side = 'below';
-    y = Math.min(H - h - 8, bottom + gap);
-  }
-  coach.style.top = `${Math.round(y)}px`;
-  coach.style.bottom = 'auto';
-  coach.dataset.side = side;
-  // しっぽの横位置：光らせる物の真ん中（吹き出しの端からはみ出さない範囲）
-  const cr = coach.getBoundingClientRect();
-  coach.style.setProperty('--tail-x', `${Math.round(Math.min(cr.width - 28, Math.max(28, cx - cr.left)))}px`);
-}
-
 function renderTutorial(): void {
   let advanced = false;
-  while (tut && TUT_STEPS[tut.step].done?.()) {
-    tut.step++;
+  while (play.tut && TUT_STEPS[play.tut.step].done?.()) {
+    play.tut.step++;
     advanced = true;
-    if (tut.step >= TUT_STEPS.length) return endTutorial();
+    if (play.tut.step >= TUT_STEPS.length) return endTutorial();
   }
   const s = tutStep();
-  tutFocus.forEach((e) => e.classList.remove('coach-focus'));
-  tutFocus = [];
+  play.tutFocus.forEach((e) => e.classList.remove('coach-focus'));
+  play.tutFocus = [];
   let coach = document.getElementById('coach');
   if (!s) {
     coach?.remove();
@@ -3064,10 +1693,10 @@ function renderTutorial(): void {
     document.body.appendChild(coach);
   }
   // 案内役（かかし）・文・進み具合の点・ボタン
-  const dots = TUT_STEPS.map((_, k) => `<i class="${k < tut!.step ? 'done' : k === tut!.step ? 'now' : ''}"></i>`).join('');
+  const dots = TUT_STEPS.map((_, k) => `<i class="${k < play.tut!.step ? 'done' : k === play.tut!.step ? 'now' : ''}"></i>`).join('');
   const html = `<div class="coach-body"><span class="coach-guide">${art('scarecrow')}</span><p>${s.text}</p></div><div class="coach-dots">${dots}</div><div class="coach-actions">${s.button ? `<button class="primary coach-next">${s.button}</button>` : ''}<button class="coach-skip">${L('スキップ', 'Skip')}</button></div>`;
-  if (coach.dataset.step !== String(tut!.step)) {
-    coach.dataset.step = String(tut!.step);
+  if (coach.dataset.step !== String(play.tut!.step)) {
+    coach.dataset.step = String(play.tut!.step);
     coach.innerHTML = html;
     pop(coach, 1.04);
     // やって進んだ手順は、小さくほめる（光の粒と音）
@@ -3084,8 +1713,8 @@ function renderTutorial(): void {
     }
     coach.querySelector('.coach-next')?.addEventListener('click', () => {
       sfx.select();
-      tut!.step++;
-      if (tut!.step >= TUT_STEPS.length) endTutorial();
+      play.tut!.step++;
+      if (play.tut!.step >= TUT_STEPS.length) endTutorial();
       else render();
     });
     coach.querySelector('.coach-skip')!.addEventListener('click', () => {
@@ -3094,12 +1723,12 @@ function renderTutorial(): void {
     });
   }
   // 吹き出しは光らせる物とかぶらない側へ（畑・リールなら上、上の札なら下）
-  tutFocus = s.focus().filter(Boolean);
-  tutFocus.forEach((e) => e.classList.add('coach-focus'));
+  play.tutFocus = s.focus().filter(Boolean);
+  play.tutFocus.forEach((e) => e.classList.add('coach-focus'));
   placeTutSpot();
   // 演出で物が動いても暗幕の穴と指がついていくよう、少しずつ置き直す
-  window.clearInterval(tutSpotTimer);
-  tutSpotTimer = window.setInterval(placeTutSpot, 250);
+  window.clearInterval(play.tutSpotTimer);
+  play.tutSpotTimer = window.setInterval(placeTutSpot, 250);
   // 置き場所は placeCoach（光らせる物の上か下の、空いている方）
 }
 
@@ -3164,7 +1793,7 @@ $('hurry-badge').innerHTML = `${art('fastForward')}<b>${L('早送り', 'FAST')}<
 document.querySelector('.machine-top')!.innerHTML = `${art('coin')} ${L('畑スロット', 'FARM SLOTS')} ${art('coin')}`;
 // 毎日の仕入れ：看板を押すと窓が開き、効果を見て選ぶ
 document.querySelector('.machine-top')!.addEventListener('click', () => {
-  if (!state.offer.length || ui.busy || state.over || tut) return;
+  if (!state.offer.length || ui.busy || state.over || play.tut) return;
   unlockAudio();
   sfx.select();
   openMarket();
@@ -3314,7 +1943,7 @@ hooks.startGame = startGame;
   wake();
 }
 hooks.setGold = () => {
-  taxPending = 0;
+  play.taxPending = 0;
   syncGold();
 };
 applySkin();

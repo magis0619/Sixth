@@ -1,0 +1,885 @@
+/* ==== 設定・記録 ==== */
+/* 引っぱって再読み込み・画面の跳ね返りで、うっかりゲームが閉じないように */
+html,
+body {
+  overscroll-behavior: none;
+}
+
+.hud-menu button small {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 700;
+  opacity: 0.7;
+}
+
+.settings-modal,
+.records-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.set-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 12px;
+  background: #fffdf7;
+  box-shadow: 0 2px 0 #e2d2ad;
+  font: inherit;
+  font-weight: 700;
+  color: var(--ink);
+  text-align: left;
+}
+
+.set-row small {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #8a7a5c;
+}
+
+.set-row input[type='range'] {
+  width: 46%;
+  accent-color: #5aae35;
+}
+
+/* 切り替え（オン・オフ） */
+.set-row .sw {
+  flex: none;
+  position: relative;
+  width: 46px;
+  height: 26px;
+  border-radius: 999px;
+  background: #d8cdb8;
+  transition: background 0.15s;
+}
+
+.set-row .sw::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  transition: translate 0.15s;
+}
+
+.set-row.on .sw {
+  background: #5aae35;
+}
+
+.set-row.on .sw::after {
+  translate: 20px 0;
+}
+
+.set-row.danger {
+  color: #a1281f;
+}
+
+.set-row.danger.armed {
+  background: #ffe1db;
+  box-shadow: inset 0 0 0 2px #d64545;
+}
+
+.credits {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 4px;
+  font-size: 0.9375rem;
+  color: #7a6a50;
+}
+
+.credits small {
+  font-size: 0.875rem;
+}
+
+.records {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.records li {
+  display: grid;
+  grid-template-columns: 30px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: #fffdf7;
+  box-shadow: 0 2px 0 #e2d2ad;
+  font-weight: 700;
+  font-size: 0.9375rem;
+}
+
+.records li b {
+  font-family: var(--font-pop);
+  font-weight: 700;
+  color: #5e3d22;
+}
+
+.rec-ico {
+  font-size: 1.375rem;
+  display: grid;
+  place-items: center;
+}
+
+/* タイトルの小さなボタンは2列×2段に（4つ並べると文字が折れる） */
+.title-sub {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: min(100%, 320px);
+}
+
+.title-sub .icon-pill {
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.review li {
+  flex-wrap: wrap;
+}
+
+.review b {
+  white-space: nowrap;
+}
+
+/* 大豊作：後光と暗幕 */
+.fx-rays {
+  width: 220vmax;
+  height: 220vmax;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(255, 240, 160, 0.95) 0 4%, rgba(255, 200, 60, 0.5) 12%, transparent 40%),
+    repeating-conic-gradient(rgba(255, 214, 80, 0.55) 0 7deg, transparent 7deg 18deg);
+  z-index: 3;
+  pointer-events: none;
+}
+
+.fx-dim {
+  position: fixed;
+  inset: 0;
+  left: 0 !important;
+  top: 0 !important;
+  transform: none;
+  background: #1a0d00;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.fx-slam.harvest {
+  color: #fff3a0;
+  -webkit-text-stroke: 4px #8a2a00;
+  text-shadow: 0 7px 0 #8a2a00, 0 0 40px #ffb000, 0 0 80px #ff6a00;
+  white-space: nowrap;
+}
+
+/* 言語の切り替え（2択のボタン） */
+.set-row .seg {
+  display: flex;
+  border-radius: 12px;
+  background: #e8dcc2;
+  padding: 3px;
+}
+
+.set-row .seg button {
+  border: none;
+  border-radius: 12px;
+  padding: 5px 12px;
+  background: transparent;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #8a7a5c;
+}
+
+.set-row .seg button.on {
+  background: #5aae35;
+  color: #fff;
+  box-shadow: 0 2px 0 #3d7f22;
+}
+
+html[lang='en'] .reel.selected::before {
+  content: 'Selected';
+}
+
+/* 英語は名前が長いので、準備画面の名前は折り返す */
+html[lang='en'] .prep-item b {
+  white-space: normal;
+  text-align: center;
+  line-height: 1.15;
+}
+
+.prep-grid > * {
+  min-width: 0;
+}
+
+.stall-head > span small {
+  margin-left: 6px;
+}
+
+/* ==== 準備画面：屋台の開店準備（日よけ・吊り看板・荷台・棚の値札） ==== */
+.setup-modal {
+  position: relative;
+  padding: 0 16px 0;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(255, 255, 255, 0.7), transparent 45%),
+    var(--cloth);
+}
+
+/* 日よけ：赤白の縞の下を波形に切る */
+.setup-modal .awning.scallop {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: 30px;
+  margin: 0 -16px;
+  background: repeating-linear-gradient(90deg, #e0453a 0 26px, #fff6ea 26px 52px);
+  -webkit-mask: radial-gradient(13px at 13px 17px, #000 98%, transparent) 0 0 / 26px 30px repeat-x, linear-gradient(#000 0 0) 0 0 / 100% 17px no-repeat;
+  mask: radial-gradient(13px at 13px 17px, #000 98%, transparent) 0 0 / 26px 30px repeat-x, linear-gradient(#000 0 0) 0 0 / 100% 17px no-repeat;
+  border: none;
+}
+
+/* 吊り看板 */
+.prep-sign {
+  position: relative;
+  margin: 14px auto 12px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 10px 22px 9px;
+  text-align: center;
+  border-radius: 10px 12px 9px 13px;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 9px, rgba(0, 0, 0, 0.06) 9px 10px),
+    linear-gradient(180deg, var(--wood-light), var(--wood));
+  box-shadow: inset 0 0 0 3px var(--wood-dark), 0 4px 0 var(--wood-darker);
+  color: #fff8e7;
+  rotate: -1deg;
+}
+
+.prep-sign b {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-pop);
+  font-size: 1.375rem;
+  font-weight: 700;
+  text-shadow: 0 2px 0 var(--wood-darker);
+}
+
+.prep-sign b .art {
+  font-size: 1.375rem;
+}
+
+.prep-sign small {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  opacity: 0.92;
+}
+
+.prep-sign .rope {
+  position: absolute;
+  top: -16px;
+  width: 3px;
+  height: 18px;
+  background: #8a6a3c;
+  border-radius: 4px;
+}
+
+.prep-sign .rope.l { left: 22px; rotate: 8deg; }
+.prep-sign .rope.r { right: 22px; rotate: -8deg; }
+
+/* 荷台：選んだ品が枠の数だけ積まれる */
+.prep-cart {
+  position: relative;
+  margin: 4px 4px 22px;
+  padding: 26px 10px 10px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #d9a26a, #b9814c);
+  box-shadow: inset 0 0 0 3px var(--wood-dark), 0 3px 0 var(--wood-darker);
+}
+
+.prep-cart.over {
+  box-shadow: inset 0 0 0 3px #c0392b, 0 3px 0 var(--wood-darker);
+}
+
+.cart-label {
+  position: absolute;
+  top: 4px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #fff3dc;
+  text-shadow: 0 1px 0 var(--wood-darker);
+}
+
+.cart-label b {
+  font-family: var(--font-pop);
+  font-weight: 700;
+  font-size: 0.9375rem;
+}
+
+.cart-bed {
+  display: flex;
+  gap: 4px;
+  min-height: 44px;
+}
+
+.cart-load,
+.cart-slot {
+  flex: var(--w, 1) 1 0;
+  display: grid;
+  place-items: center;
+  height: 44px;
+  border-radius: 8px;
+}
+
+.cart-load {
+  background: #fff8e7;
+  box-shadow: 0 2px 0 #8a5a32;
+  font-size: 2rem;
+  animation: cart-in 0.32s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+.cart-slot {
+  border: 2px dashed rgba(255, 243, 220, 0.75);
+  background: rgba(74, 44, 23, 0.18);
+}
+
+@keyframes cart-in {
+  from { transform: translateY(-14px) scale(0.6); opacity: 0; }
+}
+
+.cart-wheel {
+  position: absolute;
+  bottom: -14px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #8a5a32 0 4px, #c98c57 5px 8px, #6e4224 9px);
+  box-shadow: 0 0 0 3px var(--wood-darker);
+}
+
+.cart-wheel.l { left: 26px; }
+.cart-wheel.r { right: 26px; }
+
+/* 棚：段ごとに木の板。品は糸で下がった値札 */
+.prep-shelf {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: 124px;
+  column-gap: 8px;
+  padding: 4px 6px 0;
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, transparent 0 112px, var(--wood) 112px 120px, var(--wood-dark) 120px 124px) 0 0 / 100% 124px,
+    #f3e4c4;
+  box-shadow: inset 0 0 0 3px var(--wood-dark);
+}
+
+.setup-modal .prep-item.tag {
+  position: relative;
+  height: 104px;
+  min-height: 0;
+  margin-top: 4px;
+  padding: 14px 4px 6px;
+  border-radius: 10px 10px 14px 14px;
+  background: #fffdf7;
+  box-shadow: 0 3px 0 #d8c39a, inset 0 0 0 2px #ecdcb8;
+  rotate: var(--tilt);
+  transform-origin: 50% 0;
+  transition: rotate 0.2s, translate 0.2s;
+  gap: 1px;
+}
+
+.setup-modal .prep-item.tag .e {
+  font-size: 2.1rem;
+}
+
+.setup-modal .prep-item.tag b {
+  font-size: 0.875rem;
+}
+
+/* 値札の穴 */
+.tag-hole {
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  border-radius: 50%;
+  background: #f3e4c4;
+  box-shadow: inset 0 0 0 2px #c9b48a;
+}
+
+/* 使う枠の数：小さな木の札 */
+.setup-modal .prep-item .cost {
+  display: flex;
+  gap: 3px;
+}
+
+.setup-modal .prep-item .cost i {
+  width: 9px;
+  height: 9px;
+  border-radius: 4px;
+  background: var(--wood-light);
+  box-shadow: inset 0 0 0 1.5px var(--wood-dark);
+}
+
+.setup-modal .prep-item.tag.on {
+  background: #eef8e2;
+  box-shadow: 0 3px 0 #8cc46a, inset 0 0 0 3px var(--role-manual);
+  rotate: 0deg;
+  translate: 0 -3px;
+}
+
+.setup-modal .prep-item.tag.full {
+  opacity: 0.55;
+}
+
+/* 選んだ品の判子 */
+.tag-stamp {
+  position: absolute;
+  top: 8px;
+  right: -4px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  border: 2px solid #c0392b;
+  color: #c0392b;
+  background: rgba(255, 255, 255, 0.85);
+  font-family: var(--font-pop);
+  font-weight: 700;
+  font-size: 0.875rem;
+  rotate: 12deg;
+  animation: stamp-in 0.25s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+@keyframes stamp-in {
+  from { transform: scale(2); opacity: 0; }
+}
+
+.setup-modal .prep-actions {
+  margin: 12px -16px 0;
+  padding: 12px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.setup-modal .prep-go {
+  width: 100%;
+  font-size: 1.375rem;
+  padding: 14px;
+}
+
+.link-back {
+  margin-top: 6px;
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  color: var(--ink-soft);
+  padding: 6px 14px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cart-load,
+  .tag-stamp {
+    animation: none;
+  }
+}
+
+.setup-modal .prep-item.tag b {
+  color: var(--ink);
+}
+
+.setup-modal .prep-item.tag .tag-stamp {
+  right: 4px;
+}
+
+/* 選んだ難しさに入っている要素（積み重なる） */
+.diff-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: -2px 0 12px;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.diff-summary b {
+  color: #3d2a4a;
+  margin-right: 2px;
+}
+
+.diff-summary span {
+  padding: 2px 7px;
+  border-radius: 8px;
+  background: #efe3f6;
+  color: #4a2f5a;
+}
+
+.fx-ripple {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 4px solid #7fd35a;
+  box-shadow: 0 0 0 3px var(--ink);
+}
+
+/* 荷台の品はタップで外せる（右上の×で分かるように） */
+.cart-load {
+  position: relative;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.cart-x {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #c0392b;
+  color: #fff;
+  font-style: normal;
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 1px 0 #7a1f15;
+}
+
+/* 「次の日へ」の札：使えずに残った出目の理由 */
+
+.setup-modal .cart-load {
+  font-size: 2rem;
+}
+
+/* ==== 小さい文字をなくす：残す情報（値段・数・状態）は読める大きさに ==== */
+.stat small,
+.tag,
+.spin small,
+.tab-note,
+.item .effect,
+.chip .pct,
+.charm small,
+.charm-card .lv,
+.charm-card .tier,
+.prep-item small,
+.dex-row small,
+.dex-row .tag-k,
+.dex-row .own,
+.order-reward,
+.order-tag .order-reward,
+.shop .item .effect,
+.shop .item .cost small,
+.hud-tax .tax-mark,
+.info-head em,
+.machine > .reach-call small,
+.pivot-tag,
+.pick-label,
+.reel.selected::before,
+.credits small,
+.cart-label,
+.diff-summary,
+.modal .secondary small {
+  font-size: 0.875rem;
+}
+
+/* 畑のマスの上の小さな札は、マスに収まる範囲で大きく */
+.badge-fert {
+  font-size: 0.875rem;
+}
+
+.prep-item .cost {
+  font-size: 0.875rem;
+}
+
+.tag-stamp {
+  font-size: 0.875rem;
+}
+
+.pick-shape .art,
+.pick-shape svg {
+  font-size: 1.125rem;
+}
+
+/* 荷台のカードは、枠をいくつ使う品でも同じ大きさ（使う数は札の■で分かる） */
+.setup-modal .cart-load,
+.setup-modal .cart-slot {
+  flex: 1 1 0;
+}
+
+/* ==== フィーバー：起きることを絵とひと言の札で ==== */
+.fever-banner {
+  padding: 12px 14px 14px;
+  width: min(92vw, 400px);
+}
+
+.fever-title {
+  font-family: var(--font-pop);
+  font-size: 2rem;
+  font-weight: 900;
+  line-height: 1.1;
+  margin-bottom: 8px;
+}
+
+.fever-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fever-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: #fff8e7;
+  color: var(--ink);
+  text-shadow: none;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.18);
+}
+
+.fever-banner.bad .fever-card {
+  background: #3a1424;
+  color: #ffe0e0;
+  box-shadow: inset 0 0 0 2px #ff6b6b;
+}
+
+.fc-sym {
+  font-size: 2.6rem;
+  line-height: 1;
+}
+
+.fc-arrow {
+  font-size: 1rem;
+  opacity: 0.55;
+}
+
+.fc-ico {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.fc-text {
+  flex: 1;
+  text-align: left;
+  font-family: var(--font-pop);
+  font-weight: 700;
+  font-size: 1.125rem;
+  line-height: 1.2;
+}
+
+.fc-jackpot {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #ffe680, #f5b818);
+  box-shadow: inset 0 0 0 2px #b8860b;
+  font-family: var(--font-pop);
+  font-weight: 700;
+  font-size: 0.9375rem;
+  color: #6b3d00;
+  white-space: nowrap;
+}
+
+.fc-jackpot .art {
+  font-size: 1.125rem;
+}
+
+.setup-modal .prep-item.tag b {
+  font-size: 0.9375rem;
+}
+
+.status .st,
+.st {
+  font-size: 0.9375rem;
+}
+
+/* 図鑑の行：説明は読める大きさ、フィーバーは絵とひと言 */
+.dex-desc {
+  display: block;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.dex-fever {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 3px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: #ffe9f2;
+  color: #a3245a;
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.dex-row.bad .dex-fever {
+  background: #f3e3f7;
+  color: #5a2470;
+}
+
+.dex-fever .art {
+  font-size: 1rem;
+}
+
+.dex-row .own {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.info-pop .sub {
+  font-size: 0.9375rem;
+}
+
+/* ==== 早送り中の印：画面の上に金色の札。三角が前へ走る ==== */
+.hurry-badge {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 70px);
+  left: 50%;
+  z-index: 60;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 14px 4px 8px;
+  border-radius: 8px;
+  translate: -50% 0;
+  background: linear-gradient(180deg, #5a2d0c, #3a1a06);
+  box-shadow: inset 0 0 0 3px #ffc928, 0 4px 0 rgba(0, 0, 0, 0.35);
+  color: #fff3a0;
+  pointer-events: none;
+}
+
+html.hurry .hurry-badge {
+  display: flex;
+  animation: hurry-in 0.18s ease-out;
+}
+
+.hurry-badge .art {
+  font-size: 2rem;
+  animation: hurry-run 0.35s linear infinite;
+}
+
+.hurry-badge b {
+  font-family: var(--font-pop);
+  font-weight: 700;
+  font-size: 1.125rem;
+}
+
+.hurry-badge span {
+  font-family: var(--font-pop);
+  font-weight: 700;
+  font-size: 1rem;
+  color: #ffc928;
+}
+
+@keyframes hurry-in {
+  from { transform: scale(0.6); opacity: 0; }
+}
+
+@keyframes hurry-run {
+  0% { transform: translateX(-3px); }
+  50% { transform: translateX(3px); }
+  100% { transform: translateX(-3px); }
+}
+
+/* 早送り中は画面の両端にも風の筋（動くのは位置だけ） */
+.hurry-edge {
+  display: none;
+}
+
+html.hurry .hurry-edge {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 59;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(255, 201, 40, 0.28), transparent 12%, transparent 88%, rgba(255, 201, 40, 0.28));
+}
+
+/* ==== 毎日の仕入れ：看板に3つの絵柄。押すと袋に入る ==== */
+.machine-top.offer {
+  gap: 6px;
+  padding: 3px 6px 3px 12px;
+  background: #5a2d0c;
+  letter-spacing: 0.04em;
+  box-shadow: inset 0 2px 0 rgba(0, 0, 0, 0.3), 0 0 0 2px var(--gold), 0 0 0 3px var(--ink);
+}
+
+.offer-label {
+  font-family: var(--font-pop);
+  font-weight: 700;
+  font-size: 1rem;
+  color: #ffd84a;
+  margin-right: 2px;
+}
+
+.machine-top .offer {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: #fff8e7;
+  box-shadow: 0 3px 0 #b8860b, inset 0 0 0 2px #ffd84a;
+  cursor: pointer;
+  animation: offer-in 0.35s cubic-bezier(0.3, 1.6, 0.5, 1) backwards;
+}
+
+.machine-top .offer:nth-of-type(2) { animation-delay: 0.06s; }
+.machine-top .offer:nth-of-type(3) { animation-delay: 0.12s; }
+
+.machine-top .offer .art {
+  font-size: 1.75rem;
+}
+
+.machine-top .offer:active {
+  translate: 0 2px;
+  box-shadow: 0 1px 0 #b8860b, inset 0 0 0 2px #ffd84a;
+}
+
+@keyframes offer-in {
+  from { transform: translateY(-10px) scale(0.5); opacity: 0; }
+}
+

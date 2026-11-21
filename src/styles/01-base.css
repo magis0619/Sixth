@@ -1,0 +1,794 @@
+/* 畑スロット ─ 木と布のほっこり農場。
+   色は意味で使う：手動＝緑、自動の良いもの＝青、外れ＝赤紫。レア度は枠（コモン灰・アンコモン青緑・レア金）。 */
+
+:root {
+  --ink: #3d3326;
+  --ink-soft: #54473a;
+  --cloth: #fff8e7;
+  --cloth-deep: #f6ead0;
+  --stitch: rgba(150, 110, 70, 0.45);
+  --wood: #b07444;
+  --wood-light: #c98c57;
+  --wood-dark: #6e4224;
+  --wood-darker: #4a2c17;
+  --soil: #8a5d3b;
+  --soil-dark: #5e3d24;
+  --soil-light: #a87650;
+  --grass: #8fcf5c;
+  --grass-dark: #5a9e33;
+  --sky: #bfe3f7;
+  --gold: #f5c518;
+  --gold-dark: #c99a00;
+  --gold-soft: #fff1b8;
+  --role-manual: #357a24;
+  --role-good: #3f8fd8;
+  --role-bad: #9a1f4a;
+  --tier-common: #6f6556;
+  --tier-uncommon: #1d7a6f;
+  --tier-rare: #f2b705;
+  --danger: #c23434;
+  --accent: #e8743b;
+  --pink: #ff5fa2;
+  /* --cell は main.ts の fitLayout が画面の高さに合わせて上書きする */
+  --cell: min(28vw, 116px);
+  /* 出目は迫力が命。リールは畑より優先して大きく取る */
+  --reel-h: clamp(70px, 12vh, 108px);
+  /* 書体：日本語は Zen Maru Gothic、数字と記号だけ M PLUS Rounded 1c（幅がそろい、日本語と大きさが釣り合う）。
+     index.html で M PLUS は数字・記号の字だけ読み込むので、それ以外の字は次の Zen Maru になる */
+  font-family: 'M PLUS Rounded 1c', 'Zen Maru Gothic', 'Hiragino Maru Gothic ProN', 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', sans-serif;
+  font-weight: 500;
+  font-synthesis: none;
+  color: var(--ink);
+  -webkit-tap-highlight-color: transparent;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+/* 空と丘の背景。UIの邪魔にならない淡さにする */
+body {
+  background-color: var(--grass);
+  background-image:
+    radial-gradient(ellipse 70% 40px at 20% 132px, #a8dc78 98%, transparent 100%),
+    radial-gradient(ellipse 80% 50px at 85% 140px, #9fd56c 98%, transparent 100%),
+    linear-gradient(var(--sky) 0, var(--sky2) 120px, var(--grass) 150px, var(--grass2) 100%);
+  background-attachment: fixed;
+  /* 軽量化：背景は画面いっぱいなので、色をゆっくり変える（transition）と、その間ずっと毎コマ画面全体を描き直す。
+     時間帯・季節の色はその場で切り替える（fixed はそのまま：外すと描き直す範囲がかえって広がる） */
+  overflow-x: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+#app {
+  max-width: 480px;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: max(8px, env(safe-area-inset-top)) 12px calc(68px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ---- 布のパネル（共通） ---- */
+
+/* ---- HUD（木の看板） ---- */
+.hud {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stat {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--cloth);
+  border-radius: 8px;
+  padding: 3px 12px 3px 6px;
+  font-weight: 700;
+  font-size: 1.375rem;
+  line-height: 1.2;
+  box-shadow: 0 3px 0 rgba(110, 66, 36, 0.35), inset 0 0 0 2px #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat small {
+  font-size: 0.875rem;
+  color: var(--ink-soft);
+  align-self: flex-end;
+  margin-bottom: 3px;
+}
+
+.stat-icon {
+  font-size: 1.375rem;
+  display: flex;
+}
+
+.icon-btn {
+  border: none;
+  background: var(--cloth);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  font-size: 1rem;
+  font-weight: 700;
+  flex: none;
+  box-shadow: 0 3px 0 rgba(110, 66, 36, 0.35), inset 0 0 0 2px #fff;
+}
+
+.icon-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 rgba(110, 66, 36, 0.35), inset 0 0 0 2px #fff;
+}
+
+/* 年貢は木の札。期日が近く足りないときは赤く脈打つ（文字でも「不足」を出す） */
+.tax {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(var(--wood-light), var(--wood));
+  color: #fff8e7;
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  box-shadow: 0 3px 0 var(--wood-dark), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+}
+
+.tax .art {
+  font-size: 1.125rem;
+}
+
+.tax b {
+  font-size: 1rem;
+}
+
+.tax.warn {
+  background: linear-gradient(#e86a5c, #c94336);
+  box-shadow: 0 3px 0 #8f2a20;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+/* ---- 今日の効果・ヒント ---- */
+.status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+
+.status:empty {
+  display: none;
+}
+
+.st {
+  font-size: 0.875rem;
+  font-weight: 700;
+  border-radius: 8px;
+  padding: 3px 10px;
+  background: var(--cloth);
+  box-shadow: 0 2px 0 rgba(110, 66, 36, 0.3);
+}
+
+.st.fever {
+  background: #ffe3f0;
+  color: #a1145a;
+  box-shadow: 0 2px 0 var(--pink);
+  animation: pulse 0.8s ease-in-out infinite;
+}
+
+.st.danger {
+  background: #3a0d1c;
+  color: #ffd0d0;
+  box-shadow: 0 2px 0 var(--role-bad);
+  animation: pulse 0.8s ease-in-out infinite;
+}
+
+.st.merchant {
+  background: var(--gold-soft);
+}
+
+.st.clover {
+  background: #e9f7d9;
+}
+
+/* ヒントは吹き出し。畑を指す */
+.hint {
+  position: relative;
+  background: #fff;
+  border-radius: 12px;
+  padding: 7px 12px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: 0 2px 0 rgba(110, 66, 36, 0.3);
+}
+
+.hint::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  transform: translateX(-50%) rotate(45deg);
+  width: 12px;
+  height: 12px;
+  background: inherit;
+}
+
+.hint:empty {
+  display: none;
+}
+
+.hint.danger {
+  background: #ffe5e0;
+  color: #8f1f1f;
+  box-shadow: 0 2px 0 var(--danger);
+}
+
+/* ---- 畑：柵で囲った土の区画 ---- */
+.farm {
+  align-self: center;
+  justify-self: center;
+  /* 上（ヒント）と下（スロット）の間の余白の真ん中に置く */
+  margin-block: auto;
+  position: relative;
+  padding: 14px;
+  border-radius: 20px;
+  /* 草地の上に白い柵。木の筐体（スロット）と見分けがつくよう、畑は緑と白で囲う */
+  background:
+    radial-gradient(circle at 20% 30%, #a6dc72 0 3px, transparent 4px) 0 0 / 22px 22px,
+    radial-gradient(circle at 70% 70%, #6fb843 0 2px, transparent 3px) 0 0 / 18px 18px,
+    #86c957;
+  box-shadow: 0 4px 0 #4f8f2c, inset 0 0 0 4px #fffaf0, inset 0 0 0 6px #d8ccb4;
+}
+
+.field {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 3), var(--cell));
+  gap: 5px;
+  padding: 5px;
+  border-radius: 12px;
+  background: #4a2e1a;
+  box-shadow: 0 2px 0 rgba(255, 255, 255, 0.35);
+}
+
+/* 耕した土：こげ茶の畝。木目（横縞＋明るい茶）とは色と模様で区別する */
+.plot {
+  width: var(--cell);
+  height: var(--cell);
+  border: none;
+  border-radius: 8px;
+  /* 土くれの粒＋やわらかい畝の影。直線の縞は木目に見えるので使わない */
+  background-color: #6e4527;
+  background-image:
+    radial-gradient(circle, rgba(255, 220, 180, 0.16) 0 1.5px, transparent 2px),
+    radial-gradient(circle, rgba(0, 0, 0, 0.22) 0 2px, transparent 2.5px),
+    radial-gradient(ellipse 70% 45% at 50% 50%, rgba(255, 255, 255, 0.07), transparent 70%),
+    linear-gradient(rgba(0, 0, 0, 0) 0 30%, rgba(0, 0, 0, 0.16) 33% 36%, rgba(0, 0, 0, 0) 40% 63%, rgba(0, 0, 0, 0.16) 66% 69%, rgba(0, 0, 0, 0) 72%);
+  background-size: 13px 11px, 17px 15px, 100% 100%, 100% 100%;
+  background-position: 3px 2px, 9px 7px, 0 0, 0 0;
+  box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.25), inset 0 2px 0 rgba(255, 255, 255, 0.1);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: transform 0.12s, box-shadow 0.12s, filter 0.12s;
+}
+
+.plot .crop {
+  font-size: calc(var(--cell) * 0.62);
+  line-height: 1;
+  display: flex;
+}
+
+.plot.g0 .crop {
+  font-size: calc(var(--cell) * 0.52);
+}
+
+/* 作物の絵に影のフィルタは掛けない（動くたびに描き直しになって重い）。影は絵の下の楕円で出す */
+.plot .crop {
+  background: radial-gradient(ellipse 34% 9% at 50% 92%, rgba(0, 0, 0, 0.22), transparent 70%);
+}
+
+/* 空きマスは小さな植え穴だけ（文字は出さない。読み上げは aria-label） */
+.plot .empty {
+  width: 22%;
+  height: 12%;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.22);
+  box-shadow: 0 2px 0 rgba(255, 255, 255, 0.1);
+  font-size: 0;
+}
+
+.plot.ripe {
+  box-shadow: inset 0 0 0 2px rgba(255, 241, 168, 0.8), inset 0 -4px 0 rgba(0, 0, 0, 0.25);
+}
+
+.plot.ripe .crop {
+  animation: bob 1.2s ease-in-out infinite;
+}
+
+.plot.goldcrop {
+  background-color: #a2793a;
+}
+
+.plot.goldcrop.ripe {
+  box-shadow: inset 0 0 0 3px var(--gold), 0 0 0 3px var(--ink);
+}
+
+.pips {
+  position: absolute;
+  bottom: 6%;
+  display: flex;
+  gap: 3px;
+}
+
+.pip {
+  width: max(10px, calc(var(--cell) * 0.14));
+  height: max(10px, calc(var(--cell) * 0.14));
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.7);
+}
+
+.pip.on {
+  background: #7be040;
+  box-shadow: inset 0 0 0 2px #fff, 0 0 5px #b8ff8a;
+}
+
+.price {
+  position: absolute;
+  top: 2%;
+  right: 2%;
+  width: max(26px, calc(var(--cell) * 0.4));
+  height: max(26px, calc(var(--cell) * 0.4));
+  display: grid;
+  place-items: center;
+  color: #5a3a00;
+  font-weight: 700;
+  border-radius: 50%;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
+}
+
+.price .art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.price b {
+  position: relative;
+  font-size: max(0.875rem, calc(var(--cell) * 0.17));
+  line-height: 1;
+  letter-spacing: -0.03em;
+  text-shadow: 0 1px 0 #fff3b0;
+}
+
+.price.d3 b {
+  font-size: max(0.875rem, calc(var(--cell) * 0.135));
+}
+
+.price.d4 b {
+  font-size: max(0.875rem, calc(var(--cell) * 0.11));
+}
+
+.badge-fert {
+  position: absolute;
+  bottom: 5%;
+  left: 5%;
+  font-size: 0.875rem;
+  font-weight: 700;
+  background: #fff;
+  color: #6a3fa0;
+  border-radius: 8px;
+  padding: 0 4px;
+}
+
+/* そろい：ピンクの縁と倍率バッジ */
+.plot.line {
+  box-shadow: inset 0 0 0 3px var(--pink), 0 0 0 3px var(--ink);
+}
+
+.plot.lines-3 {
+  animation: target 0.7s ease-in-out infinite;
+}
+
+.badge-line {
+  position: absolute;
+  bottom: 5%;
+  background: var(--pink);
+  color: #fff;
+  border-radius: 8px;
+  font-size: max(0.875rem, calc(var(--cell) * 0.12));
+  font-weight: 700;
+  padding: 0 6px;
+  box-shadow: 0 2px 0 #b8336f;
+  white-space: nowrap;
+}
+
+/* 出目を選んだとき：使えるマスは明るく、使えないマスは沈める */
+.plot.target {
+  box-shadow: inset 0 0 0 3px #fff, 0 0 0 3px var(--ink);
+  animation: target 0.9s ease-in-out infinite;
+}
+
+.plot.target::before {
+  content: '';
+  position: absolute;
+  inset: 30%;
+  border-radius: 50%;
+  border: 3px dashed rgba(255, 255, 255, 0.85);
+}
+
+.plot.dim {
+  filter: brightness(0.55) saturate(0.6);
+}
+
+/* ---- スロット：木の筐体 ---- */
+.machine {
+  margin-top: auto;
+  position: relative;
+  border-radius: 22px 22px 16px 16px;
+  padding: 8px 12px 12px;
+  /* 赤く塗った木の筐体＋金の縁。画面でいちばん「機械」らしく、いちばん目立つ塊にする */
+  background:
+    repeating-linear-gradient(0deg, transparent 0 22px, rgba(0, 0, 0, 0.06) 22px 24px),
+    linear-gradient(#e2673f, #c24a2a);
+  box-shadow: 0 5px 0 #7d2a14, inset 0 0 0 3px var(--gold), inset 0 0 0 5px #8f3318, 0 8px 18px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.machine-top {
+  align-items: center;
+  gap: 8px;
+  color: #fff8e7;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  font-size: 0.9375rem;
+  text-shadow: 0 2px 0 var(--wood-darker);
+  background: #8f3318;
+  border-radius: 999px;
+  padding: 2px 14px;
+  box-shadow: inset 0 2px 0 rgba(0, 0, 0, 0.3), 0 0 0 2px var(--gold);
+}
+
+.machine-top .art {
+  font-size: 1rem;
+}
+
+/* リール窓：濃い木の枠＋ガラスの映り込み */
+.reels-frame {
+  width: 100%;
+  border-radius: 12px;
+  padding: 6px;
+  background: #3b1a0e;
+  box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.55), 0 0 0 2px var(--gold);
+}
+
+.reels {
+  display: flex;
+  gap: 5px;
+  justify-content: center;
+}
+
+.reel {
+  flex: 1 1 0;
+  max-width: 120px;
+  min-width: 0;
+  border: none;
+  background: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+  --role: #d8cdb8;
+}
+
+.reel.role-manual {
+  --role: var(--role-manual);
+}
+
+.reel.role-good {
+  --role: var(--role-good);
+}
+
+.reel.role-bad {
+  --role: var(--role-bad);
+}
+
+.reel.enter {
+  animation: reel-in 0.6s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+.window {
+  width: 100%;
+  height: var(--reel-h);
+  overflow: hidden;
+  border-radius: 8px;
+  background: linear-gradient(#ffffff, #fff8e7 45%, #efe2c6);
+  box-shadow: inset 0 0 0 3px var(--role), inset 0 6px 8px rgba(0, 0, 0, 0.18), inset 0 -6px 8px rgba(0, 0, 0, 0.12);
+  position: relative;
+  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+}
+
+/* ガラスの映り込み */
+.window::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 55% 0;
+  background: linear-gradient(rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0));
+  pointer-events: none;
+  z-index: 2;
+}
+
+.strip {
+  will-change: transform;
+}
+
+.cell-sym {
+  height: var(--reel-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--reel-h) * 0.78);
+  line-height: 1;
+}
+
+/* 回転中の帯にはフィルタ（ぼかし・影）を掛けない。帯ごと動くので毎フレーム描き直しになって重い */
+
+.reel.spinning .window {
+  box-shadow: inset 0 0 0 3px #d8cdb8, inset 0 6px 8px rgba(0, 0, 0, 0.18);
+}
+
+.reel.suspense .window {
+  box-shadow: inset 0 0 0 3px var(--gold), 0 0 0 3px var(--gold), 0 0 0 3px var(--ink);
+  animation: shimmer 0.25s linear infinite;
+}
+
+/* 出目の下の札。役割の色で塗り、文字でも状態を書く */
+.tag {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--role);
+  border-radius: 8px;
+  padding: 1px 8px;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
+}
+
+.reel.spinning .tag {
+  background: #8b7a62;
+}
+
+.reel.usable .window {
+  animation: bob 1.4s ease-in-out infinite;
+  box-shadow: inset 0 0 0 4px var(--role), 0 0 0 3px #fff, 0 0 0 3px var(--ink);
+}
+
+.reel.selected .window {
+  transform: translateY(-6px) scale(1.06);
+  box-shadow: inset 0 0 0 4px var(--role), 0 0 0 4px #fff, 0 8px 14px rgba(0, 0, 0, 0.4);
+  animation: none;
+}
+
+.reel.selected .tag,
+.reel.selected .tag.shape {
+  background: #e8a33a;
+  color: #fff;
+}
+
+/* 使い終わった出目は暗くして✓（色だけに頼らない） */
+.reel.used .window,
+.reel.dead .window {
+  opacity: 0.5;
+  filter: saturate(0.4);
+}
+
+.reel.used .window::after {
+  content: '✓';
+  position: absolute;
+  right: 5px;
+  bottom: 1px;
+  font-weight: 700;
+  color: var(--ink);
+  font-size: 1rem;
+  z-index: 3;
+}
+
+.reel.rare .window {
+  background: linear-gradient(#fffbe0, #ffe680);
+}
+
+.count {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  z-index: 3;
+  background: var(--role-manual);
+  color: #fff;
+  border-radius: 8px;
+  padding: 0 6px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
+}
+
+.reel.spinning .count {
+  display: none;
+}
+
+.reel.fever .window {
+  box-shadow: inset 0 0 0 4px var(--pink), 0 0 0 3px #ffd3e7, 0 0 0 3px var(--ink);
+  background: linear-gradient(#fff, #ffe3f0);
+}
+
+.reel.fever .tag {
+  background: var(--pink);
+}
+
+.reel.fever-bad .window {
+  box-shadow: inset 0 0 0 4px #5b1030, 0 0 0 3px #8e1b3f, 0 0 0 3px var(--ink);
+  background: linear-gradient(#e9d6dc, #b98b98);
+  animation: shiver 0.18s linear infinite;
+}
+
+.reel.fever-bad .tag {
+  background: #5b1030;
+}
+
+.msg {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%);
+  z-index: 5;
+  max-width: 92%;
+  background: rgba(61, 51, 38, 0.88);
+  color: #fff8e7;
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-align: center;
+  border-radius: 8px;
+  padding: 4px 12px;
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.msg:empty {
+  display: none;
+}
+
+/* まわすボタン：画面でいちばん目立つもの */
+.spin {
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(#ffe45c, #f5b800);
+  box-shadow: 0 6px 0 #a87a00, inset 0 2px 0 rgba(255, 255, 255, 0.7), 0 8px 14px rgba(0, 0, 0, 0.3);
+  font-size: 1.375rem;
+  font-weight: 700;
+  padding: 10px 12px 8px;
+  color: #5a3d00;
+  line-height: 1.15;
+  transition: transform 0.08s, box-shadow 0.08s;
+}
+
+.spin small {
+  display: block;
+  font-size: 0.875rem;
+  opacity: 0.85;
+}
+
+.spin .art {
+  font-size: 0.9375rem;
+}
+
+.spin:active:not(:disabled) {
+  transform: translateY(5px);
+  box-shadow: 0 1px 0 #a87a00, inset 0 2px 0 rgba(255, 255, 255, 0.7);
+}
+
+.spin:disabled {
+  filter: grayscale(0.4) brightness(0.92);
+  cursor: default;
+}
+
+.spin.armed {
+  background: linear-gradient(#ffd0c0, #ff9e7d);
+  box-shadow: 0 6px 0 #b64a22, inset 0 2px 0 rgba(255, 255, 255, 0.7);
+  color: #6b1f00;
+}
+
+/* ---- 下のタブ ---- */
+.tabs {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 15;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 6px 12px max(6px, env(safe-area-inset-bottom));
+  background: linear-gradient(var(--wood), var(--wood-dark));
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -3px 0 #d9a06a, 0 -6px 14px rgba(0, 0, 0, 0.2);
+}
+
+.tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: none;
+  border-radius: 12px;
+  background: var(--cloth);
+  padding: 7px 4px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3);
+  min-height: 44px;
+}
+
+.tab.on {
+  background: #fff;
+  box-shadow: 0 0 0 3px var(--gold), 0 3px 0 rgba(0, 0, 0, 0.3);
+}
+
+.tab-ico {
+  font-size: 1.125rem;
+  display: flex;
+}
+
+.tab-note {
+  position: absolute;
+  top: -8px;
+  right: 2px;
+  font-size: 0.875rem;
+  background: var(--wood-darker);
+  color: #fff;
+  border-radius: 8px;
+  padding: 0 6px;
+}
+
+.tab-note:empty {
+  display: none;
+}
+
+.tab.ready .tab-note {
+  background: var(--role-manual);
+  animation: pulse 0.9s ease-in-out infinite;
+}
+
