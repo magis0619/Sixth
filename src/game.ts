@@ -1201,8 +1201,10 @@ export function rollOffer(state: GameState, rng: Rng): AddUpgradeId[] {
     picks.splice(Math.min(picks.length, n - 1), 1, rare);
   }
   // ごくまれにスーパーレア（金の札）が1つ混ざる（いちばん左に）
-  if (rng() < CONFIG.superOfferChance + CONFIG.superOfferStep * state.taxesPaid) {
-    const sup = CONFIG.superOffers[Math.floor(rng() * CONFIG.superOffers.length)] as AddUpgradeId;
+  // 解放したもの（state.pool に入っているもの）だけ
+  const supers = CONFIG.superOffers.filter((id) => state.pool.includes(id as AddUpgradeId));
+  if (supers.length && rng() < CONFIG.superOfferChance + CONFIG.superOfferStep * state.taxesPaid) {
+    const sup = supers[Math.floor(rng() * supers.length)] as AddUpgradeId;
     picks.splice(0, 1, sup);
   }
   return picks;

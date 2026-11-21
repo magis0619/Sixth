@@ -8612,3 +8612,7 @@ html.idle *, html.idle *::before, html.idle *::after { animation-play-state: pau
 .fx-roll-big.t3 .roll-plate, .fx-roll-big.t4 .roll-plate { box-shadow: 0 0 0 0.05em var(--ink), 0 0.12em 0 var(--ink), 0 0 1em rgba(255, 120, 60, 0.9); }
 .fx-roll-big.t4 .roll-rays { background: repeating-conic-gradient(#ff6b6b 0 8deg, #ffd84a 8deg 16deg, #7dd36a 16deg 24deg, #5ab0ff 24deg 32deg); opacity: 0.6; }
 .fx-roll-ring { width: 3.6em; height: 3.6em; font-size: 2rem; border-radius: 50%; border: 0.18em solid #ffd84a; box-shadow: 0 0 0.6em rgba(255, 216, 74, 0.9), inset 0 0 0.4em rgba(255, 216, 74, 0.7); pointer-events: none; }
+/* 畑を大きく：左右の余白に少しはみ出す（main.ts の fitLayout がこの分も使って大きさを決める） */
+@media (max-width: 859px), (orientation: portrait) { #app > .farm { margin-left: -6px; margin-right: -6px; } }
+/* 同じ作物の列の倍率札：白い字が読める濃さの橙（4.5:1 以上） */
+.plot .line-hint.same { background: #a85a0c; box-shadow: 0 2px 0 #6e3a06; }

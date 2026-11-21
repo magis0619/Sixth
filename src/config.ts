@@ -534,7 +534,7 @@ export const CONFIG = {
   rareOfferChance: 0.08,
   /** スーパーレア（金の札）：仕入れにまれに1つ混ざる。年貢を納めるたびに出やすくなる（2%＋納めた回数×1%） */
   superOffers: ['addBlessRain', 'addAmaterasu', 'addMallet'] as UpgradeId[],
-  superOfferChance: 0.02,
+  superOfferChance: 0.02,  // 解放したものの中から
   superOfferStep: 0.01,
   /** 毎週1つは必ず並ぶ「作戦が変わる品」と、その作戦のひと言 */
   pivotAdds: {
@@ -913,9 +913,10 @@ export const META = {
     addWatermelonSeed: { unlock: 40, cost: 3 },
     // 満月・金の種はレア仕入れ（準備では選べない。rareOffers）
     addMoon: { unlock: 0, cost: 0 },
-    addBlessRain: { unlock: 0, cost: 0 },
-    addAmaterasu: { unlock: 0, cost: 0 },
-    addMallet: { unlock: 0, cost: 0 },
+    // スーパーレアは解放するまで市に出ない
+    addBlessRain: { unlock: 120, cost: 0 },
+    addAmaterasu: { unlock: 100, cost: 0 },
+    addMallet: { unlock: 150, cost: 0 },
   } as Record<AddUpgradeId, { unlock: number; cost: number }>,
   /** レアのお守りは解放するまで出ない */
   // あとから足したお守りも、解放するまで出ない（初めのうちは3択が薄まらない）

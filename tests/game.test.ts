@@ -1431,8 +1431,12 @@ describe('じょうろ・卵とツバメ・新しいお守り', () => {
     resolveAuto(s, 2, () => 0.5);
     expect(s.priceMult).toBe(before + 1);
   });
-  it('スーパーレアは仕入れにまれに1つ混ざり、年貢を納めるほど出やすい', () => {
+  it('スーパーレアは解放したものだけ、仕入れにまれに1つ混ざり、年貢を納めるほど出やすい', () => {
     const s = g();
+    // 解放していなければ出ない
+    s.taxesPaid = 6;
+    for (let k = 0; k < 500; k++) expect(rollOffer(s, Math.random).some((id) => CONFIG.superOffers.includes(id))).toBe(false);
+    s.pool = [...s.pool, ...(CONFIG.superOffers as typeof s.pool)];
     const rate = (paid: number) => {
       s.taxesPaid = paid;
       let n = 0;

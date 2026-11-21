@@ -530,8 +530,10 @@ export function showUnlock(): void {
       </section>`;
     };
     const adds: Buy[] = (Object.keys(META.adds) as (keyof typeof META.adds)[])
-      .filter((id) => !CONFIG.rareOffers.includes(id) && !isAchieveAdd(id) && !isCutAdd(id))
+      .filter((id) => !CONFIG.rareOffers.includes(id) && !CONFIG.superOffers.includes(id) && !isAchieveAdd(id) && !isCutAdd(id))
       .map((id) => ({ attr: `data-unlock="${id}"`, ico: ADD_EMOJI[id], name: shortName(id), effect: SYMBOLS[UPGRADE_SYMBOL[id]!.symbol].desc, price: META.adds[id].unlock, done: meta.unlockedAdds.includes(id) }));
+    // スーパーレア（解放すると、市のタダで1つ選ぶにまれに金の札で並ぶ）
+    const supers: Buy[] = (CONFIG.superOffers as (keyof typeof META.adds)[]).map((id) => ({ attr: `data-unlock="${id}"`, ico: ADD_EMOJI[id], name: shortName(id), effect: SYMBOLS[UPGRADE_SYMBOL[id]!.symbol].desc, price: META.adds[id].unlock, done: meta.unlockedAdds.includes(id) }));
     const charms: Buy[] = (Object.keys(META.charmUnlock) as (keyof typeof META.charmUnlock)[])
       .map((id) => ({ attr: `data-charm="${id}"`, ico: art(id as ArtId), name: CHARMS[id].name, effect: CHARMS[id].desc(1), price: META.charmUnlock[id]!, done: meta.unlockedCharms.includes(id) }));
     // 農家の腕前：解放した農家ごとに次の段（上げきった農家は小さな札）
@@ -569,6 +571,7 @@ export function showUnlock(): void {
         <nav class="us-jump">${[['seed', L('絵柄', 'Symbols')], ['sunBlessing', L('お守り', 'Charms')], ['sparkle', L('演出', 'Effects')], ['farmMaster', L('腕前', 'Mastery')], ['question', L('ヒント', 'Hints')], ['star', L('達成', 'Goals')]].map(([ico, t], k) => `<button data-jump="${k}">${art(ico as ArtId)}<b>${t}</b></button>`).join('')}</nav>
         <div class="ul-body">
           ${section('seed', L('絵柄', 'Symbols'), L('市に並ぶ', 'Appear at market'), adds)}
+          ${section('sparkle', L('超レアの絵柄', 'Super rare symbols'), L('市にまれに並ぶ', 'Rarely at market'), supers)}
           ${section('sunBlessing', L('お守り', 'Charms'), L('年貢のあとに出る', 'Offered after tax'), charms)}
           ${fxSec}
           ${masteries.length ? section('farmMaster', L('農家の腕前', 'Farmer mastery'), L('始めに足される', 'Added at start'), masteries) : ''}

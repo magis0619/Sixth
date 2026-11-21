@@ -293,9 +293,16 @@ function fitLayout(): void {
   cancelAnimationFrame(fitRaf);
   fitRaf = requestAnimationFrame(() => {
     const root = document.documentElement;
-    const colWidth = WIDE.matches ? el.app.clientWidth / 2 - 18 : el.app.clientWidth - 24;
-    // 畑の枠（左右の余白・溝）を除いた幅を列の数で割る
-    let cell = Math.min(124, Math.floor((colWidth - 48 - 5 * (state.cols - 3)) / state.cols));
+    // 畑は左右の余白に少しはみ出して広く取る（.farm の負の margin と合わせる）
+    const colWidth = (WIDE.matches ? el.app.clientWidth / 2 - 18 : el.app.clientWidth - 24) + 12;
+    // 畑の枠（縁・溝・マスの間）の実際の幅を測り、残りを列の数で割る
+    const farm = el.field.closest<HTMLElement>('.farm');
+    const fcs = getComputedStyle(el.field);
+    const gap = parseFloat(fcs.columnGap) || 5;
+    // 枠の幅＝畑全体の幅 − マスを並べた中身の幅（今のマスの大きさに関係なく正しく測れる）
+    const inner = el.field.clientWidth - parseFloat(fcs.paddingLeft) - parseFloat(fcs.paddingRight);
+    const frame = farm && inner > 0 ? farm.offsetWidth - inner : 28;
+    let cell = Math.min(150, Math.floor((colWidth - frame - (state.cols - 1) * gap) / state.cols));
     root.style.setProperty('--cell', `${cell}px`);
     for (let k = 0; k < 3; k++) {
       const excess = root.scrollHeight - window.innerHeight;
