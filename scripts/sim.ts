@@ -167,6 +167,8 @@ const setup = mode === 'full'
       charmPool: CHARM_ORDER.filter((id) => (process.env.ALLCHARMS || !(id in META.charmUnlock)) && !(process.env.NONEW && ['autumnHarvest', 'thunderGod', 'moonViewing', 'bigSpender', 'declutter', 'farmMaster'].includes(id))),
       // DIFF=1〜4 で難しいモード
       difficulty: Number(process.env.DIFF ?? 0),
+      // LORD=1〜3 で殿様モード（年貢の条件・殿様の気まぐれ）
+      lord: Number(process.env.LORD ?? 0),
       // FARMER=berry などで農家を選ぶ（市に出やすい品も農家のもの）
       farmer: process.env.FARMER ?? 'basic',
       // MASTERY=0〜3 で農家の腕前の段

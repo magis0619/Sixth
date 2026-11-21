@@ -1104,6 +1104,46 @@ const SUPER_ART = {
     ${G('translate(6 38) scale(0.3)', SYMBOL_ART.coin)}${G('translate(18 46) scale(0.24)', SYMBOL_ART.coin)}${sparkle(52, 12, 3.5)}`,
 };
 
+// ---- 殿様（殿様モード）：ふつう（えへん）・怒り・満足。紺の裃・金の扇子・ちょんまげ ----
+const lordBody = `
+  <path d="M6 58 L10 42 L22 37 L42 37 L54 42 L58 58 Z" fill="#3e5f9e" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M10 44 L15 56 M54 44 L49 56" stroke="#2b4577" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M25 37 L32 49 L39 37" fill="#c0392b" stroke="${INK}" stroke-width="2.2" stroke-linejoin="round"/>
+  <path d="M23 37 L32 52 L41 37" fill="none" stroke="#fff8e7" stroke-width="2.6" stroke-linejoin="round"/>
+  <circle cx="17" cy="48" r="3.6" fill="#f2c230" stroke="${INK}" stroke-width="1.6"/><path d="M17 45.6V50.4M14.8 48h4.4" stroke="${INK}" stroke-width="1.2"/>
+  <circle cx="47" cy="48" r="3.6" fill="#f2c230" stroke="${INK}" stroke-width="1.6"/><path d="M47 45.6V50.4M44.8 48h4.4" stroke="${INK}" stroke-width="1.2"/>`;
+const lordFan = (up = false) => (up
+  ? `<path d="M48 40 L52 14 L59 18 Z" fill="#f2c230" stroke="${INK}" stroke-width="2.4" stroke-linejoin="round"/><path d="M50 36 L54 18" stroke="#c99a12" stroke-width="1.4"/>`
+  : `<path d="M44 44 L56 30 L60 36 Z" fill="#f2c230" stroke="${INK}" stroke-width="2.4" stroke-linejoin="round"/><path d="M46 42 L57 33" stroke="#c99a12" stroke-width="1.4"/>`);
+const lordHead = (skin: string, face: string) => `
+  <circle cx="32" cy="24" r="13" fill="${skin}" stroke="${INK}" stroke-width="3"/>
+  <path d="M19.5 21 Q20 12 32 11 Q44 12 44.5 21 Q38 17 32 17 Q26 17 19.5 21 Z" fill="#dcd6cc" stroke="${INK}" stroke-width="2.2" stroke-linejoin="round"/>
+  <path d="M27 11 Q31 4 40 6 Q36 8 35 11 Z" fill="#2b2420" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M29.5 9 L33.5 7" stroke="#fff8e7" stroke-width="1.4" stroke-linecap="round"/>
+  ${face}`;
+const cheeks = '<ellipse cx="23.5" cy="28" rx="2.6" ry="1.7" fill="#f28b9e" opacity="0.8"/><ellipse cx="40.5" cy="28" rx="2.6" ry="1.7" fill="#f28b9e" opacity="0.8"/>';
+const LORD_ART = {
+  // ふつう：きりっとした眉・への字の口（えへん）
+  lord: `${lordBody}${lordFan()}${lordHead('#ffd9b0', `
+    <path d="M23 21.5 L29 23 M41 21.5 L35 23" stroke="${INK}" stroke-width="2.4" stroke-linecap="round"/>
+    <circle cx="26.5" cy="26" r="1.8" fill="${INK}"/><circle cx="37.5" cy="26" r="1.8" fill="${INK}"/>
+    <path d="M28.5 32 Q32 29.5 35.5 32" fill="none" stroke="${INK}" stroke-width="2" stroke-linecap="round"/>${cheeks}`)}`,
+  // 怒り：真っ赤な顔・吊り上がった眉・食いしばった歯・怒りの印・振り上げた扇子
+  lordAngry: `${lordBody}${lordFan(true)}${lordHead('#f07a5e', `
+    <path d="M22.5 20 L29.5 24 M41.5 20 L34.5 24" stroke="${INK}" stroke-width="2.8" stroke-linecap="round"/>
+    <circle cx="26.5" cy="26.5" r="2.4" fill="#fff8e7" stroke="${INK}" stroke-width="1.4"/><circle cx="26.8" cy="26.8" r="1.1" fill="${INK}"/>
+    <circle cx="37.5" cy="26.5" r="2.4" fill="#fff8e7" stroke="${INK}" stroke-width="1.4"/><circle cx="37.2" cy="26.8" r="1.1" fill="${INK}"/>
+    <rect x="26.5" y="30.5" width="11" height="4.5" rx="1.2" fill="#fff8e7" stroke="${INK}" stroke-width="1.6"/><path d="M30.2 30.5v4.5M33.8 30.5v4.5" stroke="${INK}" stroke-width="1.1"/>`)}
+    <path d="M42 8 l3 3 M48 8 l-3 3 M42 14 l3 -3 M48 14 l-3 -3" stroke="#d63a2a" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M6 22 h6 M5 28 h5" stroke="${INK}" stroke-width="2.2" stroke-linecap="round"/>`,
+  // 満足：にっこり閉じた目・開いた口・きらり
+  lordHappy: `${lordBody}${lordFan()}${lordHead('#ffd9b0', `
+    <path d="M23 21 Q26 19.5 29 21 M35 21 Q38 19.5 41 21" fill="none" stroke="${INK}" stroke-width="2" stroke-linecap="round"/>
+    <path d="M24 26.5 Q26.5 23.5 29 26.5 M35 26.5 Q37.5 23.5 40 26.5" fill="none" stroke="${INK}" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M27.5 30 Q32 36 36.5 30 Z" fill="#7a2a1f" stroke="${INK}" stroke-width="1.8" stroke-linejoin="round"/>${cheeks}`)}
+    <path d="M51 6 L52.6 10.4 L57 12 L52.6 13.6 L51 18 L49.4 13.6 L45 12 L49.4 10.4 Z" fill="#ffe14a" stroke="${INK}" stroke-width="1.6" stroke-linejoin="round"/>`,
+};
+
 const DREAD_ART = {
   // 1：こちらを見張るカラス（目が赤い）
   dread1: `${SYMBOL_ART.crow}${redEye(46.8, 23, 3)}`,
@@ -1118,6 +1158,7 @@ const DREAD_ART = {
 };
 
 export const ART = {
+  ...LORD_ART,
   ...DREAD_ART,
   ...SUPER_ART,
   ...CROP_ART,

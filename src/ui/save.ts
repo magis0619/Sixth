@@ -135,6 +135,10 @@ export function loadRun(): GameState | null {
     s.removed ??= {};
     s.removedThisWeek ??= 0;
     s.colorfulToday ??= false;
+    // 殿様モードを入れる前の保存データ
+    s.lordLevel ??= 0;
+    s.taxCond ??= null;
+    s.whim ??= null;
     if (s.nightIncome) s.nightIncome.grown ??= [];
     // 畑の広さを変えられるようにする前（3×3固定）の保存データは、マスの番号を5×5の数え方に直す
     if (s.cols === undefined) {

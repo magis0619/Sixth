@@ -3,13 +3,14 @@
 import { EN, L } from '../i18n.ts';
 import { CHARMS, CHARM_ORDER, curseText, SHAPE_NAMES, CONFIG, PLACES, SEEDS, SYMBOLS, UPGRADES } from '../config.ts';
 import {
-  isGolden, canBuy, canUse, inField, isRipe, nextTax, upgradeAvailable, upgradePrice, hasRanch, isColorful, mustPlace, symbolShape, shopOpen, taxCursePct,
+  isGolden, canBuy, canUse, inField, isRipe, nextTax, upgradeAvailable, upgradePrice, hasRanch, isColorful, mustPlace, symbolShape, shopOpen, taxCursePct, lordPenalty,
 } from '../game.ts';
 import { art } from '../art.ts';
 import { fmtMult } from '../fx.ts';
 import { PLACE_ART, setHtml, symHtml } from './view.ts';
 import { $, el, state } from './store.ts';
 import { play } from './play.ts';
+import { lordChip } from './lord.ts';
 import { contractRibbon } from './contract-ui.ts';
 
 export const WIDE = window.matchMedia('(min-width: 860px) and (orientation: landscape)');
@@ -148,12 +149,17 @@ export function renderTax(): void {
   renderWeek();
   const short = state.gold < t.amount;
   const warn = short && t.daysLeft <= CONFIG.taxWarnDays;
-  el.tax.className = `hud-tax${warn ? ' warn' : ''}${short ? ' short' : ' ok'}${state.difficulty ? ' hard' : ''}`;
+  const lordOn = !!state.lordLevel && !!(state.taxCond || state.whim);
+  const pct = taxCursePct(state) + Math.round(lordPenalty(state) * 100);
+  el.tax.className = `hud-tax${warn ? ' warn' : ''}${short ? ' short' : ' ok'}${state.difficulty ? ' hard' : ''}${lordOn ? ' lord' : ''}`;
   el.tax.innerHTML =
     // 年貢の額は左上の所持金の横（所持金/年貢）に出す
     `<span class="tax-label">${art('bale')}<span class="tax-word">${L('年貢', 'Tax')}</span></span>` +
     // お守りの代償で年貢が上がっているときは、金額の横に「+10%」の印
-    (taxCursePct(state) ? `<em class="tax-curse" title="${L('お守りの代償', 'Charm curse')}">+${taxCursePct(state)}%</em>` : '') +
+    // 殿様モードで条件に届いていない分も、同じ「+◯%」の印にまとめる（札に収まるように1つだけ）
+    (pct ? `<em class="tax-curse" title="${L('年貢が増えている', 'Tax raised')}">+${pct}%</em>` : '') +
+    // 殿様モード：今週の年貢の条件の進み（2/5）・気まぐれの殿様の顔
+    lordChip(state) +
     // 足りないときは、いくら足りないか（いつ払うかは曜日の板で分かるので書かない）
     `<span class="tax-mark">${short ? L(`あと${t.amount - state.gold}`, `${t.amount - state.gold} short`) : L('払える', 'ready')}</span>` +
     // 何回目の年貢か（クリアまでの7回のうち）

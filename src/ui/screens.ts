@@ -5,9 +5,10 @@ import {
   ACHIEVE_ADDS, PLACES, CHARM_ORDER, FARMERS, COMBOS, CUT, isCutAdd, type CharmId, type SymbolId, PAUSED_CHARMS, CHARM_TIER_NAMES, CHARMS, CONFIG, DIFFICULTIES, FEEDBACK_URL, META, SHARE_URL, SYMBOL_ORDER, SYMBOLS, THUNDER_LINES, UPGRADES,
   UPGRADE_SYMBOL, SEEDS, type FarmerPerk,
 } from '../config.ts';
-import { difficultyTaxMult, nextTax, placePrice, rateRun, taxPlan } from '../game.ts';
+import { difficultyTaxMult, lordPenalty, nextTax, placePrice, rateRun, taxCondGot, taxPlan } from '../game.ts';
+import { condText } from './lord.ts';
 import {
-  awardPoints, buyComboHint, buyLineFx, buyMastery, capacity, masteryPrice, nextComboHint, farmerUnlocked, isAchieveAdd, loadoutCost, maxDifficulty, recordRun, saveMeta, toggleLoadout, unlockAdd, unlockCharm,
+  awardPoints, buyComboHint, buyLineFx, buyMastery, capacity, masteryPrice, nextComboHint, farmerUnlocked, isAchieveAdd, loadoutCost, maxDifficulty, lordMax, recordRun, saveMeta, toggleLoadout, unlockAdd, unlockCharm,
 } from '../meta.ts';
 import { art, type ArtId } from '../art.ts';
 import { sfx, unlockAudio } from '../audio.ts';
@@ -63,7 +64,10 @@ function resultBody(kind: 'fail' | 'clear' | 'endless', opts: { taxAmount: numbe
         <p><span>${art('bale')}${L('納めた年貢', 'Taxes paid')}</span><b>${st.taxTotal ?? 0}</b></p>
         <p class="pos"><span>${art('sparkle')}${L('手元に残った', 'Left over')}</span><b>${state.gold}</b></p>
       </div>`;
+  // 殿様モード：負けたら怒り顔、クリアしたら満足の顔
+  const lordFace = state.lordLevel ? `<p class="rs-lord">${art(failed ? 'lordAngry' : 'lordHappy')}<b>${L(`殿様モード 段${state.lordLevel}`, `Lord mode lv ${state.lordLevel}`)}</b></p>` : '';
   const result = `<section class="rs-sec rs-result ${failed ? 'is-fail' : 'is-clear'}">
+      ${lordFace}
       <p class="rs-badge">${badge}</p>
       <h2 class="rs-title">${title}</h2>
       <div class="rs-pills">
@@ -139,6 +143,9 @@ function resultBody(kind: 'fail' | 'clear' | 'endless', opts: { taxAmount: numbe
         ? ['coin', L(`あと${short}足りなかった`, `${short} short`), L(`今週、市で${spentBefore}使っていた`, `You spent ${spentBefore} at the market this week`)]
         : ['coin', L(`あと${short}足りなかった`, `${short} short`), L(`最後の週に1日+${Math.ceil(short / CONFIG.taxPeriod)}で届いた`, `+${Math.ceil(short / CONFIG.taxPeriod)} a day in the last week would have done it`)],
     );
+  // 殿様モード：年貢の条件・豊作を見たいで年貢が増えていた
+  const lordPct = Math.round(lordPenalty(state) * 100);
+  if (failed && lordPct > 0) add(['lord', L(`殿様の条件で年貢+${lordPct}%`, `Lord's conditions: tax +${lordPct}%`), state.taxCond ? L(`${condText(state.taxCond)} ${taxCondGot(state)}/${state.taxCond.need}`, `${condText(state.taxCond)} ${taxCondGot(state)}/${state.taxCond.need}`) : L('豊作を見たい：畑の半分に植える', 'Plant half the field')]);
   // 負けた理由：袋の中身（種が少ない・お邪魔が多い）
   if (failed) {
     const ids = Object.keys(state.bag) as SymbolId[];
@@ -420,6 +427,7 @@ export function showTitle(): void {
       </div>
       <div class="title-actions">
         <button class="primary title-start" id="title-start">${L('スタート', 'Start')}</button>
+        ${lordMax(meta) > 0 ? `<button class="secondary title-lord" id="title-lord">${art('lord')}<span>${L('殿様モード', 'Lord mode')}</span></button>` : ''}
         ${saved ? `<button class="secondary" id="title-resume">${L('続きから', 'Continue')} ${L(`（${saved.day}日目）`, `(day ${saved.day})`)}</button>` : ''}
       </div>
       <div class="title-sub">
@@ -433,12 +441,22 @@ export function showTitle(): void {
   $('title-start').addEventListener('click', async () => {
     unlockAudio();
     sfx.select();
+    meta.lordMode = false;
+    saveMeta(meta);
     // 初めての人は、まずゲームの全体像を一枚絵で。それから準備画面を飛ばしてチュートリアル（ふつうの農家・出目も市も決まった3日間）
     if (!meta.tutorialDone && !loadRun()) {
       await explainOnce('ex:overview', overviewCard());
       hooks.startGame();
       return;
     }
+    showPrep();
+  });
+  // 殿様モード：農家を選んでから、段（1〜3）を選ぶ
+  document.getElementById('title-lord')?.addEventListener('click', () => {
+    unlockAudio();
+    sfx.select();
+    meta.lordMode = true;
+    saveMeta(meta);
     showPrep();
   });
   document.getElementById('title-resume')?.addEventListener('click', () => {
@@ -810,8 +828,9 @@ export function showPrep(): void {
         return;
       }
       sfx.select();
-      // 難しさを解放していれば、難しさの画面へ（農家選びと分ける）
-      if (maxDifficulty(meta) > 0) showDifficulty();
+      // 殿様モードなら段の画面、難しさを解放していれば難しさの画面へ（農家選びと分ける）
+      if (meta.lordMode && lordMax(meta) > 0) showLord();
+      else if (maxDifficulty(meta) > 0) showDifficulty();
       else hooks.startGame();
     });
     $('prep-back').addEventListener('click', () => {
@@ -931,6 +950,101 @@ export function showDifficulty(): void {
   paint();
 }
 
+// ---- 殿様モード：段を選ぶ（難しさの画面と同じ形）----
+
+const LORD_COLOR = ['#5fae3c', '#3e5f9e', '#7a3d8f', '#b8332a'];
+const LORD_EMBLEM: ArtId[] = ['lord', 'lord', 'lord', 'lordAngry'];
+/** 段ごとに加わること */
+const LORD_RULES: { ico: ArtId; text: string }[][] = [
+  [],
+  [
+    { ico: 'bale', text: L('3・5週目に年貢の条件', 'Tax conditions in weeks 3 and 5') },
+    { ico: 'lord', text: L('7週目に殿様の気まぐれ', "Lord's whim in week 7") },
+  ],
+  [
+    { ico: 'bale', text: L('年貢の条件が毎週', 'Tax conditions every week') },
+    { ico: 'tomato', text: L('列・同じ作物の列の条件', 'Line and same-crop conditions') },
+    { ico: 'lord', text: L('重い気まぐれも出る', 'Harsher whims') },
+  ],
+  [
+    { ico: 'pumpkin', text: L('大物・日曜に残すの条件', 'Big-crop and keep-ripe conditions') },
+    { ico: 'lordAngry', text: L('4週目にも気まぐれ', 'A whim in week 4 too') },
+  ],
+];
+
+export function showLord(): void {
+  const max = lordMax(meta);
+  const farmer = FARMERS.find((f) => f.id === meta.farmer) ?? FARMERS[0];
+  meta.lordPick = Math.max(1, Math.min(3, meta.lordPick || 1));
+  const paint = (dir = 0) => {
+    const lv = meta.lordPick;
+    const locked = lv > max;
+    const newRules = LORD_RULES[lv];
+    const oldRules = LORD_RULES.slice(1, lv).flat();
+    el.overlay.innerHTML = `
+      <div class="diff-screen lord-screen" data-sky="${[0, 1, 3, 5][lv]}" style="--dc:${LORD_COLOR[lv]}" role="dialog" aria-label="${L('殿様モード', 'Lord mode')}">
+        <div class="ds-top">
+          <button class="ds-back" id="diff-back" aria-label="${L('もどる', 'Back')}">←</button>
+          <b class="ds-title">${L('殿様モード', 'Lord mode')}</b>
+          <span class="ds-farmer">${art(farmer.art as ArtId)}${farmer.name}</span>
+        </div>
+        <div class="ds-chips">${[1, 2, 3].map((k) => `<button class="ds-chip${k === lv ? ' on' : ''}${k > max ? ' locked' : ''}${meta.lordCleared >= k ? ' cleared' : ''}" data-lv="${k}" style="--c:${LORD_COLOR[k]}" aria-label="${L(`段${k}`, `Level ${k}`)}">${k > max ? art('lock') : `<b>${k}</b>`}</button>`).join('')}</div>
+        <div class="ds-stage">
+          <button class="ds-arrow l" id="diff-prev" ${lv <= 1 ? 'disabled' : ''} aria-label="${L('やさしく', 'Easier')}">◀</button>
+          <div class="ds-emblem${locked ? ' locked' : ''}${dir ? (dir > 0 ? ' in-r' : ' in-l') : ''}">
+            <span class="ds-ring"></span>
+            <span class="ds-num">${locked ? art('lock') : art(LORD_EMBLEM[lv])}</span>
+            ${locked ? '' : `<span class="ds-lv">${lv}</span>`}
+            ${meta.lordCleared >= lv ? `<span class="ds-cleared">${art('trophy')}${L('クリア済み', 'Cleared')}</span>` : ''}
+          </div>
+          <button class="ds-arrow r" id="diff-next" ${lv >= 3 ? 'disabled' : ''} aria-label="${L('むずかしく', 'Harder')}">▶</button>
+        </div>
+        <h2 class="ds-name">${L(`殿様モード 段${lv}`, `Lord mode lv ${lv}`)}</h2>
+        <div class="ds-rules">
+          <p class="ds-plain">${art('bale')} ${L(`条件に1つ届かないごとに年貢+${Math.round(CONFIG.lord.condStep * 100)}%`, `Tax +${Math.round(CONFIG.lord.condStep * 100)}% per missing item`)}</p>
+          <p class="ds-k new">${L('この段で増える', 'New at this level')}</p><ul>${newRules.map((r) => `<li class="new">${art(r.ico)}<span>${r.text}</span><em>NEW</em></li>`).join('')}</ul>
+          ${oldRules.length ? `<p class="ds-k">${L('前から続く', 'Still in effect')}</p><ul class="ds-old">${oldRules.map((r) => `<li>${art(r.ico)}<span>${r.text}</span></li>`).join('')}</ul>` : ''}
+        </div>
+        <div class="ds-foot">
+          ${locked ? `<p class="ds-lock">${art('lock')} ${L(`段${lv - 1}をクリアで解放`, `Clear level ${lv - 1} to unlock`)}</p>` : ''}
+          <button class="primary ds-go" id="diff-start" ${locked ? 'disabled' : ''}>${L('はじめる！', 'Start!')}</button>
+        </div>
+      </div>`;
+    el.overlay.classList.add('show');
+    const go = (d: number) => {
+      const next = Math.max(1, Math.min(3, meta.lordPick + d));
+      if (next === meta.lordPick) return;
+      meta.lordPick = next;
+      saveMeta(meta);
+      sfx.select();
+      paint(d);
+    };
+    $('diff-prev').addEventListener('click', () => go(-1));
+    $('diff-next').addEventListener('click', () => go(1));
+    el.overlay.querySelectorAll<HTMLButtonElement>('[data-lv]').forEach((b) => b.addEventListener('click', () => go(Number(b.dataset.lv) - meta.lordPick)));
+    const screen = el.overlay.querySelector<HTMLElement>('.diff-screen')!;
+    screen.addEventListener('pointerdown', (e) => (diffSwipeX = e.clientX));
+    screen.addEventListener('pointerup', (e) => {
+      const dx = e.clientX - diffSwipeX;
+      if (Math.abs(dx) > 60) go(dx < 0 ? 1 : -1);
+    });
+    $('diff-back').addEventListener('click', () => {
+      sfx.cancel();
+      if (meta.lordPick > max) {
+        meta.lordPick = max;
+        saveMeta(meta);
+      }
+      showPrep();
+    });
+    $('diff-start').addEventListener('click', () => {
+      if (meta.lordPick > max) return;
+      sfx.select();
+      hooks.startGame();
+    });
+  };
+  paint();
+}
+
 // ---- 開店準備：農家を選ぶ（画面いっぱい）----
 // 参考：Slay the Spire のキャラクター選び（大きな絵・最初のデッキと持ち物・下に顔の列）、
 // Balatro のデッキ選び（左右で切り替え、使えない物は鍵と条件）
@@ -978,7 +1092,8 @@ export function showFarmerScreen(dir = 0): void {
     const f = list[idx];
     const unlocked = farmerUnlocked(meta, f.id);
     const color = FARMER_COLOR[f.id] ?? '#5fae3c';
-    const nextIsDiff = maxDifficulty(meta) > 0;
+    const nextIsLord = meta.lordMode && lordMax(meta) > 0;
+    const nextIsDiff = nextIsLord || maxDifficulty(meta) > 0;
     // 腕前で上げた段の分も足す（札・所持金・畑の品）
     const lvM = meta.mastery[f.id] ?? 0;
     const perks = (f.mastery ?? []).slice(0, lvM);
@@ -1040,7 +1155,7 @@ export function showFarmerScreen(dir = 0): void {
         </div>` : `<div class="ds-rules fs-info fs-info-locked">${art('lock')}</div>`}
         <div class="fs-roster">${list.map((x) => `<button class="fs-face${x.id === f.id ? ' on' : ''}${farmerUnlocked(meta, x.id) ? '' : ' locked'}" data-farmer="${x.id}" style="--c:${FARMER_COLOR[x.id] ?? '#5fae3c'}" aria-label="${farmerUnlocked(meta, x.id) ? x.name : '？？？'}">${farmerUnlocked(meta, x.id) ? art(x.art as ArtId) : art('lock')}</button>`).join('')}</div>
         <div class="ds-foot">
-          <button class="primary ds-go" id="prep-start" ${unlocked ? '' : 'disabled'}>${saved && confirmNew ? L('次へ（続きは消えます）', 'Next (erases saved game)') : nextIsDiff ? `${L('難しさを選ぶ', 'Choose difficulty')} ▶` : L('はじめる！', 'Start!')}</button>
+          <button class="primary ds-go" id="prep-start" ${unlocked ? '' : 'disabled'}>${saved && confirmNew ? L('次へ（続きは消えます）', 'Next (erases saved game)') : nextIsLord ? `${L('段を選ぶ', 'Choose level')} ▶` : nextIsDiff ? `${L('難しさを選ぶ', 'Choose difficulty')} ▶` : L('はじめる！', 'Start!')}</button>
         </div>
       </div>`;
     el.overlay.classList.add('show');
@@ -1094,7 +1209,8 @@ export function showFarmerScreen(dir = 0): void {
         return;
       }
       sfx.select();
-      if (nextIsDiff) showDifficulty();
+      if (nextIsLord) showLord();
+      else if (nextIsDiff) showDifficulty();
       else hooks.startGame();
     });
   };

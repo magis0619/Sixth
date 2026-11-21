@@ -1105,3 +1105,29 @@ html.hurry-hold .hurry-badge { display: flex; }
 .ov4-sell .ov4-cap .art, .ov4-tax .ov4-cap .art { width: 56px; height: 56px; }
 .ov4-down { font-size: 1.25rem; }
 .ov4-go { margin-top: 10px; }
+
+/* ==== 殿様モード（src/ui/lord.ts） ==== */
+/* 年貢の札：条件の絵と「2/5」（届いたら緑）・気まぐれの殿様の顔 */
+.hud-tax .tax-cond, .hud-tax .tax-whim { order: 4; display: inline-flex; align-items: center; gap: 2px; font-style: normal; }
+.hud-tax .tax-cond { font-size: 0.875rem; font-weight: 700; color: #8a2a1a; background: #fff3d6; border: 2px solid #a8301f; border-radius: 999px; padding: 0 6px 0 3px; line-height: 1.3; }
+.hud-tax .tax-cond.met { color: #2f6a1c; background: #e4f4d6; border-color: #3d7a24; }
+.hud-tax .tax-cond :is(.art, .mk) { width: 18px; height: 18px; }
+.hud-tax .tax-whim .art { width: 24px; height: 24px; }
+/* タイトルの入口 */
+.title-actions .title-lord { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.title-lord .art { width: 30px; height: 30px; }
+/* 月曜のお触れ */
+.lw-face { display: flex; justify-content: center; }
+.lw-face .art { width: 112px; height: 112px; }
+.lw-rows { display: grid; gap: 8px; margin: 8px 0; }
+.lw-row { display: flex; align-items: center; gap: 10px; margin: 0; padding: 8px 12px; font-size: 1rem; font-weight: 700; background: #fff8e7; border: 2px solid var(--ink); border-radius: 12px; }
+.lw-row > :is(.art, .mk) { width: 36px; height: 36px; flex: none; }
+.lw-row > span { flex: 1; display: grid; }
+.lw-row > span small { font-size: 0.875rem; font-weight: 500; color: var(--ink-soft); }
+.lw-row > b { font-family: var(--font-pop); font-size: 1.5rem; }
+/* 結果画面の殿様の顔 */
+.rs-lord { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 0 4px; }
+.rs-lord .art { width: 64px; height: 64px; }
+.rs-lord b { font-size: 1rem; }
+/* 条件が出ている週は「年貢」の文字を省いて、札の中に収める（絵の俵で年貢と分かる） */
+.hud-tax.lord .tax-word { display: none; }

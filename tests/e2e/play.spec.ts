@@ -482,3 +482,32 @@ test('仕入れの画面が出た直後の連打では選ばれない。指を�
   await expect(page.locator('#offer-screen')).toBeHidden({ timeout: 5_000 });
   expect(errors).toEqual([]);
 });
+
+test('ふつうをクリアするとタイトルに殿様モードが出て、段を選んで始められる', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem('e2e')) return;
+    sessionStorage.setItem('e2e', '1');
+    localStorage.clear();
+    localStorage.setItem('hatake-slot:meta', JSON.stringify({ tutorialDone: true, maxCleared: 0 }));
+    localStorage.setItem('hatake-slot:calm', '1');
+    localStorage.setItem('hatake-slot:lang', 'ja');
+    localStorage.setItem('hatake-slot:noexplain', '1');
+  });
+  await page.goto('./');
+  await page.click('#title-lord', { force: true });
+  await expect(page.locator('#prep-start')).toBeVisible();
+  await ready(page);
+  await page.click('#prep-start', { force: true });
+  await expect(page.locator('.lord-screen')).toBeVisible();
+  // 段2はまだ開いていない
+  await page.click('#diff-next', { force: true });
+  await expect(page.locator('#diff-start')).toBeDisabled();
+  await page.click('#diff-prev', { force: true });
+  await ready(page);
+  await page.click('#diff-start', { force: true });
+  await page.locator('#reels .reel').first().click({ force: true });
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('hatake-slot:run') ?? '{}').lordLevel), { timeout: 15_000 }).toBe(1);
+  expect(errors).toEqual([]);
+});

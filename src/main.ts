@@ -4,7 +4,7 @@ import {
   symbolBase, type ShapeId, DIFFICULTIES, FARMERS, TOOL_EVOLVE, CONFIG, CROPS, PLACES, SEEDS, SYMBOLS, UPGRADE_SYMBOL, type PlaceId, type SymbolId,
 } from './config.ts';
 import {
-  canPlace, canUse, cellMultiplier, cropPrice, drawSymbol, endDay, inField, inSameCropLine, isRipe, place, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, wheelGold, animalGold, plantLineMult, mustPlace, refreshCombos, symbolShape, isRareOffer, isMarketDay, shopOpen, nextMarketDay, beginDay, spinDay, sellBlock, isFlooded,
+  weekDay, canPlace, canUse, cellMultiplier, cropPrice, drawSymbol, endDay, inField, inSameCropLine, isRipe, place, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, wheelGold, animalGold, plantLineMult, mustPlace, refreshCombos, symbolShape, isRareOffer, isMarketDay, shopOpen, nextMarketDay, beginDay, spinDay, sellBlock, isFlooded,
 } from './game.ts';
 import { isMuted, sfx, suspendAudio, toggleMute, unlockAudio } from './audio.ts';
 import { saveMeta, setupFrom } from './meta.ts';
@@ -20,13 +20,14 @@ import { applySkin, showClear, showGameOver, showHelp, showTitle } from './ui/sc
 import { clearRun, saveRun } from './ui/save.ts';
 import { $, el, hooks, meta, rng, setState, state, ui } from './ui/store.ts';
 import { done, play } from './ui/play.ts';
+import { lordWeekCard } from './ui/lord.ts';
 import { armFresh, installTapGuards } from './ui/tapguard.ts';
 import { pressable } from './ui/press.ts';
 import { applySettings, showSettings } from './ui/settings.ts';
 import { reject } from './ui/states.ts';
 import { renderDanger, renderSky, setupScene } from './ui/scene.ts';
 import { blockLongPress, setupLongPress } from './ui/info.ts';
-import { comboCard, contractCard, explainOnce, feverCard, markTutorialSymbols, symbolCard, taxCard } from './ui/explain.ts';
+import { showExplain, comboCard, contractCard, explainOnce, feverCard, markTutorialSymbols, symbolCard, taxCard } from './ui/explain.ts';
 import { contractSay, showContractDone, showContractOffer } from './ui/contract-ui.ts';
 import { comboBanner, feverBanner, showCharmOffer, showTaxStamp, witherField } from './ui/shows.ts';
 import { syncGold, holdGold } from './ui/gold-display.ts';
@@ -515,6 +516,11 @@ async function onSpin(): Promise<void> {
     return;
   }
   beginDay(state, rng);
+  // 殿様モード：月曜の朝に、今週の年貢の条件と気まぐれのお触れ
+  if (state.lordLevel && weekDay(state.day) === 1 && (state.taxCond || state.whim)) {
+    render();
+    await showExplain(lordWeekCard(state));
+  }
   // 月曜の朝：今週の週契約（回す前に選ぶ）
   if (state.contractOffer.length) {
     render();

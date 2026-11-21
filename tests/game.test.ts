@@ -695,6 +695,8 @@ describe('ショップは週替わり', () => {
     const s = newGame();
     const seen = new Set<string>();
     for (let k = 0; k < 6; k++) {
+      // 次の月曜（新しい週）へ
+      s.day = k * CONFIG.taxPeriod;
       s.order = null;
       drawDay(s, Math.random);
       s.weekly.forEach((id) => seen.add(id));
@@ -1513,5 +1515,97 @@ describe('市は開いて閉じたら、その日はもう開かない', () => {
     s.day = 5;
     beginDay(s, () => 0.5);
     expect(s.marketClosed).toBe(false);
+  });
+});
+
+describe('殿様モード', () => {
+  const lordGame = (lord: number) => newGame({ shop: ['addSun'], charmPool: [], lord });
+  const rngOf = (v: number) => () => v;
+
+  it('段1は3・5週目にだけ作物の数の条件が付き、7週目に軽い気まぐれが来る', () => {
+    const s = lordGame(1);
+    for (const [day, cond] of [[1, false], [8, false], [15, true], [22, false], [29, true]] as [number, boolean][]) {
+      s.day = day - 1;
+      beginDay(s, rngOf(0.1));
+      expect(!!s.taxCond).toBe(cond);
+      if (s.taxCond) expect(s.taxCond.kind).toBe('crop');
+      expect(s.whim).toBeNull();
+    }
+    s.day = 42;
+    beginDay(s, rngOf(0.1));
+    expect(['frugal', 'flashy']).toContain(s.whim);
+  });
+
+  it('殿様モードでなければ、条件も気まぐれも来ない', () => {
+    const s = lordGame(0);
+    for (const day of [1, 8, 15, 43]) {
+      s.day = day - 1;
+      beginDay(s, rngOf(0.1));
+      expect(s.taxCond).toBeNull();
+      expect(s.whim).toBeNull();
+    }
+  });
+
+  it('条件に届かない分だけ年貢が増え（1つ+20%・上限+60%）、売って届けば元に戻る', () => {
+    const s = lordGame(1);
+    const base = nextTax(s).amount;
+    s.taxCond = { kind: 'crop', crop: 'tomato', need: 5, got: 4 };
+    expect(nextTax(s).amount).toBe(Math.round(base * 1.2));
+    s.taxCond.got = 0;
+    expect(nextTax(s).amount).toBe(Math.round(base * 1.6));
+    // トマトを3つ並べて売ると数える
+    ripe(s, 'tomato', [at(0, 0), at(1, 0), at(2, 0)]);
+    sell(s, at(0, 0));
+    expect(s.taxCond.got).toBe(3);
+    s.taxCond.got = 5;
+    expect(nextTax(s).amount).toBe(base);
+  });
+
+  it('列・同じ作物の列は、列で売ったときだけ数える', () => {
+    const s = lordGame(2);
+    s.taxCond = { kind: 'sameLine', need: 1, got: 0 };
+    ripe(s, 'tomato', [at(0, 1)]);
+    sell(s, at(0, 1), true);
+    expect(s.taxCond.got).toBe(0);
+    ripe(s, 'tomato', [at(0, 0), at(1, 0), at(2, 0)]);
+    sell(s, at(0, 0));
+    expect(s.taxCond.got).toBe(1);
+  });
+
+  it('日曜に残す：今の畑の実りを数える', () => {
+    const s = lordGame(3);
+    s.taxCond = { kind: 'keep', need: 2, got: 0 };
+    ripe(s, 'tomato', [at(0, 0), at(2, 2)]);
+    expect(nextTax(s).amount).toBe(Math.round(taxAmount(0)));
+  });
+
+  it('質素倹約は市が開かず仕入れも出ない。派手好きは単品がさらに半分', () => {
+    const s = lordGame(1);
+    s.day = 41;
+    beginDay(s, rngOf(0.1));
+    s.whim = 'frugal';
+    expect(isMarketDay(45)).toBe(true);
+    s.day = 44;
+    s.whim = 'frugal';
+    const keepWhim = s.whim;
+    s.day = 44;
+    beginDay(s, rngOf(0.9));
+    s.whim = keepWhim;
+    expect(canBuy(s, 'addSun')).toBe(false);
+    const before = singleMult(s);
+    s.whim = 'flashy';
+    expect(singleMult(s)).toBeCloseTo(before * CONFIG.lord.flashySingle);
+  });
+
+  it('見回りは毎晩、かかしに守られていない一番高い実りを1つ持っていく', () => {
+    const s = lordGame(2);
+    s.day = 3;
+    s.whim = 'patrol';
+    ripe(s, 'tomato', [at(0, 0)]);
+    ripe(s, 'pumpkin', [at(2, 2)]);
+    s.results = [];
+    endDay(s, rngOf(0.99));
+    expect(s.field[at(2, 2)]).toBeNull();
+    expect(s.field[at(0, 0)]).not.toBeNull();
   });
 });

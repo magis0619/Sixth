@@ -58,6 +58,7 @@ function summary(state: GameState): Record<string, unknown> {
     taxes: state.taxesPaid,
     gold: state.gold,
     difficulty: state.difficulty,
+    lord: state.lordLevel ?? 0,
     farmer: state.farmer,
     mastery: meta.mastery[state.farmer] ?? 0,
     earned: state.stats.totalEarned,

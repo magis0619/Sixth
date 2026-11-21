@@ -263,6 +263,11 @@ export const SEEDS: Partial<Record<SymbolId, { crop: CropKind; extra: number; si
 };
 
 /** 出目の効く範囲の形 */
+/** 年貢の条件：作物の数・列で売る・同じ作物の列・大物（かぼちゃ・スイカ）・日曜に実りを残す */
+export type TaxCondKind = 'crop' | 'line' | 'sameLine' | 'big' | 'keep';
+/** 殿様の気まぐれ：質素倹約（市が開かない）・派手好き（単品がさらに半分）・見回り（毎晩実りを1つ持っていく）・豊作を見たい（日曜に畑の半分） */
+export type WhimId = 'frugal' | 'flashy' | 'patrol' | 'harvest';
+
 export type ShapeId = 'cross' | 'column' | 'row' | 'x' | 'all' | 'one' | 'col3' | 'xline' | 'box' | 'plus';
 
 export const SHAPE_NAMES: Record<ShapeId, string> = { cross: '縦横十字', column: '縦一列', row: '横一列', x: '斜め', all: '畑全体', one: '1マス', col3: '縦3列', xline: '斜めの線', box: '周り9マス', plus: '十字の5マス' };
@@ -384,6 +389,25 @@ export const CONFIG = {
   ] as { from: number; count: number; pool: SymbolId[] }[],
   /** タヌキは単体で凶悪なので、年貢のあとに増えるのは難しいこの段階から。増えるときはほかのお邪魔と一緒にしない */
   tanukiFrom: 4,
+  /**
+   * 殿様モード（難しさはふつうのまま、段1〜3）。週ごとの「年貢の条件」と、殿様の気まぐれ
+   * condWeeks：年貢の条件が付く週（何週目か）。8週目より先（エンドレス）は endlessCond の段だけ毎週
+   * kinds：その段で出る条件の種類。whimWeeks：気まぐれが来る週。whims：その段で出る気まぐれ
+   * 条件に届かなかった分は、1つにつき年貢 +condStep（上限 condMax）。豊作を見たいは畑の半分に届かなければ +harvestPenalty
+   */
+  lord: {
+    condWeeks: [[], [3, 5], [2, 3, 4, 5, 6, 7], [2, 3, 4, 5, 6, 7]] as number[][],
+    endlessCond: 2,
+    kinds: [[], ['crop'], ['crop', 'line', 'sameLine'], ['crop', 'line', 'sameLine', 'big', 'keep']] as TaxCondKind[][],
+    whimWeeks: [[], [7], [7], [4, 7]] as number[][],
+    whims: [[], ['frugal', 'flashy'], ['frugal', 'flashy', 'patrol', 'harvest'], ['frugal', 'flashy', 'patrol', 'harvest']] as WhimId[][],
+    condStep: 0.2,
+    condMax: 0.6,
+    harvestPenalty: 0.3,
+    flashySingle: 0.5,
+    /** 殿様モードの段ごとの、もらえるポイントの倍率 */
+    pointMult: [1, 1.3, 1.6, 2],
+  },
   /** 難しい3以上：お邪魔の表を何回分早く進めるか・1回に何枚多いか */
   // 前は2回分早く・1枚多くで、難しい3のクリア率が2から急に5%まで落ちていた
   hardObstacleStep: 1,

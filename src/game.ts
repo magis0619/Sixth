@@ -3,7 +3,7 @@
 import { L } from './i18n.ts';
 import {
   BAG_CONDITIONS, CHARM_CURSE, COMBOS, CUT, MERGES, cropBase, symbolBase, FARMERS, PAUSED_CHARMS, isCutAdd, COMBO_POWER, CHARMS, CHARM_ORDER, CHARM_PLACE, CONFIG, CROPS, EVENT_CONDITIONS, PLACE_ORDER, PLACES, SEEDS, SYMBOLS, SYMBOL_ORDER, TOOL_EVOLVE, UPGRADE_SYMBOL,
-  type AddUpgradeId, type CharmId, type CropKind, type PlaceId, type ShapeId, type SymbolId, type UpgradeId,
+  type AddUpgradeId, type CharmId, type CropKind, type PlaceId, type ShapeId, type SymbolId, type TaxCondKind, type UpgradeId, type WhimId,
 } from './config.ts';
 import { CONTRACTS, CONTRACT_ORDER, CONTRACT_STAR_WEIGHTS, contractGold, contractMaxStars, type ContractId } from './contracts.ts';
 
@@ -82,9 +82,23 @@ export interface Purchase {
   free?: boolean;
 }
 
+/** 殿様モードの年貢の条件（その週の日曜の年貢に付く）。got は売るたびに数える（日曜に残すは畑を見る） */
+export interface TaxCond {
+  kind: TaxCondKind;
+  crop?: CropKind;
+  need: number;
+  got: number;
+}
+
 export interface GameState {
   /** このプレイの識別子（記録の集計用） */
   runId: string;
+  /** 殿様モードの段（0＝殿様モードではない、1〜3） */
+  lordLevel: number;
+  /** 今週の年貢の条件（殿様モード） */
+  taxCond: TaxCond | null;
+  /** 今週の殿様の気まぐれ（殿様モード） */
+  whim: WhimId | null;
   /** 難しさ（0＝ふつう、1〜4＝難しい） */
   difficulty: number;
   /** 選んだ農家（FARMERS の id） */
@@ -260,6 +274,8 @@ export interface GameSetup {
   pool?: AddUpgradeId[];
   /** 難しさ（0＝ふつう） */
   difficulty?: number;
+  /** 殿様モードの段（0＝なし） */
+  lord?: number;
   /** 農家（FARMERS の id） */
   farmer?: string;
   /** 農家の腕前の段（0〜3） */
@@ -292,6 +308,9 @@ function freshGame(setup: GameSetup): GameState {
   return {
     runId: Math.random().toString(36).slice(2, 10),
     difficulty: setup.difficulty ?? 0,
+    lordLevel: setup.lord ?? 0,
+    taxCond: null,
+    whim: null,
     farmer: setup.farmer ?? 'basic',
     morning: false,
     shop: [...setup.shop],
@@ -645,7 +664,9 @@ export function nextTax(state: GameState): TaxInfo {
   // 曰く付きのお守りの代償：大きな種袋・豊作は1つ+10%、からくり職人は+20%
   const curse = 1 + taxCursePct(state) / 100;
   const half = (state.halfTax ? 0.5 : 1) * difficultyTaxMult(state.difficulty);
-  return { dueDay, daysLeft: dueDay - state.day, amount: Math.round(taxAmount(index) * (1 - relief) * curse * (1 - (state.taxCut ?? 0)) * half), index };
+  // 殿様モード：年貢の条件・豊作を見たいに届いていない分だけ増える（届けば元に戻る）
+  const lord = 1 + lordPenalty(state);
+  return { dueDay, daysLeft: dueDay - state.day, amount: Math.round(taxAmount(index) * (1 - relief) * curse * (1 - (state.taxCut ?? 0)) * half * lord), index };
 }
 
 // ---- 1日の進行 ----
@@ -680,6 +701,8 @@ function endDayRaw(state: GameState, rng: Rng): EndDayResult {
   // 井戸・水路は夜のうちに作物を育てる。水車・釣り堀・鶏小屋・牛小屋のお金が入る
   const grown = state.day > 0 ? overnightGrowth(state) : [];
   state.nightIncome = state.day > 0 ? collectNightIncome(state, rng, grown) : null;
+  // 殿様の気まぐれ・見回り：毎晩、家来が実った作物を1つ持っていく（かかしの周りは守られる）
+  if (state.day > 0 && state.whim === 'patrol') patrolNight(state);
   // 霜は日ごとに溶けていく。雑草はとなりの空きマスへ広がる
   state.frost = state.frost.map((d) => Math.max(0, d - 1));
   if (state.day > 0) {
@@ -704,6 +727,9 @@ function endDayRaw(state: GameState, rng: Rng): EndDayResult {
   }
   state.gold -= t.amount;
   state.stats.taxTotal = (state.stats.taxTotal ?? 0) + t.amount;
+  if (state.taxCond || state.whim) glog(state, `殿様 ${lordSummary(state)} 年貢+${Math.round(lordPenalty(state) * 100)}%`);
+  state.taxCond = null;
+  state.whim = null;
   state.taxesPaid++;
   state.halfTax = false;
   state.taxCut = 0;
@@ -765,14 +791,20 @@ export function beginDay(state: GameState, rng: Rng): void {
   state.morning = true;
   // 仕入れ：市の日に3択（市の日がなければ毎日）
   state.offer = CONFIG.dailyPick && (!CONFIG.marketDays.length || isMarketDay(state.day)) ? rollOffer(state, rng) : [];
-  // 新しい週には新しい注文と週替わりの品が来る
-  if (!state.order || state.order.dueDay < state.day) {
+  // 新しい週には新しい注文と週替わりの品が来る（注文がない週は、月曜を週の始まりとして数える）
+  if (state.order ? state.order.dueDay < state.day : state.day === 1 || weekDay(state.day) === 1) {
     state.order = makeOrder(state, rng);
     state.weekly = rollWeekly(state, rng);
     state.weeklyPlaces = rollWeeklyPlaces(state, rng);
     state.removedThisWeek = 0;
     // 相場は難しいモードから（marketFrom 以上）
     state.market = CONFIG.marketOn && state.difficulty >= CONFIG.marketFrom ? rollMarket(state, rng) : null;
+  }
+  // 殿様モード：月曜の朝に、今週の年貢の条件と気まぐれが決まる
+  if (state.lordLevel > 0 && weekDay(state.day) === 1) {
+    rollLordWeek(state, rng);
+    // 年貢の条件がある週は、注文は出さない（同じ「作物を何個」が2つ並んで紛らわしいので、条件が注文の代わり）
+    if (state.taxCond) state.order = null;
   }
   // 週契約：月曜の朝に3つ並ぶ。虫の大発生は毎朝虫が1枚入る
   state.contractOffer = weekDay(state.day) === 1 ? rollContracts(state, rng) : [];
@@ -844,7 +876,7 @@ export function isMarketDay(day: number): boolean {
 
 /** 今、買い物ができるか（市の日がない設定ならいつでも）。市が閉まる週は開かない */
 export function shopOpen(state: GameState): boolean {
-  if (state.contract === 'marketClosed' || state.marketClosed) return false;
+  if (state.contract === 'marketClosed' || state.marketClosed || state.whim === 'frugal') return false;
   return !CONFIG.marketDays.length || isMarketDay(state.day);
 }
 
@@ -2008,7 +2040,7 @@ export function longLineMult(len: number): number {
 /** 単品の倍率（難しい4では安い） */
 export function singleMult(state: GameState): number {
   // 草よけの代償：単品はさらに半分
-  return (state.difficulty >= 4 ? 0.3 : CONFIG.singleMult) * (state.charms.bugWard > 0 ? 0.5 : 1);
+  return (state.difficulty >= 4 ? 0.3 : CONFIG.singleMult) * (state.charms.bugWard > 0 ? 0.5 : 1) * (state.whim === 'flashy' ? CONFIG.lord.flashySingle : 1);
 }
 
 /** 列の倍率（大物狙いの代償で下がる） */
@@ -2131,6 +2163,7 @@ function sellRaw(state: GameState, cell: number, single = false): SellResult | n
   state.stats.cropsSold += cells.length;
   if (line) state.stats.lineHarvests++;
   if (line) state.stats.lineCrops = (state.stats.lineCrops ?? 0) + cells.length;
+  countTaxCond(state, cells.map((c) => c.kind), line);
   let orderReward = 0;
   const o = state.order;
   if (o && !o.done) {
@@ -2738,4 +2771,117 @@ export function buyPremium(state: GameState, id: PremiumId): boolean {
   lstat(state, OUT + '大きな買い物', price);
   glog(state, `大きな買い物 ${PREMIUM[id].name} -${price}`);
   return true;
+}
+
+// ---- 殿様モード：年貢の条件と殿様の気まぐれ ----
+
+const weekOf = (day: number) => Math.ceil(day / CONFIG.taxPeriod);
+const pick = <T>(list: T[], rng: Rng): T => list[Math.floor(rng() * list.length)];
+
+/** 袋で育てられる作物（元の作物で数える） */
+function bagCrops(state: GameState): CropKind[] {
+  const out: CropKind[] = [];
+  SYMBOL_ORDER.forEach((id) => {
+    const s = SEEDS[id];
+    if (s && state.bag[id] > 0 && !out.includes(cropBase(s.crop))) out.push(cropBase(s.crop));
+  });
+  return out;
+}
+
+/** その週の年貢の条件を作る（作れなければ null） */
+export function makeTaxCond(state: GameState, kind: TaxCondKind, week: number, rng: Rng): TaxCond | null {
+  const crops = bagCrops(state);
+  switch (kind) {
+    case 'crop': {
+      if (!crops.length) return null;
+      const crop = pick(crops, rng);
+      const cheap = CROPS[crop].price <= 8;
+      return { kind, crop, need: cheap ? 2 + week : 1 + Math.floor(week / 3), got: 0 };
+    }
+    case 'line':
+      return { kind, need: 1 + Math.floor(week / 3), got: 0 };
+    case 'sameLine':
+      return { kind, need: 1 + Math.floor(week / 5), got: 0 };
+    case 'big':
+      return crops.some((c) => c === 'pumpkin' || c === 'watermelon') ? { kind, need: 1, got: 0 } : null;
+    case 'keep':
+      return { kind, need: 2 + Math.floor(week / 3), got: 0 };
+  }
+}
+
+/** 月曜の朝：今週の年貢の条件と気まぐれを決める */
+export function rollLordWeek(state: GameState, rng: Rng): void {
+  const lvl = Math.max(0, Math.min(3, state.lordLevel));
+  const week = weekOf(state.day);
+  const L2 = CONFIG.lord;
+  const condOn = week > CONFIG.winTaxes ? lvl >= L2.endlessCond : L2.condWeeks[lvl].includes(week);
+  state.taxCond = null;
+  if (condOn) {
+    // 作れない条件（袋に大物の種がないなど）は、ほかの種類で作り直す
+    const kinds = [...L2.kinds[lvl]];
+    while (kinds.length && !state.taxCond) {
+      const k = kinds.splice(Math.floor(rng() * kinds.length), 1)[0];
+      state.taxCond = makeTaxCond(state, k, week, rng);
+    }
+  }
+  state.whim = week <= CONFIG.winTaxes && L2.whimWeeks[lvl].includes(week) ? pick(L2.whims[lvl], rng) : null;
+  if (state.taxCond || state.whim) glog(state, `殿様 今週 ${lordSummary(state)}`);
+}
+
+/** 条件の今の数（日曜に残すは、今の畑の実り） */
+export function taxCondGot(state: GameState): number {
+  const c = state.taxCond;
+  if (!c) return 0;
+  if (c.kind === 'keep') return fieldCells(state).filter((i) => state.field[i] && !state.field[i]!.anchor && isRipe(state.field[i]!)).length;
+  return c.got;
+}
+
+/** 豊作を見たい：畑の半分に作物が植わっているか */
+export function harvestShown(state: GameState): { planted: number; need: number } {
+  const cells = fieldCells(state).filter((i) => !state.tools[i]);
+  return { planted: cells.filter((i) => state.field[i]).length, need: Math.ceil(cells.length / 2) };
+}
+
+/** 年貢が何割増えるか（条件に届いていない分と、豊作を見たい） */
+export function lordPenalty(state: GameState): number {
+  if (!state.lordLevel) return 0;
+  let p = 0;
+  const c = state.taxCond;
+  if (c) p += Math.min(CONFIG.lord.condMax, CONFIG.lord.condStep * Math.max(0, c.need - taxCondGot(state)));
+  if (state.whim === 'harvest') {
+    const h = harvestShown(state);
+    if (h.planted < h.need) p += CONFIG.lord.harvestPenalty;
+  }
+  return p;
+}
+
+/** 売ったときに条件を数える */
+function countTaxCond(state: GameState, kinds: CropKind[], line: boolean): void {
+  const c = state.taxCond;
+  if (!c) return;
+  const base = kinds.map(cropBase);
+  if (c.kind === 'crop') c.got += base.filter((k) => k === c.crop).length;
+  if (c.kind === 'line' && line) c.got++;
+  if (c.kind === 'sameLine' && line && base.every((k) => k === base[0])) c.got++;
+  if (c.kind === 'big') c.got += base.filter((k) => k === 'pumpkin' || k === 'watermelon').length;
+}
+
+/** 見回り：実った一番高い作物を1つ持っていく（かかしの周りは守られる） */
+function patrolNight(state: GameState): void {
+  const ripe = fieldCells(state).filter((i) => {
+    const c = state.field[i];
+    return c && !c.anchor && isRipe(c) && !isGuarded(state, i);
+  });
+  if (!ripe.length) return;
+  const cell = ripe.reduce((a, b) => (cropPrice(state, state.field[b]!, b) > cropPrice(state, state.field[a]!, a) ? b : a));
+  glog(state, `殿様 見回りが${CROPS[state.field[cell]!.kind].name}を持っていった (${cellX(cell) + 1},${cellY(cell) + 1})`);
+  removeCrop(state, cell);
+}
+
+const WHIM_NAMES: Record<WhimId, string> = { frugal: '質素倹約', flashy: '派手好き', patrol: '見回り', harvest: '豊作を見たい' };
+/** ログ用のひと言 */
+export function lordSummary(state: GameState): string {
+  const c = state.taxCond;
+  const cond = c ? `条件:${c.kind}${c.crop ? '=' + CROPS[c.crop].name : ''} ${taxCondGot(state)}/${c.need}` : '';
+  return [cond, state.whim ? `気まぐれ:${WHIM_NAMES[state.whim]}` : ''].filter(Boolean).join(' ');
 }

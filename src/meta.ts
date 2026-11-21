@@ -47,6 +47,12 @@ export interface MetaState {
   /** 解放した列の演出と、使う演出（'' なし・'random' おまかせ） */
   lineFx: string[];
   lineFxOn: string;
+  /** 次に遊ぶのが殿様モードか（タイトルの入口で決まる） */
+  lordMode: boolean;
+  /** 殿様モードで次に遊ぶ段（1〜3） */
+  lordPick: number;
+  /** 殿様モードでクリアした一番上の段（0＝まだ） */
+  lordCleared: number;
 }
 
 const KEY = 'hatake-slot:meta';
@@ -77,6 +83,9 @@ function fresh(): MetaState {
     mastery: {},
     lineFx: [],
     lineFxOn: '',
+    lordMode: false,
+    lordPick: 1,
+    lordCleared: 0,
   };
 }
 
@@ -119,7 +128,9 @@ export function loadoutCost(ids: AddUpgradeId[]): number {
 
 /** ゲーム終了時のポイント */
 export function pointsFor(state: GameState): number {
-  return Math.floor(state.day * META.pointsPerDay + state.taxesPaid * META.pointsPerTax + (state.cleared ? META.clearBonus : 0));
+  // 殿様モードは段が上がるほど多くもらえる
+  const lord = CONFIG.lord.pointMult[Math.max(0, Math.min(3, state.lordLevel ?? 0))];
+  return Math.floor((state.day * META.pointsPerDay + state.taxesPaid * META.pointsPerTax + (state.cleared ? META.clearBonus : 0)) * lord);
 }
 
 export function awardPoints(meta: MetaState, state: GameState): number {
@@ -232,7 +243,15 @@ export function recordRun(meta: MetaState, state: GameState, final: boolean): st
     meta.unlockedAdds.push(id);
     newly.push(label);
   };
-  if (state.cleared) {
+  if (state.cleared && state.lordLevel > 0) {
+    // 殿様モード：次の段が開く
+    if (state.lordLevel > meta.lordCleared) {
+      meta.lordCleared = state.lordLevel;
+      if (state.lordLevel < 3) newly.push(L(`殿様モード 段${state.lordLevel + 1}`, `Lord mode lv ${state.lordLevel + 1}`));
+    }
+  } else if (state.cleared) {
+    // ふつうを初めてクリアすると、殿様モードが開く
+    if (meta.maxCleared < 0) newly.push(L('殿様モード', 'Lord mode'));
     if (state.difficulty > meta.maxCleared) {
       // この難しさをクリアして開く農家
       if (CONFIG.farmers) FARMERS.filter((f) => f.unlockClear !== undefined && f.unlockClear > meta.maxCleared && f.unlockClear <= state.difficulty).forEach((f) => newly.push(f.name));
@@ -248,6 +267,11 @@ export function recordRun(meta: MetaState, state: GameState, final: boolean): st
   if (meta.lines >= THUNDER_LINES) add('addThunder', L('雷', 'Thunder'));
   saveMeta(meta);
   return newly;
+}
+
+/** 殿様モードで選べる一番上の段（ふつうをクリアすると段1、段nをクリアすると段n+1。0＝まだ遊べない） */
+export function lordMax(meta: MetaState): number {
+  return meta.maxCleared < 0 ? 0 : Math.min(3, meta.lordCleared + 1);
 }
 
 /** 農家が解放済みか（その難しさをクリアしている） */
@@ -268,7 +292,9 @@ export function setupFrom(meta: MetaState): GameSetup {
     const id = meta.tutorialDone && farmerUnlocked(meta, meta.farmer) ? meta.farmer : 'basic';
     const farmer = FARMERS.find((f) => f.id === id) ?? FARMERS[0];
     return {
-      difficulty: Math.min(meta.difficulty, maxDifficulty(meta)),
+      // 殿様モードは難しさはふつうのまま、段だけ選ぶ
+      difficulty: meta.lordMode && lordMax(meta) > 0 ? 0 : Math.min(meta.difficulty, maxDifficulty(meta)),
+      lord: meta.lordMode && meta.tutorialDone ? Math.min(meta.lordPick, lordMax(meta)) : 0,
       farmer: farmer.id,
       mastery: meta.mastery[farmer.id] ?? 0,
       shop: (farmer.favor as AddUpgradeId[]).filter((id) => !CONFIG.rareOffers.includes(id) && !isCutAdd(id)),
