@@ -9,6 +9,7 @@ import { sfx } from '../audio.ts';
 import { later } from '../fx.ts';
 import { saveMeta } from '../meta.ts';
 import { el, meta, state } from './store.ts';
+import { armFresh } from './tapguard.ts';
 import { FRUIT } from './view.ts';
 
 /** チュートリアルで教える絵柄（チュートリアルを終えたら、カードは出さない） */
@@ -50,6 +51,7 @@ export function showExplain(html: string): Promise<void> {
     layer.className = 'explain-layer';
     layer.innerHTML = `<div class="explain-card" role="dialog">${html}<p class="ex-tap">${L('タップで閉じる', 'Tap to close')}</p></div>`;
     document.body.appendChild(layer);
+    armFresh(layer);
     sfx.charmOffer();
     const card = layer.querySelector('.explain-card') as HTMLElement;
     card.animate([{ transform: 'translateY(30px) scale(.9)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 340, easing: 'cubic-bezier(.3,1.4,.5,1)' });

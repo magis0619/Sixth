@@ -12,6 +12,7 @@ import { art, type ArtId } from '../art.ts';
 import { burst, center, ripple, confetti, flash, floatText, flyTo, isCalm, pop, vibrate, later } from '../fx.ts';
 import { PLACE_ART, setHtml, bagPct, costHtml, openSheet, openSheetName, say, shapeIcon, symHtml, upgradeArt, upgradeEffect, visibleOr } from './view.ts';
 import { $, el, hooks, state, ui } from './store.ts';
+import { armFresh } from './tapguard.ts';
 import { done, play } from './play.ts';
 import { accept, reject } from './states.ts';
 import { explainOnce, marketCard, mergeCard, offerCard } from './explain.ts';
@@ -503,6 +504,7 @@ export function showOfferScreen(): void {
   renderOfferShop();
   if (!scr.hidden) return;
   scr.hidden = false;
+  armFresh(scr);
   scr.animate([{ opacity: 0 }, { opacity: 1 }], { duration: isCalm() ? 120 : 240, easing: 'ease-out' });
   // 札は動かさずに薄く出す（動いている途中の札を押すとタップが消えるので）
   scr.querySelectorAll<HTMLElement>('.offer-item').forEach((it, k) => it.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260, delay: 120 + k * 80, fill: 'backwards' }));

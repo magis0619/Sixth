@@ -33,8 +33,17 @@ async function start(page: Page): Promise<void> {
 }
 
 /** 回転と演出が終わり、次の操作を受け付けるまで待つ。お守りの3択が出たら1つ選ぶ */
+/**
+ * 押せる状態になるまで待つ。出たばかりの画面（.arming）と、連打の続きを飲み込む間（html.tap-hold）は押しても効かない
+ * （急いで連打する人の誤操作を防ぐ仕組み。src/ui/tapguard.ts）
+ */
+async function ready(page: Page): Promise<void> {
+  await page.waitForFunction(() => !document.documentElement.classList.contains('tap-hold') && !document.querySelector('.arming'), null, { timeout: 5_000 });
+}
+
 async function settle(page: Page): Promise<'play' | 'over' | 'clear'> {
   for (let k = 0; k < 150; k++) {
+    await ready(page);
     if (await page.locator('#overlay.show #restart').count()) return 'over';
     if (await page.locator('#overlay.show #clear-continue').count()) return 'clear';
     // お守りの3択が出ていれば1つ選ぶ（お邪魔の窓より先に見る）
@@ -103,6 +112,8 @@ test('タイトルから始めて、植えて育てて売り、年貢まで進�
     // 使える出目がなければ、リールのタップがそのまま「回す」
     await page.locator('#reels .reel').first().click({ force: true });
     const modal = page.locator('#overlay.show #skip-yes');
+    await page.waitForTimeout(150);
+    await ready(page);
     if (await modal.count()) await modal.click({ force: true });
     end = await settle(page);
     if (end !== 'play') break;
@@ -207,10 +218,13 @@ test('お守りの3択を連打しても1つしか取れず、最後（7回目�
   await page.click('#title-resume', { force: true });
   await page.evaluate(() => document.getElementById('spin')!.click());
   const skip = page.locator('#overlay.show #skip-yes');
+  await page.waitForTimeout(150);
+  await ready(page);
   if (await skip.count()) await skip.click({ force: true });
   // 年貢のあと、お邪魔が袋に入る窓を進める
   const pest = page.locator('#overlay.show #pest-ok');
   await expect(pest).toBeVisible({ timeout: 20_000 });
+  await ready(page);
   await pest.click({ force: true });
   const card = page.locator('#overlay.show .charm-card:not([disabled])').first();
   await expect(card).toBeVisible({ timeout: 20_000 });
@@ -267,11 +281,13 @@ test('初めての人はチュートリアルで、横一列に植えて列で�
   await expect(take).toBeInViewport({ timeout: 5_000 });
   // 市の板がせり上がる途中の押しは取りこぼすことがあるので、案内が進むまで押し直す
   await expect(async () => {
+    await ready(page);
     if (await take.count()) await take.click({ force: true, timeout: 1_000 });
     await expect(coach).toContainText('次へ', { timeout: 1_500 });
   }).toPass({ timeout: 12_000 });
   // 選ぶと「タダで1つ」の画面が消えて市が開く。せり上がり終わってから押す
   await expect(page.locator('#market-next')).toBeInViewport({ timeout: 5_000 });
+  await ready(page);
   await page.click('#market-next', { force: true });
   await expect(coach).toContainText('年貢', { timeout: 15_000 });
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('hatake-slot:run')!).results.map((r: { symbol: string }) => r.symbol))).toEqual(['seed', 'sun', 'coin']);
@@ -346,11 +362,14 @@ test('市で巣箱を買って置くと、市に自動で戻る。閉じたら�
   await page.evaluate(() => document.getElementById('spin')!.click());
   const take = page.locator('#offer-screen:not([hidden]) [data-take]').first();
   await expect(take).toBeInViewport({ timeout: 10_000 });
+  await ready(page);
   await take.click({ force: true });
   // 選ぶと市が開く。巣箱が見えてから押す
   const hive = page.locator('#stall .farm-list [data-id="hive"]');
   await expect(hive).toBeInViewport({ timeout: 5_000 });
+  await ready(page);
   await hive.click({ force: true });
+  await ready(page);
   await page.click('#market-next', { force: true });
   await expect(page.locator('#sheet.open')).toHaveCount(0);
   // 置く
@@ -366,6 +385,7 @@ test('市で巣箱を買って置くと、市に自動で戻る。閉じたら�
   await expect(page.locator('#sheet.open[data-pane="shop"]')).toHaveCount(1, { timeout: 15_000 });
   // 市の板がせり上がり終わってから押す
   await expect(page.locator('#market-next')).toBeInViewport({ timeout: 5_000 });
+  await ready(page);
   await page.click('#market-next', { force: true });
   await expect(page.locator('#sheet.open')).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('hatake-slot:run')!).marketClosed), { timeout: 15_000 }).toBe(true);
@@ -400,4 +420,65 @@ test('ボタンを押したまま指をずらしてやめると、押したこ�
   await page.mouse.up();
   await page.waitForTimeout(400);
   await expect(btn).toBeVisible();
+});
+
+test('急いで連打しても、演出が終わった瞬間のタップで勝手に植えない。指を止めれば植えられる', async ({ page }) => {
+  const errors = await boot(page);
+  await start(page);
+  await firstDay(page);
+  // リール1つ・袋は種だけ：回すと種が1つ出て、自動で選ばれる（マスを1回押すと植わる状態）
+  await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('hatake-slot:run')!);
+    for (const k of Object.keys(s.bag)) s.bag[k] = 0;
+    s.bag.seed = 1;
+    Object.assign(s, { reels: 1, results: [], field: s.field.map(() => null) });
+    localStorage.setItem('hatake-slot:run', JSON.stringify(s));
+  });
+  await page.reload();
+  await page.click('#title-resume', { force: true });
+  await page.waitForTimeout(500);
+  const plot = page.locator('#field .plot').nth(6);
+  const box = (await plot.boundingBox())!;
+  const tap = () => page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.evaluate(() => document.getElementById('spin')!.click());
+  // 回っている間から終わったあとまで、同じマスを連打する
+  for (let k = 0; k < 30; k++) { await tap(); await page.waitForTimeout(120); }
+  await expect(page.locator('.reel.selected')).toHaveCount(1);
+  await expect(plot).not.toHaveClass(/has-crop|grow|ripe/);
+  const planted = () => page.evaluate(() => JSON.parse(localStorage.getItem('hatake-slot:run')!).field.filter(Boolean).length);
+  expect(await planted()).toBe(0);
+  // 指を止めてから押せば植わる
+  await page.waitForTimeout(600);
+  await tap();
+  await expect.poll(planted, { timeout: 5_000 }).toBeGreaterThan(0);
+  expect(errors).toEqual([]);
+});
+
+test('仕入れの画面が出た直後の連打では選ばれない。指を止めれば選べる', async ({ page }) => {
+  const errors = await boot(page);
+  await start(page);
+  await firstDay(page);
+  await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('hatake-slot:run')!);
+    // 2日目の終わり（出目は使い切った）。次の日へ進むと、3日目（市）の朝に仕入れの画面が出る
+    for (const r of s.results) r.used = true;
+    Object.assign(s, { day: 2, morning: false, gold: 999, offer: [], marketClosed: false, stock: [] });
+    localStorage.setItem('hatake-slot:run', JSON.stringify(s));
+  });
+  await page.reload();
+  await page.click('#title-resume', { force: true });
+  await page.waitForTimeout(500);
+  await expect(page.locator('#offer-screen')).toBeHidden();
+  // 仕入れの札が出る場所（畑の下の段）を、画面が出る前から連打し続ける
+  const plot = (await page.locator('#field .plot').nth(11).boundingBox())!;
+  const tap = () => page.mouse.click(plot.x + plot.width / 2, plot.y + plot.height / 2);
+  await page.evaluate(() => document.getElementById('spin')!.click());
+  for (let k = 0; k < 40; k++) { await tap(); await page.waitForTimeout(120); }
+  // 連打の間に仕入れの画面が出たが、選ばれていない
+  await expect(page.locator('#offer-screen [data-take]').first()).toBeVisible();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('hatake-slot:run')!).offer.length)).toBe(3);
+  await page.waitForTimeout(600);
+  await tap();
+  await expect(page.locator('#offer-screen')).toBeHidden({ timeout: 5_000 });
+  expect(errors).toEqual([]);
 });

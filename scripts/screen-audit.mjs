@@ -181,10 +181,15 @@ async function page(size, run) {
 const f = { force: true };
 async function settle(p) {
   for (let k = 0; k < 80; k++) {
-    if (await p.$('#overlay.show')) return;
-    if (await p.$eval('#spin', (n) => !n.disabled)) return;
+    if (await p.$('#overlay.show')) return ready(p);
+    if (await p.$eval('#spin', (n) => !n.disabled)) return ready(p);
     await p.waitForTimeout(100);
   }
+}
+// 押せる状態まで待つ（出たばかりの画面・連打の続きは押しても効かない。src/ui/tapguard.ts）
+async function ready(p) {
+  await p.waitForTimeout(50);
+  await p.waitForFunction(() => !document.documentElement.classList.contains('tap-hold') && !document.querySelector('.arming'), null, { timeout: 5000 }).catch(() => {});
 }
 
 // 1日目を遊んだ保存データを作り、場面ごとに書き換えて使う
@@ -259,7 +264,7 @@ for (const size of Object.keys(SIZES)) {
     const { p, ctx, errs } = await page(size, mod((s) => { s.day = 7; s.gold = 999; }));
     await p.click('#title-resume', f); await p.waitForTimeout(300);
     await p.evaluate(() => document.getElementById('spin').click()); await p.waitForTimeout(200);
-    if (await p.$('#skip-yes')) await p.click('#skip-yes', f);
+    if (await p.$('#skip-yes')) { await ready(p); await p.click('#skip-yes', f); };
     // 年貢のあと：お邪魔が袋に入る窓 → お守りの3択
     for (let k = 0; k < 60; k++) { await p.waitForTimeout(150); if (await p.$('#pest-ok')) break; }
     if (await p.$('#pest-ok')) { await p.waitForTimeout(600); await snap(p, size, '19-pests'); await p.click('#pest-ok', f); }
@@ -274,7 +279,7 @@ for (const size of Object.keys(SIZES)) {
     const { p, ctx, errs } = await page(size, mod((s) => { s.day = 14; s.taxesPaid = 1; s.gold = 999; s.difficulty = 3; s.contract = 'diagWind'; }));
     await p.click('#title-resume', f); await p.waitForTimeout(300);
     await p.evaluate(() => document.getElementById('spin').click()); await p.waitForTimeout(200);
-    if (await p.$('#skip-yes')) await p.click('#skip-yes', f);
+    if (await p.$('#skip-yes')) { await ready(p); await p.click('#skip-yes', f); };
     let doneShot = false;
     for (let k = 0; k < 160; k++) {
       await p.waitForTimeout(150);
@@ -371,7 +376,7 @@ for (const size of Object.keys(SIZES)) {
     const { p, ctx, errs } = await page(size, mod((s) => { s.day = 7; s.gold = 0; s.field = s.field.map(() => null); s.bag.crow += 4; s.bag.bug += 2; s.stats.spentByDay = [0, 0, 0, 0, 0, 0, 30]; }));
     await p.click('#title-resume', f); await p.waitForTimeout(300);
     await p.evaluate(() => document.getElementById('spin').click()); await p.waitForTimeout(200);
-    if (await p.$('#skip-yes')) await p.click('#skip-yes', f);
+    if (await p.$('#skip-yes')) { await ready(p); await p.click('#skip-yes', f); };
     for (let k = 0; k < 80; k++) { await p.waitForTimeout(150); if (await p.$('#restart:not([disabled])')) break; }
     await snap(p, size, '21-gameover');
     if (errs.length) report.push({ size, key: 'errors-d', issues: errs });
@@ -383,7 +388,7 @@ for (const size of Object.keys(SIZES)) {
     p.on('dialog', () => {});
     await p.click('#title-resume', f); await p.waitForTimeout(300);
     await p.evaluate(() => document.getElementById('spin').click()); await p.waitForTimeout(200);
-    if (await p.$('#skip-yes')) await p.click('#skip-yes', f);
+    if (await p.$('#skip-yes')) { await ready(p); await p.click('#skip-yes', f); };
     for (let k = 0; k < 120; k++) { await p.waitForTimeout(150); if (await p.$('#clear-continue')) break; if (await p.$('#pest-ok')) await p.click('#pest-ok', f).catch(() => {}); if (await p.$('#overlay.show .charm-card:not([disabled])')) await p.locator('#overlay.show .charm-card:not([disabled])').first().click({ force: true, timeout: 500 }).catch(() => {}); }
     await p.waitForTimeout(1000);
     await snap(p, size, '22-clear');

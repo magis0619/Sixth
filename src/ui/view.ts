@@ -5,6 +5,7 @@ import { CONFIG, type CropKind, CROPS, type PlaceId, SHAPE_NAMES, type SymbolId,
 import { bagTotal, type Crop, glog, isMarketDay, nextTax, removeLimitReached } from '../game.ts';
 import { art, type ArtId } from '../art.ts';
 import { el, state } from './store.ts';
+import { armFresh } from './tapguard.ts';
 
 
 
@@ -21,6 +22,8 @@ export function openSheet(name: SheetName): void {
   el.sheet.querySelectorAll<HTMLElement>('.sheet-pane').forEach((p) => (p.hidden = p.dataset.pane !== name));
   el.sheet.dataset.pane = name;
   document.querySelectorAll<HTMLElement>('.tab').forEach((t) => t.classList.toggle('on', t.dataset.sheet === name));
+  // 閉じていた板が開くときだけ、少しの間押せなくする（連打で中の品を買ってしまわないように）
+  if (!el.sheet.classList.contains('open')) armFresh(el.sheet);
   el.sheet.classList.add('open');
   el.sheetBackdrop.classList.add('open');
   el.sheet.setAttribute('aria-hidden', 'false');

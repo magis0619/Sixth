@@ -20,6 +20,7 @@ import { applySkin, showClear, showGameOver, showHelp, showTitle } from './ui/sc
 import { clearRun, saveRun } from './ui/save.ts';
 import { $, el, hooks, meta, rng, setState, state, ui } from './ui/store.ts';
 import { done, play } from './ui/play.ts';
+import { armFresh, installTapGuards } from './ui/tapguard.ts';
 import { pressable } from './ui/press.ts';
 import { applySettings, showSettings } from './ui/settings.ts';
 import { reject } from './ui/states.ts';
@@ -1072,6 +1073,7 @@ function confirmSkip(left: number): void {
       <button class="secondary" id="skip-no">${L('もどる', 'Back')}</button>
     </div>`;
   el.overlay.classList.add('show');
+  armFresh(el.overlay.querySelector('.confirm-modal')!);
   const close = () => {
     el.overlay.classList.remove('show');
     el.overlay.innerHTML = '';
@@ -1799,13 +1801,8 @@ document.querySelector('.machine-top')!.addEventListener('click', () => {
   openMarket();
 });
 
-// 演出の最中に画面をタップすると早送り
-// 窓（お守り選び・確認など）や案内の吹き出しを押したときは、選ぶための操作なので早送りにしない
-document.addEventListener('pointerdown', (e) => {
-  if (!ui.busy) return;
-  if ((e.target as Element | null)?.closest('#overlay.show, .coach, .sheet, .explain-layer')) return;
-  setHurry(true);
-}, { capture: true });
+// 演出の最中に画面をタップすると早送り。連打の続き・出たばかりの画面のタップは操作にしない
+installTapGuards();
 // 押した瞬間の手応え
 pressable(el.field, '.plot');
 pressable(el.reels, '.reel');

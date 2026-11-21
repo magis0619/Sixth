@@ -1084,3 +1084,9 @@ html.idle *, html.idle *::before, html.idle *::after { animation-play-state: pau
 /* お守りの金色：名前の横に「✦ 金色・2倍」、あと何個で金色かも */
 .charm .gold-tag { font-style: normal; font-size: 0.8125rem; font-weight: 700; color: #6b3d00; background: linear-gradient(#ffe680, #f2b91a); border: 1.5px solid #8a5300; border-radius: 999px; padding: 0 6px; white-space: nowrap; }
 .charm .gold-next { font-style: normal; font-size: 0.8125rem; font-weight: 500; color: var(--ink-soft); white-space: nowrap; }
+
+/* ==== 急いで連打する人の誤操作を防ぐ（src/ui/tapguard.ts） ==== */
+/* 演出が終わっても連打が続いている間は、早送りの札を出したまま（まだ操作にならないと分かるように） */
+html.hurry-hold .hurry-badge { display: flex; }
+/* 出たばかりの画面は少しの間押せない。押せるようになると明るくなる */
+.arming :is(button, .item, [data-take]) { opacity: 0.6; }
