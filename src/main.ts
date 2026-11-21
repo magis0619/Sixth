@@ -3277,24 +3277,28 @@ el.mute.addEventListener('click', (e) => {
 hooks.render = render;
 hooks.startGame = startGame;
 
-// 市・袋の板の中のボタン：押してから離すまでに板が動いて（せり上がる途中など）指がボタンから外れても、押したボタンのタップとして扱う
+// どの画面のボタンも：押してから離すまでに画面が動いて（板がせり上がる・カードが入れ替わる途中など）
+// 指の下からボタンが外れても、指がほとんど動いていなければ押したボタンのタップとして扱う
 {
-  let pressed: { btn: HTMLElement; at: number } | null = null;
-  el.sheet.addEventListener('pointerdown', (e) => {
-    const btn = (e.target as Element).closest<HTMLElement>('button');
-    pressed = btn ? { btn, at: performance.now() } : null;
+  let pressed: { btn: HTMLButtonElement; at: number; x: number; y: number } | null = null;
+  document.addEventListener('pointerdown', (e) => {
+    const btn = (e.target as Element).closest<HTMLButtonElement>('button');
+    pressed = btn && e.isPrimary ? { btn, at: performance.now(), x: e.clientX, y: e.clientY } : null;
   }, true);
-  el.sheet.addEventListener('click', (e) => {
+  document.addEventListener('pointercancel', () => (pressed = null), true);
+  document.addEventListener('click', (e) => {
     const p = pressed;
     pressed = null;
-    if (!p || performance.now() - p.at > 700 || !p.btn.isConnected) return;
+    if (!p || !e.isTrusted || performance.now() - p.at > 700) return;
+    // 指が動いた（ずらしてやめた・なぞった）ときは、押したことにしない
+    if (Math.hypot(e.clientX - p.x, e.clientY - p.y) > 24) return;
     const hit = (e.target as Element).closest('button');
-    if (hit === p.btn) return;
-    // 指がずれて別の所で離れた：押したボタンを押したことにする
-    if (!hit) {
-      e.stopPropagation();
-      p.btn.click();
-    }
+    if (hit) return;
+    // 押したボタンが消えた・押せなくなった・見えなくなったときも何もしない
+    if (!p.btn.isConnected || p.btn.disabled || !p.btn.checkVisibility()) return;
+    e.stopPropagation();
+    e.preventDefault();
+    p.btn.click();
   }, true);
 }
 

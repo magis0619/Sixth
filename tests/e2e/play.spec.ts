@@ -371,3 +371,33 @@ test('市で巣箱を買って置くと、市に自動で戻る。閉じたら�
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('hatake-slot:run')!).marketClosed), { timeout: 15_000 }).toBe(true);
   expect(errors).toEqual([]);
 });
+
+test('押してから離すまでにボタンが動いても、指が動いていなければ押したことになる', async ({ page }) => {
+  await boot(page);
+  await page.click('#title-start', { force: true });
+  const btn = page.locator('#prep-start');
+  await expect(btn).toBeVisible();
+  // 開く動きが止まってから、押した指の下からボタンだけをずらす（画面が動いたときと同じ）
+  await page.waitForTimeout(600);
+  const box = (await btn.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await btn.evaluate((b) => (b.style.transform = 'translateY(200px)'));
+  await page.mouse.up();
+  await expect(page.locator('#overlay')).not.toHaveClass(/show/);
+});
+
+test('ボタンを押したまま指をずらしてやめると、押したことにならない', async ({ page }) => {
+  await boot(page);
+  await page.click('#title-start', { force: true });
+  const btn = page.locator('#prep-start');
+  await expect(btn).toBeVisible();
+  await page.waitForTimeout(600);
+  const box = (await btn.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2, box.y - 120, { steps: 5 });
+  await page.mouse.up();
+  await page.waitForTimeout(400);
+  await expect(btn).toBeVisible();
+});
