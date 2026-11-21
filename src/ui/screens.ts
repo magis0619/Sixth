@@ -130,11 +130,13 @@ function resultBody(kind: 'fail' | 'clear' | 'endless', opts: { taxAmount: numbe
     margin: () => (ratio ? ['coin', L(`稼ぎは年貢の${ratio}倍`, `Earned ${ratio}× the tax`), L('長い列・堆肥で売値を上げよう', 'Long lines and compost raise prices')] : null),
   };
   // 負けたときは不足額を先に。年貢の前に使いすぎていたらそれを添える
-  const spentBefore = (st.spentByDay ?? []).slice(Math.max(0, state.day - 2), state.day + 1).reduce((n, v) => n + (v ?? 0), 0);
+  // 今週（前の年貢の次の日から）市などで使った額。年貢の4日前の市で使って足りなくなることがある（プレイログで確かめた）
+  const weekFrom = state.day - ((state.day - 1) % CONFIG.taxPeriod);
+  const spentBefore = (st.spentByDay ?? []).slice(Math.max(0, weekFrom), state.day + 1).reduce((n, v) => n + (v ?? 0), 0);
   if (failed && short > 0)
     add(
       spentBefore >= short
-        ? ['coin', L(`あと${short}足りなかった`, `${short} short`), L(`年貢の前の3日で${spentBefore}使っていた`, `You spent ${spentBefore} in the 3 days before tax`)]
+        ? ['coin', L(`あと${short}足りなかった`, `${short} short`), L(`今週、市で${spentBefore}使っていた`, `You spent ${spentBefore} at the market this week`)]
         : ['coin', L(`あと${short}足りなかった`, `${short} short`), L(`最後の週に1日+${Math.ceil(short / CONFIG.taxPeriod)}で届いた`, `+${Math.ceil(short / CONFIG.taxPeriod)} a day in the last week would have done it`)],
     );
   // 負けた理由：袋の中身（種が少ない・お邪魔が多い）

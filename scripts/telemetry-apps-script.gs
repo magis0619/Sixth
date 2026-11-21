@@ -36,7 +36,7 @@ function doPost(e) {
     if (log) {
       var parts = Math.ceil(log.length / LOG_CHUNK);
       for (var i = 0; i < parts; i++) {
-        appendRow(book, 'log', { at: data.at, kind: data.kind, run: data.run, pid: data.pid, day: data.day, part: (i + 1) + '/' + parts, text: log.slice(i * LOG_CHUNK, (i + 1) * LOG_CHUNK) });
+        appendRow(book, 'log', { at: data.at, kind: data.kind, run: data.run, pid: data.pid, day: data.day, part: "'" + (i + 1) + '/' + parts, text: log.slice(i * LOG_CHUNK, (i + 1) * LOG_CHUNK) });
       }
     }
   } finally {
@@ -56,7 +56,7 @@ function appendRow(book, name, data) {
   });
   sheet.appendRow(header.map(function (key) {
     var v = data[key];
-    // 「=」などで始まる文字は式にならないように
+    // 「=」などで始まる文字は式にならないように（part の「1/1」は日付にならないよう先頭に ' を付けてある）
     if (typeof v === 'string' && /^[=+\-@]/.test(v)) return "'" + v;
     return v === undefined ? '' : v;
   }));
