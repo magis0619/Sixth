@@ -96,7 +96,8 @@ export async function playLineHarvest(res: SellResult, centers: { x: number; y: 
   const box = el.field.getBoundingClientRect();
   if (!res.bumper) floatText(f.x, Math.max(70, box.top - 4), name, { cls: 'combo', size: 1.1 + level * 0.2, rise: 40, dur: 1500 + level * 300 });
   await stackMultipliers(f.x, box.bottom + 26, res.steps);
-  // 作物が1つずつ跳ねて財布に吸い込まれる
+  // 作物が1つずつ跳ねて財布に吸い込まれる。数が多くても、全部が飛び終わるまで短く（1つずつの間は最大0.1秒、全部で0.6秒まで）
+  const gap = Math.min(100, 600 / Math.max(1, res.cells.length));
   const arrivals = res.cells.map(({ cell: c, price: each, kind }, k) =>
     new Promise<void>((resolve) => {
       later(() => {
@@ -111,13 +112,13 @@ export async function playLineHarvest(res: SellResult, centers: { x: number; y: 
           sfx.coin();
           pop(el.goldBox, 1.3);
           resolve();
-        });
-      }, k * 150 * slow);
+        }, true);
+      }, k * gap);
     }),
   );
   await Promise.all(arrivals);
   ghosts.forEach((g) => g.remove());
-  await sleep(250);
+  await sleep(120);
   landSale();
   // 合計が桁ごとに回って止まる
   const amount = res.total;

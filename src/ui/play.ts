@@ -41,6 +41,8 @@ export const play = {
   tutFocus: [] as Element[],
   /** 暗幕の指の動きの合図 */
   tutSpotTimer: 0,
+  /** 置いたばかりの道具のマスと、名前を出しておく期限（畑の上の名前は置いてしばらくだけ出す） */
+  freshTools: {} as Record<number, number>,
 };
 
 /** 列で売る・列ができたの演出の最中か */

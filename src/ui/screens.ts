@@ -8,7 +8,7 @@ import {
 import { difficultyTaxMult, lordPenalty, nextTax, placePrice, rateRun, taxCondGot, taxPlan } from '../game.ts';
 import { condText } from './lord.ts';
 import {
-  awardPoints, buyComboHint, buyLineFx, buyMastery, capacity, masteryPrice, nextComboHint, farmerUnlocked, isAchieveAdd, loadoutCost, maxDifficulty, lordMax, recordRun, saveMeta, toggleLoadout, unlockAdd, unlockCharm,
+  affordableUnlocks, awardPoints, buyComboHint, buyLineFx, buyMastery, capacity, masteryPrice, nextComboHint, farmerUnlocked, isAchieveAdd, loadoutCost, maxDifficulty, lordMax, recordRun, saveMeta, toggleLoadout, unlockAdd, unlockCharm,
 } from '../meta.ts';
 import { art, type ArtId } from '../art.ts';
 import { sfx, unlockAudio } from '../audio.ts';
@@ -163,7 +163,10 @@ function resultBody(kind: 'fail' | 'clear' | 'endless', opts: { taxAmount: numbe
       <h3 class="rs-h">${L('次へのアドバイス', 'Next time')}</h3>
       ${tips.map(([ico, head, sub]) => `<p>${art(ico)}<span><b>${head}</b><small>${sub}</small></span></p>`).join('')}
     </section>`;
+  // ポイントで買える物があれば、解放の画面へのボタン（解放に気づかずに遊び続けないように）
+  const canBuy = opts.total === false ? 0 : affordableUnlocks(meta);
   const points = `<p class="rs-pt">${art('sprout')}<b>+${opts.earned}pt</b>${opts.total === false ? '' : `<span>${L('計', 'Total')} ${meta.points}pt</span>`}</p>
+    ${canBuy ? `<button class="rs-unlock" id="rs-unlock">${art('lock')}<span>${L(`解放で買える物 ${canBuy}`, `${canBuy} unlocks available`)}</span><b>▶</b></button>` : ''}
     ${opts.newly.length ? `<p class="rs-newly">${art('sparkle')}${L('解放', 'Unlocked')}：${opts.newly.map((x) => `<b>${x}</b>`).join('')}</p>` : ''}
     ${FEEDBACK_URL ? `<p class="rs-feedback"><a href="${FEEDBACK_URL}" target="_blank" rel="noopener">${art('mail')}${L('感想を送る', 'Send feedback')}</a></p>` : ''}`;
   return `<div class="rs">${result}${showRating ? total + parts : ''}${highlights}${advice}${points}</div>`;
@@ -208,6 +211,10 @@ export function showGameOver(endedAfterClear = false): void {
     showPrep();
   });
   $('share').addEventListener('click', () => void shareResult(endedAfterClear));
+  document.getElementById('rs-unlock')?.addEventListener('click', () => {
+    sfx.select();
+    showUnlock('result');
+  });
   hooks.render();
 }
 
@@ -412,6 +419,8 @@ export function shortName(id: keyof typeof META.adds): string {
 /** スタート画面：スタート（と続きから）だけ。強化の解放は小さなボタンから */
 export function showTitle(): void {
   const saved = loadRun();
+  // 今のポイントで買える物があれば、解放ボタンを目立たせて「買える◯」
+  const canBuy = affordableUnlocks(meta);
   el.overlay.innerHTML = `
     <div class="title-scene" aria-hidden="true">
       <span class="ts-sun">${art('sun')}</span>
@@ -434,7 +443,7 @@ export function showTitle(): void {
         <button class="icon-pill" id="title-help">${art('question')}<span>${L('遊び方', 'How to play')}</span></button>
         <button class="icon-pill" id="title-records">${art('calendar')}<span>${L('記録', 'Records')}</span></button>
         <button class="icon-pill" id="title-settings">${art('gear')}<span>${L('設定', 'Settings')}</span></button>
-        <button class="icon-pill" id="title-unlock">${art('lock')}<span>${L('解放', 'Unlocks')}</span><em class="pt-tag">${meta.points} pt</em></button>
+        <button class="icon-pill${canBuy ? ' can-buy' : ''}" id="title-unlock">${art('lock')}<span>${L('解放', 'Unlocks')}</span><em class="pt-tag">${canBuy ? L(`買える${canBuy}`, `${canBuy} new`) : `${meta.points} pt`}</em></button>
       </div>
     </div>`;
   el.overlay.classList.add('show', 'title');
@@ -467,7 +476,7 @@ export function showTitle(): void {
   $('title-unlock').addEventListener('click', () => {
     unlockAudio();
     sfx.select();
-    showUnlock();
+    showUnlock('title');
   });
   $('title-help').addEventListener('click', () => {
     unlockAudio();
@@ -546,8 +555,12 @@ export function applySkin(): void {
 }
 
 /** 強化の解放（豊穣ポイントを使う）。スタート画面から開く */
-export function showUnlock(): void {
+export function showUnlock(source = 'title'): void {
   leaveTitle();
+  // 記録：解放の画面をどこから、何回開いたか
+  meta.unlockOpens = (meta.unlockOpens ?? 0) + 1;
+  saveMeta(meta);
+  track('unlock', state, { action: 'open', source, canUnlock: affordableUnlocks(meta) });
   const paint = () => {
     // ポイントで解放する品：まだの物は「絵・名前・効き目1行・値札」の行、解放した物は小さな札にまとめる
     type Buy = { attr: string; ico: string; name: string; effect: string; price: number; done: boolean };
@@ -631,6 +644,10 @@ export function showUnlock(): void {
     );
     el.overlay.classList.add('show');
     const unlocked = (b: HTMLElement) => {
+      // 記録：何を買ったか
+      meta.unlockBuys = (meta.unlockBuys ?? 0) + 1;
+      saveMeta(meta);
+      track('unlock', state, { action: 'buy', item: b.dataset.unlock ?? b.dataset.charm ?? b.dataset.mastery ?? b.dataset.linefx ?? (b.dataset.hint !== undefined ? 'comboHint' : '?') });
       sfx.charmGet();
       const c = center(b);
       paint();

@@ -1131,3 +1131,17 @@ html.hurry-hold .hurry-badge { display: flex; }
 .rs-lord b { font-size: 1rem; }
 /* 条件が出ている週は「年貢」の文字を省いて、札の中に収める（絵の俵で年貢と分かる） */
 .hud-tax.lord .tax-word { display: none; }
+
+/* ==== 畑の道具：名前は置いてから3秒だけ出して薄く消す。ふだんは絵を大きく ==== */
+.plot.tool .crop { font-size: calc(var(--cell) * 0.72); }
+.tool-name.fresh { animation: tool-name-out 0.5s ease-in 2.5s forwards; }
+@keyframes tool-name-out { to { opacity: 0; } }
+
+/* ==== 解放への導線：買える物があるときだけ目立たせる ==== */
+/* タイトルの解放ボタン：金の札「買える◯」と、ゆっくり弾む動き（大きさだけを動かす） */
+.title-sub .icon-pill.can-buy { animation: can-buy 1.6s ease-in-out infinite; }
+.title-sub .icon-pill.can-buy .pt-tag { color: #fff; background: #c0392b; }
+@keyframes can-buy { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+/* 結果画面：解放の画面へ行くボタン */
+.rs-unlock { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 48px; margin: 4px 0 0; font: inherit; font-size: 1rem; font-weight: 700; color: var(--ink); background: #fff3c4; border: 2px solid var(--ink); border-radius: 12px; box-shadow: 0 3px 0 var(--ink); cursor: pointer; }
+.rs-unlock .art { width: 22px; height: 22px; }

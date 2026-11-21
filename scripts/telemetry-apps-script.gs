@@ -18,6 +18,7 @@
  *   progress：年貢を納めたときの途中経過（1回1行）
  *   result  ：プレイが終わったときの結果（1プレイ1行）
  *   quit    ：遊んでいる途中で画面を離れたとき（同じ日には1回）
+ *   unlock  ：解放の画面を開いた・買った（どこから開いたか、何を買ったか）
  *   error   ：画面で起きたエラー（どこで・中身・そのときの様子）。市が空で開いたときも
  *   log     ：プレイログ全文（result・quit のとき）。1マス5万字までなので、長いときは何行かに分ける。run の列で上の行とつなぐ
  * 列は届いた項目から自動で作る（後から項目が増えても右に足される）。
@@ -26,7 +27,7 @@ var LOG_CHUNK = 45000;
 
 function doPost(e) {
   var data = JSON.parse(e.postData.contents);
-  var name = data.kind === 'result' || data.kind === 'quit' || data.kind === 'error' ? data.kind : 'progress';
+  var name = ['result', 'quit', 'error', 'unlock'].indexOf(data.kind) >= 0 ? data.kind : 'progress';
   var log = data.log;
   delete data.log;
   var lock = LockService.getScriptLock();

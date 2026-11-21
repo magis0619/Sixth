@@ -13,8 +13,9 @@ import { lang } from './i18n.ts';
 import { buildLogText } from './ui/save.ts';
 import { settings } from './ui/settings.ts';
 import { meta } from './ui/store.ts';
+import { affordableUnlocks } from './meta.ts';
 
-export type TrackKind = 'progress' | 'result' | 'quit' | 'error';
+export type TrackKind = 'progress' | 'result' | 'quit' | 'error' | 'unlock';
 
 const QUEUE_KEY = 'hatake-slot:telemetry-queue';
 /** keepalive（画面を閉じる直前でも届く送り方）で送れる大きさの上限（64KB）より少し小さく */
@@ -86,6 +87,11 @@ function summary(state: GameState): Record<string, unknown> {
     lang,
     screen: `${window.innerWidth}x${window.innerHeight}`,
     tutorialDone: meta.tutorialDone,
+    // 解放の画面：持っているポイント・今買える物の数・開いた回数・買った回数
+    points: meta.points,
+    canUnlock: affordableUnlocks(meta),
+    unlockOpens: meta.unlockOpens ?? 0,
+    unlockBuys: meta.unlockBuys ?? 0,
   };
 }
 

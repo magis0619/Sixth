@@ -91,6 +91,11 @@ function render(): void {
 }
 /** 1つの出来事を見せておく長さ（次の出来事はこのあと） */
 const EVENT_HOLD = 650;
+/** 置いた道具の名前を畑の上に出しておく長さ（最後の0.5秒で薄く消える） */
+const TOOL_NAME_MS = 3000;
+/** スロットで自動で起きること（金貨・カラスなど）を1つずつ見せる長さと、次までの間（待たせすぎないよう短め） */
+const AUTO_HOLD = 400;
+const AUTO_GAP = 150;
 /** いま出来事を見せている自動の出目のリール */
 let actingReel: number | null = null;
 
@@ -336,7 +341,9 @@ function renderField(): void {
       label = `${CROPS[part.kind].name}（2×2）`;
     } else if (tool) {
       cls.push('tool');
-      html += `<span class="crop">${art(PLACE_ART[tool])}</span><span class="tool-name">${PLACES[tool].name}</span>${toolGrowHtml(i, tool)}`;
+      // 名前は置いてしばらくだけ出し、薄く消す（ふだんは絵で分かる。長押しで説明）
+      const fresh = (play.freshTools[i] ?? 0) > performance.now();
+      html += `<span class="crop">${art(PLACE_ART[tool])}</span>${fresh ? `<span class="tool-name fresh">${PLACES[tool].name}</span>` : ''}${toolGrowHtml(i, tool)}`;
       label = `${PLACES[tool].name}：${PLACES[tool].desc}`;
     } else if (crop) {
       const ripe = isRipe(crop);
@@ -787,7 +794,7 @@ function edgeFrom(plot: Element, sky: boolean): { x: number; y: number } {
 async function resolveAutos(): Promise<void> {
   const reels = [...el.reels.children] as HTMLElement[];
   // リールが止まったときの演出（レア・種の数）が終わってから始める
-  if (state.results.some((r) => SYMBOLS[r.symbol].kind === 'auto')) await sleep(EVENT_HOLD);
+  if (state.results.some((r) => SYMBOLS[r.symbol].kind === 'auto')) await sleep(AUTO_HOLD);
   for (let i = 0; i < state.results.length; i++) {
     if (SYMBOLS[state.results[i].symbol].kind !== 'auto') continue;
     const ev = resolveAuto(state, i, rng);
@@ -804,8 +811,9 @@ async function resolveAutos(): Promise<void> {
     actingReel = i;
     reels[i].classList.add('acting');
     const from = center(reels[i]);
-    // 見せておく長さ（金貨はささっと回収するので短く）
-    let hold = EVENT_HOLD;
+    // 見せておく長さ（金貨・ツバメやタカのお金・卵のような小さな良いことは、ささっと短く）
+    let hold = AUTO_HOLD;
+    if (ev.type === 'swallow' || ev.type === 'hawk' || ev.type === 'egg') hold = 220;
     if (ev.type === 'coin') {
       play.autoOutcome[i] = `+${gold(ev.amount)}`;
       hold = 120;
@@ -900,7 +908,7 @@ async function resolveAutos(): Promise<void> {
       for (const c of ev.chased) {
         const q = center(el.field.children[c]);
         critterPop(q, symHtml('mole'));
-        await sleep(isCalm() ? 150 : 450);
+        await sleep(isCalm() ? 120 : 300);
         sfx.shoo();
         critterPop(q, art('henhouse'));
         burst(q.x, q.y, ['🪶', '💨'], 8, 50);
@@ -915,7 +923,7 @@ async function resolveAutos(): Promise<void> {
           critterPop(q, symHtml('mole'));
           pop(fp, 1.12);
         }
-        await sleep(350);
+        await sleep(240);
         renderField();
         ev.moves.forEach((m) => {
           const q = center(el.field.children[m.to]);
@@ -1063,7 +1071,7 @@ async function resolveAutos(): Promise<void> {
     await sleep(hold);
     actingReel = null;
     reels[i].classList.remove('acting');
-    await sleep(ev.type === 'coin' ? EVENT_GAP / 2 : EVENT_GAP);
+    await sleep(ev.type === 'coin' ? AUTO_GAP / 2 : AUTO_GAP);
   }
 }
 
@@ -1194,7 +1202,13 @@ function onPlotTap(cell: number): void {
       return;
     }
     placeArmed = null;
+    const placedTool = PLACES[state.stock[0]].kind === 'tool';
     place(state, cell);
+    // 道具の名前は置いてから3秒だけ出す（消えたら描き直して札を外す）
+    if (placedTool) {
+      play.freshTools[cell] = performance.now() + TOOL_NAME_MS;
+      later(() => renderField(), TOOL_NAME_MS + 50);
+    }
     sfx.plant();
     sfx.charmGet();
     render();

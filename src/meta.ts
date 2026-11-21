@@ -53,6 +53,9 @@ export interface MetaState {
   lordPick: number;
   /** 殿様モードでクリアした一番上の段（0＝まだ） */
   lordCleared: number;
+  /** 解放の画面を開いた回数・解放で買った回数（記録用） */
+  unlockOpens: number;
+  unlockBuys: number;
 }
 
 const KEY = 'hatake-slot:meta';
@@ -86,6 +89,8 @@ function fresh(): MetaState {
     lordMode: false,
     lordPick: 1,
     lordCleared: 0,
+    unlockOpens: 0,
+    unlockBuys: 0,
   };
 }
 
@@ -281,6 +286,17 @@ export function farmerUnlocked(meta: MetaState, id: string): boolean {
 }
 
 /** 達成で解放される強化か（ポイントでは買えない） */
+/** 今のポイントで解放の画面から買える物の数（タイトルの解放ボタン・結果画面の知らせに使う） */
+export function affordableUnlocks(meta: MetaState): number {
+  const p = meta.points;
+  const adds = (Object.keys(META.adds) as AddUpgradeId[]).filter((id) => !isAchieveAdd(id) && !isCutAdd(id) && !CONFIG.rareOffers.includes(id) && !meta.unlockedAdds.includes(id) && META.adds[id].unlock > 0 && META.adds[id].unlock <= p).length;
+  const charms = (Object.keys(META.charmUnlock) as CharmId[]).filter((id) => !meta.unlockedCharms.includes(id) && (META.charmUnlock[id] ?? Infinity) <= p).length;
+  const mastery = FARMERS.filter((f) => farmerUnlocked(meta, f.id) && (masteryPrice(meta, f.id) ?? Infinity) <= p).length;
+  const fx = META.lineFx.filter((f) => !meta.lineFx.includes(f.id) && f.price <= p).length;
+  const hint = nextComboHint(meta) && META.comboHintPrice <= p ? 1 : 0;
+  return adds + charms + mastery + fx + hint;
+}
+
 export function isAchieveAdd(id: AddUpgradeId): boolean {
   return id in ACHIEVE_ADDS;
 }
