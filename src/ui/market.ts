@@ -92,7 +92,12 @@ function safely(where: string, fn: () => void): void {
 /** 分類の段：中に品が1つもなければ段ごと隠す（お邪魔の段は「いない！」の1行があれば出す） */
 export function syncStallSecs(): void {
   document.querySelectorAll<HTMLElement>('#stall .stall-sec[data-cat]').forEach((sec) => {
-    const parts = [...sec.querySelectorAll<HTMLElement>('.shop, .stall-sub, .stall-empty')].filter((e) => !e.hidden && !e.closest('[hidden]:not(.stall-sec)'));
+    // 段の中で隠れているかだけを見る（前は外側の隠れた板まで数えていて、絵柄袋の板を開いたあとに市を開くと、品の段が全部隠れていた）
+    const hiddenInside = (e: HTMLElement) => {
+      for (let n: HTMLElement | null = e; n && n !== sec; n = n.parentElement) if (n.hidden) return true;
+      return false;
+    };
+    const parts = [...sec.querySelectorAll<HTMLElement>('.shop, .stall-sub, .stall-empty')].filter((e) => !hiddenInside(e));
     sec.hidden = !parts.some((e) => e.classList.contains('stall-empty') || e.querySelector('.item, .dc-chip'));
   });
 }
@@ -540,10 +545,13 @@ export function openMarket(): void {
   openSheet('shop');
   // 畑の品の段が1つも出ていなければ、そのときの様子を記録に送る（市が空で開いた不具合を調べるため）
   if (!document.querySelector('#stall .stall-sec[data-cat]:not([hidden])')) {
+    // 通しのテストで、空の市が起きなかったかを確かめるための数
+    (window as unknown as { __marketEmpty?: number }).__marketEmpty = ((window as unknown as { __marketEmpty?: number }).__marketEmpty ?? 0) + 1;
     reportError(state, 'market:empty', 'no farm section', {
       weeklyPlaces: state.weeklyPlaces.join(','),
       farmItems: document.querySelectorAll('#stall .farm-list .item').length,
-      secs: [...document.querySelectorAll<HTMLElement>('#stall .stall-sec')].map((x) => (x.hidden ? 0 : 1)).join(''),
+      // 先頭に s を付ける（数字だけだとスプレッドシートが頭の0を消す）
+      secs: 's' + [...document.querySelectorAll<HTMLElement>('#stall .stall-sec')].map((x) => (x.hidden ? 0 : 1)).join(''),
     });
     syncStallSecs();
   }

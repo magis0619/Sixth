@@ -34,6 +34,8 @@ function doPost(e) {
   lock.waitLock(10000);
   try {
     var book = SpreadsheetApp.getActiveSpreadsheet();
+    // 同じ記録（同じ id）が送り直されてきたら入れない
+    if (data.id && seen(book, name, data.id)) return ContentService.createTextOutput('dup');
     appendRow(book, name, data);
     if (log) {
       var parts = Math.ceil(log.length / LOG_CHUNK);
@@ -45,6 +47,18 @@ function doPost(e) {
     lock.releaseLock();
   }
   return ContentService.createTextOutput('ok');
+}
+
+/** そのシートの最近の50行に同じ id があるか */
+function seen(book, name, id) {
+  var sheet = book.getSheetByName(name);
+  if (!sheet || sheet.getLastRow() < 2) return false;
+  var header = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var col = header.indexOf('id');
+  if (col < 0) return false;
+  var from = Math.max(2, sheet.getLastRow() - 49);
+  var ids = sheet.getRange(from, col + 1, sheet.getLastRow() - from + 1, 1).getValues();
+  return ids.some(function (r) { return r[0] === id; });
 }
 
 function appendRow(book, name, data) {

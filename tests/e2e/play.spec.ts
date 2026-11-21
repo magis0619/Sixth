@@ -511,3 +511,34 @@ test('ふつうをクリアするとタイトルに殿様モードが出て、�
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('hatake-slot:run') ?? '{}').lordLevel), { timeout: 15_000 }).toBe(1);
   expect(errors).toEqual([]);
 });
+
+test('絵柄袋の板を開いたあとに市を開いても、畑の品の段が出る', async ({ page }) => {
+  const errors = await boot(page);
+  await start(page);
+  await firstDay(page);
+  await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('hatake-slot:run')!);
+    for (const r of s.results) r.used = true;
+    Object.assign(s, { day: 2, morning: false, gold: 999, offer: [], marketClosed: false, stock: [] });
+    localStorage.setItem('hatake-slot:run', JSON.stringify(s));
+  });
+  await page.reload();
+  await page.click('#title-resume', { force: true });
+  await page.waitForTimeout(500);
+  // 絵柄袋の板を開いて閉じる（前はこのあと市の品の段が全部隠れていた）
+  await page.click('.tab[data-sheet="bag"]', { force: true });
+  await expect(page.locator('#sheet.open')).toHaveCount(1);
+  await ready(page);
+  await page.click('#sheet-close', { force: true });
+  await expect(page.locator('#sheet.open')).toHaveCount(0);
+  await page.evaluate(() => document.getElementById('spin')!.click());
+  const take = page.locator('#offer-screen [data-take]').first();
+  await expect(take).toBeVisible({ timeout: 15_000 });
+  await ready(page);
+  await take.click({ force: true });
+  await expect(page.locator('#sheet.open[data-pane="shop"]')).toHaveCount(1, { timeout: 5_000 });
+  await expect(page.locator('#stall .stall-sec[data-cat]:not([hidden])').first()).toBeVisible();
+  // 開いた時点で一度も空にならなかった（空の市を見つけて直す守りに頼っていない）
+  expect(await page.evaluate(() => (window as unknown as { __marketEmpty?: number }).__marketEmpty ?? 0)).toBe(0);
+  expect(errors).toEqual([]);
+});

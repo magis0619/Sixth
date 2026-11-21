@@ -29,7 +29,8 @@ export function unlockAudio(): void {
     bgmBus.connect(ctx.destination);
     startBgm();
   }
-  if (ctx.state === 'suspended') void ctx.resume();
+  // スマホで音の装置を始められないことがある（失敗しても音が出ないだけなので、エラーにしない）
+  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
 }
 
 /** BGM の音量を変える（0〜1。0 で止める） */
@@ -58,7 +59,7 @@ export function setVolume(v: number): void {
 /** 画面を離れている間は音を止める */
 export function suspendAudio(on: boolean): void {
   if (!ctx) return;
-  void (on ? ctx.suspend() : ctx.resume());
+  (on ? ctx.suspend() : ctx.resume()).catch(() => {});
 }
 
 export function isMuted(): boolean {

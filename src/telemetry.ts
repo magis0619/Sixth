@@ -126,7 +126,8 @@ export function flushTelemetry(): void {
 export function track(kind: TrackKind, state: GameState, extra: Record<string, unknown> = {}): void {
   if (!enabled()) return;
   try {
-    const data: Record<string, unknown> = { kind, pid: playerId(), build: __BUILD__, at: new Date().toISOString(), ...summary(state), ...extra };
+    // id：記録ごとの番号。画面を閉じる間際に届いたのに失敗と見えて送り直した分を、受け取り側ではじく
+    const data: Record<string, unknown> = { kind, id: Math.random().toString(36).slice(2, 10), pid: playerId(), build: __BUILD__, at: new Date().toISOString(), ...summary(state), ...extra };
     if (kind === 'result' || kind === 'quit') data.log = buildLogText(__BUILD__);
     post(JSON.stringify(data));
   } catch {
