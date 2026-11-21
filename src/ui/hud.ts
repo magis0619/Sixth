@@ -83,7 +83,7 @@ export function renderGuide(): void {
 export function renderCharms(): void {
   const owned = CHARM_ORDER.filter((id) => state.charms[id] > 0);
   el.charmPanel.hidden = owned.length > 0;
-  el.charmCount.textContent = state.stock.length ? L(`置く待ち${state.stock.length}`, `${state.stock.length} to place`) : owned.length ? `${owned.reduce((n, id) => n + state.charms[id], 0)}` : '';
+  el.charmCount.textContent = state.stock.length ? L(`置き待ち${state.stock.length}`, `${state.stock.length} to place`) : owned.length ? `${owned.reduce((n, id) => n + state.charms[id], 0)}` : '';
   setHtml(
     el.charms,
     owned

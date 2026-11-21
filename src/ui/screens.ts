@@ -1055,9 +1055,9 @@ const FARMER_COLOR: Record<string, string> = { basic: '#5fae3c', berry: '#e5688f
 const FARMER_GOAL: Record<string, { ico: ArtId; goal: string; build: string; key: ArtId[]; tip: string }> = {
   basic: { ico: 'rain', goal: L('横一列のトマトを雨と太陽で育てる', 'Grow tomato rows with rain and sun'), build: L('トマトと天気雨', 'Tomato & weather'), key: ['seed', 'rain', 'sun'], tip: L('横に植えて、雨は真ん中・太陽は縦に', 'Plant in rows; rain in the middle, sun down a column') },
   berry: { ico: 'hive', goal: L('巣箱の周りで苺を毎日実らせる', 'Ripen berries daily around hives'), build: L('苺と巣箱', 'Berries & hives'), key: ['berrySeed', 'hive', 'bee'], tip: L('巣箱の周り8マスに苺を植える', 'Plant berries in the 8 plots around a hive') },
-  pumpkin: { ico: 'fertilizer', goal: L('かぼちゃの列に肥料で高く売る', 'Fertilize pumpkin rows, sell high'), build: L('かぼちゃと肥料', 'Pumpkin & fertilizer'), key: ['pumpkinSeed', 'fertilizer', 'compost'], tip: L('並べたかぼちゃに肥料をかけてから売る', 'Fertilize a pumpkin row, then sell') },
+  pumpkin: { ico: 'fertilizer', goal: L('かぼちゃの列に肥料をかけて高く売る', 'Fertilize pumpkin rows, sell high'), build: L('かぼちゃと肥料', 'Pumpkin & fertilizer'), key: ['pumpkinSeed', 'fertilizer', 'compost'], tip: L('並べたかぼちゃに肥料をかけてから売る', 'Fertilize a pumpkin row, then sell') },
   rancher: { ico: 'henhouse', goal: L('小屋を早く置いて毎晩稼ぐ', 'Place coops early, earn nightly'), build: L('牧場', 'Ranch'), key: ['henhouse', 'cowshed', 'water'], tip: L('鶏小屋は早く買うほど得。虫を食べると+3', 'Buy coops early; eating bugs pays +3') },
-  rain: { ico: 'thunder', goal: L('雨の十字と雷でまとめて育てる', 'Grow many with rain and thunder'), build: L('雨と雷', 'Rain & thunder'), key: ['rain', 'thunder', 'seed'], tip: L('雨の真ん中に一番育てたいマスを', 'Aim the center of the rain at your best plot') },
+  rain: { ico: 'thunder', goal: L('雨の十字と雷でまとめて育てる', 'Grow many with rain and thunder'), build: L('雨と雷', 'Rain & thunder'), key: ['rain', 'thunder', 'seed'], tip: L('一番育てたいマスを雨の真ん中にする', 'Aim the center of the rain at your best plot') },
 };
 
 /** 得意なビルドの一枚絵（農家を選ぶ画面で「得意」の札を押すと出る） */

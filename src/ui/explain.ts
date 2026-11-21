@@ -120,7 +120,7 @@ const KIND_TAG = (sym: SymbolId): string => {
 
 /** 初めて出た絵柄のカード */
 /** お邪魔の狙う所・効き目（説明カードとお邪魔の窓で同じ言葉を使う） */
-export const PEST_TARGET: Partial<Record<SymbolId, string>> = { crow: L('一番高い実り', 'Best ripe crop'), bug: L('もうすぐ実る作物', 'Nearly ripe crop'), weed: L('作物の隣の空き', 'Gaps by crops'), locust: L('袋（畑は無事）', 'Your bag (not crops)'), tanuki: L('一番高い実り', 'Best ripe crop') };
+export const PEST_TARGET: Partial<Record<SymbolId, string>> = { crow: L('一番高い作物', 'Most valuable crop'), bug: L('一番高い作物', 'Most valuable crop'), weed: L('作物の隣の空き', 'Gaps by crops'), locust: L('袋（畑は無事）', 'Your bag (not crops)'), tanuki: L('一番高い実り', 'Best ripe crop') };
 export const PEST_EFFECT: Partial<Record<SymbolId, string>> = { crow: L('1/2で食べる', 'Eats 1/2'), bug: L('成長 −1', 'Growth −1'), weed: L('ふさいで広がる', 'Blocks, spreads'), locust: L('1/2で袋に+1', '1/2: +1 in bag'), tanuki: L('盗む', 'Steals') };
 
 /** 説明の1行：頭に絵、真ん中に何のことか、後ろに数字か一言（どの行も同じ幅） */
@@ -268,7 +268,7 @@ export function mergeCard(sym: SymbolId, to: SymbolId, cost: number): string {
   return `<p class="ex-kicker">${L('はじめての合体', 'Your first merge')}</p>
     <h2 class="ex-title">${L(`同じ札${CONFIG.mergeNeed}枚で合体`, `${CONFIG.mergeNeed} of a kind → merge`)}</h2>
     <div class="ex-row"><span class="ex-stack">${Array.from({ length: CONFIG.mergeNeed }, () => art(sym)).join('')}</span><span class="ex-arrow">▶</span>${big(to)}</div>
-    <p class="ex-line">${L('袋が薄くなって、強い札が1枚に', 'A thinner bag and one strong card')}</p>
+    <p class="ex-line">${L('袋の札が減って、強い札が1枚に', 'A thinner bag and one strong card')}</p>
     <div class="ex-icons"><span>${art('coin')}<b>${cost}${L('（年貢の30%）', ' (30% of tax)')}</b></span><span>${art('bargain')}<b>${L('市で1回まで', 'Once per market')}</b></span></div>`;
 }
 

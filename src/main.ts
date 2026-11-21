@@ -820,7 +820,7 @@ async function resolveAutos(): Promise<void> {
       render();
       el.field.querySelectorAll('.plot.ripe').forEach((p) => pop(p, 1.12));
     } else if (ev.type === 'clover') {
-      play.autoOutcome[i] = L('明日 金の種↑', 'Gold seed↑');
+      play.autoOutcome[i] = L(`明日 金の種×${ev.boost}`, `Gold seed ×${ev.boost}`);
       sfx.rare();
       burst(from.x, from.y, ['🍀', '✨', '🌟'], 12, 80);
       renderStatus();

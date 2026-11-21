@@ -96,8 +96,8 @@ export function playNotice(n: Notice): void {
 
 /** 初めて出会ったお邪魔のひと言 */
 export const PEST_HINTS: Partial<Record<SymbolId, string>> = {
-  crow: L('<b>一番大事な作物</b>を狙い、1/2で食べる。かかしの周りは守られる', 'Goes for your <b>most valuable crop</b> and eats it half the time. Scarecrows guard nearby plots'),
-  bug: L('<b>もうすぐ実る作物</b>の成長−1。かかしの周りは守られ、鶏小屋の周りでは食べてくれる', 'Growth −1 on the crop <b>closest to ripe</b>. Henhouses eat nearby bugs'),
+  crow: L('<b>一番高い作物</b>を狙い、1/2で食べる。かかしの周りは守られる', 'Goes for your <b>most valuable crop</b> and eats it half the time. Scarecrows guard nearby plots'),
+  bug: L('<b>一番高い作物</b>の成長−1。かかしの周りは守られ、鶏小屋の周りでは鶏が食べる', 'Growth −1 on your <b>most valuable crop</b>. Henhouses eat nearby bugs'),
   weed: L('<b>作物に囲まれた空きマス</b>をふさいで広がる。かかしの周りには生えない。タップで抜ける', 'Blocks <b>empty plots between crops</b> and spreads. Tap to pull'),
   tanuki: L('実った一番高い作物を盗む。かかしの周りには来ない', 'Steals your priciest ripe crop. Stays away from scarecrows'),
   frost: L('マスが3日凍る。太陽で溶かせる', 'Freezes a plot for 3 days. Sun melts it'),

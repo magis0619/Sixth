@@ -163,18 +163,18 @@ export const SYMBOLS: Record<SymbolId, SymbolDef> = {
   sun: { id: 'sun', name: '太陽', emoji: '☀️', kind: 'manual', shape: 'column', desc: '縦一列 成長+1', feverDesc: '夏祭り：今日の売値×2', rarity: 'normal' },
   fertilizer: { id: 'fertilizer', name: '肥料', emoji: '🧪', kind: 'manual', desc: '売値×1.5', feverDesc: '堆肥：畑の全作物に肥料', rarity: 'normal' },
   bee: { id: 'bee', name: '蜂', emoji: '🐝', kind: 'manual', shape: 'x', desc: '斜め 成長+1', feverDesc: 'はちみつ：作物1つにつき＋4', rarity: 'normal' },
-  crow: { id: 'crow', name: 'カラス', emoji: '🐦', kind: 'auto', desc: '一番大事な作物を狙い、1/2で食べる（かぼちゃ・スイカはつついて売値−20%）', feverDesc: '群れ：食べる確率 1/2 → 3/4', rarity: 'bad' },
-  bug: { id: 'bug', name: '虫', emoji: '🐛', kind: 'auto', desc: '一番大事な作物の成長−1', feverDesc: '群れ：成長−2', rarity: 'bad' },
+  crow: { id: 'crow', name: 'カラス', emoji: '🐦', kind: 'auto', desc: '一番高い作物（実ったものが先）を狙い、1/2で食べる（かぼちゃ・スイカはつついて売値−20%）', feverDesc: '群れ：食べる確率 1/2 → 3/4', rarity: 'bad' },
+  bug: { id: 'bug', name: '虫', emoji: '🐛', kind: 'auto', desc: '一番高い作物（実ったものが先）の成長−1', feverDesc: '群れ：成長−2', rarity: 'bad' },
   coin: { id: 'coin', name: '金貨', emoji: '🪙', kind: 'auto', desc: '+金', feverDesc: '大当たり×3', rarity: 'normal' },
   merchant: { id: 'merchant', name: '商人', emoji: '🧑‍🌾', kind: 'auto', desc: '今日の売値×1.5', feverDesc: '大商い：実った作物を今すぐ×2で全部買い取る', rarity: 'normal' },
-  clover: { id: 'clover', name: '四つ葉', emoji: '🍀', kind: 'auto', desc: '明日 金の種↑', feverDesc: '幸運：お守りを1つ選べる', rarity: 'rare' },
+  clover: { id: 'clover', name: '四つ葉', emoji: '🍀', kind: 'auto', desc: '明日は金の種が出やすい', feverDesc: '幸運：お守りを1つ選べる', rarity: 'rare' },
   thunder: { id: 'thunder', name: '雷', emoji: '⚡', kind: 'manual', shape: 'row', desc: '横一列 成長+2', feverDesc: '大雷：全作物の成長＋1', rarity: 'rare' },
   hoe: { id: 'hoe', name: '鍬', emoji: '⛏️', kind: 'manual', shape: 'row', desc: '横一列の雑草・霜を消して耕す（次に植えると成長+1）', feverDesc: '大耕し：畑全体を耕す', rarity: 'normal' },
   moon: { id: 'moon', name: '月', emoji: '🌕', kind: 'manual', shape: 'all', desc: '出るたびに満ちる（新月→三日月→半月→満月）。満月のときだけ全作物 成長+1、使うと新月に戻る', feverDesc: '月の宴：全作物の成長さらに＋1', rarity: 'rare' },
   // ---- お邪魔系（年貢を納めるたびにどれかが袋に増える） ----
   weed: { id: 'weed', name: '雑草', emoji: '🌾', kind: 'auto', desc: '作物の隣の空きマスを塞ぐ・広がる', feverDesc: '群れ：2か所に生える', rarity: 'bad' },
   tanuki: { id: 'tanuki', name: 'タヌキ', emoji: '🦝', kind: 'auto', desc: '実りを盗む', feverDesc: '群れ：2つ持っていく', rarity: 'bad' },
-  frost: { id: 'frost', name: '霜', emoji: '❄️', kind: 'auto', desc: '3日凍らせる', feverDesc: '群れ：2マスが凍る', rarity: 'bad' },
+  frost: { id: 'frost', name: '霜', emoji: '❄️', kind: 'auto', desc: 'マスを3日凍らせる', feverDesc: '群れ：2マスが凍る', rarity: 'bad' },
   mole: { id: 'mole', name: 'モグラ', emoji: '🐀', kind: 'auto', desc: '作物を隣の空きマスへ押し出す', feverDesc: '群れ：2つ押し出す', rarity: 'bad' },
   // ---- 合体した絵柄（同じ札4枚が1枚になる） ----
   oniSeed: { id: 'oniSeed', name: '鬼トマトの種', emoji: '🍅', kind: 'manual', desc: '売値12・3〜5個', feverDesc: '品種改良：今日植える鬼トマトは1段階育った状態から', rarity: 'rare', base: 'seed' },
@@ -296,7 +296,7 @@ export const PLACES: Record<PlaceId, PlaceDef> = {
   henhouse: { id: 'henhouse', kind: 'tool', name: '鶏小屋', desc: '毎日+3・周り8マスの虫を食べ（+3）、モグラを追い払う', price: 50 },
   cowshed: { id: 'cowshed', kind: 'tool', name: '牛小屋', desc: '毎日+4・隣に水路で+2', price: 100 },
   compost: { id: 'compost', kind: 'tile', name: '堆肥のマス', desc: '売値×2', price: 35 },
-  water: { id: 'water', kind: 'tile', name: '水路のマス', desc: '毎日+1・3つ並べると水車（隣も育つ）・4方を囲むと釣り堀', price: 30 },
+  water: { id: 'water', kind: 'tile', name: '水路のマス', desc: '毎日+1・3つ並べると水車（隣も育つ）・四方を囲むと釣り堀', price: 30 },
   // 夜に育つ置き物（週が進むと市に並ぶ）
   sprinkler: { id: 'sprinkler', kind: 'tool', name: 'スプリンクラー', desc: '横一列 毎晩+1', price: 70 },
   reservoir: { id: 'reservoir', kind: 'tool', name: 'ため池', desc: '縦一列 毎晩+1', price: 70 },
@@ -648,13 +648,13 @@ export const UPGRADES: { id: UpgradeId; name: string; emoji: string; desc: strin
   { id: 'addAmaterasu', name: '天照を足す', emoji: '🌞', desc: '絵柄袋に天照（縦横の列いっぱい 成長+2）を1枚追加' },
   { id: 'addMallet', name: '打出の小槌を足す', emoji: '🔨', desc: '絵柄袋に打出の小槌（今日の売値×2）を1枚追加' },
   { id: 'addMoon', name: '月を足す', emoji: '🌕', desc: '絵柄袋に月（満ち欠けして、満月で全作物＋1）を1枚追加。足すたびに高くなる' },
-  { id: 'removeCrow', name: 'カラスを消す', emoji: '🐦', desc: '絵柄袋からカラスを1枚削除' },
-  { id: 'removeBug', name: '虫を消す', emoji: '🐛', desc: '絵柄袋から虫を1枚削除' },
-  { id: 'removeWeed', name: '雑草を消す', emoji: '🌾', desc: '絵柄袋から雑草を1枚削除' },
-  { id: 'removeTanuki', name: 'タヌキを消す', emoji: '🦝', desc: '絵柄袋からタヌキを1枚削除' },
-  { id: 'removeFrost', name: '霜を消す', emoji: '❄️', desc: '絵柄袋から霜を1枚削除' },
-  { id: 'removeMole', name: 'モグラを消す', emoji: '🐀', desc: '絵柄袋からモグラを1枚削除' },
-  { id: 'removeLocust', name: 'イナゴを消す', emoji: '🦗', desc: '絵柄袋からイナゴを1枚削除' },
+  { id: 'removeCrow', name: 'カラスを消す', emoji: '🐦', desc: '絵柄袋のカラスを1枚消す' },
+  { id: 'removeBug', name: '虫を消す', emoji: '🐛', desc: '絵柄袋の虫を1枚消す' },
+  { id: 'removeWeed', name: '雑草を消す', emoji: '🌾', desc: '絵柄袋の雑草を1枚消す' },
+  { id: 'removeTanuki', name: 'タヌキを消す', emoji: '🦝', desc: '絵柄袋のタヌキを1枚消す' },
+  { id: 'removeFrost', name: '霜を消す', emoji: '❄️', desc: '絵柄袋の霜を1枚消す' },
+  { id: 'removeMole', name: 'モグラを消す', emoji: '🐀', desc: '絵柄袋のモグラを1枚消す' },
+  { id: 'removeLocust', name: 'イナゴを消す', emoji: '🦗', desc: '絵柄袋のイナゴを1枚消す' },
 ];
 
 /** 強化と、それが増減させる絵柄 */
@@ -760,7 +760,7 @@ export const CHARMS: Record<CharmId, CharmDef> = {
   sunBlessing: { id: 'sunBlessing', tier: 'rare', name: '日だまり', emoji: '🌻', desc: (n) => `太陽の成長＋${n}`, max: 2 },
   goldenWell: { id: 'goldenWell', tier: 'rare', name: '黄金の井戸', emoji: '⛲', desc: () => '黄金の井戸を置く（周り8マス 毎日+1）', max: Infinity },
   queenHive: { id: 'queenHive', tier: 'uncommon', name: '女王蜂の巣箱', emoji: '👑', desc: () => '女王蜂の巣箱を置く（周り8マス 売値+50%）', max: 2 },
-  bargain: { id: 'bargain', tier: 'uncommon', name: '値切り上手', emoji: '🏷️', desc: (n) => `強化の価格−${Math.min(50, 10 * n)}%`, max: 5 },
+  bargain: { id: 'bargain', tier: 'uncommon', name: '値切り上手', emoji: '🏷️', desc: (n) => `市の値段−${Math.min(50, 10 * n)}%`, max: 5 },
   scarecrow: { id: 'scarecrow', tier: 'common', name: '大かかし', emoji: '🎃', desc: () => '大かかしを置く（2マス以内を守る。カラスが出た日は袋のカラスも1枚追い出す）', max: 3 },
   bumper: { id: 'bumper', tier: 'rare', name: '豊作', emoji: '🧺', desc: (n) => `金以外の作物 売値＋${15 * n}%`, max: 3 },
   goldLuck: { id: 'goldLuck', tier: 'uncommon', name: '金運', emoji: '🐱', desc: (n) => `金のとうもろこし 売値＋${10 * n}`, max: 3 },
@@ -861,7 +861,7 @@ export const TOOL_EVOLVE: Partial<Record<PlaceId, { to: PlaceId; need: number; w
 export const DIFFICULTIES = [
   { name: 'ふつう', desc: '' },
   { name: '難しい1', desc: '年貢×1.15' },
-  { name: '難しい2', desc: 'ショップ×1.3・年貢×1.2' },
+  { name: '難しい2', desc: '市の値段×1.3・年貢×1.2' },
   { name: '難しい3', desc: 'お邪魔が早く来る・年貢×1.3' },
   { name: '難しい4', desc: '単品×0.3・年貢×1.45' },
   { name: '難しい5', desc: '増えるイナゴ・年貢×1.5' },
@@ -901,7 +901,7 @@ export const FARMERS: FarmerDef[] = [
   { id: 'berry', name: '苺農家', desc: '苺の列で数を売る。市にいつも巣箱。草よけつき', art: 'strawberry', bag: { seed: -2, berrySeed: 3 }, charms: { bugWard: 1 }, stock: [], favor: ['addBerrySeed', 'addBee'], favorPlaces: ['hive'], unlockClear: 0, tip: '苺は2日で実る。市の巣箱を苺の近くに置くと、毎晩育って売値も上がる', mastery: [{ bag: { berrySeed: 1 } }, { gold: 15 }, { bag: { bee: 1 } }] },
   { id: 'pumpkin', name: 'かぼちゃ農家', desc: '大物を1つずつ高く売る。欲張りつき', art: 'pumpkin', bag: { seed: -1, pumpkinSeed: 1 }, charms: { greedy: 1 }, stock: [], favor: ['addPumpkinSeed', 'addWatermelonSeed', 'addFertilizer'], unlockClear: 1, tip: 'かぼちゃは高く売れて、カラスに食べられない。肥料と組み合わせよう', mastery: [{ bag: { fertilizer: 1 } }, { gold: 15 }, { stock: ['compost'] }] },
   { id: 'rancher', name: '牧場主', desc: '小屋で毎晩お金を稼ぐ。市にいつも鶏小屋。牧場主つき', art: 'henhouse', bag: {}, charms: { rancher: 1 }, stock: [], favor: [], favorPlaces: ['henhouse'], unlockClear: 2, tip: '市にいつも鶏小屋。早めに買って置くと、毎晩お金が入る', mastery: [{ bag: { coin: 1 } }, { gold: 15 }, { stock: ['henhouse'] }] },
-  { id: 'rain', name: '雨乞い', desc: '雨で一気に育てる。恵みの雨つき', art: 'rain', bag: { rain: 1, sun: -1 }, charms: { gentleRain: 1 }, stock: [], favor: ['addRain', 'addThunder'], unlockClear: 3, tip: '雨の真ん中のマスはさらに+1（恵みの雨）。雨を中心に組み立てよう', mastery: [{ bag: { rain: 1 } }, { gold: 15 }, { bag: { thunder: 1 } }] },
+  { id: 'rain', name: '雨乞い', desc: '雨で一気に育てる。恵みの雨つき', art: 'rain', bag: { rain: 1, sun: -1 }, charms: { gentleRain: 1 }, stock: [], favor: ['addRain', 'addThunder'], unlockClear: 3, tip: '雨の真ん中のマスはさらに+1（恵みの雨）。雨を増やして育てよう', mastery: [{ bag: { rain: 1 } }, { gold: 15 }, { bag: { thunder: 1 } }] },
 ];
 
 /** 「足す」強化（ゲーム開始時にショップへ並べるものを選ぶ対象） */

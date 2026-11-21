@@ -51,7 +51,7 @@ export const TUT_STEPS: TutStep[] = [
   { text: L('上の曜日が今日。<b>水曜は市</b><br><b>リールをタップ</b>で次の日へ', 'The top shows today. <b>Wed = market</b><br><b>Tap the reels</b> for the next day'), focus: () => [el.week, el.reels], point: () => el.reels, spin: true, done: () => state.day >= 3 },
   { text: L('<b>3つから1つ</b>選ぶ', 'Pick <b>1 of 3</b>'), focus: () => [document.querySelector('.offer-sec')!], point: () => document.querySelector('#offer-shop [data-take] .cost'), done: () => state.day >= 3 && !state.offer.length },
   { text: L('<b>次へ</b>で市を出ると<br>リールが回る', 'Press <b>Next</b> to leave<br>and spin'), focus: () => [$('market-next')], spin: true, done: () => state.day >= 3 && !state.morning && !ui.busy },
-  { text: `${art('bale')} ${L('<b>日曜の終わりに年貢</b><br>足りないと赤くなる', '<b>Tax at the end of Sunday</b><br>Turns red when short')}`, focus: () => [el.week, el.tax], button: L('次へ', 'Next') },
+  { text: `${art('bale')} ${L('<b>日曜の終わりに年貢</b><br>足りないと所持金が赤くなる', '<b>Tax at the end of Sunday</b><br>Turns red when short')}`, focus: () => [el.week, el.tax], button: L('次へ', 'Next') },
   { text: L('あとは自由に！<br><b>年貢を7回</b>納めるとクリア', "You're on your own!<br>Pay the tax <b>7 times</b> to win"), focus: () => [], button: L('はじめる', "Let's go") },
 ];
 

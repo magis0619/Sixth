@@ -274,11 +274,11 @@ export function showCharmOffer(): Promise<void> {
 
 /** フィーバーで起きることを、絵とひと言で（長い説明は図鑑に） */
 export const FEVER_FX: Record<SymbolId, { ico: ArtId | null; text: string }> = {
-  seed: { ico: 'bud', text: L('育って植わる', 'Plant grown') },
-  berrySeed: { ico: 'bud', text: L('育って植わる', 'Plant grown') },
-  pumpkinSeed: { ico: 'bud', text: L('育って植わる', 'Plant grown') },
-  melonSeed: { ico: 'bud', text: L('育って植わる', 'Plant grown') },
-  watermelonSeed: { ico: 'bud', text: L('育って植わる', 'Plant grown') },
+  seed: { ico: 'bud', text: L('育った状態で植わる', 'Plant grown') },
+  berrySeed: { ico: 'bud', text: L('育った状態で植わる', 'Plant grown') },
+  pumpkinSeed: { ico: 'bud', text: L('育った状態で植わる', 'Plant grown') },
+  melonSeed: { ico: 'bud', text: L('育った状態で植わる', 'Plant grown') },
+  watermelonSeed: { ico: 'bud', text: L('育った状態で植わる', 'Plant grown') },
   goldSeed: { ico: 'coin', text: L('大当たり×3', 'Jackpot ×3') },
   rain: { ico: 'leaf', text: L('全部 +1', 'All +1') },
   thunder: { ico: 'leaf', text: L('全部 +1', 'All +1') },
@@ -301,10 +301,10 @@ export const FEVER_FX: Record<SymbolId, { ico: ArtId | null; text: string }> = {
   mole: { ico: null, text: L('2つ押し出す', 'Pushes 2') },
   locust: { ico: null, text: L('2匹ずつ増える', 'Breeds ×2') },
   // 合体した絵柄は元の絵柄と同じ役
-  oniSeed: { ico: 'bud', text: L('育って植わる', 'Plant grown') },
-  heartSeed: { ico: 'bud', text: L('育って植わる', 'Plant grown') },
-  lanternSeed: { ico: 'bud', text: L('育って植わる', 'Plant grown') },
-  boxSeed: { ico: 'bud', text: L('育って植わる', 'Plant grown') },
+  oniSeed: { ico: 'bud', text: L('育った状態で植わる', 'Plant grown') },
+  heartSeed: { ico: 'bud', text: L('育った状態で植わる', 'Plant grown') },
+  lanternSeed: { ico: 'bud', text: L('育った状態で植わる', 'Plant grown') },
+  boxSeed: { ico: 'bud', text: L('育った状態で植わる', 'Plant grown') },
   bigRain: { ico: 'leaf', text: L('全部 +1', 'All +1') },
   raijin: { ico: 'leaf', text: L('全部 +1', 'All +1') },
   bigSun: { ico: 'coin', text: L('売値 ×2', 'Price ×2') },

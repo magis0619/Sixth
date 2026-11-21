@@ -113,7 +113,7 @@ export function showSettings(onClose?: () => void): void {
         <button class="set-row" id="set-explain"><span>${art('book')} ${L('説明カードをもう一度出す', 'Show the picture guides again')}</span></button>
         ${DEV_DATA_SWAP ? `<div class="dev-swap"><span class="dev-tag">${L('試し用', 'Testing')}</span>${hasBackup()
           ? `<button class="set-row" id="set-restore"><span>${L('元のデータに戻す', 'Restore my data')}</span></button>`
-          : `<button class="set-row" id="set-zero"><span>${L('ゼロデータで試す（今のデータは取っておく）', 'Try as a new player (keeps your data)')}</span></button>`}</div>` : ''}
+          : `<button class="set-row" id="set-zero"><span>${L('初めての人のデータで試す（今のデータは取っておく）', 'Try as a new player (keeps your data)')}</span></button>`}</div>` : ''}
         ${DEV_DATA_SWAP ? `<button class="set-row" id="set-log"><span>${art('copy')} ${L('プレイログを書き出す（開発用）', 'Export play log (dev)')}</span></button>` : ''}
         <button class="set-row danger" id="set-reset"><span>${L('データを消す', 'Erase data')}</span></button>
         <div class="credits">
