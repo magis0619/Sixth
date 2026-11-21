@@ -57,6 +57,11 @@ let shownGold = state.gold;
  * 左上の所持金は「本当の額 − 届いていない分」を出し、届いたときに増やす
  */
 let goldInFlight = 0;
+/**
+ * 引かれたけれど、まだ判子を押していない年貢。夜の収入（飛んでいる金貨）が届いてから引いて見せる
+ * （先に引くと、届く前の表示がマイナスになったり、足りないように見えたまま通ったりする）
+ */
+let taxPending = 0;
 let goldTween = 0;
 let combo = 0;
 let lastSellAt = 0;
@@ -87,7 +92,7 @@ function holdGold(amount: number): () => void {
 
 /** 所持金の表示を、届いた分までに合わせる */
 function syncGold(): void {
-  const shown = state.gold - goldInFlight;
+  const shown = state.gold - goldInFlight + taxPending;
   if (shown !== shownGold) setGold(shown);
 }
 
@@ -216,6 +221,10 @@ function playNotice(n: Notice): void {
     flash('#ffd84a', 500);
     void slamText(L(`✦ ${CHARMS[n.id].name} 金色！`, `✦ ${CHARMS[n.id].name} golden!`), { size: 0.6, dur: 1500 });
     coinRain(20);
+    // 何が変わったか：効き目が2倍（前 → 今）
+    const c = CHARMS[n.id];
+    const k = state.charms[n.id];
+    later(() => showHintCard(`${art(n.id)} <b>${c.name}</b> ${L('金色：効き目2倍', 'Golden: double effect')}<br>${c.desc(k)} → <b>${c.desc(k * 2)}</b>`, 7000), 1600);
   } else if (n.kind === 'toolLevel') {
     const plot = el.field.children[n.cell];
     if (!plot) return;
@@ -407,7 +416,7 @@ function renderCharms(): void {
         const c = CHARMS[id];
         const n = state.charms[id];
         const gold = isGolden(state, id);
-        return `<span class="charm tier-${c.tier}${gold ? ' golden' : ''}${c.special ? ' special' : ''}" data-charm="${id}"><span class="e">${art(id)}</span><span><b>${c.name}${n > 1 ? ` ×${n}` : ''}${gold ? ' ✦' : ''}</b><small>${c.desc(gold ? n * 2 : n)}${curseText(id, n) ? `<em class="curse">${curseText(id, n)}</em>` : ''}</small></span></span>`;
+        return `<span class="charm tier-${c.tier}${gold ? ' golden' : ''}${c.special ? ' special' : ''}" data-charm="${id}"><span class="e">${art(id)}</span><span><b>${c.name}${n > 1 ? ` ×${n}` : ''}${gold ? ` <i class="gold-tag">✦ ${L('金色・2倍', 'Golden ×2')}</i>` : c.max >= CONFIG.goldenAt && n > 0 ? ` <i class="gold-next">${L(`あと${CONFIG.goldenAt - n}個で金色`, `${CONFIG.goldenAt - n} more → golden`)}</i>` : ''}</b><small>${c.desc(gold ? n * 2 : n)}${curseText(id, n) ? `<em class="curse">${curseText(id, n)}</em>` : ''}</small></span></span>`;
       })
       .join(''),
   );
@@ -1355,6 +1364,8 @@ async function onSpin(): Promise<void> {
   renderReelStates();
 
   const res = endDay(state, rng);
+  // 年貢は判子を押すときに引いて見せる（それまでは夜の収入を足した額のまま）
+  if (res.tax !== null && res.ok) taxPending = res.tax;
   autoOutcome = {};
   // 植えきれなかった種は1つ1金で売れる：リールから所持金へ
   if (res.seedGold) {
@@ -2671,6 +2682,7 @@ function onBuy(id: UpgradeId): void {
 function startGame(resume: GameState | null = null): void {
   setState(resume ?? newGame(setupFrom(meta)));
   goldInFlight = 0;
+  taxPending = 0;
   // 所持金の表示は始めの額に合わせる（腕前で0以外から始まることがある）
   cancelAnimationFrame(goldTween);
   shownGold = state.gold;
@@ -3184,7 +3196,9 @@ document.querySelectorAll<HTMLButtonElement>('.tab').forEach((t) =>
       say(`${art('bargain')} ${d === null ? '' : L(`次の市は${d}日目（あと${d - state.day}日）`, `Next market: day ${d} (${d - state.day} days)`)}`, 2500);
     } else {
       sfx.select();
-      openSheet(name);
+      // 市は中身を描き直してから開く（週が替わって品が変わっていても、土地・置き物が出るように）
+      if (name === 'shop') openMarket();
+      else openSheet(name);
     }
   }),
 );
@@ -3293,7 +3307,10 @@ hooks.startGame = startGame;
   ['pointerdown', 'pointermove', 'keydown', 'wheel'].forEach((t) => document.addEventListener(t, wake, { passive: true, capture: true }));
   wake();
 }
-hooks.setGold = () => syncGold();
+hooks.setGold = () => {
+  taxPending = 0;
+  syncGold();
+};
 applySkin();
 setupLongPress();
 setupScene();
