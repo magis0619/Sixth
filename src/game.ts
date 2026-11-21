@@ -714,10 +714,10 @@ function endDayRaw(state: GameState, rng: Rng): EndDayResult {
 
 /** n 回目の年貢を納めたときに袋に増えるお邪魔 */
 export function obstacleRule(n: number, difficulty = 0): { count: number; pool: SymbolId[] } {
-  // 難しい3以上：2回分早く進み、枚数も1枚多い
+  // 難しい3以上：表が hardObstacleStep 回分早く進み、枚数も hardObstacleExtra 枚多い
   const hard = difficulty >= 3;
-  const r = [...CONFIG.obstacleSchedule].reverse().find((x) => n + (hard ? 2 : 0) >= x.from) ?? CONFIG.obstacleSchedule[0];
-  return { count: r.count + (hard ? 1 : 0), pool: r.pool };
+  const r = [...CONFIG.obstacleSchedule].reverse().find((x) => n + (hard ? CONFIG.hardObstacleStep : 0) >= x.from) ?? CONFIG.obstacleSchedule[0];
+  return { count: r.count + (hard ? CONFIG.hardObstacleExtra : 0), pool: r.pool };
 }
 
 export function rollObstacles(n: number, rng: Rng, difficulty = 0): SymbolId[] {

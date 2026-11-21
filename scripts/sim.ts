@@ -177,6 +177,9 @@ if (process.env.TAX) (CONFIG as { taxSchedule: number[] }).taxSchedule = process
 // 試し（ゲームには入れていない）：SEEDW=6 でトマトの種の出やすさ、REELS=4 で最初のリールの数
 if (process.env.SEEDW) (CONFIG.offerWeights as Record<string, number>).addSeed = Number(process.env.SEEDW);
 // DMULT=1,1.1,1.2,... で難しさごとの年貢の倍率を差し替えて試す
+// HSTEP / HEXTRA で難しい3以上のお邪魔（早さ・枚数）を差し替えて試す
+if (process.env.HSTEP) (CONFIG as { hardObstacleStep: number }).hardObstacleStep = Number(process.env.HSTEP);
+if (process.env.HEXTRA) (CONFIG as { hardObstacleExtra: number }).hardObstacleExtra = Number(process.env.HEXTRA);
 if (process.env.DMULT) (CONFIG as { difficultyTaxMult: number[] }).difficultyTaxMult = process.env.DMULT.split(',').map(Number);
 // DAILY=0 で前の「週替わりの3品をショップで買う」と比べる
 if (process.env.DAILY === '0') (CONFIG as { dailyPick: boolean }).dailyPick = false;

@@ -815,7 +815,7 @@ const DIFF_RULES: { ico: ArtId; text: string }[][] = [
   // 難しい1は年貢だけ（年貢の行で見せる）
   [],
   [{ ico: 'bargain', text: L('市の値段×1.3', 'Market prices ×1.3') }],
-  [{ ico: 'crow', text: L('お邪魔が早く多く来る', 'Pests come earlier and more') }],
+  [{ ico: 'crow', text: L('お邪魔が早く来る', 'Pests come earlier') }],
   [{ ico: 'coin', text: L('単品は×0.3でしか売れない', 'Singles sell for ×0.3') }],
   [{ ico: 'locust', text: L('増えるイナゴが袋にいる', 'Multiplying locusts in your bag') }],
 ];
@@ -831,7 +831,7 @@ export function showDifficulty(): void {
     // この難しさで増える縛り（NEW）と、前から続く縛りを分けて見せる
     const newRules = DIFF_RULES[lv] ?? [];
     const oldRules = DIFF_RULES.slice(1, lv).flat();
-    const mult = (k: number) => difficultyTaxMult(k).toFixed(1);
+    const mult = (k: number) => String(Number(difficultyTaxMult(k).toFixed(2)));
     // 年貢は段ごとに上がる：NEW の行に「前→今」
     const tax = lv > 0 ? `<li class="dr-tax new">${art('bale')}<span>${L(`年貢 ×${mult(lv - 1)} → <b>×${mult(lv)}</b>`, `Tax ×${mult(lv - 1)} → <b>×${mult(lv)}</b>`)}</span><em>NEW</em></li>` : '';
     // 年貢のグラフ：クリアまでの7回。いちばん難しい段を天井にして、段を上げると棒が伸びて見えるように

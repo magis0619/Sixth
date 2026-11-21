@@ -190,11 +190,13 @@ describe('年貢と難しさ', () => {
     expect(nextTax(h).amount).toBe(Math.round(taxAmount(0) * CONFIG.difficultyTaxMult[1]));
   });
 
-  it('難しい2でショップが高く、難しい3でお邪魔が早く多い', () => {
+  it('難しい2でショップが高く、難しい3でお邪魔が早く来る', () => {
     const easy = newGame({ shop: ['addSun'], charmPool: [], difficulty: 0 });
     const hard = newGame({ shop: ['addSun'], charmPool: [], difficulty: 2 });
     expect(upgradePrice(hard, 'addSun')).toBeGreaterThan(upgradePrice(easy, 'addSun'));
-    expect(obstacleRule(1, 3).count).toBe(obstacleRule(1, 0).count + 1);
+    // 難しい3は増える表が hardObstacleStep 回分早く進む（4回目で、ふつうの5回目と同じ枚数）
+    expect(obstacleRule(5 - CONFIG.hardObstacleStep, 3).count).toBe(obstacleRule(5, 0).count + CONFIG.hardObstacleExtra);
+    expect(obstacleRule(5 - CONFIG.hardObstacleStep, 3).count).toBeGreaterThan(obstacleRule(5 - CONFIG.hardObstacleStep, 0).count);
   });
 
   it('払えないとゲームオーバー、払えると年貢の回数が増えてお守りの3択', () => {
@@ -938,7 +940,7 @@ describe('タヌキと畑の品', () => {
     expect(seen).toBeGreaterThan(0);
   });
 
-  it('1回の年貢で入る同じお邪魔は2枚まで（難しい3以上で3枚入るときも）', () => {
+  it('1回の年貢で入る同じお邪魔は2枚まで（3枚以上入るときも）', () => {
     for (let n = 1; n <= 10; n++)
       for (let k = 0; k < 200; k++) {
         const got = rollObstacles(n, Math.random, 3);
@@ -946,7 +948,7 @@ describe('タヌキと畑の品', () => {
       }
     // いつもカラスを引く乱数でも、3枚目は別のお邪魔になる
     const crowFirst = rollObstacles(7, () => 0.3, 3);
-    expect(crowFirst.length).toBe(4);
+    expect(crowFirst.length).toBe(3 + CONFIG.hardObstacleExtra);
     expect(crowFirst.filter((x) => x === 'crow').length).toBeLessThanOrEqual(2);
   });
 
