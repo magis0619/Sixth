@@ -1173,7 +1173,3 @@ html.idle *, html.idle *::before, html.idle *::after { animation-play-state: pau
 @keyframes spoil-edge { 50% { box-shadow: inset 0 0 0 3px #c0281b, inset 0 0 14px rgba(192, 40, 27, 0.55); } }
 .calm .plot .spoil-tag.soon, .calm .plot .spoil-tag.soon .art, .calm .plot.spoil-soon { animation: none; }
 
-/* ==== 長押しでメニューが出ない（入力欄は除く）。拡大を止めるのは src/ui/nozoom.ts（画面の大きさの計算を変えないよう、viewport と html には触らない） ==== */
-body { -webkit-touch-callout: none; }
-#app { touch-action: manipulation; }
-input, textarea { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }

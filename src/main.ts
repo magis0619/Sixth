@@ -22,7 +22,6 @@ import { $, el, hooks, meta, rng, setState, state, ui } from './ui/store.ts';
 import { done, play } from './ui/play.ts';
 import { lordWeekCard } from './ui/lord.ts';
 import { armFresh, installTapGuards } from './ui/tapguard.ts';
-import { installNoZoom } from './ui/nozoom.ts';
 import { pressable } from './ui/press.ts';
 import { applySettings, showSettings } from './ui/settings.ts';
 import { reject } from './ui/states.ts';
@@ -1871,7 +1870,6 @@ document.querySelector('.machine-top')!.addEventListener('click', () => {
 });
 
 // 演出の最中に画面をタップすると早送り。連打の続き・出たばかりの画面のタップは操作にしない
-installNoZoom();
 installTapGuards(() => hintOnce('hold-hurry', `${art('fastForward')} ${L('<b>長押し</b>で早送り', '<b>Hold</b> to fast-forward')}`, 3000));
 // 押した瞬間の手応え
 pressable(el.field, '.plot');
