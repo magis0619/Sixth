@@ -483,6 +483,36 @@ test('演出の最中、ふつうのタップでは早送りにならず、長�
   expect(errors).toEqual([]);
 });
 
+test('リーチの回転を長押しで早送りしても、止まったあとに「リーチ」と暗いリールが残らない', async ({ page }) => {
+  const errors = await boot(page);
+  await start(page);
+  await firstDay(page);
+  // 袋を種だけにして、必ずリーチ（3本とも種）にする
+  await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('hatake-slot:run')!);
+    for (const k of Object.keys(s.bag)) s.bag[k] = 0;
+    s.bag.seed = 6;
+    Object.assign(s, { results: [], field: s.field.map(() => null) });
+    localStorage.setItem('hatake-slot:run', JSON.stringify(s));
+  });
+  await page.reload();
+  await page.click('#title-resume', { force: true });
+  await page.waitForTimeout(500);
+  const box = (await page.locator('#field').boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.evaluate(() => document.getElementById('spin')!.click());
+  await page.waitForTimeout(50);
+  // 回っている間ずっと長押し（早送り）
+  await page.mouse.down();
+  await page.waitForTimeout(3500);
+  await page.mouse.up();
+  await page.waitForTimeout(2500);
+  await expect(page.locator('.reach-call')).toHaveCount(0);
+  await expect(page.locator('.machine.spotlight')).toHaveCount(0);
+  await expect(page.locator('.reel.reach')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
 test('仕入れの画面が出た直後の連打では選ばれない。指を止めれば選べる', async ({ page }) => {
   const errors = await boot(page);
   await start(page);

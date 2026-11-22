@@ -76,6 +76,11 @@ export function spinReels(show: SpinShow = { cutIn: null }): Promise<void> {
   const extra = show.cutIn !== null ? CUTIN_MS : 0;
   const hold = reach ? 1500 : 600;
   if (show.cutIn !== null) later(() => void playCutIn(show.cutIn!), 150);
+  // 前の回転のリーチが残っていれば片づける（念のため）
+  el.machine.classList.remove('spotlight');
+  el.machine.querySelector('.reach-call')?.remove();
+  // 回転が終わったか。溜めの合図は時間で出すので、途中で早送りになると、止まったあとに届くことがある
+  let landed = false;
   el.machine.classList.add('rumble');
   let tick = window.setInterval(() => sfx.tick(), 70);
   const promises = reels.map((reel, i) => {
@@ -90,6 +95,8 @@ export function spinReels(show: SpinShow = { cutIn: null }): Promise<void> {
     if (suspense && i === last) {
       // ひとつ前のリールが止まったところから溜める
       later(() => {
+        // 早送りで先に止まっていたら、リーチは出さない（出すと、暗くしたリールと「リーチ！」が残る）
+        if (landed || !reel.classList.contains('spinning')) return;
         reel.classList.add('suspense');
         if (reach) {
           reel.classList.add('reach');
@@ -129,6 +136,7 @@ export function spinReels(show: SpinShow = { cutIn: null }): Promise<void> {
     });
   });
   return Promise.all(promises).then(() => {
+    landed = true;
     clearInterval(tick);
     tick = 0;
     el.machine.classList.remove('rumble', 'spotlight');
