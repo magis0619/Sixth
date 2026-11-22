@@ -8,7 +8,7 @@ import { art, type ArtId } from '../art.ts';
 import { sfx } from '../audio.ts';
 import { later } from '../fx.ts';
 import { saveMeta } from '../meta.ts';
-import { el, meta, state } from './store.ts';
+import { el, meta, state, TW } from './store.ts';
 import { armFresh } from './tapguard.ts';
 import { FRUIT } from './view.ts';
 
@@ -207,7 +207,8 @@ export function comboCard(id: CharmId): string {
 /** ゲームの全体像：1日の流れと、週の流れ */
 export function overviewCard(start = true): string {
   // 遊び方の一枚絵（画面いっぱい）：文は使わず、単語・数字・絵だけで、上から下へ4つの手順
-  // 1 スロットを回す → 2 育つ → 3 並べて売る（×1.3 → お金）→ 4 お金を支払う（7日ごと ×7 → クリア）
+  // いちばん上に自己紹介の1行（借りた畑で、7週のノルマを払いきる）。
+  // 1 スロットを回す → 2 育つ → 3 並べて売る（×1.3 → お金）→ 4 ノルマを払う（7日ごと ×7 → クリア）
   const down = '<span class="ov4-down">▼</span>';
   const step = (n: number, word: string) => `<p class="ov4-step"><span class="ov4-num">${n}</span>${word}</p>`;
   // 絵の下に一言（絵だけだと何か分からないので、短い単語と組にする）
@@ -217,10 +218,11 @@ export function overviewCard(start = true): string {
   const sell = `<span class="ov4-sell"><span class="ov3-plots">${art('tomato')}${art('tomato')}${art('tomato')}</span><em class="ov3-hint">×1.3</em><b>▶</b>${cap('coin', L('お金', 'Gold'))}</span>`;
   const tax = `<span class="ov4-tax">${cap('bale', L(`${CONFIG.taxPeriod}日ごと`, `Every ${CONFIG.taxPeriod} days`))}<em>×${CONFIG.winTaxes}</em><b>▶</b>${cap('trophy', L('クリア', 'Clear'))}</span>`;
   return `<div class="ov4" aria-label="${L('遊び方', 'How to play')}">
+    <p class="ov4-lead">${art('expand')}<span>${L(`<b>借りた畑</b>で、<b>${CONFIG.winTaxes}週</b>のノルマを払いきる`, `Rent a farm. Pay the quota for <b>${CONFIG.winTaxes} weeks</b>`)}</span></p>
     ${step(1, L('スロットを回す', 'Spin the slots'))}${machine}${down}
     ${step(2, L('育つ', 'Grow'))}${grow}${down}
     ${step(3, L('3つ並べて売る', 'Sell 3 in a row'))}${sell}${down}
-    ${step(4, L('お金を支払う', 'Pay the tax'))}${tax}
+    ${step(4, L('ノルマを払う', 'Pay the quota'))}${tax}
     <button class="ov4-go" aria-label="${start ? L('はじめる', 'Start') : L('とじる', 'Close')}">${start ? '▶' : '✕'}</button>
   </div>`;
 }
@@ -246,8 +248,8 @@ export function marketCard(): string {
 
 /** 初めての年貢の日 */
 export function taxCard(amount: number): string {
-  return `<p class="ex-kicker">${L('はじめての年貢', 'Your first tax')}</p>
-    <h2 class="ex-title">${L('日曜の終わりに年貢', 'Tax at the end of Sunday')}</h2>
+  return `<p class="ex-kicker">${L(`はじめての${TW()}`, 'Your first tax')}</p>
+    <h2 class="ex-title">${L(`日曜の終わりに${TW()}`, 'Tax at the end of Sunday')}</h2>
     <div class="ex-row">${big('bale')}<b class="ex-num">${amount}</b><span class="ex-arrow">▶</span>${big('official', 'small')}</div>
     <p class="ex-line">${L('<b>足りないと終わり</b>。今日のうちに売って稼ぐ', '<b>Short = game over.</b> Sell today to make it')}</p>
     <div class="ex-icons"><span>${art('gift')}<b>${L('払うとお守り1つ', 'Pay → pick a charm')}</b></span><span>${art('crow')}<b>${L('お邪魔が袋に増える', 'Pests join your bag')}</b></span></div>`;
@@ -259,7 +261,7 @@ export function contractCard(): string {
     <h2 class="ex-title">${L('今週だけの縛り', 'A rule for this week only')}</h2>
     <div class="ex-ribbon"><span>${L('月', 'M')}</span><i></i><span>${L('日', 'S')}</span></div>
     <div class="ex-row">${big('lock', 'small')}<span class="ex-arrow">▶</span>${big('bale', 'small')}<span class="ex-arrow">▶</span>${big('gift', 'small')}</div>
-    <p class="ex-line">${L('3つから<b>1つ必ず</b>選ぶ。日曜の年貢を払えたら見返り', 'Pick <b>one</b>. Pay Sunday’s tax to get the reward')}</p>
+    <p class="ex-line">${L(`3つから<b>1つ必ず</b>選ぶ。日曜の${TW()}を払えたら見返り`, 'Pick <b>one</b>. Pay Sunday’s tax to get the reward')}</p>
     <p class="ex-note">${L('★が多いほど縛りがきつく、見返りも大きい', 'More ★ = harder rule, bigger reward')}</p>`;
 }
 
@@ -269,7 +271,7 @@ export function mergeCard(sym: SymbolId, to: SymbolId, cost: number): string {
     <h2 class="ex-title">${L(`同じ札${CONFIG.mergeNeed}枚で合体`, `${CONFIG.mergeNeed} of a kind → merge`)}</h2>
     <div class="ex-row"><span class="ex-stack">${Array.from({ length: CONFIG.mergeNeed }, () => art(sym)).join('')}</span><span class="ex-arrow">▶</span>${big(to)}</div>
     <p class="ex-line">${L('袋の札が減って、強い札が1枚に', 'A thinner bag and one strong card')}</p>
-    <div class="ex-icons"><span>${art('coin')}<b>${cost}${L('（年貢の30%）', ' (30% of tax)')}</b></span><span>${art('bargain')}<b>${L('市で1回まで', 'Once per market')}</b></span></div>`;
+    <div class="ex-icons"><span>${art('coin')}<b>${cost}${L(`（${TW()}の30%）`, ' (30% of tax)')}</b></span><span>${art('bargain')}<b>${L('市で1回まで', 'Once per market')}</b></span></div>`;
 }
 
 /** 初めてのフィーバー：通常の効き目 → フィーバーで変わること → 大当たり（docs/ui-reading.md：同じ幅の行） */

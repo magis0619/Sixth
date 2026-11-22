@@ -18,7 +18,7 @@ import {
 } from './ui/view.ts';
 import { applySkin, showClear, showGameOver, showHelp, showTitle } from './ui/screens.ts';
 import { clearRun, saveRun } from './ui/save.ts';
-import { $, el, hooks, meta, rng, setState, state, ui } from './ui/store.ts';
+import { $, el, hooks, meta, rng, setState, state, ui, TW } from './ui/store.ts';
 import { done, play } from './ui/play.ts';
 import { lordWeekCard } from './ui/lord.ts';
 import { armFresh, installTapGuards } from './ui/tapguard.ts';
@@ -243,7 +243,7 @@ function renderSpinButton(): void {
   go.classList.toggle('tax', state.day > 0 && t.daysLeft === 0);
   setHtml(go, state.day === 0 || state.morning
     ? `<span class="go-hand">${art('hand')}</span><span class="go-text"><b>${L('タップで回す', 'Tap to spin')}</b></span>`
-    : `<span class="go-hand">${art('hand')}</span><span class="go-text">${t.daysLeft === 0 ? `<small>${L(`年貢${t.amount}を納めて`, `Pay ${t.amount}g tax`)}</small>` : ''}<b>${L(`${state.day + 1}日目へ`, `To day ${state.day + 1}`)}</b><small>${L('リールをタップ', 'Tap the reels')}</small></span>`);
+    : `<span class="go-hand">${art('hand')}</span><span class="go-text">${t.daysLeft === 0 ? `<small>${L(`${TW()}${t.amount}を払って`, `Pay ${t.amount}g tax`)}</small>` : ''}<b>${L(`${state.day + 1}日目へ`, `To day ${state.day + 1}`)}</b><small>${L('リールをタップ', 'Tap the reels')}</small></span>`);
   // 筐体の看板：今日の仕入れがあれば、そこに3つの絵柄（押すと袋に入る）。なければ「タップで回す」など
   const cue = document.querySelector('.machine-top') as HTMLElement;
   const offering = state.offer.length > 0 && state.day > 0 && !state.over && !ui.busy && !play.tut;
@@ -269,7 +269,7 @@ function renderSpinButton(): void {
     : state.day === 0 || state.morning
     ? L('▼ タップで回す ▼', '▼ TAP TO SPIN ▼')
     : t.daysLeft === 0
-      ? L(`▼ タップで年貢 ${t.amount}を納めて回す ▼`, `▼ TAP: PAY ${t.amount}g TAX & SPIN ▼`)
+      ? L(`▼ タップで${TW()} ${t.amount}を払って回す ▼`, `▼ TAP: PAY ${t.amount}g TAX & SPIN ▼`)
       : L(`▼ タップで${state.day + 1}日目へ ▼`, `▼ TAP FOR DAY ${state.day + 1} ▼`));
 }
 
@@ -523,8 +523,8 @@ async function onSpin(): Promise<void> {
     if (res.ok && res.forfeited) {
       sfx.error();
       floatText(center(el.goldBox).x, center(el.goldBox).y + 30, money(-res.forfeited), { cls: 'bad', size: 1 });
-      say(`${art('dread9')} ${L(`持ち越せない分 −${res.forfeited}（次の年貢の額まで）`, `−${res.forfeited} over the carry limit`)}`, 3500);
-      hintOnce('carry', `${art('dread9')} ${L('年貢を払ったあと、<b>次の年貢の額を超えるお金</b>はなくなる。市で使っておく', 'After paying tax, gold above <b>the next tax</b> is lost. Spend it at the market')}`);
+      say(`${art('dread9')} ${L(`持ち越せない分 −${res.forfeited}（次の${TW()}の額まで）`, `−${res.forfeited} over the carry limit`)}`, 3500);
+      hintOnce('carry', `${art('dread9')} ${L(`${TW()}を払ったあと、<b>次の${TW()}の額を超えるお金</b>はなくなる。市で使っておく`, 'After paying tax, gold above <b>the next tax</b> is lost. Spend it at the market')}`);
     }
     if (!res.ok) {
       await witherField();
@@ -1828,7 +1828,7 @@ el.tax.addEventListener('click', () => {
   say(
     `${state.difficulty ? `【${DIFFICULTIES[state.difficulty].name}】` : ''}` +
       L(
-        `年貢 ${t.amount}・${t.daysLeft === 0 ? '今日の終わり' : `あと${t.daysLeft}日`}（${state.day}日目）${state.cleared ? '' : `・クリアまであと${CONFIG.winTaxes - state.taxesPaid}回`}`,
+        `${TW()} ${t.amount}・${t.daysLeft === 0 ? '今日の終わり' : `あと${t.daysLeft}日`}（${state.day}日目）${state.cleared ? '' : `・クリアまであと${CONFIG.winTaxes - state.taxesPaid}回`}`,
         `Tax ${t.amount}g · ${t.daysLeft === 0 ? 'due today' : `${t.daysLeft} days left`} (day ${state.day})${state.cleared ? '' : ` · ${CONFIG.winTaxes - state.taxesPaid} more to win`}`,
       ),
     3000,

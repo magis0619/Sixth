@@ -8,7 +8,7 @@ import {
 import { art } from '../art.ts';
 import { fmtMult } from '../fx.ts';
 import { PLACE_ART, setHtml, symHtml } from './view.ts';
-import { $, el, state } from './store.ts';
+import { $, el, state, TW } from './store.ts';
 import { play } from './play.ts';
 import { lordChip } from './lord.ts';
 import { contractRibbon } from './contract-ui.ts';
@@ -154,10 +154,10 @@ export function renderTax(): void {
   el.tax.className = `hud-tax${warn ? ' warn' : ''}${short ? ' short' : ' ok'}${state.difficulty ? ' hard' : ''}${lordOn ? ' lord' : ''}`;
   el.tax.innerHTML =
     // 年貢の額は左上の所持金の横（所持金/年貢）に出す
-    `<span class="tax-label">${art('bale')}<span class="tax-word">${L('年貢', 'Tax')}</span></span>` +
+    `<span class="tax-label">${art('bale')}<span class="tax-word">${L(`${TW()}`, 'Tax')}</span></span>` +
     // お守りの代償で年貢が上がっているときは、金額の横に「+10%」の印
     // 殿様モードで条件に届いていない分も、同じ「+◯%」の印にまとめる（札に収まるように1つだけ）
-    (pct ? `<em class="tax-curse" title="${L('年貢が増えている', 'Tax raised')}">+${pct}%</em>` : '') +
+    (pct ? `<em class="tax-curse" title="${L(`${TW()}が増えている`, 'Tax raised')}">+${pct}%</em>` : '') +
     // 殿様モード：今週の年貢の条件の進み（2/5）・気まぐれの殿様の顔
     lordChip(state) +
     // 難しい8：置き物の維持費（年貢に足されている分）

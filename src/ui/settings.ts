@@ -4,7 +4,7 @@ import { EN, L, setLang } from '../i18n.ts';
 import { CONFIG, TELEMETRY_URL } from '../config.ts';
 import { isMuted, setBgmVolume, setVolume, sfx, toggleMute } from '../audio.ts';
 import { isCalm, setFastFx, setVibrate, toggleCalm } from '../fx.ts';
-import { $, el, meta } from './store.ts';
+import { $, el, meta, TW } from './store.ts';
 import { saveMeta } from '../meta.ts';
 import { art } from '../art.ts';
 import { buildLogText } from './save.ts';
@@ -119,7 +119,7 @@ export function showSettings(onClose?: () => void): void {
         <div class="credits">
           <b>${L('畑スロット', 'Farm Slots')}</b>
           <small>${L('書体', 'Fonts')}：Zen Maru Gothic、M PLUS Rounded 1c（SIL Open Font License）</small>
-          <small>${L('版', 'Version')}：${__BUILD__}・${L(`年貢${CONFIG.winTaxes}回でクリア`, `Win by paying ${CONFIG.winTaxes} taxes`)}</small>
+          <small>${L('版', 'Version')}：${__BUILD__}・${L(`${TW()}${CONFIG.winTaxes}回でクリア`, `Win by paying ${CONFIG.winTaxes} taxes`)}</small>
         </div>
         <button class="primary" id="set-close">${L('閉じる', 'Close')}</button>
       </div>`;

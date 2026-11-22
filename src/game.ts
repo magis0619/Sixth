@@ -213,6 +213,8 @@ export interface GameState {
   weekly: AddUpgradeId[];
   /** 今週ショップに並ぶ畑の品（道具・特別なマス） */
   weeklyPlaces: PlaceId[];
+  /** 今日の市の割引の品（'place:巣箱の id' / 'up:消す品の id' / 'expand'）。買うと消える */
+  sale?: { key: string; day: number } | null;
   /** このゲームで出るお守り（解放済みのもの） */
   charmPool: CharmId[];
   /** これまでに消した枚数（絵柄ごと。消す価格が上がる） */
@@ -321,6 +323,7 @@ function freshGame(setup: GameSetup): GameState {
     combos: [],
     weekly: [],
     weeklyPlaces: [],
+    sale: null,
     charmPool: [...setup.charmPool],
     removed: {},
     removedThisWeek: 0,
@@ -836,6 +839,7 @@ export function beginDay(state: GameState, rng: Rng): void {
     state.discardsThisMarket = 0;
     state.removedThisWeek = 0;
     state.weeklyPlaces = rollWeeklyPlaces(state, rng);
+    rollSale(state);
   }
   logMarket(state);
 }
@@ -2229,7 +2233,7 @@ function sellRaw(state: GameState, cell: number, single = false): SellResult | n
 
 // ---- 強化 ----
 
-export function upgradePrice(state: GameState, id: UpgradeId): number {
+export function upgradePrice(state: GameState, id: UpgradeId, noSale = false): number {
   let base = CONFIG.upgradePrices[id];
   // お邪魔は消すたびに高くなる（全部消して楽になりすぎないように）
   const change = UPGRADE_SYMBOL[id]!;
@@ -2237,7 +2241,7 @@ export function upgradePrice(state: GameState, id: UpgradeId): number {
   if (change.delta < 0) base *= Math.pow(change.symbol === 'locust' ? CONFIG.locustRemoveGrowth : CONFIG.removeGrowth, state.removed[change.symbol] ?? 0);
   if (id === 'addMoon') base *= Math.pow(CONFIG.moonGrowth, state.bag.moon);
   const discount = Math.min(0.5, 0.1 * lv(state, 'bargain'));
-  return Math.max(1, Math.round(base * (1 - discount) * shopMult(state)));
+  return Math.max(1, Math.round(base * (1 - discount) * shopMult(state) * saleMult(state, `up:${id}`, noSale)));
 }
 
 export function upgradeAvailable(state: GameState, id: UpgradeId): boolean {
@@ -2261,6 +2265,7 @@ export function canBuy(state: GameState, id: UpgradeId): boolean {
 function buyRaw(state: GameState, id: UpgradeId): boolean {
   if (!canBuy(state, id)) return false;
   spend(state, upgradePrice(state, id));
+  if (onSale(state, `up:${id}`)) state.sale = null;
   const change = UPGRADE_SYMBOL[id]!;
   state.bag[change.symbol] += change.delta;
   if (change.delta < 0) {
@@ -2321,11 +2326,11 @@ function chooseCharmRaw(state: GameState, id: CharmId): boolean {
 
 // ---- 畑を広げる・道具と特別なマス ----
 
-export function expandPrice(state: GameState): number | null {
+export function expandPrice(state: GameState, noSale = false): number | null {
   const p = CONFIG.expandPrices[state.bought.expand ?? 0];
   if (p === undefined || (state.cols >= CONFIG.fieldCols && state.rows >= CONFIG.fieldRows)) return null;
   // 畑仕事の名人：広げる値段−40%
-  return Math.max(1, Math.round(p * (1 - Math.min(0.5, 0.1 * lv(state, 'bargain'))) * shopMult(state) * (state.charms.farmMaster > 0 ? 0.6 : 1)));
+  return Math.max(1, Math.round(p * (1 - Math.min(0.5, 0.1 * lv(state, 'bargain'))) * shopMult(state) * (state.charms.farmMaster > 0 ? 0.6 : 1) * saleMult(state, 'expand', noSale)));
 }
 
 export function canExpand(state: GameState): boolean {
@@ -2337,18 +2342,65 @@ export function canExpand(state: GameState): boolean {
 function expandRaw(state: GameState): boolean {
   if (!canExpand(state)) return false;
   spend(state, expandPrice(state)!);
+  if (onSale(state, 'expand')) state.sale = null;
   state.bought.expand = (state.bought.expand ?? 0) + 1;
   if (state.cols <= state.rows) state.cols++;
   else state.rows++;
   return true;
 }
 
-export function placePrice(state: GameState, id: PlaceId): number | null {
+// ---- 市の割引：市ごとに1つの品を半額に ----
+
+/** 割引の候補：並んでいる畑の品・袋のお邪魔を消す品・畑を広げる */
+function saleCandidates(state: GameState): string[] {
+  const out: string[] = [];
+  state.weeklyPlaces.forEach((id) => {
+    if (PLACES[id].price !== null && roomLeft(state, id) > 0) out.push(`place:${id}`);
+  });
+  (Object.keys(UPGRADE_SYMBOL) as UpgradeId[]).forEach((id) => {
+    if (UPGRADE_SYMBOL[id]!.delta < 0 && state.bag[UPGRADE_SYMBOL[id]!.symbol] > 0) out.push(`up:${id}`);
+  });
+  if (expandPrice(state, true) !== null) out.push('expand');
+  return out;
+}
+
+/**
+ * 市の日の朝に、割引の品を1つ決める。
+ * ゲームの乱数を使うと、そのあとの出目が全部ずれるので、その回の番号と日付から決める
+ */
+function rollSale(state: GameState): void {
+  const c = saleCandidates(state);
+  if (!c.length) {
+    state.sale = null;
+    return;
+  }
+  let h = state.day * 2654435761;
+  for (const ch of state.runId ?? '') h = Math.imul(h ^ ch.charCodeAt(0), 2246822519);
+  state.sale = { key: c[Math.abs(h) % c.length], day: state.day };
+}
+
+/** 割引の品の名前（記録用） */
+function saleName(key: string): string {
+  const [kind, id] = key.split(':');
+  if (kind === 'place') return PLACES[id as PlaceId].name;
+  if (kind === 'up') return `消す:${SYMBOLS[UPGRADE_SYMBOL[id as UpgradeId]!.symbol].name}`;
+  return '広げる';
+}
+
+/** その品が今日の市の割引か */
+export function onSale(state: GameState, key: string): boolean {
+  return !!state.sale && state.sale.key === key && state.sale.day === state.day;
+}
+
+const saleMult = (state: GameState, key: string, noSale: boolean): number => (!noSale && onSale(state, key) ? CONFIG.saleRate : 1);
+
+/** noSale：割引の前の値段（札に打ち消し線で出す） */
+export function placePrice(state: GameState, id: PlaceId, noSale = false): number | null {
   const base = PLACES[id].price;
   if (base === null) return null;
   const p = base * Math.pow(CONFIG.placeGrowth, state.bought[id] ?? 0);
   // 畑仕事の名人の代償：置き物+40%
-  return Math.max(1, Math.round(p * (1 - Math.min(0.5, 0.1 * lv(state, 'bargain'))) * shopMult(state) * (state.charms.farmMaster > 0 && PLACES[id].kind === 'tool' ? 1.4 : 1)));
+  return Math.max(1, Math.round(p * (1 - Math.min(0.5, 0.1 * lv(state, 'bargain'))) * shopMult(state) * (state.charms.farmMaster > 0 && PLACES[id].kind === 'tool' ? 1.4 : 1) * saleMult(state, `place:${id}`, noSale)));
 }
 
 export function canBuyPlace(state: GameState, id: PlaceId): boolean {
@@ -2368,6 +2420,7 @@ export function roomLeft(state: GameState, id: PlaceId): number {
 function buyPlaceRaw(state: GameState, id: PlaceId): boolean {
   if (!canBuyPlace(state, id)) return false;
   spend(state, placePrice(state, id)!);
+  if (onSale(state, `place:${id}`)) state.sale = null;
   state.bought[id] = (state.bought[id] ?? 0) + 1;
   state.stock.push(id);
   return true;
@@ -2522,7 +2575,7 @@ export function logMarket(state: GameState): void {
   const ex = expandPrice(state);
   const prem = premiumShown(state) ? PREMIUM_ORDER.map((id) => `${PREMIUM[id].name}${premiumPrice(state, id) ?? '×'}`) : [];
   const merge = mergeable(state).map((s) => `${SYMBOLS[s].name}→${SYMBOLS[MERGES[s]!].name}`);
-  glog(state, `市 所持${state.gold}${state.offer.length ? ` 仕入れ候補:${state.offer.map((o) => SYMBOLS[UPGRADE_SYMBOL[o]!.symbol].name).join('/')}` : ''}${add.length ? ` 足す:${add.join(' ')}` : ''}${rem.length ? ` 消す:${rem.join(' ')}` : ' 消す:なし'} 道具:${places.join(' ') || 'なし'}${ex !== null ? ` 広げる${ex}` : ''}${prem.length ? ` 大きな:${prem.join(' ')}` : ''}${merge.length ? ` 合体できる:${merge.join(' ')}(-${mergeCost(state)})` : ''}`);
+  glog(state, `市 所持${state.gold}${state.offer.length ? ` 仕入れ候補:${state.offer.map((o) => SYMBOLS[UPGRADE_SYMBOL[o]!.symbol].name).join('/')}` : ''}${add.length ? ` 足す:${add.join(' ')}` : ''}${rem.length ? ` 消す:${rem.join(' ')}` : ' 消す:なし'} 道具:${places.join(' ') || 'なし'}${ex !== null ? ` 広げる${ex}` : ''}${prem.length ? ` 大きな:${prem.join(' ')}` : ''}${merge.length ? ` 合体できる:${merge.join(' ')}(-${mergeCost(state)})` : ''}${state.sale?.day === state.day ? ` 半額:${saleName(state.sale.key)}` : ''}`);
 }
 
 export function glog(state: GameState, text: string): void {

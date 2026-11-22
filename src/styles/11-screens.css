@@ -1173,3 +1173,17 @@ html.idle *, html.idle *::before, html.idle *::after { animation-play-state: pau
 @keyframes spoil-edge { 50% { box-shadow: inset 0 0 0 3px #c0281b, inset 0 0 14px rgba(192, 40, 27, 0.55); } }
 .calm .plot .spoil-tag.soon, .calm .plot .spoil-tag.soon .art, .calm .plot.spoil-soon { animation: none; }
 
+/* ==== 市の割引：市ごとに1つの品が半額。左上に赤いたすき、値段は元の値段に打ち消し線 ==== */
+.item.on-sale { position: relative; overflow: hidden; background: #fff0ea; border-radius: 10px; box-shadow: inset 0 0 0 2.5px #e0402a; }
+.item .sale-tag { position: absolute; top: 9px; left: -26px; z-index: 2; width: 96px; padding: 1px 0; rotate: -38deg; text-align: center; font-family: var(--font-pop); font-size: 0.875rem; font-weight: 700; color: #fff; background: #e0402a; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.2); pointer-events: none; }
+.item .cost.sale { display: flex; flex-direction: column; align-items: center; line-height: 1.05; }
+.item .cost .was { font-size: 0.875rem; font-weight: 700; color: #8a7f72; text-decoration: line-through 2px #e0402a; }
+.item.on-sale .cost b { color: #c0281b; }
+.item.on-sale.affordable .cost b { color: inherit; }
+
+/* ==== ゲームの自己紹介：タイトルの看板の下の1行と、遊び方の一枚絵のいちばん上の1行 ==== */
+.title-tag { margin: 6px auto 0; padding: 4px 14px; max-width: 92%; text-align: center; font-family: var(--font-pop); font-size: 1rem; font-weight: 700; color: var(--ink); background: rgba(255, 248, 231, 0.88); border: 2px solid var(--wood-dark); border-radius: 999px; }
+.ov4-lead { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; padding: 6px 14px; font-size: 1.0625rem; color: var(--ink); background: #fff; border: 2px solid var(--wood-dark); border-radius: 12px; }
+.ov4-lead .art { font-size: 1.75rem; flex: none; }
+.ov4-lead b { color: #b5501c; }
+#stall .item.on-sale { background: #fff0ea; border-radius: 10px; box-shadow: inset 0 0 0 2.5px #e0402a; }

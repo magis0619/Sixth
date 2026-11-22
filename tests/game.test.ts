@@ -6,7 +6,7 @@ import { CONFIG, CROPS, CUT, EVENT_CONDITIONS, FARMERS, THUNDER_LINES, UPGRADE_S
 import {
   animalGold, buy, buyPlace, drawDay, hasRanch, hiveBonus, isColorful, canPlace, canUse, cellMultiplier, cropPrice, isPond, waterWheels, checkReady, chooseCharm, endDay, evolveTools, expand, expandPrice,
   fieldCells, isGolden, lv, multSteps, newCrop, newGame as newGameRaw, nextTax, obstacleRule, place, pullWeed, resolveAuto, ripeGroup,
-  isSpoiled, clearSpoiled, canBuy, canBuyPlace, canExpand, isMarketDay, rollObstacles, takeOffer, refreshCombos, symbolShape, canPlaceAt, isPivotAdd, isPivotPlace, mustPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult, beginDay, takeContract, mergeable, mergeSymbol, mergeCost, bagCount, skipCharm, singleMult, rollOffer, buyPremium, canBuyPremium, premiumPrice, resolveAuto as autoOf, discard, discardPrice, canDiscard, placePrice,
+  isSpoiled, clearSpoiled, canBuy, canBuyPlace, canExpand, isMarketDay, rollObstacles, takeOffer, refreshCombos, symbolShape, canPlaceAt, isPivotAdd, isPivotPlace, mustPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult, beginDay, takeContract, mergeable, mergeSymbol, mergeCost, bagCount, skipCharm, singleMult, rollOffer, buyPremium, canBuyPremium, premiumPrice, resolveAuto as autoOf, discard, discardPrice, canDiscard, placePrice, onSale,
 } from '../src/game.ts';
 import { CONTRACTS, contractGold } from '../src/contracts.ts';
 
@@ -1681,5 +1681,34 @@ describe('難しい8・9', () => {
         expect(res.ok && res.forfeited).toBeGreaterThan(0);
       }
     }
+  });
+});
+
+describe('市の割引', () => {
+  it('市の日は品が1つ半額になり、買うと割引は終わる。市の日でなければ割引はない', () => {
+    const s = game();
+    s.day = 2; // 次の朝は水曜（市の日）
+    s.bag.crow = 1;
+    beginDay(s, Math.random);
+    expect(isMarketDay(s.day)).toBe(true);
+    expect(s.sale?.day).toBe(s.day);
+    const key = s.sale!.key;
+    expect(onSale(s, key)).toBe(true);
+    // 割引の品は半額（四捨五入）
+    const [kind, id] = key.split(':');
+    const now = kind === 'place' ? placePrice(s, id as never)! : kind === 'up' ? upgradePrice(s, id as never) : expandPrice(s)!;
+    const was = kind === 'place' ? placePrice(s, id as never, true)! : kind === 'up' ? upgradePrice(s, id as never, true) : expandPrice(s, true)!;
+    // 割引の前の値段の半分（端数の丸めで1ずれることがある）
+    expect(Math.abs(now - was * CONFIG.saleRate)).toBeLessThanOrEqual(1);
+    expect(now).toBeLessThan(was);
+    // 買うと割引は消え、次の品は元の値段
+    s.gold = 9999;
+    const ok = kind === 'place' ? buyPlace(s, id as never) : kind === 'up' ? buy(s, id as never) : expand(s);
+    expect(ok).toBe(true);
+    expect(s.sale).toBeNull();
+    // 次の日（市の日でない）は割引なし
+    beginDay(s, Math.random);
+    expect(isMarketDay(s.day)).toBe(false);
+    expect(s.sale ? onSale(s, s.sale.key) : false).toBe(false);
   });
 });

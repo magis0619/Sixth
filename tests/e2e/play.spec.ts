@@ -289,7 +289,7 @@ test('初めての人はチュートリアルで、横一列に植えて列で�
   await expect(page.locator('#market-next')).toBeInViewport({ timeout: 5_000 });
   await ready(page);
   await page.click('#market-next', { force: true });
-  await expect(coach).toContainText('年貢', { timeout: 15_000 });
+  await expect(coach).toContainText('ノルマ', { timeout: 15_000 });
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('hatake-slot:run')!).results.map((r: { symbol: string }) => r.symbol))).toEqual(['seed', 'sun', 'coin']);
   await page.click('.coach-next');
   await expect(coach).toContainText('自由');

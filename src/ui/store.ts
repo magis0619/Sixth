@@ -40,6 +40,9 @@ export const el = {
 export const meta: MetaState = loadMeta();
 /** 今遊んでいるゲーム。差し替えは setState で（読む側はいつも最新を見る） */
 export let state: GameState = newGame(setupFrom(meta));
+
+/** 毎週払うお金の呼び名：ふつうは「ノルマ」、殿様モードは「年貢」 */
+export const TW = (): string => (state.lordLevel ? '年貢' : 'ノルマ');
 export function setState(s: GameState): void {
   state = s;
 }

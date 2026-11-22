@@ -5,20 +5,20 @@ import {
   MERGES, CONFIG, PLACES, PLACE_ORDER, SYMBOLS, SYMBOL_ORDER, UPGRADES, UPGRADE_SYMBOL, type AddUpgradeId, type PlaceId, type SymbolId, type UpgradeId,
 } from '../config.ts';
 import {
-  bagTotal, buy, buyPlace, canBuy, canBuyPlace, canExpand, expand, expandPrice, placePrice, nextTax, upgradeAvailable, upgradePrice, isPivotAdd, mustPlace, takeOffer, roomLeft, isRareOffer, isMarketDay, shopOpen, mergeable, mergeSymbol, mergeCost, discard, discardPrice, canDiscard, PREMIUM, PREMIUM_ORDER, type PremiumId, premiumShown, premiumPrice, canBuyPremium, buyPremium, isSuperOffer,
+  bagTotal, onSale, buy, buyPlace, canBuy, canBuyPlace, canExpand, expand, expandPrice, placePrice, nextTax, upgradeAvailable, upgradePrice, isPivotAdd, mustPlace, takeOffer, roomLeft, isRareOffer, isMarketDay, shopOpen, mergeable, mergeSymbol, mergeCost, discard, discardPrice, canDiscard, PREMIUM, PREMIUM_ORDER, type PremiumId, premiumShown, premiumPrice, canBuyPremium, buyPremium, isSuperOffer,
 } from '../game.ts';
 import { sfx, unlockAudio } from '../audio.ts';
 import { art, type ArtId } from '../art.ts';
 import { burst, center, ripple, confetti, flash, floatText, flyTo, isCalm, pop, vibrate, later } from '../fx.ts';
-import { PLACE_ART, setHtml, bagPct, costHtml, openSheet, openSheetName, say, shapeIcon, symHtml, upgradeArt, upgradeEffect, visibleOr } from './view.ts';
-import { $, el, hooks, state, ui } from './store.ts';
+import { PLACE_ART, SALE_TAG, setHtml, bagPct, costHtml, openSheet, openSheetName, say, shapeIcon, symHtml, upgradeArt, upgradeEffect, visibleOr } from './view.ts';
+import { $, el, hooks, state, ui, TW } from './store.ts';
 import { armFresh } from './tapguard.ts';
 import { reportError } from '../telemetry.ts';
 import { done, play } from './play.ts';
 import { accept, reject } from './states.ts';
 import { explainOnce, marketCard, mergeCard, offerCard } from './explain.ts';
 import { syncGold } from './gold-display.ts';
-import { fieldCells, WEEKDAYS } from './hud.ts';
+import { fieldCells } from './hud.ts';
 import { money } from './harvest-fx.ts';
 
 /** 先に置く物があるときの断りのひと言 */
@@ -50,8 +50,8 @@ export function renderBudget(): void {
   const t = nextTax(state);
   const free = state.gold - t.amount;
   const html = `<span class="bb-cell">${art('coin')}<small>${L('所持', 'Gold')}</small><b>${state.gold}</b></span>
-    <span class="bb-cell">${art('bale')}<small>${L(`年貢（${WEEKDAYS[CONFIG.taxPeriod - 1]}）`, 'Tax')}</small><b>${t.amount}</b></span>
-    <span class="bb-cell ${free >= 0 ? 'ok' : 'short'}">${art(free >= 0 ? 'bargain' : 'warn')}<small>${free >= 0 ? L('使える', 'Spendable') : L('年貢まで', 'To tax')}</small><b>${free >= 0 ? free : `−${-free}`}</b></span>`;
+    <span class="bb-cell">${art('bale')}<small>${L(`${TW()}`, 'Tax')}</small><b>${t.amount}</b></span>
+    <span class="bb-cell ${free >= 0 ? 'ok' : 'short'}">${art(free >= 0 ? 'bargain' : 'warn')}<small>${free >= 0 ? L('使える', 'Spendable') : L(`${TW()}まで`, 'To tax')}</small><b>${free >= 0 ? free : `−${-free}`}</b></span>`;
   if (bar.innerHTML !== html) bar.innerHTML = html;
 }
 
@@ -335,12 +335,13 @@ export function renderUpgradeList(container: HTMLElement, items: typeof UPGRADES
     const available = upgradeAvailable(state, u.id);
     const price = upgradePrice(state, u.id);
     const affordable = canBuy(state, u.id);
-    b.className = `item${affordable ? ' affordable' : ''}${available ? '' : ' soldout'}`;
+    const sale = available && onSale(state, `up:${u.id}`);
+    b.className = `item${affordable ? ' affordable' : ''}${available ? '' : ' soldout'}${sale ? ' on-sale' : ''}`;
     const ico = upgradeArt(u.id);
     // 「新しい作戦」の札は出さない
     const pivot = false && u.id.startsWith('add') && isPivotAdd(state, u.id as AddUpgradeId);
     b.classList.toggle('pivot', pivot);
-    const html = `<span class="ico">${ico}</span><span class="text"><span class="name">${u.name}${pivot ? `<span class="pivot-tag">${L('新しい作戦', 'New plan')}</span>` : ''}</span><span class="effect">${pivot ? CONFIG.pivotAdds[u.id]!.split(/：|: /)[1] : upgradeEffect(u.id)}</span></span>${costHtml(available ? price : null, affordable, u.id.startsWith('remove') && state.bag[UPGRADE_SYMBOL[u.id]!.symbol] > 0 ? CONFIG.marketDays.length ? L('次の市', 'Next') : L('来週', 'Next wk') : L('完了', 'Done'))}`;
+    const html = `${sale ? SALE_TAG : ''}<span class="ico">${ico}</span><span class="text"><span class="name">${u.name}${pivot ? `<span class="pivot-tag">${L('新しい作戦', 'New plan')}</span>` : ''}</span><span class="effect">${pivot ? CONFIG.pivotAdds[u.id]!.split(/：|: /)[1] : upgradeEffect(u.id)}</span></span>${costHtml(available ? price : null, affordable, u.id.startsWith('remove') && state.bag[UPGRADE_SYMBOL[u.id]!.symbol] > 0 ? CONFIG.marketDays.length ? L('次の市', 'Next') : L('来週', 'Next wk') : L('完了', 'Done'), sale ? upgradePrice(state, u.id, true) : null)}`;
     if (b.innerHTML !== html) b.innerHTML = html;
   });
   if (container.id === 'remove-shop') $('stall-empty').hidden = items.length > 0;
@@ -463,11 +464,14 @@ export function renderFarmShop(): void {
     }
     list.forEach((it, i) => {
       const b = box.children[i] as HTMLButtonElement;
-      b.className = `item${it.ok ? ' affordable' : ''}${it.price === null ? ' soldout' : ''}${it.rng ? ' has-rng' : ''}`;
+      const saleKey = it.key === 'expand' ? 'expand' : `place:${it.key}`;
+      const sale = it.price !== null && onSale(state, saleKey);
+      const was = sale ? (it.key === 'expand' ? expandPrice(state, true) : placePrice(state, it.key as PlaceId, true)) : null;
+      b.className = `item${it.ok ? ' affordable' : ''}${it.price === null ? ' soldout' : ''}${it.rng ? ' has-rng' : ''}${sale ? ' on-sale' : ''}`;
       // 買って置き待ちの品は、名前の横に緑の札
       const waiting = state.stock.filter((s) => s === it.key).length;
       const badge = waiting ? `<span class="stock-badge">${L(`置き待ち ${waiting}`, `To place ${waiting}`)}</span>` : '';
-      const html = `<span class="ico">${it.ico}</span><span class="text"><span class="name">${it.name}${badge}</span><span class="effect">${it.effect}</span></span>${it.rng}${costHtml(it.price, it.ok)}`;
+      const html = `${sale ? SALE_TAG : ''}<span class="ico">${it.ico}</span><span class="text"><span class="name">${it.name}${badge}</span><span class="effect">${it.effect}</span></span>${it.rng}${costHtml(it.price, it.ok, undefined, was)}`;
       if (b.innerHTML !== html) b.innerHTML = html;
     });
   });

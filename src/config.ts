@@ -193,7 +193,7 @@ export const SYMBOLS: Record<SymbolId, SymbolDef> = {
   mallet: { id: 'mallet', name: '打出の小槌', emoji: '🔨', kind: 'auto', desc: '今日の売値×2', feverDesc: '大当たり×3', rarity: 'super' },
   hawk: { id: 'hawk', name: 'タカ', emoji: '🦅', kind: 'auto', desc: '袋のカラスを1枚追い出す', feverDesc: '大当たり×3', rarity: 'normal' },
   swallow: { id: 'swallow', name: 'ツバメ', emoji: '🐦', kind: 'auto', desc: '袋の虫を1枚追い出す（虫がいなければ+2）', feverDesc: '大当たり×3', rarity: 'normal' },
-  koban: { id: 'koban', name: '小判', emoji: '🪙', kind: 'auto', desc: '+12（年貢を納めるたびに+3）', feverDesc: '大当たり×3', rarity: 'rare', base: 'coin' },
+  koban: { id: 'koban', name: '小判', emoji: '🪙', kind: 'auto', desc: '+12（ノルマを払うたびに+3）', feverDesc: '大当たり×3', rarity: 'rare', base: 'coin' },
   locust: { id: 'locust', name: 'イナゴ', emoji: '🦗', kind: 'auto', desc: '出るたびに1/2で袋に1匹増える（畑はかじらない）', feverDesc: '大群：増えるときは2匹', rarity: 'bad' },
 };
 
@@ -324,6 +324,8 @@ export const CONFIG = {
   /** 始めの広さ（3×3）。広げるたびに列→行の順に1つ増える */
   startCols: 3,
   startRows: 3,
+  /** 市の割引：市ごとに品を1つ選んで、この割合の値段にする（買うと割引は終わり） */
+  saleRate: 0.5,
   /** 畑を広げる価格（広げた回数ごと。3×3 → 4×3 → 4×4 → 5×4 → 5×5）。かなり高め */
   expandPrices: [70, 130, 220, 340],
   /** 道具・特別なマスは同じ物を買うたびにこの倍率で高くなる */
@@ -743,13 +745,13 @@ export function curseText(id: CharmId, n: number): string {
 export const CHARM_CURSE: Partial<Record<CharmId, { text: (n: number) => string; bag?: Partial<Record<SymbolId, number>> }>> = {
   gentleRain: { text: () => '袋にカラス+1', bag: { crow: 1 } },
   aging: { text: () => '実った作物をカラスが食べやすい（×1.5）' },
-  seedSack: { text: (n) => `年貢+${10 * n}%` },
+  seedSack: { text: (n) => `ノルマ+${10 * n}%` },
   sunBlessing: { text: () => '袋にカラス+2', bag: { crow: 2 } },
   queenHive: { text: () => '袋に虫+2', bag: { bug: 2 } },
-  scarecrow: { text: (n) => `年貢+${5 * n}%` },
-  bumper: { text: (n) => `年貢+${10 * n}%` },
+  scarecrow: { text: (n) => `ノルマ+${5 * n}%` },
+  bumper: { text: (n) => `ノルマ+${10 * n}%` },
   bugWard: { text: () => '単品の売値がさらに半分' },
-  artisan: { text: () => '年貢+20%' },
+  artisan: { text: () => 'ノルマ+20%' },
   rancher: { text: (n) => `作物の売値−${10 * n}%` },
   bigGame: { text: (n) => `列の倍率−${(0.2 * n).toFixed(1)}` },
   taxRelief: { text: (n) => `市の値段+${30 * n}%` },
@@ -785,7 +787,7 @@ export const CHARMS: Record<CharmId, CharmDef> = {
   bigGame: { id: 'bigGame', tier: 'uncommon', name: '大物狙い', emoji: '🍉', desc: (n) => `スイカの売値＋${50 * n}`, max: 3 },
   wheelwright: { id: 'wheelwright', tier: 'uncommon', name: '水車職人', emoji: '🛞', desc: () => '水車のお金×2', max: 1 },
   tillMaster: { id: 'tillMaster', tier: 'common', name: '耕作上手', emoji: '⛏️', desc: () => '耕した土に植えると成長+2', max: 1 },
-  taxRelief: { id: 'taxRelief', tier: 'uncommon', name: '年貢の減免', emoji: '📜', desc: (n) => `年貢−${Math.min(30, 10 * n)}%`, max: 3 },
+  taxRelief: { id: 'taxRelief', tier: 'uncommon', name: 'ノルマ軽減', emoji: '📜', desc: (n) => `ノルマ−${Math.min(30, 10 * n)}%`, max: 3 },
   // 組み合わせ（お守りではない）：同じ日のスロットに2つそろうと、その日だけ自動で起きる（COMBOS）
   thunderstorm: { id: 'thunderstorm', tier: 'rare', name: '雷雨', emoji: '⛈️', desc: () => '今日は雨が斜めにも効く', max: 1, special: { kind: 'combo', hint: '雨2つと雷がそろうと…？' } },
   tomatoFest: { id: 'tomatoFest', tier: 'rare', name: 'トマト祭り', emoji: '🍅', desc: () => '今日はトマトだけの列 さらに×1.5', max: 1, special: { kind: 'combo', hint: 'トマトの種が2つ出ると…？' } },
@@ -799,7 +801,7 @@ export const CHARMS: Record<CharmId, CharmDef> = {
   festival: { id: 'festival', tier: 'rare', name: '豊年祭', emoji: '🎊', desc: () => '今日は全部の売値×1.5', max: 1, special: { kind: 'combo', hint: '雨と太陽と満月がそろうと…？' } },
   bumperHarvest: { id: 'bumperHarvest', tier: 'rare', name: '大豊作', emoji: '🌾', desc: () => '畑いっぱいの作物を一度に売った！（1回だけの大当たり）', max: 1, special: { kind: 'event', hint: '畑いっぱいを一度に売ると…？' } },
   crowReturn: { id: 'crowReturn', tier: 'rare', name: 'カラス返し', emoji: '🪃', desc: () => 'カラスが来るたび +3', max: 1, special: { kind: 'event', hint: 'カラスにたくさん食べられると…？' } },
-  lastStraw: { id: 'lastStraw', tier: 'rare', name: '首の皮', emoji: '🧵', desc: () => '次の年貢が半分', max: 1, special: { kind: 'event', hint: '年貢をギリギリで…？' } },
+  lastStraw: { id: 'lastStraw', tier: 'rare', name: '首の皮', emoji: '🧵', desc: () => '次のノルマが半分', max: 1, special: { kind: 'event', hint: 'ノルマをギリギリで…？' } },
   crowFriend: { id: 'crowFriend', tier: 'uncommon', name: 'カラスの友', emoji: '🐦', desc: () => 'カラスが作物を食べず、来るたびに+3', max: 1 },
   greedy: { id: 'greedy', tier: 'uncommon', name: '欲張り', emoji: '💰', desc: () => '列の倍率+0.2', max: 1 },
   earlyCrop: { id: 'earlyCrop', tier: 'rare', name: '早生', emoji: '🌱', desc: () => '植えた作物は1段階育った状態から（1回早く実る）', max: 1 },
@@ -874,11 +876,11 @@ export const TOOL_EVOLVE: Partial<Record<PlaceId, { to: PlaceId; need: number; w
 /** 難しいモードの段階。1つ下をクリアすると次が開く。厳しさは積み重なる */
 export const DIFFICULTIES = [
   { name: 'ふつう', desc: '' },
-  { name: '難しい1', desc: '年貢×1.15' },
-  { name: '難しい2', desc: '市の値段×1.3・年貢×1.2' },
-  { name: '難しい3', desc: 'お邪魔が早く来る・年貢×1.3' },
-  { name: '難しい4', desc: '単品×0.3・年貢×1.45' },
-  { name: '難しい5', desc: '増えるイナゴ・年貢×1.5' },
+  { name: '難しい1', desc: 'ノルマ×1.15' },
+  { name: '難しい2', desc: '市の値段×1.3・ノルマ×1.2' },
+  { name: '難しい3', desc: 'お邪魔が早く来る・ノルマ×1.3' },
+  { name: '難しい4', desc: '単品×0.3・ノルマ×1.45' },
+  { name: '難しい5', desc: '増えるイナゴ・ノルマ×1.5' },
   { name: '難しい6', desc: '実りは3日で傷む' },
   { name: '難しい7', desc: '混ぜた列は倍率が下がる' },
   { name: '難しい8', desc: '置き物に毎週の維持費' },

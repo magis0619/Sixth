@@ -119,14 +119,19 @@ export const PLACE_ART: Record<PlaceId, ArtId> = {
 };
 
 
-export function costHtml(price: number | null, affordable: boolean, doneText = L('完了', 'Done')): string {
+/** 割引の品の札：左上に「半額」のたすき（割引の前の値段は値段の札に打ち消し線で出す） */
+export const SALE_TAG = `<span class="sale-tag">${L('半額', 'Half off')}</span>`;
+
+/** was：割引の前の値段（割引の品のときだけ。値段の上に打ち消し線で出す） */
+export function costHtml(price: number | null, affordable: boolean, doneText = L('完了', 'Done'), was: number | null = null): string {
   if (price === null) return `<span class="cost done">${doneText}</span>`;
+  const old = was !== null && was > price ? `<s class="was">${was}</s>` : '';
   // 買うと次の年貢に足りなくなるときは、赤い注意を出す（買えなくはしない）
   const risk = affordable && state.day > 0 && state.gold - price < nextTax(state).amount;
   return affordable
-    ? `<span class="cost${risk ? ' tax-risk' : ''}"><b>${gold(price)}</b>${risk ? `<small>${L(`残り${state.gold - price}`, `Left ${state.gold - price}`)}</small>` : ''}</span>`
+    ? `<span class="cost${risk ? ' tax-risk' : ''}${old ? ' sale' : ''}">${old}<b>${gold(price)}</b>${risk ? `<small>${L(`残り${state.gold - price}`, `Left ${state.gold - price}`)}</small>` : ''}</span>`
     : // 足りないときは紙の札だけで伝える（「あと○○」は札が縦に長くなるので出さない）
-      `<span class="cost"><b>${gold(price)}</b></span>`;
+      `<span class="cost${old ? ' sale' : ''}">${old}<b>${gold(price)}</b></span>`;
 }
 
 export function bagPct(bag: Record<SymbolId, number>, id: SymbolId): number {

@@ -6,7 +6,7 @@ import { chooseCharm, skipCharm } from '../game.ts';
 import { art, type ArtId } from '../art.ts';
 import { sfx } from '../audio.ts';
 import { burst, center, coinRain, flash, floatText, flyTo, isCalm, later, pop, shake, slamText, sleep, speedLines, vibrate } from '../fx.ts';
-import { el, hooks, rng, state } from './store.ts';
+import { el, hooks, rng, state, TW } from './store.ts';
 import { say, symHtml, visibleOr } from './view.ts';
 import { PEST_EFFECT, PEST_TARGET } from './explain.ts';
 
@@ -24,7 +24,7 @@ export async function showTaxStamp(amount: number, ok: boolean): Promise<void> {
   // 役人が拍子木を鳴らしてやって来て、印を押す
   const official = document.createElement('div');
   official.className = `official${ok ? '' : ' angry'}`;
-  official.innerHTML = `<span class="official-body">${art('official')}</span><span class="official-say">${ok ? L('年貢を納めよ！', 'Pay your taxes!') : L('年貢が足りぬ！', 'Not enough tax!')}</span>`;
+  official.innerHTML = `<span class="official-body">${art('official')}</span><span class="official-say">${ok ? L(`${TW()}を払え！`, 'Pay your taxes!') : L(`${TW()}が足りぬ！`, 'Not enough tax!')}</span>`;
   document.body.appendChild(official);
   sfx.official();
   official.animate([{ transform: 'translateX(120%)' }, { transform: 'translateX(0)' }], { duration: 420, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'forwards' });
@@ -38,8 +38,8 @@ export async function showTaxStamp(amount: number, ok: boolean): Promise<void> {
   const stamp = document.createElement('div');
   stamp.className = `stamp${ok ? ' ok' : ''}`;
   stamp.innerHTML = ok
-    ? `${art('bale')} ${L('年貢 納付！', 'TAX PAID!')}<small>−${gold(amount)}</small>`
-    : `${art('bale')} ${L('年貢 未納…', 'UNPAID…')}<small>${L(`${amount} 払えなかった`, `Couldn't pay ${amount}g`)}</small>`;
+    ? `${art('bale')} ${L(`${TW()} 支払い！`, 'TAX PAID!')}<small>−${gold(amount)}</small>`
+    : `${art('bale')} ${L(`${TW()} 未払い…`, 'UNPAID…')}<small>${L(`${amount} 払えなかった`, `Couldn't pay ${amount}g`)}</small>`;
   document.body.appendChild(stamp);
   stamp.animate(
     [
@@ -78,9 +78,9 @@ async function showTaxProgress(): Promise<void> {
   root.className = 'tax-progress';
   const endless = paid > goal;
   root.innerHTML = endless
-    ? `<div class="tp-card"><b class="tp-title">${L(`エンドレス ${paid - goal}回目`, `Endless #${paid - goal}`)}</b><span class="tp-sub">${L('年貢を納めた', 'Tax paid')}</span></div>`
+    ? `<div class="tp-card"><b class="tp-title">${L(`エンドレス ${paid - goal}回目`, `Endless #${paid - goal}`)}</b><span class="tp-sub">${L(`${TW()}を払った`, 'Tax paid')}</span></div>`
     : `<div class="tp-card">
-        <b class="tp-title">${L(`年貢 ${paid} / ${goal}`, `Tax ${paid} / ${goal}`)}</b>
+        <b class="tp-title">${L(`${TW()} ${paid} / ${goal}`, `Tax ${paid} / ${goal}`)}</b>
         <div class="tp-track">${Array.from({ length: goal }, (_, k) => `<span class="tp-step${k < paid - 1 ? ' done' : k === paid - 1 ? ' now' : ''}">${art('bale')}</span><i class="tp-line${k < paid - 1 || (k === goal - 1 && paid >= goal) ? ' done' : ''}"></i>`).join('')}<span class="tp-goal${paid >= goal ? ' reached' : ''}">${art('trophy')}</span></div>
         <span class="tp-sub">${paid >= goal ? L('クリア！', 'Cleared!') : L(`クリアまで あと${goal - paid}回`, `${goal - paid} more to clear`)}</span>
       </div>`;

@@ -14,7 +14,7 @@ import { art, type ArtId } from '../art.ts';
 import { sfx, unlockAudio } from '../audio.ts';
 import { burst, center, confetti, firework, flash, floatText, isCalm, shake, toggleCalm, vibrate } from '../fx.ts';
 import { track } from '../telemetry.ts';
-import { $, el, hooks, meta, state } from './store.ts';
+import { $, el, hooks, meta, state, TW } from './store.ts';
 import { PLACE_ART, say, symHtml, upgradeArt } from './view.ts';
 import { clearRun, loadBest, loadRun, saveBest } from './save.ts';
 import { stopHeartbeat } from './scene.ts';
@@ -52,16 +52,16 @@ function resultBody(kind: 'fail' | 'clear' | 'endless', opts: { taxAmount: numbe
   const failed = kind === 'fail' || kind === 'endless';
   // A：プレイ結果
   const badge = kind === 'clear' ? `${art('trophy')}<b>${L('クリア', 'Cleared')}</b>` : kind === 'endless' ? `${art('trophy')}<b>${L('クリア済み', 'Cleared')}</b>` : `${art('warn')}<b>${L('失敗', 'Failed')}</b>`;
-  const title = kind === 'clear' ? L('クリア！', 'You win!') : kind === 'endless' ? L('エンドレス終了', 'Endless over') : L('年貢が払えなかった…', "Couldn't pay the tax…");
+  const title = kind === 'clear' ? L('クリア！', 'You win!') : kind === 'endless' ? L('エンドレス終了', 'Endless over') : L(`${TW()}が払えなかった…`, "Couldn't pay the tax…");
   const money = failed
     ? `<div class="rs-money">
-        <p><span>${art('bale')}${L('必要な年貢', 'Tax due')}</span><b>${opts.taxAmount}</b></p>
+        <p><span>${art('bale')}${L(`必要な${TW()}`, 'Tax due')}</span><b>${opts.taxAmount}</b></p>
         <p><span>${art('coin')}${L('持っていたお金', 'Your gold')}</span><b>${state.gold}</b></p>
         <p class="neg"><span>${art('warn')}${L('足りなかった', 'Short by')}</span><b>−${short}</b></p>
       </div>`
     : `<div class="rs-money">
         <p><span>${art('coin')}${L('稼いだ合計', 'Total earned')}</span><b>${st.totalEarned}</b></p>
-        <p><span>${art('bale')}${L('納めた年貢', 'Taxes paid')}</span><b>${st.taxTotal ?? 0}</b></p>
+        <p><span>${art('bale')}${L(`払った${TW()}`, 'Taxes paid')}</span><b>${st.taxTotal ?? 0}</b></p>
         <p class="pos"><span>${art('sparkle')}${L('手元に残った', 'Left over')}</span><b>${state.gold}</b></p>
       </div>`;
   // 殿様モード：負けたら怒り顔、クリアしたら満足の顔
@@ -72,7 +72,7 @@ function resultBody(kind: 'fail' | 'clear' | 'endless', opts: { taxAmount: numbe
       <h2 class="rs-title">${title}</h2>
       <div class="rs-pills">
         <span>${art('calendar')}${L(`<b>${state.day}${u('日目')}</b>`, `Day <b>${state.day}</b>`)}${opts.isNew ? `<em>${L('最高', 'Best')}</em>` : ''}</span>
-        <span>${art('bale')}${L(`年貢 <b>${state.taxesPaid}${u(`/${CONFIG.winTaxes}回`)}</b>`, `Tax <b>${state.taxesPaid}</b>/${CONFIG.winTaxes}`)}</span>
+        <span>${art('bale')}${L(`${TW()} <b>${state.taxesPaid}${u(`/${CONFIG.winTaxes}回`)}</b>`, `Tax <b>${state.taxesPaid}</b>/${CONFIG.winTaxes}`)}</span>
       </div>
       ${money}
     </section>`;
@@ -102,7 +102,7 @@ function resultBody(kind: 'fail' | 'clear' | 'endless', opts: { taxAmount: numbe
     line: ['tomato', sold ? L(`${sold}個中 ${lineCrops}個を列で`, `${lineCrops} of ${sold} in lines`) : L('まだ売っていない', 'Nothing sold yet')],
     use: ['seed', L(`${manual}回中 ${st.expired}回が使わず消えた`, `${st.expired} of ${manual} went unused`)],
     guard: ['crow', st.cropsEaten ? L(`${st.cropsEaten}個 取られた`, `${st.cropsEaten} lost`) : L('1つも取られなかった', 'None lost')],
-    margin: ['coin', ratio ? L(`年貢の${ratio}倍 稼いだ（2.5倍で満点）`, `Earned ${ratio}× the tax (2.5× is full marks)`) : L('まだ年貢を納めていない', 'No tax paid yet')],
+    margin: ['coin', ratio ? L(`${TW()}の${ratio}倍 稼いだ（2.5倍で満点）`, `Earned ${ratio}× the tax (2.5× is full marks)`) : L(`まだ${TW()}を払っていない`, 'No tax paid yet')],
   };
   const low = Math.min(...r.parts.map((p) => p.value));
   const parts = `<section class="rs-sec">
@@ -120,7 +120,7 @@ function resultBody(kind: 'fail' | 'clear' | 'endless', opts: { taxAmount: numbe
         ${tile('coin', L('一番稼いだ日', 'Best day'), best.gold ? L(`${best.day}${u('日目')} +${best.gold}`, `Day ${best.day} +${best.gold}`) : '—')}
         ${tile('tomato', L('列で売った', 'Lines sold'), L(`${st.lineHarvests}${u('回')}`, `${st.lineHarvests}`))}
         ${tile('crow', L('取られた作物', 'Crops lost'), L(`${st.cropsEaten}${u('個')}`, `${st.cropsEaten}`))}
-        ${tile('bale', L('年貢を納めた', 'Taxes paid'), L(`${state.taxesPaid}${u('回')}`, `${state.taxesPaid}`))}
+        ${tile('bale', L(`${TW()}を払った`, 'Taxes paid'), L(`${state.taxesPaid}${u('回')}`, `${state.taxesPaid}`))}
       </div>
     </section>`;
   // E：次へのアドバイス（このプレイの数字から、最大3つ）
@@ -131,7 +131,7 @@ function resultBody(kind: 'fail' | 'clear' | 'endless', opts: { taxAmount: numbe
     line: () => (sold - lineCrops > 0 ? ['tomato', L(`単品で${sold - lineCrops}個売った`, `Sold ${sold - lineCrops} as singles`), L('3つ並べて×1.3、4つで×1.5', '3 in a row ×1.3, 4 ×1.5')] : null),
     use: () => (st.expired > 0 ? ['seed', L(`出目が${st.expired}回消えた`, `${st.expired} reels went unused`), L('種が少ないと、雨・太陽が余る', 'Few seeds leave rain and sun idle')] : null),
     guard: () => (st.cropsEaten > 0 ? ['crow', L(`作物を${st.cropsEaten}個取られた`, `Lost ${st.cropsEaten} crops`), L(`かかし（${scare}）で周り8マスを守れる`, `A scarecrow (${scare}) guards 8 plots`)] : null),
-    margin: () => (ratio ? ['coin', L(`稼ぎは年貢の${ratio}倍`, `Earned ${ratio}× the tax`), L('長い列・堆肥で売値を上げよう', 'Long lines and compost raise prices')] : null),
+    margin: () => (ratio ? ['coin', L(`稼ぎは${TW()}の${ratio}倍`, `Earned ${ratio}× the tax`), L('長い列・堆肥で売値を上げよう', 'Long lines and compost raise prices')] : null),
   };
   // 負けたときは不足額を先に。年貢の前に使いすぎていたらそれを添える
   // 今週（前の年貢の次の日から）市などで使った額。年貢の4日前の市で使って足りなくなることがある（プレイログで確かめた）
@@ -227,7 +227,7 @@ export function resultText(endedAfterClear: boolean): string {
   const charms = state.stats.charms.map((c) => CHARMS[c.id].emoji).join('');
   return [
     `🌾${L('畑スロット', 'Farm Slots')} ${head}`,
-    L(`年貢 ${state.taxesPaid}回納付 / 総収入 ${state.stats.totalEarned} / リール${state.reels}本`, `Taxes paid ${state.taxesPaid} / earned ${state.stats.totalEarned}g / ${state.reels} reels`),
+    L(`${TW()} ${state.taxesPaid}回払った / 総収入 ${state.stats.totalEarned} / リール${state.reels}本`, `Taxes paid ${state.taxesPaid} / earned ${state.stats.totalEarned}g / ${state.reels} reels`),
     charms ? `${L('お守り', 'Charms')} ${charms}` : '',
     L(`フィーバー${state.stats.fevers}回・列${state.stats.lineHarvests}回`, `Fevers ${state.stats.fevers} · lines ${state.stats.lineHarvests}`),
     SHARE_URL,
@@ -286,13 +286,13 @@ export function showHelp(tab: HelpTab = 'rules', onClose?: () => void): void {
       <li>${art('tomato')}<span>${L('並ばない単品＝半値', 'Singles = half price')}</span></li>
       <li>${art('flame')}<span>${L('同じ絵柄3つ＝フィーバー', '3 of a symbol = FEVER')}</span></li>
     </ul>
-    <h4 class="help-k">${L('年貢', 'Tax')}</h4>
+    <h4 class="help-k">${L(`${TW()}`, 'Tax')}</h4>
     <ul class="help-list icons">
-      <li>${art('bale')}<span>${L(`${CONFIG.taxPeriod}日ごとに年貢`, `Tax every ${CONFIG.taxPeriod} days`)}</span></li>
+      <li>${art('bale')}<span>${L(`${CONFIG.taxPeriod}日ごとに${TW()}`, `Tax every ${CONFIG.taxPeriod} days`)}</span></li>
       <li>${art('warn')}<span>${L('払えないと終わり', "Can't pay = game over")}</span></li>
-      <li>${art('trophy')}<span>${L(`${CONFIG.winTaxes}回納めたらクリア`, `Pay ${CONFIG.winTaxes} times to win`)}</span></li>
-      <li>${art('gift')}<span>${L('年貢のあと お守りを1つ', 'After tax: pick a charm')}</span></li>
-      <li>${art('crow')}<span>${L('年貢のあと お邪魔が増える', 'After tax: pests join')}</span></li>
+      <li>${art('trophy')}<span>${L(`${CONFIG.winTaxes}回払ったらクリア`, `Pay ${CONFIG.winTaxes} times to win`)}</span></li>
+      <li>${art('gift')}<span>${L(`${TW()}のあと お守りを1つ`, 'After tax: pick a charm')}</span></li>
+      <li>${art('crow')}<span>${L(`${TW()}のあと お邪魔が増える`, 'After tax: pests join')}</span></li>
     </ul>
     <h4 class="help-k">${L('市と畑の品', 'Market & farm items')}</h4>
     <ul class="help-list icons">
@@ -434,6 +434,7 @@ export function showTitle(): void {
         <span class="board-post l"></span><span class="board-post r"></span>
         <span class="board-crow">${art('crow')}</span>
       </div>
+      <p class="title-tag">${L(`借りた畑で、${CONFIG.winTaxes}週のノルマを払いきろう`, `Rent a farm. Pay the quota for ${CONFIG.winTaxes} weeks`)}</p>
       <div class="title-actions">
         <button class="primary title-start" id="title-start">${L('スタート', 'Start')}</button>
         ${lordMax(meta) > 0 ? `<button class="secondary title-lord" id="title-lord">${art('lord')}<span>${L('殿様モード', 'Lord mode')}</span></button>` : ''}
@@ -507,7 +508,7 @@ export function showRecords(): void {
       <ul class="records">
         ${row(art('sprout'), L('遊んだ回数', 'Games played'), `${meta.plays}`)}
         ${row(art('trophy'), L('クリア', 'Wins'), `${meta.clears}`)}
-        ${row(art('calendar'), L('最高到達', 'Best run'), best.day ? L(`${best.day}${u('日目')}（年貢${best.taxes}${u('回')}）`, `Day ${best.day} (${best.taxes} taxes)`) : '—')}
+        ${row(art('calendar'), L('最高到達', 'Best run'), best.day ? L(`${best.day}${u('日目')}（${TW()}${best.taxes}${u('回')}）`, `Day ${best.day} (${best.taxes} taxes)`) : '—')}
         ${row(art('skull'), L('一番上の難しさ', 'Hardest cleared'), meta.maxCleared >= 0 ? DIFFICULTIES[meta.maxCleared].name : L('まだクリアしていない', 'Not yet'))}
         ${row(art('tomato'), L('列で売った（累計）', 'Lines sold (total)'), `${meta.lines}`)}
         ${row(art('sparkle'), L('特別なお守り', 'Special charms'), `${meta.discovered.filter((id) => specials.includes(id)).length} / ${specials.length}`)}
@@ -621,7 +622,7 @@ export function showUnlock(source = 'title'): void {
         <div class="ul-body">
           ${section('seed', L('絵柄', 'Symbols'), L('市に並ぶ', 'Appear at market'), adds)}
           ${section('sparkle', L('超レアの絵柄', 'Super rare symbols'), L('市にまれに並ぶ', 'Rarely at market'), supers)}
-          ${section('sunBlessing', L('お守り', 'Charms'), L('年貢のあとに出る', 'Offered after tax'), charms)}
+          ${section('sunBlessing', L('お守り', 'Charms'), L(`${TW()}のあとに出る`, 'Offered after tax'), charms)}
           ${fxSec}
           ${masteries.length ? section('farmMaster', L('農家の腕前', 'Farmer mastery'), L('始めに足される', 'Added at start'), masteries) : ''}
           <section class="ul-sec"><h3>${art('question')}<span>${L('組み合わせのヒント', 'Combo hints')}</span><span class="ul-count">${meta.comboHints.length}</span></h3>
@@ -875,7 +876,7 @@ const DIFF_RULES: { ico: ArtId; text: string }[][] = [
   [{ ico: 'dread6', text: L(`実りは${CONFIG.spoilDays}日で傷んで売れなくなる`, `Ripe crops spoil in ${CONFIG.spoilDays} days and can't be sold`) }],
   [{ ico: 'dread7', text: L('混ぜた列は倍率の上乗せが半分', 'Mixed lines: bonus halved') }],
   [{ ico: 'dread8', text: L(`置いた道具に毎週の維持費（値段の${Math.round(CONFIG.upkeepRate * 100)}%）`, `Weekly upkeep for placed tools (${Math.round(CONFIG.upkeepRate * 100)}% of price)`) }],
-  [{ ico: 'dread9', text: L('次の年貢を超えるお金は持ち越せない', 'Gold above the next tax is lost after paying') }],
+  [{ ico: 'dread9', text: L(`次の${TW()}を超えるお金は持ち越せない`, 'Gold above the next tax is lost after paying') }],
 ];
 
 let diffSwipeX = 0;
@@ -891,12 +892,12 @@ export function showDifficulty(): void {
     const oldRules = DIFF_RULES.slice(1, lv).flat();
     const mult = (k: number) => String(Number(difficultyTaxMult(k).toFixed(2)));
     // 年貢は段ごとに上がる：NEW の行に「前→今」
-    const tax = lv > 0 && difficultyTaxMult(lv) !== difficultyTaxMult(lv - 1) ? `<li class="dr-tax new">${art('bale')}<span>${L(`年貢 ×${mult(lv - 1)} → <b>×${mult(lv)}</b>`, `Tax ×${mult(lv - 1)} → <b>×${mult(lv)}</b>`)}</span><em>NEW</em></li>` : '';
+    const tax = lv > 0 && difficultyTaxMult(lv) !== difficultyTaxMult(lv - 1) ? `<li class="dr-tax new">${art('bale')}<span>${L(`${TW()} ×${mult(lv - 1)} → <b>×${mult(lv)}</b>`, `Tax ×${mult(lv - 1)} → <b>×${mult(lv)}</b>`)}</span><em>NEW</em></li>` : '';
     // 年貢のグラフ：クリアまでの7回。いちばん難しい段を天井にして、段を上げると棒が伸びて見えるように
     const plan = taxPlan(lv);
     const top = Math.max(...taxPlan(DIFFICULTIES.length - 1));
-    const taxChart = `<div class="ds-tax" aria-label="${L('年貢の額', 'Tax amounts')}">
-      <p class="dt-head">${art('bale')}<b>${L('年貢の額', 'Tax amounts')}</b></p>
+    const taxChart = `<div class="ds-tax" aria-label="${L(`${TW()}の額`, 'Tax amounts')}">
+      <p class="dt-head">${art('bale')}<b>${L(`${TW()}の額`, 'Tax amounts')}</b></p>
       <div class="dt-bars">${plan
         .map((v, i) => `<div class="dt-col"><b>${v}</b><span class="dt-track"><i class="dt-bar" style="height:${((v / top) * 100).toFixed(1)}%"></i></span><small>${i + 1}</small></div>`)
         .join('')}</div>
@@ -917,7 +918,7 @@ export function showDifficulty(): void {
             <span class="ds-num">${locked ? art('lock') : lv === 0 ? art('sprout') : art(`dread${lv}` as ArtId)}</span>
             ${lv > 0 && !locked ? `<span class="ds-lv">${lv}</span>` : ''}
             ${cleared ? `<span class="ds-cleared">${art('trophy')}${L('クリア済み', 'Cleared')}</span>` : ''}
-            ${lv > 0 && !locked ? `<span class="ds-mult">${art('bale')}<small>${L('年貢', 'Tax')}</small><b>×${mult(lv)}</b></span>` : ''}
+            ${lv > 0 && !locked ? `<span class="ds-mult">${art('bale')}<small>${L(`${TW()}`, 'Tax')}</small><b>×${mult(lv)}</b></span>` : ''}
           </div>
           <button class="ds-arrow r" id="diff-next" ${lv >= DIFFICULTIES.length - 1 ? 'disabled' : ''} aria-label="${L('むずかしく', 'Harder')}">▶</button>
         </div>

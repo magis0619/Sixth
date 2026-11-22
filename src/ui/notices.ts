@@ -8,7 +8,7 @@ import { saveMeta } from '../meta.ts';
 import { art } from '../art.ts';
 import { burst, center, coinRain, flash, floatText, pop, sleep, slamText, vibrate, later } from '../fx.ts';
 import { visibleOr } from './view.ts';
-import { el, meta, state } from './store.ts';
+import { el, meta, state, TW } from './store.ts';
 
 /** 出会った絵柄（袋・リール・仕入れ）とお守り（3択・持ち物）を図鑑に記録する。まだのものは図鑑で秘密 */
 export function noteSeen(): void {
@@ -54,7 +54,7 @@ export function playNotice(n: Notice): void {
   if (n.kind === 'ready') {
     sfx.rare();
     floatText(top.x, top.y, L(`${CHARMS[n.id].name} 解放！`, `${CHARMS[n.id].name} unlocked!`), { cls: 'gold', size: 1.2, dur: 1800 });
-    floatText(top.x, top.y + 34, L('次の年貢で選べる', 'Pickable after the next tax'), { size: 0.7, dur: 1800 });
+    floatText(top.x, top.y + 34, L(`次の${TW()}で選べる`, 'Pickable after the next tax'), { size: 0.7, dur: 1800 });
     burst(top.x, top.y, [art(n.id), '✨', '⭐'], 14, 110);
     pop(tab, 1.2);
   } else if (n.kind === 'got') {
