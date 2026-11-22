@@ -4,7 +4,7 @@ import {
   symbolBase, type ShapeId, DIFFICULTIES, FARMERS, TOOL_EVOLVE, CONFIG, CROPS, PLACES, SEEDS, SYMBOLS, UPGRADE_SYMBOL, type PlaceId, type SymbolId,
 } from './config.ts';
 import {
-  weekDay, canPlace, canUse, cellMultiplier, cropPrice, drawSymbol, endDay, inField, inSameCropLine, isRipe, place, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, wheelGold, animalGold, plantLineMult, mustPlace, refreshCombos, symbolShape, isRareOffer, isMarketDay, shopOpen, nextMarketDay, beginDay, spinDay, sellBlock, isFlooded,
+  weekDay, spoilLeft, canPlace, canUse, cellMultiplier, cropPrice, drawSymbol, endDay, inField, inSameCropLine, isRipe, place, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, wheelGold, animalGold, plantLineMult, mustPlace, refreshCombos, symbolShape, isRareOffer, isMarketDay, shopOpen, nextMarketDay, beginDay, spinDay, sellBlock, isFlooded,
 } from './game.ts';
 import { isMuted, sfx, suspendAudio, toggleMute, unlockAudio } from './audio.ts';
 import { saveMeta, setupFrom } from './meta.ts';
@@ -373,6 +373,16 @@ function renderField(): void {
         if (def.big) html += `<span class="badge-line">${L('大物', 'Big')}</span>`;
         else if (inLine) html += `<span class="badge-line">${MARK_LINE}×${fmtMult(mult)}</span>`;
         label = L(`${def.name} 実、タップで${price}で売る${def.big ? '' : inLine ? '（列ごと）' : '（単品は半値）'}`, `${def.name}, ripe: tap to sell for ${price}g${def.big ? '' : inLine ? ' (whole line)' : ' (single: half price)'}`);
+        // 難しい7：混ぜた列は初めて出たときに一言
+        if (inLine && state.difficulty >= CONFIG.mixedFrom && !inSameCropLine(state, i)) hintOnce('mixed', `${art('dread7')} ${L('作物を混ぜた列は、倍率の上乗せが半分。同じ作物でそろえると高い', 'Mixed-crop lines get half the bonus. Match crops to sell high')}`);
+        // 難しい6：明日傷む実りは「あと1日」、傷んだ実りは茶色くして「傷み」
+        const left = spoilLeft(state, crop);
+        if (left !== null && left <= 1) {
+          if (left === 0) cls.push('spoiled');
+          html += `<span class="spoil-tag">${left === 0 ? L('傷み', 'Spoiled') : L('あと1日', '1 day left')}</span>`;
+          label += left === 0 ? L('、傷んで売値半分', ', spoiled: half price') : L('、明日傷む', ', spoils tomorrow');
+          hintOnce('spoil', `${art('dread6')} ${L(`実りは<b>${CONFIG.spoilDays}日</b>売らないと傷んで、売値が半分になる`, `Ripe crops spoil after <b>${CONFIG.spoilDays} days</b> and sell for half`)}`);
+        }
       } else {
         html += `<span class="pips">${Array.from({ length: def.ripe }, (_, k) => `<i class="pip${k < crop.growth ? ' on' : ''}"></i>`).join('')}</span>`;
         label = L(`${def.name} ${STAGE_NAMES[stageOf(crop)]}（あと${def.ripe - crop.growth}で実る）`, `${def.name}, ${STAGE_NAMES[stageOf(crop)]} (ripe in ${def.ripe - crop.growth})`);

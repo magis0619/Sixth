@@ -1609,3 +1609,39 @@ describe('殿様モード', () => {
     expect(s.field[at(0, 0)]).not.toBeNull();
   });
 });
+
+describe('難しい6・7', () => {
+  it('難しい6：実ってから3夜を越すと傷み、売値が半分になる（難しい5では傷まない）', () => {
+    for (const [diff, spoiled] of [[5, false], [6, true]] as [number, boolean][]) {
+      const s = newGame({ shop: ['addSun'], charmPool: [], difficulty: diff });
+      s.charms.sunBlessing = 0;
+      s.day = 2;
+      ripe(s, 'tomato', [at(0, 0)]);
+      const fresh = cropPrice(s, s.field[at(0, 0)]!, at(0, 0));
+      for (let k = 0; k < CONFIG.spoilDays; k++) {
+        s.results = [];
+        s.day = 2 + k;
+        endDay(s, () => 0.99);
+      }
+      expect(s.field[at(0, 0)]!.ripeDays).toBe(CONFIG.spoilDays);
+      expect(cropPrice(s, s.field[at(0, 0)]!, at(0, 0))).toBe(spoiled ? Math.round(fresh * CONFIG.spoilMult) : fresh);
+    }
+  });
+
+  it('難しい7：同じ作物でそろっていない列は倍率の上乗せが半分。同じ作物の列はそのまま', () => {
+    const mixed = (diff: number) => {
+      const s = newGame({ shop: ['addSun'], charmPool: [], difficulty: diff });
+      ripe(s, 'tomato', [at(0, 0), at(2, 0)]);
+      ripe(s, 'strawberry', [at(1, 0)]);
+      return cellMultiplier(s, at(0, 0));
+    };
+    const m6 = mixed(6);
+    expect(mixed(7)).toBeCloseTo(1 + (m6 - 1) * CONFIG.mixedKeep, 1);
+    const same = (diff: number) => {
+      const s = newGame({ shop: ['addSun'], charmPool: [], difficulty: diff });
+      ripe(s, 'tomato', [at(0, 0), at(1, 0), at(2, 0)]);
+      return cellMultiplier(s, at(0, 0));
+    };
+    expect(same(7)).toBeCloseTo(same(6));
+  });
+});

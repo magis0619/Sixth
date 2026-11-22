@@ -1144,6 +1144,14 @@ const LORD_ART = {
     <path d="M51 6 L52.6 10.4 L57 12 L52.6 13.6 L51 18 L49.4 13.6 L45 12 L49.4 10.4 Z" fill="#ffe14a" stroke="${INK}" stroke-width="1.6" stroke-linejoin="round"/>`,
 };
 
+const fly = (x: number, y: number) => `<g><ellipse cx="${x - 2.5}" cy="${y - 2}" rx="2.6" ry="1.6" fill="#d8e4ea" opacity="0.85"/><ellipse cx="${x + 2.5}" cy="${y - 2}" rx="2.6" ry="1.6" fill="#d8e4ea" opacity="0.85"/><ellipse cx="${x}" cy="${y}" rx="2.4" ry="3" fill="#1d1a16"/></g>`;
+const DREAD_MORE = {
+  // 6：傷んで茶色くしぼんだトマトに蝿がたかる
+  dread6: `<circle cx="32" cy="36" r="24" fill="#5a3a12" opacity="0.25"/>${G('translate(10 14) scale(0.7)', `<g style="filter:sepia(0.9) saturate(0.6) brightness(0.55)">${CROP_ART.tomato}</g>`)}<path d="M20 44c3 2 6 2 9 0M34 46c3 2 6 2 9 0" stroke="#2a1c0c" stroke-width="2" fill="none" stroke-linecap="round"/>${fly(14, 14)}${fly(50, 18)}${fly(46, 52)}`,
+  // 7：混ぜた列（トマト・苺・かぼちゃ）にひびが入って割れる
+  dread7: `${G('translate(1 22) scale(0.34)', CROP_ART.tomato)}${G('translate(22 22) scale(0.34)', CROP_ART.strawberry)}${G('translate(42 22) scale(0.34)', CROP_ART.pumpkin)}<path d="M33 6 L27 22 L36 30 L28 44 L34 58" fill="none" stroke="#1d1a16" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M33 6 L27 22 L36 30 L28 44 L34 58" fill="none" stroke="#ff4a3a" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>`,
+};
+
 const DREAD_ART = {
   // 1：こちらを見張るカラス（目が赤い）
   dread1: `${SYMBOL_ART.crow}${redEye(46.8, 23, 3)}`,
@@ -1160,6 +1168,7 @@ const DREAD_ART = {
 export const ART = {
   ...LORD_ART,
   ...DREAD_ART,
+  ...DREAD_MORE,
   ...SUPER_ART,
   ...CROP_ART,
   ...SYMBOL_ART,

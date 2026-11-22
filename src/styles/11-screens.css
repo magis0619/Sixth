@@ -454,7 +454,7 @@
     radial-gradient(ellipse 130px 36px at 86% 52%, rgba(62, 58, 84, 0.95) 98%, transparent 100%);
 }
 /* 暗い段の字は今まで通り明るく */
-.diff-screen:is([data-sky='3'], [data-sky='4'], [data-sky='5']) { color: #fff8e7; }
+.diff-screen:is([data-sky='3'], [data-sky='4'], [data-sky='5'], [data-sky='6'], [data-sky='7']) { color: #fff8e7; }
 
 /* ==== 色の差（docs/ui-reading.md：文字と地の差は4.5:1以上）の直し ==== */
 .badge-line { background: #c42a75; box-shadow: 0 2px 0 #8e1d55; }
@@ -940,7 +940,7 @@ html.idle *, html.idle *::before, html.idle *::after { animation-play-state: pau
 .ds-emblem { overflow: visible; }
 .ds-lv { position: absolute; left: -6px; bottom: 8px; width: 44px; height: 44px; display: grid; place-items: center; font-size: 1.5rem; font-weight: 900; color: #fff; background: var(--ink); border: 3px solid #fff8e7; border-radius: 50%; box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35); }
 /* 段が上がるほど紋章を暗く */
-.diff-screen[data-sky='3'] .ds-emblem, .diff-screen[data-sky='4'] .ds-emblem, .diff-screen[data-sky='5'] .ds-emblem { background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--dc) 45%, #000), #1a1210 75%); }
+.diff-screen[data-sky='3'] .ds-emblem, .diff-screen[data-sky='4'] .ds-emblem, .diff-screen[data-sky='5'] .ds-emblem, .diff-screen[data-sky='6'] .ds-emblem, .diff-screen[data-sky='7'] .ds-emblem { background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--dc) 45%, #000), #1a1210 75%); }
 
 /* ==== 遊び方の一枚絵：実物の部品を小さく見せ、手順は左の点線でつなぐ（色の箱・丸数字・題の札は使わない） ==== */
 .explain-card:has(.ov3) { padding: 16px 16px 16px; text-align: left; }
@@ -1145,3 +1145,11 @@ html.hurry-hold .hurry-badge { display: flex; }
 /* 結果画面：解放の画面へ行くボタン */
 .rs-unlock { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 48px; margin: 4px 0 0; font: inherit; font-size: 1rem; font-weight: 700; color: var(--ink); background: #fff3c4; border: 2px solid var(--ink); border-radius: 12px; box-shadow: 0 3px 0 var(--ink); cursor: pointer; }
 .rs-unlock .art { width: 22px; height: 22px; }
+
+/* ==== 難しい6・7：空はもっと暗く。6は濁った茶色、7は冷たい紺 ==== */
+.diff-screen[data-sky='6'] { --s1: #120d07; --s2: #3d2a14; --h1: #1a1a0c; --h2: #121208; --deco: radial-gradient(ellipse 140px 40px at 30% 30%, rgba(80, 60, 30, 0.9) 98%, transparent 100%); }
+.diff-screen[data-sky='7'] { --s1: #070a16; --s2: #1f2348; --h1: #12181c; --h2: #0c1114; --deco: radial-gradient(ellipse 140px 40px at 70% 34%, rgba(40, 44, 90, 0.9) 98%, transparent 100%); }
+/* 畑：難しい6で、明日傷む実り（あと1日）と傷んだ実り */
+.plot .spoil-tag { position: absolute; top: 4%; left: 4%; z-index: 3; padding: 0 6px; font-size: 0.8125rem; font-weight: 700; line-height: 1.5; color: #fff; background: #8a5a14; border-radius: 999px; }
+.plot.spoiled .crop .art { filter: sepia(0.85) saturate(0.6) brightness(0.7); }
+.plot.spoiled .spoil-tag { background: #5a3a12; }

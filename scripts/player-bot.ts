@@ -55,8 +55,16 @@ const lenMult = (n: number) => (n >= 5 ? 1.8 : n === 4 ? 1.5 : 1.3);
 /** 畑の形の値打ち：長い線がいくつあるか */
 const layoutValue = (s: GameState, tools = s.tools) => segments(s, tools).reduce((v, seg) => v + lenMult(seg.length) * seg.length, 0);
 
+/**
+ * BOT=harvest：公開版の記録で一番多かった遊び方（大収穫）。作物は混ぜてよく、畑に詰めて植え、
+ * つながった実りが畑の半分を超えるまで待って一度に売る
+ */
+const HARVEST = process.env.BOT === 'harvest';
+
 /** kind を cell に植えたときの値打ち：同じ作物の長い線にどれだけ乗るか */
 function plantScore(s: GameState, cell: number, kind: CropKind): number {
+  // 大収穫：周りに作物が多いマスほどよい（作物の種類は見ない）
+  if (HARVEST) return 1 + around8(s, cell).filter((x) => s.field[x]).length + (s.tiles[cell] === 'compost' ? 6 : 0);
   let v = 0;
   for (const seg of segments(s)) {
     if (!seg.includes(cell)) continue;
@@ -277,8 +285,15 @@ function sellDay(s: GameState): void {
   for (const c of fieldCells(s)) {
     const crop = s.field[c];
     if (!crop || !isRipe(crop)) continue;
-    if (CROPS[crop.kind].big) { sell(s, c); continue; }
+    if (CROPS[crop.kind].big && !HARVEST) { sell(s, c); continue; }
     const group = ripeGroup(s, c);
+    // 大収穫：つながった実りが畑の半分を超えるか、年貢の前・畑が埋まったら一度に売る
+    if (HARVEST) {
+      const plantable = fieldCells(s).filter((x) => !s.tools[x]).length;
+      const full = !fieldCells(s).some((x) => isOpen(s, x));
+      if (group.length >= Math.max(5, plantable / 2) || pressed || t.daysLeft === 0 || (full && group.length >= 3)) sell(s, c);
+      continue;
+    }
     if (group.length >= 3) {
       // いちばん長い線で、まだ育ち中の同じ作物が残っていれば待つ（年貢の前は待たない）
       const mine = segs.filter((g) => g.includes(c)).sort((a, b) => b.length - a.length)[0];
@@ -293,6 +308,11 @@ function sellDay(s: GameState): void {
     const potential = segs.some((g) => g.includes(c) && g.every((x) => x === c || isOpen(s, x) || (s.field[x] && cropBase(s.field[x]!.kind) === cropBase(crop.kind))));
     if (!potential || pressed) sell(s, c);
   }
+}
+
+/** 周り8マス（畑の中だけ） */
+function around8(s: GameState, cell: number): number[] {
+  return fieldCells(s).filter((x) => x !== cell && Math.abs(cellX(x) - cellX(cell)) <= 1 && Math.abs(cellY(x) - cellY(cell)) <= 1);
 }
 
 /** 盤面の文字（デバッグ用） */

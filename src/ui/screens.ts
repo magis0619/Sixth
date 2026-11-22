@@ -862,7 +862,7 @@ export function showPrep(): void {
 // 参考：Slay the Spire のアセンション（左右で切り替え、前のレベルの縛りが積み重なる）、
 // Balatro のステーク（色の付いたチップの列と大きな札）、Hades の罰の契約（縛りを絵と一言で）
 
-const DIFF_COLOR = ['#5fae3c', '#3a86c8', '#e0a40a', '#e8743b', '#c93c2b', '#6a3d8f'];
+const DIFF_COLOR = ['#5fae3c', '#3a86c8', '#e0a40a', '#e8743b', '#c93c2b', '#6a3d8f', '#7a5320', '#3d3a8f'];
 /** レベルごとに加わる縛り（年貢の倍率は、そのレベルの値を1つだけ見せる） */
 const DIFF_RULES: { ico: ArtId; text: string }[][] = [
   [],
@@ -872,6 +872,8 @@ const DIFF_RULES: { ico: ArtId; text: string }[][] = [
   [{ ico: 'crow', text: L('お邪魔が早く来る', 'Pests come earlier') }],
   [{ ico: 'coin', text: L('単品は×0.3でしか売れない', 'Singles sell for ×0.3') }],
   [{ ico: 'locust', text: L('増えるイナゴが袋にいる', 'Multiplying locusts in your bag') }],
+  [{ ico: 'dread6', text: L(`実りは${CONFIG.spoilDays}日で傷む（売値半分）`, `Ripe crops spoil in ${CONFIG.spoilDays} days (half price)`) }],
+  [{ ico: 'dread7', text: L('混ぜた列は倍率の上乗せが半分', 'Mixed lines: bonus halved') }],
 ];
 
 let diffSwipeX = 0;
@@ -887,7 +889,7 @@ export function showDifficulty(): void {
     const oldRules = DIFF_RULES.slice(1, lv).flat();
     const mult = (k: number) => String(Number(difficultyTaxMult(k).toFixed(2)));
     // 年貢は段ごとに上がる：NEW の行に「前→今」
-    const tax = lv > 0 ? `<li class="dr-tax new">${art('bale')}<span>${L(`年貢 ×${mult(lv - 1)} → <b>×${mult(lv)}</b>`, `Tax ×${mult(lv - 1)} → <b>×${mult(lv)}</b>`)}</span><em>NEW</em></li>` : '';
+    const tax = lv > 0 && difficultyTaxMult(lv) !== difficultyTaxMult(lv - 1) ? `<li class="dr-tax new">${art('bale')}<span>${L(`年貢 ×${mult(lv - 1)} → <b>×${mult(lv)}</b>`, `Tax ×${mult(lv - 1)} → <b>×${mult(lv)}</b>`)}</span><em>NEW</em></li>` : '';
     // 年貢のグラフ：クリアまでの7回。いちばん難しい段を天井にして、段を上げると棒が伸びて見えるように
     const plan = taxPlan(lv);
     const top = Math.max(...taxPlan(DIFFICULTIES.length - 1));

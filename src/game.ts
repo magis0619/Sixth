@@ -17,6 +17,8 @@ export interface Crop {
   bonus: number;
   /** 2×2の大物（スイカ）の右・下・右下のマス：本体（左上）のマスの番号。本体と成長・売値は本体が持つ */
   anchor?: number;
+  /** 実ってから過ぎた夜の数（難しい6：spoilDays を過ぎると傷んで売値が下がる） */
+  ripeDays?: number;
   /** カラスにつつかれた（かぼちゃ・スイカなど食べられない作物）。売値−20% */
   pecked?: boolean;
 }
@@ -698,6 +700,8 @@ function endDayRaw(state: GameState, rng: Rng): EndDayResult {
       }
     });
   }
+  // 実ったまま夜を越した数を数える（難しい6で傷む。実っていなければ0に戻す）
+  if (state.day > 0) state.field.forEach((c) => c && c.anchor === undefined && (c.ripeDays = isRipe(c) ? (c.ripeDays ?? 0) + 1 : 0));
   // 井戸・水路は夜のうちに作物を育てる。水車・釣り堀・鶏小屋・牛小屋のお金が入る
   const grown = state.day > 0 ? overnightGrowth(state) : [];
   state.nightIncome = state.day > 0 ? collectNightIncome(state, rng, grown) : null;
@@ -1967,7 +1971,20 @@ export function cropPrice(state: GameState, crop: Crop, cell?: number): number {
   // 月見の代償：満月を使った日は−20%。大判振る舞いの代償：良い絵柄のフィーバーがない日は−10%
   const moonDay = state.charms.moonViewing > 0 && state.moonUsedDay === state.day && state.day > 0 ? 0.8 : 1;
   const quiet = state.charms.bigSpender > 0 && !state.fever.some((s) => SYMBOLS[s].rarity !== 'bad') ? 0.9 : 1;
-  return Math.round((def.price + charm + crop.bonus + hive) * fert * tile * state.priceMult * marketMult(state, crop.kind) * fair * combo * marketDay * rancher * statue * autumn * moonDay * quiet);
+  // 難しい6：実ってから spoilDays 日売らないと傷む
+  const spoil = isSpoiled(state, crop) ? CONFIG.spoilMult : 1;
+  return Math.round((def.price + charm + crop.bonus + hive) * fert * tile * state.priceMult * marketMult(state, crop.kind) * fair * combo * marketDay * rancher * statue * autumn * moonDay * quiet * spoil);
+}
+
+/** 難しい6：傷んだ作物か（実ってから spoilDays 夜を越した） */
+export function isSpoiled(state: GameState, crop: Crop): boolean {
+  return state.difficulty >= CONFIG.spoilFrom && (crop.ripeDays ?? 0) >= CONFIG.spoilDays;
+}
+
+/** 難しい6：傷むまであと何日か（傷まない難しさ・実っていない作物は null） */
+export function spoilLeft(state: GameState, crop: Crop): number | null {
+  if (state.difficulty < CONFIG.spoilFrom || !isRipe(crop)) return null;
+  return Math.max(0, CONFIG.spoilDays - (crop.ripeDays ?? 0));
 }
 
 export function isRipe(crop: Crop | null): boolean {
@@ -2029,6 +2046,11 @@ export function multSteps(state: GameState, cell: number): { label: string; x: n
     if (comboOn(state, 'flowerField') && cropBase(state.field[cell]!.kind) === 'strawberry') steps.push({ label: L('花畑', 'Flower Field'), x: COMBO_POWER.cropLine });
   }
   if (runs.length > 1 && CONFIG.crossBonus > 0) steps.push({ label: L(`${runs.length}本が交差`, `${runs.length} lines cross`), x: 1 + CONFIG.crossBonus * (runs.length - 1) });
+  // 難しい7：同じ作物だけでそろった列を1本も通らないマスは、倍率の上乗せ分が半分
+  if (state.difficulty >= CONFIG.mixedFrom && !inSameCropLine(state, cell)) {
+    const m = steps.reduce((a, s) => a * s.x, 1);
+    if (m > 1) steps.push({ label: L('混ぜた列', 'Mixed line'), x: Math.round(((1 + (m - 1) * CONFIG.mixedKeep) / m) * 100) / 100 });
+  }
   return steps;
 }
 
@@ -2613,13 +2635,17 @@ export function useSymbol(state: GameState, reel: number, cell: number | null): 
 }
 
 export function sell(state: GameState, cell: number, single = false): SellResult | null {
+  // 記録用：売る前に、実ってから何夜たったか（一番長いもの）と、傷んだ数を見ておく
+  const before = (single ? [rootOf(state, cell)] : harvestGroup(state, rootOf(state, cell))).map((c) => state.field[c]).filter((c): c is Crop => !!c);
+  const ripeMax = Math.max(0, ...before.map((c) => c.ripeDays ?? 0));
+  const spoiled = before.filter((c) => isSpoiled(state, c)).length;
   const res = sellRaw(state, cell, single);
   if (res) {
     lstat(state, IN + (res.line ? '列で売る' : single ? '大商い' : '単品'), res.total - res.orderReward - res.bumper);
     lstat(state, IN + '注文', res.orderReward);
     lstat(state, IN + '大豊作', res.bumper);
     const kinds = [...new Set(res.cells.map((c) => CROPS[c.kind].name))].join('・');
-    glog(state, `売る ${kinds}×${res.size} ${res.line ? `列×${Math.round(res.mult * 100) / 100}` : single ? '大商い' : '単品'} +${res.total}${res.orderReward ? ` 注文達成+${res.orderReward}` : ''}${res.bumper ? ` 大豊作+${res.bumper}` : ''}`);
+    glog(state, `売る ${kinds}×${res.size} ${res.line ? `列×${Math.round(res.mult * 100) / 100}` : single ? '大商い' : '単品'} +${res.total}${res.orderReward ? ` 注文達成+${res.orderReward}` : ''}${res.bumper ? ` 大豊作+${res.bumper}` : ''}${ripeMax ? ` 実って${ripeMax}日` : ''}${spoiled ? ` 傷み${spoiled}` : ''}`);
   }
   return res;
 }
