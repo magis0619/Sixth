@@ -1149,8 +1149,6 @@ html.idle *, html.idle *::before, html.idle *::after { animation-play-state: pau
 .diff-screen[data-sky='6'] { --s1: #120d07; --s2: #3d2a14; --h1: #1a1a0c; --h2: #121208; --deco: radial-gradient(ellipse 140px 40px at 30% 30%, rgba(80, 60, 30, 0.9) 98%, transparent 100%); }
 .diff-screen[data-sky='7'] { --s1: #070a16; --s2: #1f2348; --h1: #12181c; --h2: #0c1114; --deco: radial-gradient(ellipse 140px 40px at 70% 34%, rgba(40, 44, 90, 0.9) 98%, transparent 100%); }
 /* 畑：難しい6で、明日傷む実り（あと1日）と傷んだ実り */
-.plot .spoil-tag { position: absolute; top: 4%; left: 4%; z-index: 3; padding: 0 6px; font-size: 0.8125rem; font-weight: 700; line-height: 1.5; color: var(--ink); background: #fff3d6; border: 1.5px solid var(--ink); border-radius: 999px; }
-.plot .spoil-tag.soon { color: #fff; background: #a8301f; }
 .plot.spoiled .crop .art { filter: sepia(0.85) saturate(0.6) brightness(0.55); }
 .diff-screen[data-sky='8'] { --s1: #061210; --s2: #173a33; --h1: #10180f; --h2: #0b110a; --deco: radial-gradient(ellipse 140px 40px at 25% 32%, rgba(30, 70, 60, 0.9) 98%, transparent 100%); }
 .diff-screen[data-sky='9'] { --s1: #14060c; --s2: #44162a; --h1: #170f0f; --h2: #100a0a; --deco: radial-gradient(ellipse 140px 40px at 72% 30%, rgba(90, 30, 50, 0.9) 98%, transparent 100%); }
@@ -1161,3 +1159,20 @@ html.idle *, html.idle *::before, html.idle *::after { animation-play-state: pau
 .ds-chips:has(> :nth-child(9)) { gap: 4px; }
 .ds-chips:has(> :nth-child(9)) .ds-chip { width: 34px; height: 34px; font-size: 0.9375rem; }
 .ds-chips:has(> :nth-child(9)) .ds-chip .art { width: 18px; height: 18px; }
+
+/* ==== 難しい6：傷むまでの日数（ハエの絵＋数字）。残り1日は赤くして、ハエが飛び回り、マスの縁が赤く脈打つ ==== */
+.plot .spoil-tag { position: absolute; top: 3%; left: 3%; z-index: 3; display: flex; align-items: center; gap: 1px; padding: 1px 6px 1px 3px; font-family: var(--font-pop); font-size: 0.9375rem; font-weight: 700; line-height: 1.2; color: var(--ink); background: #fff3d6; border: 2px solid var(--ink); border-radius: 999px; }
+.plot .spoil-tag .art { font-size: 1.375rem; }
+.plot .spoil-tag.soon { color: #fff; background: #c0281b; box-shadow: 0 0 0 2px #ffd34a; animation: spoil-beat 0.8s ease-in-out infinite; }
+.plot .spoil-tag.soon b { font-size: 1.125rem; }
+.plot .spoil-tag.soon .art { animation: spoil-buzz 0.35s linear infinite; }
+.plot.spoil-soon { box-shadow: inset 0 0 0 3px #c0281b; animation: spoil-edge 0.8s ease-in-out infinite; }
+.plot.spoil-soon .crop .art { filter: sepia(0.35) saturate(0.85); }
+@keyframes spoil-beat { 50% { transform: scale(1.12); } }
+@keyframes spoil-buzz { 0% { transform: translate(0, 0) rotate(0); } 25% { transform: translate(1px, -1px) rotate(8deg); } 50% { transform: translate(-1px, 0) rotate(-6deg); } 75% { transform: translate(1px, 1px) rotate(5deg); } }
+@keyframes spoil-edge { 50% { box-shadow: inset 0 0 0 3px #c0281b, inset 0 0 14px rgba(192, 40, 27, 0.55); } }
+.calm .plot .spoil-tag.soon, .calm .plot .spoil-tag.soon .art, .calm .plot.spoil-soon { animation: none; }
+
+/* ==== 長押しで虫眼鏡・文字選び・メニューが出ない。ピンチや2回タップで拡大しない（入力欄は除く） ==== */
+html, body { touch-action: manipulation; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; -webkit-text-size-adjust: 100%; }
+input, textarea { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }

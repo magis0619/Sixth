@@ -17,7 +17,7 @@ export interface Crop {
   bonus: number;
   /** 2×2の大物（スイカ）の右・下・右下のマス：本体（左上）のマスの番号。本体と成長・売値は本体が持つ */
   anchor?: number;
-  /** 実ってから過ぎた夜の数（難しい6：spoilDays を過ぎると傷んで売値が下がる） */
+  /** 実ってから過ぎた夜の数（難しい6：spoilDays になると傷んで売れなくなる） */
   ripeDays?: number;
   /** カラスにつつかれた（かぼちゃ・スイカなど食べられない作物）。売値−20% */
   pecked?: boolean;

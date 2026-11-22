@@ -22,6 +22,7 @@ import { $, el, hooks, meta, rng, setState, state, ui } from './ui/store.ts';
 import { done, play } from './ui/play.ts';
 import { lordWeekCard } from './ui/lord.ts';
 import { armFresh, installTapGuards } from './ui/tapguard.ts';
+import { installNoZoom } from './ui/nozoom.ts';
 import { pressable } from './ui/press.ts';
 import { applySettings, showSettings } from './ui/settings.ts';
 import { reject } from './ui/states.ts';
@@ -385,7 +386,9 @@ function renderField(): void {
         if (inLine && state.difficulty >= CONFIG.mixedFrom && !inSameCropLine(state, i)) hintOnce('mixed', `${art('dread7')} ${L('作物を混ぜた列は、倍率の上乗せが半分。同じ作物でそろえると高い', 'Mixed-crop lines get half the bonus. Match crops to sell high')}`);
         // 難しい6：傷むまでの日数（明日傷むものは色を変える）
         if (left !== null) {
-          html += `<span class="spoil-tag${left <= 1 ? ' soon' : ''}">${L(`あと${left}日`, `${left}d`)}</span>`;
+          // 文字は使わず、ハエの絵と残りの日数。明日傷むものは赤くして、ハエが飛び回る
+          html += `<span class="spoil-tag${left <= 1 ? ' soon' : ''}">${art('rotFly')}<b>${left}</b></span>`;
+          if (left <= 1) cls.push('spoil-soon');
           label += L(`、あと${left}日で傷む`, `, spoils in ${left} day(s)`);
           hintOnce('spoil', `${art('dread6')} ${L(`実りは<b>${CONFIG.spoilDays}日</b>で傷む。傷むと売れない`, `Ripe crops spoil in <b>${CONFIG.spoilDays} days</b> and can't be sold`)}`);
         }
@@ -1868,6 +1871,7 @@ document.querySelector('.machine-top')!.addEventListener('click', () => {
 });
 
 // 演出の最中に画面をタップすると早送り。連打の続き・出たばかりの画面のタップは操作にしない
+installNoZoom();
 installTapGuards(() => hintOnce('hold-hurry', `${art('fastForward')} ${L('<b>長押し</b>で早送り', '<b>Hold</b> to fast-forward')}`, 3000));
 // 押した瞬間の手応え
 pressable(el.field, '.plot');
