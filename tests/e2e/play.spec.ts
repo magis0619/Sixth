@@ -454,6 +454,35 @@ test('急いで連打しても、演出が終わった瞬間のタップで勝�
   expect(errors).toEqual([]);
 });
 
+test('演出の最中、ふつうのタップでは早送りにならず、長押ししている間だけ早送りになる', async ({ page }) => {
+  const errors = await boot(page);
+  await start(page);
+  await firstDay(page);
+  const hurry = () => page.evaluate(() => document.documentElement.classList.contains('hurry'));
+  const box = (await page.locator('#field').boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  /** 次の日へ回す（出目が残っていれば確認の「回す」も押す）。押した直後の演出の最中に戻る */
+  const spin = async () => {
+    await page.evaluate(() => document.getElementById('spin')!.click());
+    await page.waitForTimeout(150);
+    if (await page.locator('#overlay.show #skip-yes').count()) { await ready(page); await page.click('#skip-yes', { force: true }); }
+    await page.waitForTimeout(50);
+  };
+  // 押したままにすると早送り、離すと戻る
+  await spin();
+  await page.mouse.down();
+  await page.waitForTimeout(400);
+  expect(await hurry()).toBe(true);
+  await page.mouse.up();
+  expect(await hurry()).toBe(false);
+  // 短いタップを続けても速くならない
+  await settle(page);
+  await spin();
+  for (let k = 0; k < 4; k++) { await page.mouse.down(); await page.waitForTimeout(80); await page.mouse.up(); await page.waitForTimeout(80); }
+  expect(await hurry()).toBe(false);
+  expect(errors).toEqual([]);
+});
+
 test('仕入れの画面が出た直後の連打では選ばれない。指を止めれば選べる', async ({ page }) => {
   const errors = await boot(page);
   await start(page);

@@ -1868,7 +1868,7 @@ document.querySelector('.machine-top')!.addEventListener('click', () => {
 });
 
 // 演出の最中に画面をタップすると早送り。連打の続き・出たばかりの画面のタップは操作にしない
-installTapGuards();
+installTapGuards(() => hintOnce('hold-hurry', `${art('fastForward')} ${L('<b>長押し</b>で早送り', '<b>Hold</b> to fast-forward')}`, 3000));
 // 押した瞬間の手応え
 pressable(el.field, '.plot');
 pressable(el.reels, '.reel');
