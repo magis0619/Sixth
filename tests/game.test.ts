@@ -6,7 +6,7 @@ import { CONFIG, CROPS, CUT, EVENT_CONDITIONS, FARMERS, THUNDER_LINES, UPGRADE_S
 import {
   animalGold, buy, buyPlace, drawDay, hasRanch, hiveBonus, isColorful, canPlace, canUse, cellMultiplier, cropPrice, isPond, waterWheels, checkReady, chooseCharm, endDay, evolveTools, expand, expandPrice,
   fieldCells, isGolden, lv, multSteps, newCrop, newGame as newGameRaw, nextTax, obstacleRule, place, pullWeed, resolveAuto, ripeGroup,
-  canBuy, canBuyPlace, canExpand, isMarketDay, rollObstacles, takeOffer, refreshCombos, symbolShape, canPlaceAt, isPivotAdd, isPivotPlace, mustPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult, beginDay, takeContract, mergeable, mergeSymbol, mergeCost, bagCount, skipCharm, singleMult, rollOffer, buyPremium, canBuyPremium, premiumPrice, resolveAuto as autoOf, discard, discardPrice, canDiscard, placePrice,
+  isSpoiled, clearSpoiled, canBuy, canBuyPlace, canExpand, isMarketDay, rollObstacles, takeOffer, refreshCombos, symbolShape, canPlaceAt, isPivotAdd, isPivotPlace, mustPlace, plantLineMult, rollCharmOffer, sell, shapeCells, taxAmount, upgradePrice, useSymbol, type GameState, type ReelResult, beginDay, takeContract, mergeable, mergeSymbol, mergeCost, bagCount, skipCharm, singleMult, rollOffer, buyPremium, canBuyPremium, premiumPrice, resolveAuto as autoOf, discard, discardPrice, canDiscard, placePrice,
 } from '../src/game.ts';
 import { CONTRACTS, contractGold } from '../src/contracts.ts';
 
@@ -1611,20 +1611,29 @@ describe('殿様モード', () => {
 });
 
 describe('難しい6・7', () => {
-  it('難しい6：実ってから3夜を越すと傷み、売値が半分になる（難しい5では傷まない）', () => {
-    for (const [diff, spoiled] of [[5, false], [6, true]] as [number, boolean][]) {
+  it('難しい6：実ってから3夜を越すと傷み、売れず列にも入らず、お金を払って捨てる（難しい5では傷まない）', () => {
+    for (const diff of [5, 6]) {
       const s = newGame({ shop: ['addSun'], charmPool: [], difficulty: diff });
       s.charms.sunBlessing = 0;
       s.day = 2;
-      ripe(s, 'tomato', [at(0, 0)]);
-      const fresh = cropPrice(s, s.field[at(0, 0)]!, at(0, 0));
+      ripe(s, 'tomato', [at(0, 0), at(1, 0), at(2, 0)]);
       for (let k = 0; k < CONFIG.spoilDays; k++) {
         s.results = [];
         s.day = 2 + k;
         endDay(s, () => 0.99);
       }
       expect(s.field[at(0, 0)]!.ripeDays).toBe(CONFIG.spoilDays);
-      expect(cropPrice(s, s.field[at(0, 0)]!, at(0, 0))).toBe(spoiled ? Math.round(fresh * CONFIG.spoilMult) : fresh);
+      if (diff === 5) {
+        expect(sell(s, at(0, 0))).not.toBeNull();
+        continue;
+      }
+      expect(isSpoiled(s, s.field[at(0, 0)]!)).toBe(true);
+      expect(cellMultiplier(s, at(0, 0))).toBe(0);
+      expect(sell(s, at(0, 0))).toBeNull();
+      s.gold = 10;
+      expect(clearSpoiled(s, at(0, 0))).toBe(true);
+      expect(s.field[at(0, 0)]).toBeNull();
+      expect(s.gold).toBe(10 - CONFIG.spoilClearCost);
     }
   });
 
@@ -1643,5 +1652,34 @@ describe('難しい6・7', () => {
       return cellMultiplier(s, at(0, 0));
     };
     expect(same(7)).toBeCloseTo(same(6));
+  });
+});
+
+describe('難しい8・9', () => {
+  it('難しい8：置いた道具1つにつき、毎週の年貢に値段の2割が足される', () => {
+    const tax = (diff: number) => {
+      const s = newGame({ shop: ['addSun'], charmPool: [], difficulty: diff });
+      s.tools[at(0, 0)] = 'hive';
+      s.tools[at(1, 1)] = 'henhouse';
+      return nextTax(s).amount - Math.round(taxAmount(0) * CONFIG.difficultyTaxMult[diff]);
+    };
+    expect(tax(7)).toBe(0);
+    expect(tax(8)).toBe(Math.round(30 * CONFIG.upkeepRate) + Math.round(50 * CONFIG.upkeepRate));
+  });
+
+  it('難しい9：年貢を払ったあと、次の年貢の額を超えるお金はなくなる', () => {
+    for (const diff of [8, 9]) {
+      const s = newGame({ shop: ['addSun'], charmPool: [], difficulty: diff });
+      s.day = CONFIG.taxPeriod;
+      s.gold = 500;
+      s.results = [];
+      const res = endDay(s, () => 0.99);
+      expect(res.ok).toBe(true);
+      if (diff === 8) expect(s.gold).toBeGreaterThan(nextTax(s).amount);
+      else {
+        expect(s.gold).toBe(nextTax(s).amount);
+        expect(res.ok && res.forfeited).toBeGreaterThan(0);
+      }
+    }
   });
 });

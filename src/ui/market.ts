@@ -376,6 +376,12 @@ export const PLACE_ROWS: Record<PlaceId, [ArtId, string][]> = {
   windmill: [['sprout', L('縦と横の列 毎晩+1', 'Row & column +1 nightly')]],
 };
 
+/** 難しい8：道具の維持費の行（毎週の年貢に足される額） */
+const upkeepRow = (id: PlaceId): string =>
+  state.difficulty >= CONFIG.upkeepFrom && PLACES[id].kind === 'tool'
+    ? `<span class="fx-row">${art('dread8')}<span>${L(`維持費 毎週+${Math.round((PLACES[id].price ?? CONFIG.upkeepFree) * CONFIG.upkeepRate)}`, `Upkeep +${Math.round((PLACES[id].price ?? CONFIG.upkeepFree) * CONFIG.upkeepRate)}/week`)}</span></span>`
+    : '';
+
 export const placeRowsHtml = (id: PlaceId): string => PLACE_ROWS[id].map(([ico, t]) => `<span class="fx-row">${art(ico)}<span>${t}</span></span>`).join('');
 
 /** 畑の品の分類：何に効くか（市の段の見出し） */
@@ -433,7 +439,7 @@ export function renderFarmShop(): void {
   };
   PLACE_ORDER.filter((id) => state.weeklyPlaces.includes(id)).forEach((id) =>
     safely(`place:${id}`, () =>
-      items.push({ key: id, cat: PLACE_CAT[id], ico: art(PLACE_ART[id]), name: PLACES[id].name, effect: roomLeft(state, id) > 0 ? placeRowsHtml(id) : PLACES[id].kind === 'tool' ? L('置ける空きマスがない', 'No empty plot to place it') : L('敷けるマスがない', 'No plot to lay it on'), price: placePrice(state, id), ok: canBuyPlace(state, id), rng: rangeGrid(id) }),
+      items.push({ key: id, cat: PLACE_CAT[id], ico: art(PLACE_ART[id]), name: PLACES[id].name, effect: (roomLeft(state, id) > 0 ? placeRowsHtml(id) : PLACES[id].kind === 'tool' ? L('置ける空きマスがない', 'No empty plot to place it') : L('敷けるマスがない', 'No plot to lay it on')) + upkeepRow(id), price: placePrice(state, id), ok: canBuyPlace(state, id), rng: rangeGrid(id) }),
     ),
   );
   // 畑を広げるは「畑を強化する」の最後（広げきったら完了の札で）

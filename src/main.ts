@@ -4,7 +4,7 @@ import {
   symbolBase, type ShapeId, DIFFICULTIES, FARMERS, TOOL_EVOLVE, CONFIG, CROPS, PLACES, SEEDS, SYMBOLS, UPGRADE_SYMBOL, type PlaceId, type SymbolId,
 } from './config.ts';
 import {
-  weekDay, spoilLeft, canPlace, canUse, cellMultiplier, cropPrice, drawSymbol, endDay, inField, inSameCropLine, isRipe, place, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, wheelGold, animalGold, plantLineMult, mustPlace, refreshCombos, symbolShape, isRareOffer, isMarketDay, shopOpen, nextMarketDay, beginDay, spinDay, sellBlock, isFlooded,
+  weekDay, spoilLeft, spoilClearCost, clearSpoiled, isSpoiled, canPlace, canUse, cellMultiplier, cropPrice, drawSymbol, endDay, inField, inSameCropLine, isRipe, place, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, wheelGold, animalGold, plantLineMult, mustPlace, refreshCombos, symbolShape, isRareOffer, isMarketDay, shopOpen, nextMarketDay, beginDay, spinDay, sellBlock, isFlooded,
 } from './game.ts';
 import { isMuted, sfx, suspendAudio, toggleMute, unlockAudio } from './audio.ts';
 import { saveMeta, setupFrom } from './meta.ts';
@@ -359,7 +359,15 @@ function renderField(): void {
       if (crop.fertilized) html += `<span class="badge-fert" title="${L('肥料（売値×1.5）', 'Fertilized (price ×1.5)')}">${art('fertilizer')}</span>`;
       // カラスにつつかれた跡（売値−20%）
       if (crop.pecked) html += `<span class="badge-peck" title="${L('つつかれた（売値−20%）', 'Pecked (price −20%)')}">${art('crow')}</span>`;
-      if (ripe) {
+      const left = spoilLeft(state, crop);
+      if (ripe && left === 0) {
+        // 難しい6：傷んだ作物は売れない。タップでお金を払って捨てる（雑草と同じ形）
+        cls.push('spoiled');
+        const cost = spoilClearCost(state);
+        html += `<span class="pull">${cost ? L(`捨てる ${cost}`, `Toss ${cost}g`) : L('捨てる', 'Toss')}</span>`;
+        label = L(`傷んだ${def.name}、売れない。タップで${cost}払って捨てる`, `Spoiled ${def.name}: can't sell. Tap to toss for ${cost}g`);
+        hintOnce('spoil-dead', `${art('dread6')} ${L(`傷んだ作物は<b>売れず、列にも入らない</b>。タップで${cost}払って捨てる`, `Spoiled crops <b>can't be sold or lined</b>. Tap to toss for ${cost}g`)}`);
+      } else if (ripe) {
         // 列に入っていれば倍率、入っていなければ単品（半値）
         const mult = cellMultiplier(state, i);
         const inLine = mult > CONFIG.singleMult;
@@ -375,13 +383,11 @@ function renderField(): void {
         label = L(`${def.name} 実、タップで${price}で売る${def.big ? '' : inLine ? '（列ごと）' : '（単品は半値）'}`, `${def.name}, ripe: tap to sell for ${price}g${def.big ? '' : inLine ? ' (whole line)' : ' (single: half price)'}`);
         // 難しい7：混ぜた列は初めて出たときに一言
         if (inLine && state.difficulty >= CONFIG.mixedFrom && !inSameCropLine(state, i)) hintOnce('mixed', `${art('dread7')} ${L('作物を混ぜた列は、倍率の上乗せが半分。同じ作物でそろえると高い', 'Mixed-crop lines get half the bonus. Match crops to sell high')}`);
-        // 難しい6：明日傷む実りは「あと1日」、傷んだ実りは茶色くして「傷み」
-        const left = spoilLeft(state, crop);
-        if (left !== null && left <= 1) {
-          if (left === 0) cls.push('spoiled');
-          html += `<span class="spoil-tag">${left === 0 ? L('傷み', 'Spoiled') : L('あと1日', '1 day left')}</span>`;
-          label += left === 0 ? L('、傷んで売値半分', ', spoiled: half price') : L('、明日傷む', ', spoils tomorrow');
-          hintOnce('spoil', `${art('dread6')} ${L(`実りは<b>${CONFIG.spoilDays}日</b>売らないと傷んで、売値が半分になる`, `Ripe crops spoil after <b>${CONFIG.spoilDays} days</b> and sell for half`)}`);
+        // 難しい6：傷むまでの日数（明日傷むものは色を変える）
+        if (left !== null) {
+          html += `<span class="spoil-tag${left <= 1 ? ' soon' : ''}">${L(`あと${left}日`, `${left}d`)}</span>`;
+          label += L(`、あと${left}日で傷む`, `, spoils in ${left} day(s)`);
+          hintOnce('spoil', `${art('dread6')} ${L(`実りは<b>${CONFIG.spoilDays}日</b>で傷む。傷むと売れない`, `Ripe crops spoil in <b>${CONFIG.spoilDays} days</b> and can't be sold`)}`);
         }
       } else {
         html += `<span class="pips">${Array.from({ length: def.ripe }, (_, k) => `<i class="pip${k < crop.growth ? ' on' : ''}"></i>`).join('')}</span>`;
@@ -511,6 +517,13 @@ async function onSpin(): Promise<void> {
     await sleep(EVENT_GAP);
     if (res.ok) track('progress', state, { tax: res.tax });
     await showTaxStamp(res.tax, res.ok);
+    // 難しい9：次の年貢を超えた分はなくなる
+    if (res.ok && res.forfeited) {
+      sfx.error();
+      floatText(center(el.goldBox).x, center(el.goldBox).y + 30, money(-res.forfeited), { cls: 'bad', size: 1 });
+      say(`${art('dread9')} ${L(`持ち越せない分 −${res.forfeited}（次の年貢の額まで）`, `−${res.forfeited} over the carry limit`)}`, 3500);
+      hintOnce('carry', `${art('dread9')} ${L('年貢を払ったあと、<b>次の年貢の額を超えるお金</b>はなくなる。市で使っておく', 'After paying tax, gold above <b>the next tax</b> is lost. Spend it at the market')}`);
+    }
     if (!res.ok) {
       await witherField();
       endBusy();
@@ -1242,6 +1255,19 @@ function onPlotTap(cell: number): void {
     sfx.poof();
     burst(p.x, p.y, ['🍃', '💨'], 8, 50);
     if (weedCost(state)) floatText(p.x, p.y - 20, money(-weedCost(state)), { cls: 'bad', size: 0.8 });
+    render();
+    return;
+  }
+  // 難しい6：傷んだ作物は、タップでお金を払って捨てる（出目を選んでいても先に）
+  const sc = state.field[rootOf(state, cell)];
+  if (sc && isSpoiled(state, sc)) {
+    if (!clearSpoiled(state, cell)) {
+      reject(plot, needGold(spoilClearCost(state)));
+      return;
+    }
+    sfx.poof();
+    burst(p.x, p.y, ['💨'], 8, 50);
+    if (spoilClearCost(state)) floatText(p.x, p.y - 20, money(-spoilClearCost(state)), { cls: 'bad', size: 0.8 });
     render();
     return;
   }

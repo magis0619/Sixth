@@ -3,7 +3,7 @@
 import { EN, L } from '../i18n.ts';
 import { CHARMS, CHARM_ORDER, curseText, SHAPE_NAMES, CONFIG, PLACES, SEEDS, SYMBOLS, UPGRADES } from '../config.ts';
 import {
-  isGolden, canBuy, canUse, inField, isRipe, nextTax, upgradeAvailable, upgradePrice, hasRanch, isColorful, mustPlace, symbolShape, shopOpen, taxCursePct, lordPenalty,
+  isGolden, canBuy, canUse, inField, isRipe, nextTax, upgradeAvailable, upgradePrice, hasRanch, isColorful, mustPlace, symbolShape, shopOpen, taxCursePct, upkeep, lordPenalty,
 } from '../game.ts';
 import { art } from '../art.ts';
 import { fmtMult } from '../fx.ts';
@@ -160,6 +160,8 @@ export function renderTax(): void {
     (pct ? `<em class="tax-curse" title="${L('年貢が増えている', 'Tax raised')}">+${pct}%</em>` : '') +
     // 殿様モード：今週の年貢の条件の進み（2/5）・気まぐれの殿様の顔
     lordChip(state) +
+    // 難しい8：置き物の維持費（年貢に足されている分）
+    (upkeep(state) ? `<em class="tax-upkeep" title="${L('置き物の維持費', 'Upkeep')}">${art('henhouse')}+${upkeep(state)}</em>` : '') +
     // 足りないときは、いくら足りないか（いつ払うかは曜日の板で分かるので書かない）
     `<span class="tax-mark">${short ? L(`あと${t.amount - state.gold}`, `${t.amount - state.gold} short`) : L('払える', 'ready')}</span>` +
     // 何回目の年貢か（クリアまでの7回のうち）

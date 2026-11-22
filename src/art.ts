@@ -1145,7 +1145,12 @@ const LORD_ART = {
 };
 
 const fly = (x: number, y: number) => `<g><ellipse cx="${x - 2.5}" cy="${y - 2}" rx="2.6" ry="1.6" fill="#d8e4ea" opacity="0.85"/><ellipse cx="${x + 2.5}" cy="${y - 2}" rx="2.6" ry="1.6" fill="#d8e4ea" opacity="0.85"/><ellipse cx="${x}" cy="${y}" rx="2.4" ry="3" fill="#1d1a16"/></g>`;
+const coinDrop = (x: number, y: number, r = 6) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#f2c230" stroke="${INK}" stroke-width="1.8"/><rect x="${x - r * 0.35}" y="${y - r * 0.35}" width="${r * 0.7}" height="${r * 0.7}" fill="none" stroke="${INK}" stroke-width="1.3"/>`;
 const DREAD_MORE = {
+  // 8：小屋から金貨が出ていく（毎週の維持費）
+  dread8: `${G('translate(6 6) scale(0.62)', SCENE_ART.henhouse ?? '')}<path d="M44 40 L58 54" stroke="#ff4a3a" stroke-width="3" stroke-linecap="round" stroke-dasharray="4 4"/>${coinDrop(48, 44)}${coinDrop(56, 56, 5)}`,
+  // 9：ひびの入った財布から金貨がこぼれる（持ち越せない）
+  dread9: `<path d="M12 26 Q12 18 20 18 H44 Q52 18 52 26 V48 Q52 56 44 56 H20 Q12 56 12 48 Z" fill="#8a5a33" stroke="${INK}" stroke-width="3"/><path d="M30 18 L26 30 L34 36 L28 50" fill="none" stroke="#1d1a16" stroke-width="3" stroke-linejoin="round"/>${coinDrop(44, 12)}${coinDrop(54, 22, 5)}${coinDrop(8, 14, 5)}`,
   // 6：傷んで茶色くしぼんだトマトに蝿がたかる
   dread6: `<circle cx="32" cy="36" r="24" fill="#5a3a12" opacity="0.25"/>${G('translate(10 14) scale(0.7)', `<g style="filter:sepia(0.9) saturate(0.6) brightness(0.55)">${CROP_ART.tomato}</g>`)}<path d="M20 44c3 2 6 2 9 0M34 46c3 2 6 2 9 0" stroke="#2a1c0c" stroke-width="2" fill="none" stroke-linecap="round"/>${fly(14, 14)}${fly(50, 18)}${fly(46, 52)}`,
   // 7：混ぜた列（トマト・苺・かぼちゃ）にひびが入って割れる

@@ -668,13 +668,14 @@ export function nextTax(state: GameState): TaxInfo {
   const half = (state.halfTax ? 0.5 : 1) * difficultyTaxMult(state.difficulty);
   // 殿様モード：年貢の条件・豊作を見たいに届いていない分だけ増える（届けば元に戻る）
   const lord = 1 + lordPenalty(state);
-  return { dueDay, daysLeft: dueDay - state.day, amount: Math.round(taxAmount(index) * (1 - relief) * curse * (1 - (state.taxCut ?? 0)) * half * lord), index };
+  // 難しい8：置き物の維持費は、年貢に足し算で乗る
+  return { dueDay, daysLeft: dueDay - state.day, amount: Math.round(taxAmount(index) * (1 - relief) * curse * (1 - (state.taxCut ?? 0)) * half * lord) + upkeep(state), index };
 }
 
 // ---- 1日の進行 ----
 
 export type EndDayResult =
-  | { ok: true; tax: number | null; expired: number; cleared: boolean; seedGold: number }
+  | { ok: true; tax: number | null; expired: number; cleared: boolean; seedGold: number; forfeited?: number }
   | { ok: false; tax: number; expired: number; cleared: false; seedGold: number };
 
 /**
@@ -750,7 +751,17 @@ function endDayRaw(state: GameState, rng: Rng): EndDayResult {
   state.charmOffer = rollCharmOffer(state, rng);
   const cleared = !state.cleared && state.taxesPaid >= CONFIG.winTaxes;
   if (cleared) state.cleared = true;
-  return { ok: true, tax: t.amount, expired, cleared, seedGold };
+  // 難しい9：次の年貢の額を超えたお金は持ち越せない
+  let forfeited = 0;
+  if (state.difficulty >= CONFIG.carryFrom) {
+    const cap = carryCap(state);
+    if (state.gold > cap) {
+      forfeited = state.gold - cap;
+      state.gold = cap;
+      glog(state, `持ち越せない分 -${forfeited}（上限${cap}）`);
+    }
+  }
+  return { ok: true, tax: t.amount, expired, cleared, seedGold, forfeited };
 }
 
 /** n 回目の年貢を納めたときに袋に増えるお邪魔 */
@@ -1474,7 +1485,7 @@ function earn(state: GameState, amount: number): void {
 export function cropWorth(state: GameState, cell: number): number {
   const root = rootOf(state, cell);
   const c = state.field[root];
-  if (!c) return 0;
+  if (!c || isSpoiled(state, c)) return 0;
   const price = cropPrice(state, c, root);
   if (isRipe(c)) return price * Math.max(1, cellMultiplier(state, root)) + 1000;
   return price * (0.4 + c.growth / CROPS[c.kind].ripe);
@@ -1971,12 +1982,10 @@ export function cropPrice(state: GameState, crop: Crop, cell?: number): number {
   // 月見の代償：満月を使った日は−20%。大判振る舞いの代償：良い絵柄のフィーバーがない日は−10%
   const moonDay = state.charms.moonViewing > 0 && state.moonUsedDay === state.day && state.day > 0 ? 0.8 : 1;
   const quiet = state.charms.bigSpender > 0 && !state.fever.some((s) => SYMBOLS[s].rarity !== 'bad') ? 0.9 : 1;
-  // 難しい6：実ってから spoilDays 日売らないと傷む
-  const spoil = isSpoiled(state, crop) ? CONFIG.spoilMult : 1;
-  return Math.round((def.price + charm + crop.bonus + hive) * fert * tile * state.priceMult * marketMult(state, crop.kind) * fair * combo * marketDay * rancher * statue * autumn * moonDay * quiet * spoil);
+  return Math.round((def.price + charm + crop.bonus + hive) * fert * tile * state.priceMult * marketMult(state, crop.kind) * fair * combo * marketDay * rancher * statue * autumn * moonDay * quiet);
 }
 
-/** 難しい6：傷んだ作物か（実ってから spoilDays 夜を越した） */
+/** 難しい6：傷んだ作物か（実ってから spoilDays 夜を越した）。売れず、列にも入らない */
 export function isSpoiled(state: GameState, crop: Crop): boolean {
   return state.difficulty >= CONFIG.spoilFrom && (crop.ripeDays ?? 0) >= CONFIG.spoilDays;
 }
@@ -1985,6 +1994,24 @@ export function isSpoiled(state: GameState, crop: Crop): boolean {
 export function spoilLeft(state: GameState, crop: Crop): number | null {
   if (state.difficulty < CONFIG.spoilFrom || !isRipe(crop)) return null;
   return Math.max(0, CONFIG.spoilDays - (crop.ripeDays ?? 0));
+}
+
+/** 傷んだ作物を捨てる値段 */
+export function spoilClearCost(state: GameState): number {
+  return state.charms.bugWard > 0 ? 0 : CONFIG.spoilClearCost;
+}
+
+/** 傷んだ作物をお金を払って捨てる（雑草を抜くのと同じ形） */
+export function clearSpoiled(state: GameState, cell: number): boolean {
+  const root = rootOf(state, cell);
+  const c = state.field[root];
+  const cost = spoilClearCost(state);
+  if (state.over || !c || !isSpoiled(state, c) || state.gold < cost) return false;
+  spend(state, cost);
+  removeCrop(state, root);
+  lstat(state, OUT + '傷んだ作物を捨てる', cost);
+  glog(state, `傷んだ${CROPS[c.kind].name}を捨てる ${cellName(root)} -${cost}`);
+  return true;
 }
 
 export function isRipe(crop: Crop | null): boolean {
@@ -2005,7 +2032,7 @@ function runsThrough(state: GameState, cell: number): number[][] {
   // 大物は列に入らない
   const ok = (x: number, y: number) => {
     const c = cellAt(state, x, y);
-    return c !== null && isRipe(state.field[c]) && !state.frost[c] && !CROPS[state.field[c]!.kind].big;
+    return c !== null && isRipe(state.field[c]) && !isSpoiled(state, state.field[c]!) && !state.frost[c] && !CROPS[state.field[c]!.kind].big;
   };
   if (!ok(cellX(cell), cellY(cell))) return [];
   const cx = cellX(cell);
@@ -2025,7 +2052,7 @@ function runsThrough(state: GameState, cell: number): number[][] {
  * 列に入っていれば lineMult ×（同じ作物だけの列があれば sameCropMult）×（交わる列の数のぶん上乗せ）
  */
 export function cellMultiplier(state: GameState, cell: number): number {
-  if (!isRipe(state.field[cell]) || state.frost[cell]) return 0;
+  if (!isRipe(state.field[cell]) || isSpoiled(state, state.field[cell]!) || state.frost[cell]) return 0;
   return multSteps(state, cell).reduce((m, s) => m * s.x, 1);
 }
 
@@ -2095,7 +2122,7 @@ export function inSameCropLine(state: GameState, cell: number): boolean {
  * 列に入らない実は単品
  */
 export function ripeGroup(state: GameState, cell: number): number[] {
-  if (!isRipe(state.field[cell]) || state.frost[cell]) return [];
+  if (!isRipe(state.field[cell]) || isSpoiled(state, state.field[cell]!) || state.frost[cell]) return [];
   const seen = new Set<number>([cell]);
   const queue = [cell];
   while (queue.length) {
@@ -2143,7 +2170,7 @@ export interface SellResult {
 function sellRaw(state: GameState, cell: number, single = false): SellResult | null {
   cell = rootOf(state, cell);
   const crop = state.field[cell];
-  if (state.over || !crop || !isRipe(crop) || frozenCrop(state, cell) || sellBlock(state, cell, single)) return null;
+  if (state.over || !crop || !isRipe(crop) || isSpoiled(state, crop) || frozenCrop(state, cell) || sellBlock(state, cell, single)) return null;
   const group = single ? [cell] : harvestGroup(state, cell);
   if (isColorful(state)) state.colorfulToday = true;
   const size = group.length;
@@ -2638,14 +2665,13 @@ export function sell(state: GameState, cell: number, single = false): SellResult
   // 記録用：売る前に、実ってから何夜たったか（一番長いもの）と、傷んだ数を見ておく
   const before = (single ? [rootOf(state, cell)] : harvestGroup(state, rootOf(state, cell))).map((c) => state.field[c]).filter((c): c is Crop => !!c);
   const ripeMax = Math.max(0, ...before.map((c) => c.ripeDays ?? 0));
-  const spoiled = before.filter((c) => isSpoiled(state, c)).length;
   const res = sellRaw(state, cell, single);
   if (res) {
     lstat(state, IN + (res.line ? '列で売る' : single ? '大商い' : '単品'), res.total - res.orderReward - res.bumper);
     lstat(state, IN + '注文', res.orderReward);
     lstat(state, IN + '大豊作', res.bumper);
     const kinds = [...new Set(res.cells.map((c) => CROPS[c.kind].name))].join('・');
-    glog(state, `売る ${kinds}×${res.size} ${res.line ? `列×${Math.round(res.mult * 100) / 100}` : single ? '大商い' : '単品'} +${res.total}${res.orderReward ? ` 注文達成+${res.orderReward}` : ''}${res.bumper ? ` 大豊作+${res.bumper}` : ''}${ripeMax ? ` 実って${ripeMax}日` : ''}${spoiled ? ` 傷み${spoiled}` : ''}`);
+    glog(state, `売る ${kinds}×${res.size} ${res.line ? `列×${Math.round(res.mult * 100) / 100}` : single ? '大商い' : '単品'} +${res.total}${res.orderReward ? ` 注文達成+${res.orderReward}` : ''}${res.bumper ? ` 大豊作+${res.bumper}` : ''}${ripeMax ? ` 実って${ripeMax}日` : ''}`);
   }
   return res;
 }
@@ -2910,4 +2936,20 @@ export function lordSummary(state: GameState): string {
   const c = state.taxCond;
   const cond = c ? `条件:${c.kind}${c.crop ? '=' + CROPS[c.crop].name : ''} ${taxCondGot(state)}/${c.need}` : '';
   return [cond, state.whim ? `気まぐれ:${WHIM_NAMES[state.whim]}` : ''].filter(Boolean).join(' ');
+}
+
+// ---- 難しい8・9：置き物の維持費・持ち越せるお金の上限 ----
+
+/** 難しい8：毎週の年貢に乗る置き物の維持費（置いた道具1つにつき、値段×upkeepRate） */
+export function upkeep(state: GameState): number {
+  if (state.difficulty < CONFIG.upkeepFrom) return 0;
+  return fieldCells(state).reduce((n, i) => {
+    const id = state.tools[i];
+    return id ? n + Math.round((PLACES[id].price ?? CONFIG.upkeepFree) * CONFIG.upkeepRate) : n;
+  }, 0);
+}
+
+/** 難しい9：年貢を払ったあとに持ち越せるお金（次の年貢の額×carryCapMult） */
+export function carryCap(state: GameState): number {
+  return Math.round(nextTax(state).amount * CONFIG.carryCapMult);
 }

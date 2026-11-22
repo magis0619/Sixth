@@ -597,14 +597,21 @@ export const CONFIG = {
   taxSchedule: [10, 40, 80, 120, 160, 200, 240, 290],
   /** 難しさごとの年貢の倍率（ふつう〜難しい5） */
   // 自動プレイのクリア率がおよそ 70→55→40→25→17→6% になるように（2026-11-21）
-  difficultyTaxMult: [1, 1.15, 1.2, 1.3, 1.45, 1.5, 1.5, 1.5],
-  /** 難しい6：実ってから何日売らないと傷むか（傷むと売値が spoilMult 倍） */
+  difficultyTaxMult: [1, 1.15, 1.2, 1.3, 1.45, 1.5, 1.5, 1.5, 1.5, 1.5],
+  /** 難しい6：実ってから何日売らないと傷むか。傷んだ作物は売れず列にも入らず、spoilClearCost 払って捨てる */
   spoilFrom: 6,
   spoilDays: 3,
-  spoilMult: 0.5,
+  spoilClearCost: 5,
   /** 難しい7：同じ作物だけでそろっていない列（混ぜた列）は、倍率の上乗せ分を mixedKeep 倍に */
   mixedFrom: 7,
   mixedKeep: 0.5,
+  /** 難しい8：畑に置いた道具1つにつき、毎週の年貢に「値段×upkeepRate」が足される（お守りでもらった道具は upkeepFree の値段として数える） */
+  upkeepFrom: 8,
+  upkeepRate: 0.2,
+  upkeepFree: 60,
+  /** 難しい9：年貢を払ったあと、次の年貢の額×carryCapMult を超えたお金はなくなる */
+  carryFrom: 9,
+  carryCapMult: 1,
   taxGrowth: 1.5,
   /** この回数の年貢を納めるとクリア（その後はエンドレス） */
   winTaxes: 7,
@@ -874,6 +881,8 @@ export const DIFFICULTIES = [
   { name: '難しい5', desc: '増えるイナゴ・年貢×1.5' },
   { name: '難しい6', desc: '実りは3日で傷む' },
   { name: '難しい7', desc: '混ぜた列は倍率が下がる' },
+  { name: '難しい8', desc: '置き物に毎週の維持費' },
+  { name: '難しい9', desc: '持ち越せるお金に上限' },
 ];
 
 /** 農家：最初の袋（いつもの袋からの増減）・最初のお守り・最初に持っている畑の品・市に出やすい品（2倍） */

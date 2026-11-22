@@ -7,7 +7,7 @@
 // - 合体：主力の種が5枚そろったら合体（売値が上がる）
 
 import { CROPS, PLACES, SEEDS, SYMBOLS, type CharmId, type CropKind, type PlaceId, type SymbolId, type UpgradeId, UPGRADE_SYMBOL, cropBase } from '../src/config.ts';
-import {
+import { isSpoiled, clearSpoiled,
   bagTotal, buy, buyPlace, canDiscard, discard, discardPrice, buyPremium, canBuy, canBuyPlace, canBuyPremium, canExpand, canPlace, canUse, cellAt, cellX, cellY, chooseCharm, expand, expandPrice,
   fieldCells, isOpen, isRipe, mergeable, mergeCost, mergeSymbol, nextTax, place, placePrice, premiumPrice, pullWeed, ripeGroup, sell, shapeCells, skipCharm,
   takeOffer, upgradePrice, useSymbol, validTargets, type GameState,
@@ -249,6 +249,8 @@ function growScore(s: GameState, shape: Parameters<typeof shapeCells>[1], c: num
 
 export function playerDay(s: GameState): void {
   s.weeds.forEach((w, i) => { if (w) pullWeed(s, i); });
+  // 難しい6：傷んだ作物は捨てる
+  fieldCells(s).forEach((i) => { const c = s.field[i]; if (c && isSpoiled(s, c)) clearSpoiled(s, i); });
   placeStock(s);
   shop(s);
   // 種から先に植え、そのあと育てる
