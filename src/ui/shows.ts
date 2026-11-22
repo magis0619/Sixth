@@ -211,6 +211,18 @@ export function showCharmOffer(): Promise<void> {
     </div>`;
   // 全部曰く付きなので、どれも取らないのも手
   el.overlay.querySelector('.charm-choices')!.insertAdjacentHTML('afterend', `<button class="charm-skip" disabled>${L('どれも取らない', 'Take none')}</button>`);
+  // 選ぶ前に今の畑を見る（置く場所があるか・何を植えているかを確かめたい）。押すと窓を隠し、どこを押しても戻る
+  el.overlay.querySelector('.charm-modal h2')!.insertAdjacentHTML('afterend', `<button class="charm-peek">${art('expand')}<span>${L('畑を見る', 'See farm')}</span></button>`);
+  // 見ている間は、畑の上を薄い幕（.peek-cover）で覆って、遊ぶ操作にならないようにする。幕のどこを押しても窓に戻る
+  el.overlay.insertAdjacentHTML('beforeend', `<div class="peek-cover"><button class="peek-back">${art('gift')}<span>${L('お守りを選ぶ', 'Pick a charm')}</span></button></div>`);
+  el.overlay.querySelector('.charm-peek')!.addEventListener('click', () => {
+    sfx.select();
+    el.overlay.classList.add('peek');
+  });
+  el.overlay.querySelector('.peek-cover')!.addEventListener('click', () => {
+    sfx.select();
+    el.overlay.classList.remove('peek');
+  });
   el.overlay.classList.add('show');
   const skipBtn = el.overlay.querySelector<HTMLButtonElement>('.charm-skip')!;
   later(() => (skipBtn.disabled = false), 700);
@@ -232,7 +244,7 @@ export function showCharmOffer(): Promise<void> {
       picked = true;
       skipCharm(state);
       sfx.cancel();
-      el.overlay.classList.remove('show');
+      el.overlay.classList.remove('show', 'peek');
       el.overlay.innerHTML = '';
       hooks.render();
       resolve();
@@ -252,7 +264,7 @@ export function showCharmOffer(): Promise<void> {
         cards.forEach((other) => other !== card && other.animate([{ opacity: 1 }, { opacity: 0.2 }], { duration: 200, fill: 'forwards' }));
         card.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.12)' }, { transform: 'scale(1)' }], { duration: 400 });
         later(() => {
-          el.overlay.classList.remove('show');
+          el.overlay.classList.remove('show', 'peek');
           el.overlay.innerHTML = '';
           hooks.render();
           if (id === 'artisan') {

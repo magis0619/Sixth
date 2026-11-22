@@ -44,8 +44,9 @@ export async function bigHarvestFinale(amount: number): Promise<void> {
   sfx.fever();
   flash('#ffe680', 500);
   shake(el.app, 12);
-  coinRain(90);
-  confetti(110);
+  // 粒は合わせて80までに抑える（多すぎるとスマホで画面が落ちる）
+  coinRain(40);
+  confetti(30);
   const colors = ['#ffd84a', '#ff6a4a', '#7fe07f', '#6ac8ff', '#ff9ae0', '#ffd84a'];
   colors.forEach((c, i) =>
     later(() => {

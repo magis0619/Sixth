@@ -1,7 +1,7 @@
 // 画面演出（数字の飛び出し、粒子、揺れ、フラッシュ）。すべて fx レイヤー上に一時要素を出して消す。
 
 import { EN } from './i18n.ts';
-import { glyph } from './art.ts';
+import { glyph, particleGlyph } from './art.ts';
 
 const layer = (): HTMLElement => document.getElementById('fx')!;
 
@@ -63,6 +63,16 @@ export function center(el: Element): { x: number; y: number } {
   return c;
 }
 
+/**
+ * 同時に画面に出す粒（紙吹雪・金貨の雨・火花・散る粒）の上限。大豊作で400粒近く出て、スマホで画面が落ちることがあった。
+ * 上限に近いときは、新しく出す粒を減らす
+ */
+const MAX_PARTICLES = 80;
+function particleRoom(want: number): number {
+  const live = layer().querySelectorAll('.fx-particle, .fx-spark').length;
+  return Math.max(0, Math.min(want, MAX_PARTICLES - live));
+}
+
 function spawn(html: string, cls: string, x: number, y: number): HTMLElement {
   const el = document.createElement('div');
   el.className = `fx ${cls}`;
@@ -99,9 +109,9 @@ export function floatText(x: number, y: number, text: string, opts: { cls?: stri
 
 /** 中心から粒子を散らす */
 export function burst(x: number, y: number, chars: string[], count = 10, spread = 90): void {
-  const n = calm ? Math.min(count, 4) : count;
+  const n = particleRoom(calm ? Math.min(count, 4) : count);
   for (let i = 0; i < n; i++) {
-    const el = spawn(glyph(chars[i % chars.length]), 'fx-particle', x, y);
+    const el = spawn(particleGlyph(chars[i % chars.length]), 'fx-particle', x, y);
     const angle = (Math.PI * 2 * i) / n + Math.random() * 0.6;
     const dist = spread * (calm ? 1 : BIG + 0.1) * (0.5 + Math.random() * 0.7);
     const dx = Math.cos(angle) * dist;
@@ -122,7 +132,7 @@ export function burst(x: number, y: number, chars: string[], count = 10, spread 
 export function flyTo(from: { x: number; y: number }, toEl: Element, char: string, count = 1, onArrive?: () => void, fast: boolean | 'snap' = false): void {
   const to = center(toEl);
   for (let i = 0; i < count; i++) {
-    const el = spawn(glyph(char), 'fx-fly', from.x, from.y);
+    const el = spawn(particleGlyph(char), 'fx-fly', from.x, from.y);
     // snap：ポポポと続けて吸い込むときは、ふくらみを小さくして短く速く
     const snap = fast === 'snap';
     const mx = (from.x + to.x) / 2 + (Math.random() - 0.5) * (snap ? 40 : 120);
@@ -188,13 +198,13 @@ export function flash(color: string, dur = 350): void {
 /** 画面上部から紙吹雪 */
 export function confetti(count = 40): void {
   const chars = ['🎉', '✨', '💰', '🪙', '⭐'];
-  const n = calm ? 8 : Math.round(count * 1.4);
+  const n = particleRoom(calm ? 8 : Math.round(count * 1.4));
   // 画面の大きさは先に1回だけ読む（足すたびに読むと、そのたびに配置し直しになる）
   const W = window.innerWidth;
   const H = window.innerHeight;
   for (let i = 0; i < n; i++) {
     const x = Math.random() * W;
-    const el = spawn(glyph(chars[i % chars.length]), 'fx-particle', x, -20);
+    const el = spawn(particleGlyph(chars[i % chars.length]), 'fx-particle', x, -20);
     el.style.fontSize = `${1 + Math.random()}rem`;
     const dx = (Math.random() - 0.5) * 160;
     el.animate(
@@ -425,17 +435,17 @@ export function travel(from: { x: number; y: number }, toEl: Element, html: stri
 
 /** 金貨の雨 */
 export function coinRain(count = 40): void {
-  const n = calm ? 8 : count;
+  const n = particleRoom(calm ? 8 : count);
   const W = window.innerWidth;
   const H = window.innerHeight;
   for (let i = 0; i < n; i++) {
     const x = Math.random() * W;
-    const el = spawn(glyph('🪙'), 'fx-particle', x, -30);
+    const el = spawn(particleGlyph('🪙'), 'fx-particle', x, -30);
     el.style.fontSize = `${1.2 + Math.random() * 0.9}rem`;
     el.animate(
       [
-        { transform: 'translate(-50%, 0) rotateY(0deg)' },
-        { transform: `translate(-50%, ${H + 60}px) rotateY(${720 + Math.random() * 720}deg)` },
+        { transform: 'translate(-50%, 0) rotate(0deg)' },
+        { transform: `translate(-50%, ${H + 60}px) rotate(${(Math.random() < 0.5 ? -1 : 1) * (180 + Math.random() * 360)}deg)` },
       ],
       { duration: 1100 + Math.random() * 900, delay: Math.random() * 600, easing: 'cubic-bezier(.4,0,.8,.6)', fill: 'backwards' },
     ).onfinish = () => el.remove();
@@ -512,11 +522,11 @@ export function firework(x: number, y: number, color: string): void {
   rocket.style.background = color;
   rocket.animate([{ translate: '0 0' }, { translate: `0 ${y - window.innerHeight - 10}px` }], { duration: 600, easing: 'cubic-bezier(.2,.7,.4,1)', fill: 'forwards' }).onfinish = () => {
     rocket.remove();
-    const n = calm ? 12 : 28;
+    const n = particleRoom(calm ? 10 : 18);
     for (let i = 0; i < n; i++) {
       const spark = spawn('', 'fx-spark', x, y);
+      // 光のにじみ（box-shadow）は1粒ごとにぼかしの計算が走って重いので、色だけ
       spark.style.background = color;
-      spark.style.boxShadow = `0 0 8px ${color}`;
       const a = (Math.PI * 2 * i) / n;
       const d = 70 + Math.random() * 60;
       spark.animate(
@@ -582,12 +592,12 @@ export function dropIn(el: Element): void {
 
 /** ひらひら舞う：上から（up なら下から）揺れながら流れる。葉っぱ・星・ハート・ちょうちょ */
 export function flutter(chars: string[], count = 24, up = false): void {
-  const n = calm ? Math.min(count, 8) : count;
+  const n = particleRoom(calm ? Math.min(count, 8) : count);
   const W = window.innerWidth;
   const H = window.innerHeight;
   for (let i = 0; i < n; i++) {
     const x = Math.random() * W;
-    const el = spawn(glyph(chars[i % chars.length]), 'fx-particle', x, up ? H + 30 : -30);
+    const el = spawn(particleGlyph(chars[i % chars.length]), 'fx-particle', x, up ? H + 30 : -30);
     el.style.fontSize = `${1.1 + Math.random() * 0.9}rem`;
     const sway = 30 + Math.random() * 50;
     const dy = (up ? -1 : 1) * (H + 80);

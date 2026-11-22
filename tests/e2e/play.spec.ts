@@ -228,6 +228,13 @@ test('お守りの3択を連打しても1つしか取れず、最後（7回目�
   await pest.click({ force: true });
   const card = page.locator('#overlay.show .charm-card:not([disabled])').first();
   await expect(card).toBeVisible({ timeout: 20_000 });
+  // 「畑を見る」で窓が隠れて畑が見え、どこを押しても窓に戻る
+  await page.click('#overlay.show .charm-peek');
+  await expect(page.locator('#overlay.peek .charm-modal')).toBeHidden();
+  await expect(page.locator('#overlay.peek .peek-back')).toBeVisible();
+  await page.click('#overlay.peek .peek-back');
+  await expect(page.locator('#overlay')).not.toHaveClass(/peek/);
+  await expect(page.locator('#overlay.show .charm-modal')).toBeVisible();
   // 3枚とも素早く押す
   // お守りの札を指で押しても、早送りにはならない
   await card.dispatchEvent('pointerdown');

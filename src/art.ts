@@ -1232,6 +1232,23 @@ const EMOJI_ART: Record<string, ArtId> = {
   '🔥': 'flame',
 };
 
+/**
+ * 演出の粒（紙吹雪・金貨の雨・火花のかけら）用の絵。SVGを1粒ずつ書き込むと、粒の数だけ図形の木ができて重い
+ * （スマホでは画面が落ちることがあった）。同じ絵は1つの画像（data URL）にして使い回す
+ */
+const particleCache = new Map<string, string>();
+export function particleGlyph(ch: string): string {
+  const id = EMOJI_ART[ch];
+  if (!id) return ch;
+  let src = particleCache.get(id);
+  if (!src) {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${ART[id]}</svg>`;
+    src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+    particleCache.set(id, src);
+  }
+  return `<img class="art" src="${src}" alt="" draggable="false">`;
+}
+
 export function glyph(ch: string): string {
   if (ch.startsWith('<')) return ch;
   const id = EMOJI_ART[ch];

@@ -1187,3 +1187,18 @@ html.idle *, html.idle *::before, html.idle *::after { animation-play-state: pau
 .ov4-lead .art { font-size: 1.75rem; flex: none; }
 .ov4-lead b { color: #b5501c; }
 #stall .item.on-sale { background: #fff0ea; border-radius: 10px; box-shadow: inset 0 0 0 2.5px #e0402a; }
+
+/* ==== 演出の粒は画像（data URL）で出す（SVGを1粒ずつ書き込むと重い） ==== */
+.fx-particle img.art, .fx-fly img.art { width: 1em; height: 1em; display: block; }
+
+/* ==== お守りの3択：「畑を見る」で窓を隠して、今の畑を見る。どこを押しても窓に戻る ==== */
+.charm-peek { display: flex; align-items: center; justify-content: center; gap: 6px; margin: -4px auto 8px; padding: 5px 14px; font-size: 0.9375rem; font-weight: 700; color: var(--ink); background: #fff; border: 2px solid var(--ink); border-radius: 999px; box-shadow: 0 3px 0 var(--ink); }
+.charm-peek .art { font-size: 1.25rem; }
+.peek-cover { display: none; }
+#overlay.peek { background: transparent; }
+#overlay.peek .modal, #overlay.peek .charm-skip { display: none; }
+#overlay.peek .peek-cover { display: block; position: fixed; inset: 0; z-index: 2; background: rgba(61, 51, 38, 0.08); }
+.peek-back { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); translate: -50% 0; display: flex; align-items: center; gap: 8px; padding: 12px 24px; font-family: var(--font-pop); font-size: 1.0625rem; font-weight: 700; color: #3a1a06; background: #ffc928; border: 3px solid var(--ink); border-radius: 999px; box-shadow: 0 5px 0 var(--ink); animation: peek-bob 1.2s ease-in-out infinite; }
+.peek-back .art { font-size: 1.5rem; }
+@keyframes peek-bob { 50% { translate: -50% -4px; } }
+.calm .peek-back { animation: none; }
