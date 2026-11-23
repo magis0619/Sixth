@@ -1,5 +1,6 @@
 // 列で売ったときの演出：作物が金貨になって財布へ飛び、合計が回って止まる。大豊作の始まりと締め
 
+import { breadcrumb } from './crashwatch.ts';
 import { activeLineFx, lineFxBits, playLineFx } from './linefx.ts';
 import { EN, L } from '../i18n.ts';
 import { type SellResult } from '../game.ts';
@@ -14,6 +15,7 @@ import { play } from './play.ts';
 
 /** 大豊作の幕開け：畑いっぱいの実が真ん中から順に跳ね、後光とともに「大豊作！」 */
 export async function bigHarvestIntro(ghosts: HTMLElement[]): Promise<void> {
+  breadcrumb(`bigHarvest ${ghosts.length}`);
   const f = center(el.field);
   duckBgm(7000);
   sfx.reach();
@@ -67,6 +69,7 @@ export function money(n: number): string {
  * 列の収穫：ヒットストップ → 倍率を1つずつ乗せる → 作物が跳ねて財布へ（大きいほどスロー）→ 合計が桁ごとに回る
  */
 export async function playLineHarvest(res: SellResult, centers: { x: number; y: number }[], p: { x: number; y: number }, landSale: () => void): Promise<void> {
+  breadcrumb(`line ${centers.length} +${res.total} t${res.lines}`);
   const level = Math.min(res.lines, 4);
   const slow = slowFactor(level - 1);
   // 解放で選んだ列の演出（見た目だけ）

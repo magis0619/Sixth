@@ -1259,3 +1259,8 @@ html.idle *, html.idle *::before, html.idle *::after { animation-play-state: pau
    特別なマスの縁（.plot.tile-compost の box-shadow）が後ろのファイルにあり、列の縁を上書きして消していた */
 .plot.line[class*="tile-"] { box-shadow: inset 0 0 0 3px var(--pink), 0 0 0 3px var(--ink); }
 .plot.target[class*="tile-"] { box-shadow: inset 0 0 0 3px #fff, 0 0 0 3px var(--ink); }
+
+/* ==== 大豊作の後光を小さく（スマホで画面が落ちる対策） ====
+   前は画面の長い辺の220%の正方形を回して1.3倍まで広げていた。iPhone では1辺5,000px超の絵になり、
+   描くための記憶（1枚で100MB超）が足りずに落ちていたと見ている。画面の短い辺の140%にする（光は真ん中から広がるので見た目はほぼ同じ） */
+.fx-rays { width: 140vmin; height: 140vmin; }

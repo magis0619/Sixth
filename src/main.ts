@@ -23,6 +23,7 @@ import { done, play } from './ui/play.ts';
 import { lordWeekCard } from './ui/lord.ts';
 import { armFresh, installTapGuards } from './ui/tapguard.ts';
 import { readChallengeFromUrl } from './ui/challenge.ts';
+import { breadcrumb, installCrashWatch } from './ui/crashwatch.ts';
 import { pressable } from './ui/press.ts';
 import { applySettings, showSettings } from './ui/settings.ts';
 import { reject } from './ui/states.ts';
@@ -585,6 +586,7 @@ async function spinMorning(): Promise<void> {
   refreshCombos(state);
   // フリーズ中に結果が見えないよう、描き直すのは演出のあと
   const show = planShow();
+  breadcrumb(`spin d${state.day}`);
   play.spinning = true;
   render();
   try {
@@ -600,6 +602,7 @@ async function spinMorning(): Promise<void> {
     for (const id of state.combos) await explainOnce(`ex:combo:${id}`, comboCard(id), !!play.tut);
   }
   if (state.fever.length) {
+    breadcrumb(`fever ${state.fever.join(',')}`);
     await showFever();
     const feverEvents = resolveFever(state, rng);
     await playFeverRoles(feverEvents);
@@ -2025,6 +2028,8 @@ applySkin();
 setupLongPress();
 setupScene();
 render();
+// 前に開いたときに画面が落ちていたら記録に送る（落ちる直前の足あとも）
+installCrashWatch(() => state);
 // 挑戦状の URL（?c=…）で開いたら、タイトルに挑戦状のカードを出す
 readChallengeFromUrl();
 showTitle();

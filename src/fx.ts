@@ -548,8 +548,8 @@ export function rays(ms = 2600): void {
     [
       { transform: 'translate(-50%, -50%) scale(0.2) rotate(0deg)', opacity: 0 },
       { transform: 'translate(-50%, -50%) scale(1) rotate(40deg)', opacity: 1, offset: 0.15 },
-      { transform: 'translate(-50%, -50%) scale(1.1) rotate(120deg)', opacity: 1, offset: 0.8 },
-      { transform: 'translate(-50%, -50%) scale(1.3) rotate(150deg)', opacity: 0 },
+      { transform: 'translate(-50%, -50%) scale(1.05) rotate(120deg)', opacity: 1, offset: 0.8 },
+      { transform: 'translate(-50%, -50%) scale(1.1) rotate(150deg)', opacity: 0 },
     ],
     { duration: ms, easing: 'linear' },
   ).onfinish = () => el.remove();
