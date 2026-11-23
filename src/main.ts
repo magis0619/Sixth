@@ -584,8 +584,14 @@ async function spinMorning(): Promise<void> {
   refreshCombos(state);
   // フリーズ中に結果が見えないよう、描き直すのは演出のあと
   const show = planShow();
+  play.spinning = true;
   render();
-  await spinReels(show);
+  try {
+    await spinReels(show);
+  } finally {
+    play.spinning = false;
+  }
+  renderStatus();
   // 初めて出た絵柄は、一枚絵で説明（お邪魔は効く前に）
   for (const s of [...new Set(state.results.map((r) => r.symbol))]) await explainOnce(`ex:sym:${s}`, symbolCard(s), !!play.tut);
   if (state.combos.length) {

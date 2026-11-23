@@ -44,11 +44,13 @@ export function fitLayout(): void {
 /** 今日だけ・明日だけの効果 */
 export function renderStatus(): void {
   const chips: string[] = [];
-  const good = state.fever.filter((s) => SYMBOLS[s].rarity !== 'bad');
-  const bad = state.fever.filter((s) => SYMBOLS[s].rarity === 'bad');
+  // リールが止まるまでは、そろったこと（フィーバー・組み合わせ）を出さない
+  const fever = play.spinning ? [] : state.fever;
+  const good = fever.filter((s) => SYMBOLS[s].rarity !== 'bad');
+  const bad = fever.filter((s) => SYMBOLS[s].rarity === 'bad');
   if (good.length) chips.push(`<span class="st fever">${art('flame')} ${L('フィーバー', 'Fever')}：${good.map((s) => SYMBOLS[s].name).join(L('・', ', '))}</span>`);
   if (bad.length) chips.push(`<span class="st danger">${art('warn')} ${bad.map((s) => L(`${SYMBOLS[s].name}の群れ`, `${SYMBOLS[s].name} swarm`)).join(L('・', ', '))}</span>`);
-  state.combos.forEach((id) => chips.push(`<span class="st combo">${art(id)} ${CHARMS[id].name}</span>`));
+  if (!play.spinning) state.combos.forEach((id) => chips.push(`<span class="st combo">${art(id)} ${CHARMS[id].name}</span>`));
   // 市の日は高く売れる
   // 市の日の売値は曜日の板（今日の札の下）に出す
   if (state.priceMult > 1) chips.push(`<span class="st merchant">${art('merchant')} ${L('今日の売値', "Today's prices")} ×${fmtMult(state.priceMult)}</span>`);

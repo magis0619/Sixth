@@ -41,6 +41,8 @@ export const play = {
   tutFocus: [] as Element[],
   /** 暗幕の指の動きの合図 */
   tutSpotTimer: 0,
+  /** リールが回っている間（止まるまでは、フィーバー・組み合わせの札を上に出さない。先に出ると結果が分かってしまう） */
+  spinning: false,
   /** 置いたばかりの道具のマスと、名前を出しておく期限（畑の上の名前は置いてしばらくだけ出す） */
   freshTools: {} as Record<number, number>,
 };

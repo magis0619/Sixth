@@ -490,6 +490,34 @@ test('演出の最中、ふつうのタップでは早送りにならず、長�
   expect(errors).toEqual([]);
 });
 
+test('リーチの回転中は、上の札にフィーバーを出さない（止まってから出す）', async ({ page }) => {
+  const errors = await boot(page);
+  await start(page);
+  await firstDay(page);
+  // 袋を種だけにして、必ず3つそろう（フィーバー）にする
+  await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('hatake-slot:run')!);
+    for (const k of Object.keys(s.bag)) s.bag[k] = 0;
+    s.bag.seed = 6;
+    Object.assign(s, { results: [], field: s.field.map(() => null) });
+    localStorage.setItem('hatake-slot:run', JSON.stringify(s));
+  });
+  await page.reload();
+  await page.click('#title-resume', { force: true });
+  await page.waitForTimeout(500);
+  await page.evaluate(() => document.getElementById('spin')!.click());
+  await expect(page.locator('#reels .reel.spinning').first()).toBeVisible();
+  // 回っている間は何度見ても、フィーバーの札は出ていない
+  for (let k = 0; k < 8; k++) {
+    if (!(await page.locator('#reels .reel.spinning').count())) break;
+    expect(await page.locator('.status .st.fever').count()).toBe(0);
+    await page.waitForTimeout(150);
+  }
+  // 止まったあとは出る
+  await expect(page.locator('.status .st.fever')).toHaveCount(1, { timeout: 10_000 });
+  expect(errors).toEqual([]);
+});
+
 test('リーチの回転を長押しで早送りしても、止まったあとに「リーチ」と暗いリールが残らない', async ({ page }) => {
   const errors = await boot(page);
   await start(page);
