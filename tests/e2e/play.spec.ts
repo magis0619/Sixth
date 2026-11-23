@@ -442,6 +442,29 @@ test('市で買った物を置いてすぐリールを回すと、回り終わ�
   expect(errors).toEqual([]);
 });
 
+test('堆肥のマスの上でも、列のピンクの縁が出る', async ({ page }) => {
+  const errors = await boot(page);
+  await start(page);
+  await firstDay(page);
+  await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('hatake-slot:run')!);
+    const c = (k: string) => ({ kind: k, growth: 9, fertilized: false, bonus: 0 });
+    s.results = [];
+    s.field = s.field.map(() => null);
+    [0, 1, 2].forEach((i) => (s.field[i] = c('tomato')));
+    s.tiles[1] = 'compost';
+    localStorage.setItem('hatake-slot:run', JSON.stringify(s));
+  });
+  await page.reload();
+  await page.click('#title-resume', { force: true });
+  const plot = page.locator('#field .plot').nth(1);
+  await expect(plot).toHaveClass(/tile-compost/);
+  await expect(plot).toHaveClass(/\bline\b/);
+  // ピンク（--pink）の縁が付いている
+  expect(await plot.evaluate((n) => getComputedStyle(n).boxShadow)).toContain('255, 95, 162');
+  expect(errors).toEqual([]);
+});
+
 test('押してから離すまでにボタンが動いても、指が動いていなければ押したことになる', async ({ page }) => {
   await boot(page);
   await page.click('#title-start', { force: true });
