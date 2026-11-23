@@ -622,7 +622,8 @@ async function spinMorning(): Promise<void> {
 
 /** 置き終えたら市に戻る（演出の途中なら終わるのを待つ） */
 function backToMarket(tries = 40): void {
-  if (state.over || state.stock.length || !shopOpen(state) || openSheetName === 'shop') return;
+  // 市に戻るのは、リールを回す前（朝）だけ。置き終えてすぐにリールを回したときに、回り終わってから市が開いていた
+  if (!state.morning || state.over || state.stock.length || !shopOpen(state) || openSheetName === 'shop') return;
   if (ui.busy || openSheetName || el.overlay.classList.contains('show')) {
     if (tries > 0) later(() => backToMarket(tries - 1), 300);
     return;

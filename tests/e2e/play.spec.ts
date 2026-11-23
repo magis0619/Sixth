@@ -399,6 +399,49 @@ test('市で巣箱を買って置くと、市に自動で戻る。閉じたら�
   expect(errors).toEqual([]);
 });
 
+test('市で買った物を置いてすぐリールを回すと、回り終わったあとに市が開かない', async ({ page }) => {
+  const errors = await boot(page);
+  await start(page);
+  await firstDay(page);
+  await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('hatake-slot:run')!);
+    Object.assign(s, { day: 3, morning: true, gold: 999, offer: ['addRain', 'addSun', 'addSeed'], weeklyPlaces: ['hive', 'scarecrow', 'compost'], marketClosed: false, stock: [], contractOffer: [] });
+    s.field = s.field.map(() => null);
+    localStorage.setItem('hatake-slot:run', JSON.stringify(s));
+  });
+  await page.reload();
+  await page.click('#title-resume', { force: true });
+  await page.evaluate(() => document.getElementById('spin')!.click());
+  const take = page.locator('#offer-screen:not([hidden]) [data-take]').first();
+  await expect(take).toBeInViewport({ timeout: 10_000 });
+  await ready(page);
+  await take.click({ force: true });
+  const hive = page.locator('#stall .farm-list [data-id="hive"]');
+  await expect(hive).toBeInViewport({ timeout: 5_000 });
+  await ready(page);
+  await hive.click({ force: true });
+  await ready(page);
+  await page.click('#market-next', { force: true });
+  const spot = page.locator('#field .plot.target').first();
+  await expect(spot).toHaveCount(1, { timeout: 5_000 });
+  await expect.poll(() => spot.evaluate((n) => {
+    const r = n.getBoundingClientRect();
+    return !!document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest('.plot');
+  }), { timeout: 10_000 }).toBe(true);
+  await spot.click({ force: true });
+  // 市に戻る前に、すぐリールを回す
+  await page.evaluate(() => document.getElementById('spin')!.click());
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('hatake-slot:run')!).morning), { timeout: 10_000 }).toBe(false);
+  // 回り終わって、しばらく待っても市は開かない（何も押さずに見ているだけ）
+  let opened = false;
+  for (let k = 0; k < 40; k++) {
+    await page.waitForTimeout(300);
+    if (await page.locator('#sheet.open[data-pane="shop"]').count()) opened = true;
+  }
+  expect(opened).toBe(false);
+  expect(errors).toEqual([]);
+});
+
 test('押してから離すまでにボタンが動いても、指が動いていなければ押したことになる', async ({ page }) => {
   await boot(page);
   await page.click('#title-start', { force: true });
