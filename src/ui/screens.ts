@@ -21,6 +21,7 @@ import { stopHeartbeat } from './scene.ts';
 import { showSettings } from './settings.ts';
 import { FEVER_FX } from './shows.ts';
 import { activeLineFx, playLineFx } from './linefx.ts';
+import { showShareSheet } from './share-card.ts';
 import { explainOnce, overviewCard, showExplain, symbolCard } from './explain.ts';
 
 /** 結果画面。cleared=true はクリア後にここで終えたとき */
@@ -192,7 +193,7 @@ export function showGameOver(endedAfterClear = false): void {
         <button class="rs-main" id="retry" disabled>${L('もう一度', 'Play again')}</button>
         <div class="rs-sub">
           <button id="restart" disabled>${L('タイトルへ', 'Title')}</button>
-          <button id="share">${typeof navigator.share === 'function' ? `${art('share')}${L('シェア', 'Share')}` : `${art('copy')}${L('コピー', 'Copy')}`}</button>
+          <button id="share" class="rs-share">${art('share')}${L('シェア', 'Share')}</button>
         </div>
       </div>
     </div>`;
@@ -222,33 +223,9 @@ export function restart(): void {
   showTitle();
 }
 
-export function resultText(endedAfterClear: boolean): string {
-  const head = state.cleared ? (endedAfterClear ? `${art('trophy')} ${L('クリア', 'Won')}` : `${art('trophy')} ${L(`クリア後エンドレスで${state.day}日目まで`, `Won, then reached day ${state.day} in endless`)}`) : L(`${state.day}日目まで`, `Reached day ${state.day}`);
-  const charms = state.stats.charms.map((c) => CHARMS[c.id].emoji).join('');
-  return [
-    `🌾${L('畑スロット', 'Farm Slots')} ${head}`,
-    L(`${TW()} ${state.taxesPaid}回払った / 総収入 ${state.stats.totalEarned} / リール${state.reels}本`, `Taxes paid ${state.taxesPaid} / earned ${state.stats.totalEarned}g / ${state.reels} reels`),
-    charms ? `${L('お守り', 'Charms')} ${charms}` : '',
-    L(`フィーバー${state.stats.fevers}回・列${state.stats.lineHarvests}回`, `Fevers ${state.stats.fevers} · lines ${state.stats.lineHarvests}`),
-    SHARE_URL,
-  ]
-    .filter(Boolean)
-    .join('\n');
-}
-
+/** シェア：結果カードの画像を作って、送る・保存する・文をコピーする板を出す（src/ui/share-card.ts） */
 export async function shareResult(endedAfterClear: boolean): Promise<void> {
-  const text = resultText(endedAfterClear);
-  try {
-    if (typeof navigator.share === 'function') {
-      await navigator.share({ text });
-      return;
-    }
-    await navigator.clipboard.writeText(text);
-    say(L('コピーした', 'Copied'));
-    floatText(window.innerWidth / 2, window.innerHeight * 0.3, L('コピーした', 'Copied'), { cls: 'good', size: 1 });
-  } catch {
-    // 共有を閉じた・権限がない場合は何もしない
-  }
+  await showShareSheet(endedAfterClear);
 }
 
 // ---- 遊び方・図鑑 ----

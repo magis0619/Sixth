@@ -709,6 +709,10 @@ const SCENE_ART = {
     ${face('M20 6H46Q50 6 50 10V42Q50 46 46 46H20Q16 46 16 42V10Q16 6 20 6Z', C.white, 24, 14, 0.9, S2)}
     ${face('M12 18H38Q42 18 42 22V54Q42 58 38 58H12Q8 58 8 54V22Q8 18 12 18Z', ['#fff8e7', '#e8dcc2', '#ffffff'], 16, 26, 0.9)}
     <path d="M15 30H35M15 38H35M15 46H28" fill="none" stroke="${C.stone[1]}" stroke-width="2.4" stroke-linecap="round"/>`,
+  // 保存：下向きの矢印と受け皿
+  download: `
+    ${face('M26 6H38V30H48L32 46L16 30H26Z', C.green, 30, 22, 0.86)}
+    ${face('M8 44H14V52H50V44H56V58H8Z', C.brown, 24, 52, 0.84, S2)}`,
   share: `
     ${face('M8 34L54 10L44 56L30 42L50 18L24 38Z', C.blue, 30, 30, 0.86)}
     <path d="M24 38L26 52L30 42" fill="${C.blue[1]}" ${S2}/>`,
@@ -1240,13 +1244,24 @@ const particleCache = new Map<string, string>();
 export function particleGlyph(ch: string): string {
   const id = EMOJI_ART[ch];
   if (!id) return ch;
+  return `<img class="art" src="${artDataUrl(id)}" alt="" draggable="false">`;
+}
+
+/**
+ * 1枚の画像として使える絵（data URL）。絵のグラデーションはページに1つだけ置いた定義を指しているので、
+ * 画像にするときは、その絵が使う定義だけを中に入れる（入れないと色が抜けて暗くなる）
+ */
+export function artDataUrl(id: ArtId): string {
   let src = particleCache.get(id);
   if (!src) {
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${ART[id]}</svg>`;
+    const body = ART[id];
+    const used = [...new Set([...body.matchAll(/url\(#([^)]+)\)/g)].map((m) => m[1]))];
+    const defs = used.map((g) => GRADIENTS.get(g) ?? '').join('');
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${defs ? `<defs>${defs}</defs>` : ''}${body}</svg>`;
     src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
     particleCache.set(id, src);
   }
-  return `<img class="art" src="${src}" alt="" draggable="false">`;
+  return src;
 }
 
 export function glyph(ch: string): string {
