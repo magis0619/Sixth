@@ -4,7 +4,7 @@ import {
   symbolBase, type ShapeId, DIFFICULTIES, FARMERS, TOOL_EVOLVE, CONFIG, CROPS, PLACES, SEEDS, SYMBOLS, UPGRADE_SYMBOL, type PlaceId, type SymbolId,
 } from './config.ts';
 import {
-  weekDay, spoilLeft, spoilClearCost, clearSpoiled, isSpoiled, canPlace, canUse, cellMultiplier, cropPrice, drawSymbol, endDay, inField, inSameCropLine, isRipe, place, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, useSymbol, validTargets, type GameState, bigCells, cropCells, isPond, rootOf, waterWheels, wheelGold, animalGold, plantLineMult, mustPlace, refreshCombos, symbolShape, isRareOffer, isMarketDay, shopOpen, nextMarketDay, beginDay, spinDay, sellBlock, isFlooded,
+  weekDay, spoilLeft, spoilClearCost, clearSpoiled, isSpoiled, canPlace, canUse, cellMultiplier, cropPrice, drawSymbol, endDay, inField, inSameCropLine, isRipe, place, shapeCells, ripeGroup, newGame, nextTax, pullWeed, weedCost, resolveFever, type FeverEvent, resolveAuto, sell, useSymbol, validTargets, type GameState, type GameSetup, bigCells, cropCells, isPond, rootOf, waterWheels, wheelGold, animalGold, plantLineMult, mustPlace, refreshCombos, symbolShape, isRareOffer, isMarketDay, shopOpen, nextMarketDay, beginDay, spinDay, sellBlock, isFlooded,
 } from './game.ts';
 import { isMuted, sfx, suspendAudio, toggleMute, unlockAudio } from './audio.ts';
 import { saveMeta, setupFrom } from './meta.ts';
@@ -22,6 +22,7 @@ import { $, el, hooks, meta, rng, setState, state, ui, TW } from './ui/store.ts'
 import { done, play } from './ui/play.ts';
 import { lordWeekCard } from './ui/lord.ts';
 import { armFresh, installTapGuards } from './ui/tapguard.ts';
+import { readChallengeFromUrl } from './ui/challenge.ts';
 import { pressable } from './ui/press.ts';
 import { applySettings, showSettings } from './ui/settings.ts';
 import { reject } from './ui/states.ts';
@@ -173,7 +174,7 @@ function buildReels(): void {
     const b = document.createElement('button');
     b.className = 'reel';
     b.dataset.i = String(i);
-    const prev = state.results[i] ? resultArt(i) : symHtml(drawSymbol(state.bag, rng));
+    const prev = state.results[i] ? resultArt(i) : symHtml(drawSymbol(state.bag, Math.random));
     b.innerHTML = `<div class="window"><div class="strip"><div class="cell-sym">${prev}</div></div></div><div class="tag">—</div>`;
     b.addEventListener('click', () => clickAllowed('reel') && onReelTap(i));
     el.reels.appendChild(b);
@@ -808,9 +809,9 @@ function planShow(): SpinShow {
   const goodFever = state.fever.some((s) => SYMBOLS[s].rarity !== 'bad');
   const hot = goodFever || state.results.some((r) => r.symbol === 'goldSeed');
   // 当たりの日は多めに、外れの日もたまに出す（ガセ）。色が強いほど当たりやすい
-  if (rng() >= (hot ? 0.6 : 0.08)) return { cutIn: null };
+  if (Math.random() >= (hot ? 0.6 : 0.08)) return { cutIn: null };
   const weights = hot ? [1, 2, 3, goodFever ? 1.5 : 0] : [6, 3, 1, 0];
-  let r = rng() * weights.reduce((a, b) => a + b, 0);
+  let r = Math.random() * weights.reduce((a, b) => a + b, 0);
   const level = weights.findIndex((w) => (r -= w) < 0);
   return { cutIn: level < 0 ? 0 : level };
 }
@@ -1546,8 +1547,9 @@ function sellCrop(cell: number): void {
 
 // ---- 始める（新しく・続きから） ----
 
-function startGame(resume: GameState | null = null): void {
-  setState(resume ?? newGame(setupFrom(meta)));
+/** setup：準備を差し替えて始める（挑戦状のプレイなど） */
+function startGame(resume: GameState | null = null, setup?: GameSetup): void {
+  setState(resume ?? newGame(setup ?? setupFrom(meta)));
   play.goldInFlight = 0;
   play.taxPending = 0;
   // 所持金の表示は始めの額に合わせる（腕前で0以外から始まることがある）
@@ -1567,7 +1569,8 @@ function startGame(resume: GameState | null = null): void {
   document.getElementById('tut-hand')?.remove();
   window.clearInterval(play.tutSpotTimer);
   document.getElementById('coach')?.remove();
-  if (!resume && !meta.tutorialDone) startTutorial();
+  // 挑戦状のプレイはチュートリアルを出さない（決まった出目に差し替えると、相手と同じ出目にならない）
+  if (!resume && !meta.tutorialDone && !state.challenge) startTutorial();
   // 初めて遊ぶ農家は、最初にその農家のこつを出す
   const farmer = FARMERS.find((f) => f.id === state.farmer);
   if (!resume && farmer?.tip && !meta.farmersPlayed.includes(farmer.id)) {
@@ -2021,4 +2024,6 @@ applySkin();
 setupLongPress();
 setupScene();
 render();
+// 挑戦状の URL（?c=…）で開いたら、タイトルに挑戦状のカードを出す
+readChallengeFromUrl();
 showTitle();

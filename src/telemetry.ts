@@ -55,6 +55,9 @@ function summary(state: GameState): Record<string, unknown> {
   const weekFrom = state.day - ((state.day - 1) % CONFIG.taxPeriod);
   return {
     run: state.runId,
+    // 種（同じ種なら同じ出目の流れ）と、挑戦状から始めたプレイか
+    seed: state.seed ?? 0,
+    challenge: state.challenge ? 1 : 0,
     day: state.day,
     taxes: state.taxesPaid,
     gold: state.gold,

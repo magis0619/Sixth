@@ -10,6 +10,7 @@ import { sfx } from '../audio.ts';
 import { confetti, floatText, isCalm } from '../fx.ts';
 import { state } from './store.ts';
 import { FRUIT, PLACE_ART, say } from './view.ts';
+import { challengeText, challengeUrl } from './challenge.ts';
 
 /** 難しさの色（難しさを選ぶ画面と同じ） */
 const DIFF_COLOR = ['#5fae3c', '#3a86c8', '#e0a40a', '#e8743b', '#c93c2b', '#6a3d8f', '#7a5320', '#3d3a8f', '#2f6a5a', '#8f2a4a'];
@@ -62,7 +63,8 @@ export function shareText(endedAfterClear: boolean): string {
     `${L('畑スロット', 'Farm Slots')}｜${head}`,
     L(`評価${r.rank}（${r.score}点）・稼いだ合計 ${state.stats.totalEarned}・列で売った ${state.stats.lineHarvests}回`, `Rank ${r.rank} (${r.score}) · earned ${state.stats.totalEarned} · ${state.stats.lineHarvests} lines`),
     L('#畑スロット', '#FarmSlots'),
-    SHARE_URL,
+    // URL は挑戦状のリンク（開くと同じ畑で挑戦できる）
+    challengeUrl(state),
   ].join('\n');
 }
 
@@ -250,6 +252,7 @@ export async function showShareSheet(endedAfterClear: boolean): Promise<void> {
       <div class="share-img-wrap"><div class="share-loading">${art('sprout')}</div></div>
       <div class="share-actions">
         <button class="share-go" data-act="image" disabled>${art('share')}<span>${L('画像で送る', 'Share image')}</span></button>
+        <button class="share-ch" data-act="challenge">${art('mail')}<span>${L('挑戦状を送る', 'Send a challenge')}</span></button>
         <div class="share-row">
           <button data-act="save" disabled>${art('download')}<span>${L('画像を保存', 'Save')}</span></button>
           <button data-act="text">${art('copy')}<span>${L('文をコピー', 'Copy text')}</span></button>
@@ -300,6 +303,16 @@ export async function showShareSheet(endedAfterClear: boolean): Promise<void> {
           document.body.appendChild(a);
           a.click();
           a.remove();
+        } else if (act === 'challenge') {
+          sfx.select();
+          const ct = challengeText(state);
+          if (typeof navigator.share === 'function') await navigator.share({ text: ct });
+          else {
+            await navigator.clipboard.writeText(ct);
+            say(L('挑戦状をコピーした', 'Challenge copied'));
+            const rc = b.getBoundingClientRect();
+            floatText(rc.left + rc.width / 2, rc.top, L('コピーした', 'Copied'), { cls: 'good', size: 0.8 });
+          }
         } else if (act === 'text') {
           await navigator.clipboard.writeText(text);
           sfx.select();

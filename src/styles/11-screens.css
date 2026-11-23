@@ -1225,3 +1225,32 @@ html.idle *, html.idle *::before, html.idle *::after { animation-play-state: pau
 @keyframes share-pulse { 50% { transform: scale(1.15); } }
 .calm .share-img-wrap, .calm .share-shine, .calm .share-loading { animation: none; }
 .calm .share-shine { display: none; }
+
+/* ==== 挑戦状：タイトルのカード・結果画面の比べ・シェアの「挑戦状を送る」 ==== */
+.ch-card { width: min(100%, 360px); margin: 8px auto 4px; padding: 12px 14px; display: grid; gap: 4px; background: #fff8e7; border: 3px solid var(--ink); border-radius: 16px; box-shadow: 0 5px 0 var(--ink); animation: ch-in 0.45s cubic-bezier(.2, 1.4, .4, 1); }
+.ch-head { display: flex; align-items: center; gap: 8px; margin: 0 0 2px; font-family: var(--font-pop); font-size: 1.125rem; color: #b5501c; }
+.ch-head .art { font-size: 1.6rem; }
+.ch-row { display: grid; grid-template-columns: 1.6rem 1fr auto; align-items: center; gap: 8px; margin: 0; font-size: 0.9375rem; color: var(--ink); }
+.ch-row .art { font-size: 1.25rem; }
+.ch-row b { font-weight: 700; }
+.ch-note { margin: 4px 0 0; font-size: 0.8125rem; color: #6b5a44; }
+.ch-btns { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; margin-top: 6px; }
+.ch-btns .ch-go { margin: 0; font-size: 1.0625rem; }
+.ch-btns .ch-later { font-size: 0.9375rem; font-weight: 700; color: var(--ink); background: #fff; border: 2px solid var(--ink); border-radius: 12px; }
+@keyframes ch-in { from { transform: translateY(-16px) rotate(-3deg); opacity: 0; } }
+.calm .ch-card { animation: none; }
+
+.rs-vs { text-align: center; }
+.vs-verdict { margin: 2px 0 8px; font-family: var(--font-pop); font-size: 1.5rem; font-weight: 900; }
+.rs-vs.win .vs-verdict { color: #c0281b; }
+.rs-vs.lose .vs-verdict { color: #5b5245; }
+.vs-cols { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; }
+.vs-col { padding: 8px; border-radius: 12px; background: #fff; border: 2px solid #d8ccb4; display: grid; gap: 2px; }
+.vs-col.top { border-color: #e0a40a; box-shadow: 0 0 0 2px #ffd84a; }
+.vs-who { margin: 0; font-size: 0.875rem; color: #6b5a44; }
+.vs-res { font-size: 1.0625rem; }
+.vs-line { margin: 0; display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 0.9375rem; }
+.vs-mid { font-family: var(--font-pop); font-weight: 900; color: #b5501c; }
+.share-actions .share-ch { background: #ffe7d6; }
+.rec-h { display: flex; align-items: center; gap: 6px; margin: 12px 0 4px; font-size: 1rem; }
+.ch-card .ch-go { padding: 8px 0; font-family: var(--font-pop); font-weight: 900; color: #3a1a06; background: #ffc928; border: 3px solid var(--ink); border-radius: 12px; box-shadow: 0 4px 0 var(--ink); }

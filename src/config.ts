@@ -315,6 +315,11 @@ export const TELEMETRY_URL = 'https://script.google.com/macros/s/AKfycbyZXEhnOGC
 export const FEEDBACK_URL = '';
 
 /** 公開URL（結果の共有に使う） */
+/**
+ * エンドレスのランキングを受け取るサーバー（まだない＝空）。決まったら入れる。
+ * 送る中身と、ずるの防ぎ方は docs/ranking.md
+ */
+export const RANKING_URL = '';
 export const SHARE_URL = 'https://magis0619.github.io/Sixth/';
 
 export const CONFIG = {

@@ -95,6 +95,12 @@ export interface TaxCond {
 export interface GameState {
   /** このプレイの識別子（記録の集計用） */
   runId: string;
+  /** このプレイの種（出目の流れを決める数）。同じ種なら、同じ操作で同じ出目になる（挑戦状・週替わりの対決に使う） */
+  seed?: number;
+  /** 乱数の今の位置（続きから遊んでも同じ流れが続くよう保存する） */
+  rngState?: number;
+  /** 挑戦状から始めたプレイ：送ってきた人の結果（結果画面で比べる） */
+  challenge?: ChallengeFrom | null;
   /** 殿様モードの段（0＝殿様モードではない、1〜3） */
   lordLevel: number;
   /** 今週の年貢の条件（殿様モード） */
@@ -271,7 +277,22 @@ export function lv(state: GameState, id: CharmId): number {
 const emptyCharms = (): Record<CharmId, number> =>
   Object.fromEntries(CHARM_ORDER.map((id) => [id, 0])) as Record<CharmId, number>;
 
+/** 挑戦状を送ってきた人の結果 */
+export interface ChallengeFrom {
+  day: number;
+  taxes: number;
+  earned: number;
+  cleared: boolean;
+  rank: string;
+  score: number;
+  runId: string;
+}
+
 export interface GameSetup {
+  /** 種（省略時はでたらめに決める） */
+  seed?: number;
+  /** 挑戦状から始めるとき：送ってきた人の結果 */
+  challenge?: ChallengeFrom;
   shop: AddUpgradeId[];
   charmPool: CharmId[];
   /** 週替わりの候補（解放済み）。省略時は shop と同じ */
@@ -308,9 +329,48 @@ export function newGame(setup: GameSetup = { shop: ALL_ADDS, charmPool: CHARM_OR
   return state;
 }
 
+/** でたらめな種（32ビット） */
+export function makeSeed(): number {
+  return Math.floor(Math.random() * 4294967296) >>> 0;
+}
+
+/**
+ * このプレイの乱数（mulberry32）。位置は state.rngState に持つので、保存して続きから遊んでも同じ流れになる。
+ * 種のない古い保存は、ここで種を決める
+ */
+export function nextRand(state: GameState): number {
+  if (state.rngState === undefined) {
+    state.seed ??= makeSeed();
+    state.rngState = state.seed;
+  }
+  let t = (state.rngState = (state.rngState + 0x6d2b79f5) | 0);
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+/** 週替わりの種：その週（月曜はじまり・日本時間）の全員に同じ種。週の名前（2026-W48 など）も返す */
+export function weeklySeed(now = new Date()): { seed: number; week: string } {
+  const jst = new Date(now.getTime() + 9 * 3600e3);
+  const day = (jst.getUTCDay() + 6) % 7; // 月曜＝0
+  const monday = new Date(Date.UTC(jst.getUTCFullYear(), jst.getUTCMonth(), jst.getUTCDate() - day));
+  // ISO 週番号（その週の木曜が属する年の何週目か）
+  const thu = new Date(monday.getTime() + 3 * 86400e3);
+  const jan1 = new Date(Date.UTC(thu.getUTCFullYear(), 0, 1));
+  const wk = Math.floor((thu.getTime() - jan1.getTime()) / 86400e3 / 7) + 1;
+  const week = `${thu.getUTCFullYear()}-W${String(wk).padStart(2, '0')}`;
+  let h = 2166136261;
+  for (const ch of `hatake-slot:${week}`) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+  return { seed: h >>> 0, week };
+}
+
 function freshGame(setup: GameSetup): GameState {
+  const seed = (setup.seed ?? makeSeed()) >>> 0;
   return {
     runId: Math.random().toString(36).slice(2, 10),
+    seed,
+    rngState: seed,
+    challenge: setup.challenge ?? null,
     difficulty: setup.difficulty ?? 0,
     lordLevel: setup.lord ?? 0,
     taxCond: null,

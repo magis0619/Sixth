@@ -490,6 +490,28 @@ test('演出の最中、ふつうのタップでは早送りにならず、長�
   expect(errors).toEqual([]);
 });
 
+test('挑戦状のリンクで開くと、タイトルに挑戦状が出て、同じ種・難しさ・農家で始まる', async ({ page }) => {
+  const errors = await boot(page);
+  const code = Buffer.from(JSON.stringify([1, 4242, 9, 0, 'berry', 49, 7, 6433, 1, 'S', 96, 'abc123'])).toString('base64url');
+  await page.goto(`./?c=${code}`);
+  const card = page.locator('.ch-card');
+  await expect(card).toBeVisible();
+  await expect(card).toContainText('難しい9');
+  await expect(card).toContainText('苺農家');
+  // URL からは消える
+  expect(page.url()).not.toContain('c=');
+  await page.click('#ch-go');
+  await expect(page.locator('#overlay')).not.toHaveClass(/show/);
+  await page.locator('#reels .reel').first().click({ force: true });
+  await expect.poll(() => page.evaluate(() => !!localStorage.getItem('hatake-slot:run')), { timeout: 15_000 }).toBe(true);
+  const run = await page.evaluate(() => JSON.parse(localStorage.getItem('hatake-slot:run')!));
+  expect(run.seed).toBe(4242);
+  expect(run.difficulty).toBe(9);
+  expect(run.farmer).toBe('berry');
+  expect(run.challenge.earned).toBe(6433);
+  expect(errors).toEqual([]);
+});
+
 test('結果画面のシェアで、結果カードの画像と保存・コピーの板が出る', async ({ page }) => {
   const errors = await boot(page);
   await start(page);

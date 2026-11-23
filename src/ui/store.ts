@@ -1,10 +1,11 @@
 // 画面の要素と、モジュールの間で共有する状態（ゲームの状態・操作中フラグ・演出の呼び出し口）
 
-import { type GameState, newGame } from '../game.ts';
+import { type GameSetup, type GameState, newGame, nextRand } from '../game.ts';
 import { loadMeta, type MetaState, setupFrom } from '../meta.ts';
 
 export const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
-export const rng = Math.random;
+/** ゲームの乱数：今のプレイの種から（保存して続きから遊んでも同じ流れ）。演出の見た目には使わない（使うと出目がずれる）。演出は Math.random */
+export const rng = (): number => nextRand(state);
 
 export const el = {
   app: $('app'),
@@ -53,6 +54,6 @@ export const ui = { busy: false };
 /** 画面のモジュールから呼ぶ main 側の処理（main が起動時に入れる） */
 export const hooks = {
   render: (): void => {},
-  startGame: (_resume: GameState | null = null): void => {},
+  startGame: (_resume: GameState | null = null, _setup?: GameSetup): void => {},
   setGold: (_value: number): void => {},
 };

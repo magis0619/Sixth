@@ -7,7 +7,7 @@ import { sfx } from '../audio.ts';
 import { art, type ArtId } from '../art.ts';
 import { burst, center, flash, floatText, pop, vibrate, later } from '../fx.ts';
 import { roleClass, symHtml } from './view.ts';
-import { el, rng, state } from './store.ts';
+import { el, state } from './store.ts';
 import { play } from './play.ts';
 import { CUTIN_MS, playCutIn } from './shows.ts';
 
@@ -71,7 +71,7 @@ export function spinReels(show: SpinShow = { cutIn: null }): Promise<void> {
   const reachSym = [...counts].find(([s, n]) => n >= CONFIG.feverCount - 1 && SYMBOLS[s].rarity !== 'bad')?.[0];
   const reach = reachSym !== undefined;
   // 最後のリールが金の種なら溜めを入れる。外れでもたまに溜めて読めないようにする
-  const suspense = reach || state.results[last].symbol === 'goldSeed' || state.fever.some((s) => SYMBOLS[s].rarity !== 'bad') || (state.bag.goldSeed > 0 && rng() < 0.15);
+  const suspense = reach || state.results[last].symbol === 'goldSeed' || state.fever.some((s) => SYMBOLS[s].rarity !== 'bad') || (state.bag.goldSeed > 0 && Math.random() < 0.15);
   // カットインが出る日は、出ている間リールを回し続ける
   const extra = show.cutIn !== null ? CUTIN_MS : 0;
   const hold = reach ? 1500 : 600;
@@ -88,7 +88,7 @@ export function spinReels(show: SpinShow = { cutIn: null }): Promise<void> {
     const prevSym = reel.querySelector('.cell-sym')!.innerHTML;
     const dur = CONFIG.timing.spinBase + i * CONFIG.timing.spinStagger + extra + (suspense && i === last ? hold : 0);
     const fillers = Math.max(8, Math.round(dur / 40));
-    const items = [prevSym, ...Array.from({ length: fillers }, () => symHtml(drawSymbol(state.bag, rng))), resultArt(i)];
+    const items = [prevSym, ...Array.from({ length: fillers }, () => symHtml(drawSymbol(state.bag, Math.random))), resultArt(i)];
     strip.innerHTML = items.map((s) => `<div class="cell-sym">${s}</div>`).join('');
     reel.className = 'reel spinning';
     reel.querySelector('.tag')!.textContent = '…';

@@ -56,7 +56,23 @@ export interface MetaState {
   /** 解放の画面を開いた回数・解放で買った回数（記録用） */
   unlockOpens: number;
   unlockBuys: number;
+  /**
+   * エンドレスの自己ベスト（クリアしたあと、何日目まで行ったか）。キーは 'd難しさ'（殿様モードは 'l段'）。
+   * あとでランキングに送るときの元になる（src/ranking.ts）
+   */
+  endlessBest?: Record<string, EndlessBest>;
 }
+
+export interface EndlessBest {
+  day: number;
+  earned: number;
+  at: string;
+  seed: number;
+  runId: string;
+}
+
+/** エンドレスの自己ベストのキー */
+export const endlessKey = (s: { difficulty: number; lordLevel: number }): string => (s.lordLevel ? `l${s.lordLevel}` : `d${s.difficulty}`);
 
 const KEY = 'hatake-slot:meta';
 
@@ -242,6 +258,14 @@ export function recordRun(meta: MetaState, state: GameState, final: boolean): st
     if (CHARMS[id].special && state.charms[id] > 0 && !meta.discovered.includes(id)) meta.discovered.push(id);
   });
   if (final) meta.lines += state.stats.lineHarvests;
+  // エンドレスの自己ベスト（クリアしたプレイだけ。日数が同じなら稼ぎの多い方）
+  if (final && state.cleared) {
+    meta.endlessBest ??= {};
+    const key = endlessKey(state);
+    const old = meta.endlessBest[key];
+    if (!old || state.day > old.day || (state.day === old.day && state.stats.totalEarned > old.earned))
+      meta.endlessBest[key] = { day: state.day, earned: state.stats.totalEarned, at: new Date().toISOString(), seed: state.seed ?? 0, runId: state.runId };
+  }
   if (final && state.cleared) meta.clears++;
   const add = (id: AddUpgradeId, label: string) => {
     if (meta.unlockedAdds.includes(id) || isCutAdd(id)) return;
@@ -325,5 +349,23 @@ export function setupFrom(meta: MetaState): GameSetup {
     charmPool: CHARM_ORDER.filter((id) => !(id in META.charmUnlock) || meta.unlockedCharms.includes(id)),
     // 週替わりは解放済みの「足す」強化から
     pool: ALL_ADDS.filter((id) => meta.unlockedAdds.includes(id) && !CONFIG.rareOffers.includes(id) && !isCutAdd(id)),
+  };
+}
+
+/**
+ * 挑戦状から始めるプレイの準備：送ってきた人と同じ種・難しさ・殿様の段・農家にする。
+ * 解放していない難しさや農家でも遊べる（挑戦状は特別）。腕前と解放の品は受け取った人のもの
+ */
+export function challengeSetup(meta: MetaState, c: { seed: number; difficulty: number; lord: number; farmer: string }): GameSetup {
+  const base = setupFrom(meta);
+  const farmer = FARMERS.find((f) => f.id === c.farmer) ?? FARMERS[0];
+  return {
+    ...base,
+    seed: c.seed,
+    difficulty: Math.max(0, Math.min(c.difficulty, DIFFICULTIES.length - 1)),
+    lord: Math.max(0, Math.min(c.lord, 3)),
+    farmer: farmer.id,
+    mastery: meta.mastery[farmer.id] ?? 0,
+    shop: (farmer.favor as AddUpgradeId[]).filter((id) => !CONFIG.rareOffers.includes(id) && !isCutAdd(id)),
   };
 }

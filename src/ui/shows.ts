@@ -6,7 +6,7 @@ import { chooseCharm, skipCharm } from '../game.ts';
 import { art, type ArtId } from '../art.ts';
 import { sfx } from '../audio.ts';
 import { burst, center, coinRain, flash, floatText, flyTo, isCalm, later, pop, shake, slamText, sleep, speedLines, vibrate } from '../fx.ts';
-import { el, hooks, rng, state, TW } from './store.ts';
+import { el, hooks, state, TW } from './store.ts';
 import { say, symHtml, visibleOr } from './view.ts';
 import { PEST_EFFECT, PEST_TARGET } from './explain.ts';
 
@@ -467,7 +467,7 @@ export const CUTIN_MS = 1500;
 
 /** 予告のカットイン：キャラが斜めに飛び込んで期待度の色を見せる */
 export async function playCutIn(level: number): Promise<void> {
-  const who: ArtId = level === 3 ? 'bee' : (['crow', 'tanuki', 'bee'] as ArtId[])[Math.floor(rng() * 3)];
+  const who: ArtId = level === 3 ? 'bee' : (['crow', 'tanuki', 'bee'] as ArtId[])[Math.floor(Math.random() * 3)];
   const node = document.createElement('div');
   node.className = `cutin lv-${level}`;
   node.innerHTML = `<div class="cutin-band"><span class="cutin-face">${art(who)}</span><b>${CUTIN_TEXT[level]}</b></div>`;

@@ -22,6 +22,7 @@ import { showSettings } from './settings.ts';
 import { FEVER_FX } from './shows.ts';
 import { activeLineFx, playLineFx } from './linefx.ts';
 import { showShareSheet } from './share-card.ts';
+import { bindChallengeTitle, challengeResultHtml, challengeTitleHtml } from './challenge.ts';
 import { explainOnce, overviewCard, showExplain, symbolCard } from './explain.ts';
 
 /** 結果画面。cleared=true はクリア後にここで終えたとき */
@@ -170,7 +171,7 @@ function resultBody(kind: 'fail' | 'clear' | 'endless', opts: { taxAmount: numbe
     ${canBuy ? `<button class="rs-unlock" id="rs-unlock">${art('lock')}<span>${L(`解放で買える物 ${canBuy}`, `${canBuy} unlocks available`)}</span><b>▶</b></button>` : ''}
     ${opts.newly.length ? `<p class="rs-newly">${art('sparkle')}${L('解放', 'Unlocked')}：${opts.newly.map((x) => `<b>${x}</b>`).join('')}</p>` : ''}
     ${FEEDBACK_URL ? `<p class="rs-feedback"><a href="${FEEDBACK_URL}" target="_blank" rel="noopener">${art('mail')}${L('感想を送る', 'Send feedback')}</a></p>` : ''}`;
-  return `<div class="rs">${result}${showRating ? total + parts : ''}${highlights}${advice}${points}</div>`;
+  return `<div class="rs">${result}${challengeResultHtml(state)}${showRating ? total + parts : ''}${highlights}${advice}${points}</div>`;
 }
 
 export function showGameOver(endedAfterClear = false): void {
@@ -412,6 +413,7 @@ export function showTitle(): void {
         <span class="board-crow">${art('crow')}</span>
       </div>
       <p class="title-tag">${L(`借りた畑で、${CONFIG.winTaxes}週のノルマを払いきろう`, `Rent a farm. Pay the quota for ${CONFIG.winTaxes} weeks`)}</p>
+      ${challengeTitleHtml()}
       <div class="title-actions">
         <button class="primary title-start" id="title-start">${L('スタート', 'Start')}</button>
         ${lordMax(meta) > 0 ? `<button class="secondary title-lord" id="title-lord">${art('lord')}<span>${L('殿様モード', 'Lord mode')}</span></button>` : ''}
@@ -425,6 +427,7 @@ export function showTitle(): void {
       </div>
     </div>`;
   el.overlay.classList.add('show', 'title');
+  bindChallengeTitle(showTitle);
   $('title-start').addEventListener('click', async () => {
     unlockAudio();
     sfx.select();
@@ -473,6 +476,16 @@ export function showTitle(): void {
   });
 }
 
+/** 記録：エンドレスの自己ベスト（難しさごと。クリアしたプレイが何日目まで行ったか） */
+function endlessRecordsHtml(): string {
+  const best = meta.endlessBest ?? {};
+  const keys = [...DIFFICULTIES.map((_, d) => `d${d}`), 'l1', 'l2', 'l3'].filter((k) => best[k]);
+  if (!keys.length) return '';
+  const name = (k: string) => (k.startsWith('l') ? L(`殿様 段${k.slice(1)}`, `Lord ${k.slice(1)}`) : DIFFICULTIES[Number(k.slice(1))].name);
+  return `<h3 class="rec-h">${art('trophy')} ${L('エンドレスの最高', 'Endless best')}</h3>
+      <ul class="records">${keys.map((k) => `<li><span class="rec-ico">${art('calendar')}</span><span>${name(k)}</span><b>${best[k].day}${u(L('日目', ''))}</b></li>`).join('')}</ul>`;
+}
+
 /** 記録：これまでの成績 */
 export function showRecords(): void {
   leaveTitle();
@@ -491,6 +504,7 @@ export function showRecords(): void {
         ${row(art('sparkle'), L('特別なお守り', 'Special charms'), `${meta.discovered.filter((id) => specials.includes(id)).length} / ${specials.length}`)}
         ${row(art('coin'), L('これまでの豊穣ポイント', 'Points earned (total)'), `${meta.totalPoints}pt`)}
       </ul>
+      ${endlessRecordsHtml()}
       <button class="primary" id="records-close">${L('もどる', 'Back')}</button>
     </div>`;
   el.overlay.classList.add('show');
