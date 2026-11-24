@@ -465,6 +465,37 @@ test('堆肥のマスの上でも、列のピンクの縁が出る', async ({ pa
   expect(errors).toEqual([]);
 });
 
+test('プレイが終わると自分の記録に1回分が残り、記録の画面で分析が出る', async ({ page }) => {
+  const errors = await boot(page);
+  await start(page);
+  await firstDay(page);
+  // ノルマの日にお金を0にして、負けの結果画面を出す
+  await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('hatake-slot:run')!);
+    Object.assign(s, { day: 7, gold: 0, results: [], field: s.field.map(() => null) });
+    localStorage.setItem('hatake-slot:run', JSON.stringify(s));
+  });
+  await page.reload();
+  await page.click('#title-resume', { force: true });
+  await page.waitForTimeout(500);
+  await page.evaluate(() => document.getElementById('spin')!.click());
+  await page.waitForTimeout(300);
+  const skip = page.locator('#overlay.show #skip-yes');
+  if (await skip.count()) { await ready(page); await skip.click({ force: true }); }
+  await expect(page.locator('#overlay.show #restart')).toBeVisible({ timeout: 20_000 });
+  const hist = await page.evaluate(() => JSON.parse(localStorage.getItem('hatake-slot:history') ?? '[]'));
+  expect(hist.length).toBe(1);
+  expect(hist[0].cleared).toBe(false);
+  await expect(page.locator('#overlay.show #restart')).toBeEnabled();
+  await ready(page);
+  await page.click('#overlay.show #restart', { force: true });
+  await expect(page.locator('#title-records')).toBeVisible();
+  await page.click('#title-records', { force: true });
+  await expect(page.locator('.records-modal .rc-chip')).toHaveCount(1);
+  await expect(page.locator('.records-modal')).toContainText('負け方');
+  expect(errors).toEqual([]);
+});
+
 test('押してから離すまでにボタンが動いても、指が動いていなければ押したことになる', async ({ page }) => {
   await boot(page);
   await page.click('#title-start', { force: true });

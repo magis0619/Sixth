@@ -22,6 +22,8 @@ import { showSettings } from './settings.ts';
 import { FEVER_FX } from './shows.ts';
 import { activeLineFx, playLineFx } from './linefx.ts';
 import { showShareSheet } from './share-card.ts';
+import { recordsBodyHtml } from './records.ts';
+import { addRunRecord, makeRunRecord } from '../history.ts';
 import { bindChallengeTitle, challengeResultHtml, challengeTitleHtml } from './challenge.ts';
 import { explainOnce, overviewCard, showExplain, symbolCard } from './explain.ts';
 
@@ -186,6 +188,8 @@ export function showGameOver(endedAfterClear = false): void {
   const earned = awardPoints(meta, state);
   track('result', state, { end: endedAfterClear ? 'clear' : 'tax', tax: t.amount, points: earned });
   const newly = recordRun(meta, state, true);
+  // 自分の記録（記録の画面で分析する）に1回分を足す
+  addRunRecord(makeRunRecord(state, t.amount));
   const kind = endedAfterClear ? 'clear' : state.cleared ? 'endless' : 'fail';
   el.overlay.innerHTML = `
     <div class="modal over-modal result-modal" role="dialog" aria-label="${L('結果', 'Result')}">
@@ -489,22 +493,19 @@ function endlessRecordsHtml(): string {
 /** 記録：これまでの成績 */
 export function showRecords(): void {
   leaveTitle();
-  const best = loadBest();
   const specials = CHARM_ORDER.filter((id) => CHARMS[id].special && !PAUSED_CHARMS.includes(id));
   const row = (ico: string, label: string, value: string) => `<li><span class="rec-ico">${ico}</span><span>${label}</span><b>${value}</b></li>`;
-  el.overlay.innerHTML = `
-    <div class="modal records-modal" role="dialog" aria-label="${L('記録', 'Records')}">
-      <h2>${art('calendar')} ${L('記録', 'Records')}</h2>
+  // 累計（これまで全部）の行。分析は自分の記録（1回ごとの要約）から
+  const extra = `<h3 class="rec-h">${art('sprout')} ${L('これまで', 'All time')}</h3>
       <ul class="records">
-        ${row(art('sprout'), L('遊んだ回数', 'Games played'), `${meta.plays}`)}
-        ${row(art('trophy'), L('クリア', 'Wins'), `${meta.clears}`)}
-        ${row(art('calendar'), L('最高到達', 'Best run'), best.day ? L(`${best.day}${u('日目')}（${TW()}${best.taxes}${u('回')}）`, `Day ${best.day} (${best.taxes} taxes)`) : '—')}
-        ${row(art('skull'), L('一番上の難しさ', 'Hardest cleared'), meta.maxCleared >= 0 ? DIFFICULTIES[meta.maxCleared].name : L('まだクリアしていない', 'Not yet'))}
-        ${row(art('tomato'), L('列で売った（累計）', 'Lines sold (total)'), `${meta.lines}`)}
+        ${row(art('tomato'), L('列で売った', 'Lines sold'), `${meta.lines}`)}
         ${row(art('sparkle'), L('特別なお守り', 'Special charms'), `${meta.discovered.filter((id) => specials.includes(id)).length} / ${specials.length}`)}
-        ${row(art('coin'), L('これまでの豊穣ポイント', 'Points earned (total)'), `${meta.totalPoints}pt`)}
-      </ul>
-      ${endlessRecordsHtml()}
+        ${row(art('coin'), L('豊穣ポイント', 'Points earned'), `${meta.totalPoints}pt`)}
+      </ul>`;
+  el.overlay.innerHTML = `
+    <div class="modal records-modal rc" role="dialog" aria-label="${L('記録', 'Records')}">
+      <h2>${art('calendar')} ${L('記録', 'Records')}</h2>
+      ${recordsBodyHtml(endlessRecordsHtml(), extra)}
       <button class="primary" id="records-close">${L('もどる', 'Back')}</button>
     </div>`;
   el.overlay.classList.add('show');

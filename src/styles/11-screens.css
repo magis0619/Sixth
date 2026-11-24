@@ -1264,3 +1264,46 @@ html.idle *, html.idle *::before, html.idle *::after { animation-play-state: pau
    前は画面の長い辺の220%の正方形を回して1.3倍まで広げていた。iPhone では1辺5,000px超の絵になり、
    描くための記憶（1枚で100MB超）が足りずに落ちていたと見ている。画面の短い辺の140%にする（光は真ん中から広がるので見た目はほぼ同じ） */
 .fx-rays { width: 140vmin; height: 140vmin; }
+
+/* ==== 記録の画面：自分の記録の分析（src/ui/records.ts） ==== */
+.records-modal.rc { display: grid; gap: 12px; }
+.rc-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.rc-tiles > div { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 8px; align-items: center; padding: 8px 10px; background: #fff; border: 2px solid #d8ccb4; border-radius: 12px; }
+.rc-tiles .art { grid-row: span 2; font-size: 1.75rem; }
+.rc-tiles b { font-family: var(--font-pop); font-size: 1.375rem; font-weight: 900; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.rc-tiles small { font-size: 0.8125rem; color: var(--ink-soft, #54473a); }
+.rc-sec { display: grid; gap: 6px; padding: 10px 12px; background: #fffaf0; border: 2px solid #e3d6bd; border-radius: 14px; }
+.rc-h { display: flex; align-items: center; gap: 6px; margin: 0 0 2px; font-size: 1rem; font-weight: 700; }
+.rc-h .art { font-size: 1.25rem; }
+.rc-row { display: grid; grid-template-columns: 1.6rem 8.8em 1fr auto; align-items: center; gap: 8px; margin: 0; font-size: 0.9375rem; }
+.rc-row .art { font-size: 1.25rem; }
+.rc-row .rc-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rc-row b { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.rc-row b em { margin-left: 4px; font-style: normal; font-size: 0.8125rem; }
+.rc-row b em.up { color: #2f8a1a; }
+.rc-row b em.down { color: #c0281b; }
+.rc-row.weak .rc-label { color: #c0281b; font-weight: 700; }
+.rc-bar { height: 10px; background: #e8dcc2; border-radius: 5px; overflow: hidden; }
+.rc-bar i { display: block; height: 100%; background: #6cb43f; border-radius: 5px; }
+.rc-row.weak .rc-bar i { background: #e0402a; }
+.rc-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--c); justify-self: center; box-shadow: 0 0 0 2px #fff, 0 0 0 3px #8a7f72; }
+.rc-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.rc-chip { display: grid; justify-items: center; width: 2.3rem; padding: 2px 0; border-radius: 8px; font-style: normal; line-height: 1.15; color: #fff; }
+.rc-chip.w { background: #4e9a2e; }
+.rc-chip.l { background: #b8432f; }
+.rc-chip b { font-family: var(--font-pop); font-size: 0.9375rem; }
+.rc-chip small { font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
+.rc-chip small .art { font-size: 0.95rem; }
+.rc-note, .rc-sub, .rc-sub2 { margin: 0; font-size: 0.8125rem; color: var(--ink-soft, #54473a); }
+.rc-sub2 { padding-left: calc(1.6rem + 8px); margin-top: -4px; }
+.rc-cols { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; align-items: end; height: 84px; }
+.rc-col { display: grid; grid-template-rows: 1fr auto auto; height: 100%; justify-items: center; }
+.rc-col i { align-self: end; width: 70%; min-height: 3px; background: #b8432f; border-radius: 4px 4px 0 0; }
+.rc-col b { font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
+.rc-col small { font-size: 0.8125rem; color: var(--ink-soft, #54473a); }
+.rc-tip { display: grid; grid-template-columns: 1.8rem 1fr; gap: 8px; align-items: center; margin: 0; }
+.rc-tip .art { font-size: 1.5rem; }
+.rc-tip b { display: block; font-size: 0.9375rem; }
+.rc-tip small { display: block; font-size: 0.8125rem; color: var(--ink-soft, #54473a); }
+.rc-empty { display: flex; align-items: center; gap: 8px; margin: 0; padding: 12px; font-size: 0.9375rem; background: #fff; border: 2px dashed #d8ccb4; border-radius: 12px; }
+.rc-empty .art { font-size: 1.75rem; }
