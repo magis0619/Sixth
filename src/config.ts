@@ -406,6 +406,8 @@ export const CONFIG = {
     condWeeks: [[], [3, 5], [2, 3, 4, 5, 6, 7], [2, 3, 4, 5, 6, 7]] as number[][],
     endlessCond: 2,
     kinds: [[], ['crop'], ['crop', 'line', 'sameLine'], ['crop', 'line', 'sameLine', 'big', 'keep']] as TaxCondKind[][],
+    /** 殿様の気まぐれを出すか（いったん止めている。戻すときは true） */
+    whimsOn: false,
     whimWeeks: [[], [7], [7], [4, 7]] as number[][],
     whims: [[], ['frugal', 'flashy'], ['frugal', 'flashy', 'patrol', 'harvest'], ['frugal', 'flashy', 'patrol', 'harvest']] as WhimId[][],
     condStep: 0.2,

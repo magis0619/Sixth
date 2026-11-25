@@ -1329,3 +1329,17 @@ html.idle *, html.idle *::before, html.idle *::after { animation-play-state: pau
 /* ==== 難しさの丸：選んでいる丸の白い輪が、隣の丸（クリアの印）にかぶらないように ====
    大きくせず輪を内側寄りにし、選んでいる丸の左右だけ少しすき間を空ける */
 .ds-chips:has(> :nth-child(9)) .ds-chip.on { transform: none; outline: none; box-shadow: 0 0 0 3px #fff8e7, 0 0 0 5px rgba(0, 0, 0, 0.45); margin: 0 5px; z-index: 1; }
+
+/* ==== クリア画面：お祝いだけ（詳しい結果は終えたときに1回） ==== */
+.clear-modal .cl-body { display: grid; justify-items: center; gap: 8px; padding: 6px 0 4px; text-align: center; }
+.clear-modal .cl-cup { font-size: 4.5rem; line-height: 1; animation: cl-cup 0.7s cubic-bezier(.2, 1.6, .4, 1); }
+.clear-modal .cl-title { margin: 0; font-family: var(--font-pop); font-size: 2.25rem; font-weight: 900; color: #e0402a; -webkit-text-stroke: 0.06em var(--ink); paint-order: stroke fill; }
+.clear-modal .cl-mode { margin: 0; padding: 2px 16px; font-size: 1rem; font-weight: 700; color: #fff; background: var(--c); border-radius: 999px; }
+.clear-modal .cl-rows { width: 100%; display: grid; gap: 6px; margin-top: 4px; }
+.clear-modal .cl-rows p { display: grid; grid-template-columns: 1.6rem 1fr auto; align-items: center; gap: 8px; margin: 0; padding: 8px 12px; font-size: 1rem; background: #fff; border: 2px solid #d8ccb4; border-radius: 12px; text-align: left; }
+.clear-modal .cl-rows .art { font-size: 1.3rem; }
+.clear-modal .cl-rows b { font-family: var(--font-pop); font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+.clear-modal .cl-rows b .u { margin-left: 4px; font-size: 0.8125rem; }
+.clear-modal .cl-note { margin: 0; font-size: 0.8125rem; color: var(--ink-soft, #54473a); }
+@keyframes cl-cup { from { transform: scale(0.3) rotate(-20deg); opacity: 0; } }
+.calm .clear-modal .cl-cup { animation: none; }

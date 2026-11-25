@@ -367,12 +367,25 @@ export function showClear(): Promise<boolean> {
   }
   flash('#ffe680', 700);
   vibrate([60, 40, 60, 40, 200]);
+  // クリアのお祝いだけ（結果の詳しい中身は、終えたときの結果画面に1回だけ出す。前は同じ中身が2回続いていた）
+  const r = rateRun(state);
+  const mode = state.lordLevel ? L(`殿様モード 段${state.lordLevel}`, `Lord mode ${state.lordLevel}`) : DIFFICULTIES[state.difficulty]?.name ?? '';
   el.overlay.innerHTML = `
-    <div class="modal clear-modal result-modal" role="dialog" aria-label="${L('クリア', 'Win')}">
-      ${resultBody('clear', { taxAmount: 0, isNew: false, earned: META.clearBonus, newly: [], total: false })}
+    <div class="modal clear-modal" role="dialog" aria-label="${L('クリア', 'Win')}">
+      <div class="cl-body">
+        <div class="cl-cup">${art('trophy')}</div>
+        <h2 class="cl-title">${L('クリア！', 'You win!')}</h2>
+        <p class="cl-mode" style="--c:${state.lordLevel ? '#7a2b1d' : DIFF_COLOR[state.difficulty] ?? '#5fae3c'}">${mode}</p>
+        <div class="cl-rows">
+          <p>${art('star')}<span>${L('評価', 'Rank')}</span><b class="rank-${r.rank}">${r.rank}<i class="u">${r.score}${L('点', '')}</i></b></p>
+          <p>${art('coin')}<span>${L('稼いだ合計', 'Earned')}</span><b>${state.stats.totalEarned}</b></p>
+          <p>${art('sprout')}<span>${L('豊穣ポイント', 'Points')}</span><b>+${META.clearBonus}</b></p>
+        </div>
+        <p class="cl-note">${L('エンドレスは、ノルマが毎週1.5倍', 'Endless: quota ×1.5 each week')}</p>
+      </div>
       <div class="rs-foot">
         <button class="rs-main" id="clear-continue" disabled>${L('エンドレスへ', 'Keep going (endless)')}</button>
-        <div class="rs-sub one"><button id="clear-end" disabled>${L('ここで終える', 'Finish here')}</button></div>
+        <div class="rs-sub one"><button id="clear-end" disabled>${L('ここで終える（結果を見る）', 'Finish (see result)')}</button></div>
       </div>
     </div>`;
   el.overlay.classList.add('show');
@@ -969,22 +982,24 @@ export function showDifficulty(): void {
 const LORD_COLOR = ['#5fae3c', '#3e5f9e', '#7a3d8f', '#b8332a'];
 const LORD_EMBLEM: ArtId[] = ['lord', 'lord', 'lord', 'lordAngry'];
 /** 段ごとに加わること */
-const LORD_RULES: { ico: ArtId; text: string }[][] = [
+const LORD_RULES_ALL: { ico: ArtId; text: string; whim?: true }[][] = [
   [],
   [
     { ico: 'bale', text: L('3・5週目に年貢の条件', 'Tax conditions in weeks 3 and 5') },
-    { ico: 'lord', text: L('7週目に殿様の気まぐれ', "Lord's whim in week 7") },
+    { ico: 'lord', text: L('7週目に殿様の気まぐれ', "Lord's whim in week 7"), whim: true },
   ],
   [
     { ico: 'bale', text: L('年貢の条件が毎週', 'Tax conditions every week') },
     { ico: 'tomato', text: L('列・同じ作物の列の条件', 'Line and same-crop conditions') },
-    { ico: 'lord', text: L('重い気まぐれも出る', 'Harsher whims') },
+    { ico: 'lord', text: L('重い気まぐれも出る', 'Harsher whims'), whim: true },
   ],
   [
     { ico: 'pumpkin', text: L('大物・日曜に残すの条件', 'Big-crop and keep-ripe conditions') },
-    { ico: 'lordAngry', text: L('4週目にも気まぐれ', 'A whim in week 4 too') },
+    { ico: 'lordAngry', text: L('4週目にも気まぐれ', 'A whim in week 4 too'), whim: true },
   ],
 ];
+/** 段ごとに加わること（気まぐれを止めている間は、気まぐれの行を出さない） */
+const LORD_RULES = LORD_RULES_ALL.map((rows) => rows.filter((r) => CONFIG.lord.whimsOn || !r.whim));
 
 export function showLord(): void {
   const max = lordMax(meta);

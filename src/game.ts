@@ -2989,7 +2989,8 @@ export function rollLordWeek(state: GameState, rng: Rng): void {
       state.taxCond = makeTaxCond(state, k, week, rng);
     }
   }
-  state.whim = week <= CONFIG.winTaxes && L2.whimWeeks[lvl].includes(week) ? pick(L2.whims[lvl], rng) : null;
+  // 気まぐれは止めている間は出さない（CONFIG.lord.whimsOn）
+  state.whim = L2.whimsOn && week <= CONFIG.winTaxes && L2.whimWeeks[lvl].includes(week) ? pick(L2.whims[lvl], rng) : null;
   if (state.taxCond || state.whim) glog(state, `殿様 今週 ${lordSummary(state)}`);
 }
 

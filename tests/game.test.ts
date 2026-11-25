@@ -1522,7 +1522,9 @@ describe('殿様モード', () => {
   const lordGame = (lord: number) => newGame({ shop: ['addSun'], charmPool: [], lord });
   const rngOf = (v: number) => () => v;
 
-  it('段1は3・5週目にだけ作物の数の条件が付き、7週目に軽い気まぐれが来る', () => {
+  it('段1は3・5週目にだけ作物の数の条件が付き、7週目に軽い気まぐれが来る（気まぐれを出す設定のとき）', () => {
+    const on = CONFIG.lord.whimsOn;
+    CONFIG.lord.whimsOn = true;
     const s = lordGame(1);
     for (const [day, cond] of [[1, false], [8, false], [15, true], [22, false], [29, true]] as [number, boolean][]) {
       s.day = day - 1;
@@ -1534,6 +1536,17 @@ describe('殿様モード', () => {
     s.day = 42;
     beginDay(s, rngOf(0.1));
     expect(['frugal', 'flashy']).toContain(s.whim);
+    CONFIG.lord.whimsOn = on;
+  });
+
+  it('気まぐれを止めている間（いまの設定）は、7週目でも気まぐれは来ない', () => {
+    expect(CONFIG.lord.whimsOn).toBe(false);
+    const s = lordGame(3);
+    for (const day of [22, 43]) {
+      s.day = day - 1;
+      beginDay(s, rngOf(0.1));
+      expect(s.whim).toBeNull();
+    }
   });
 
   it('殿様モードでなければ、条件も気まぐれも来ない', () => {

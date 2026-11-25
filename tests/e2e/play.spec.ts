@@ -245,6 +245,13 @@ test('お守りの3択を連打しても1つしか取れず、最後（7回目�
   await expect(page.locator('#overlay.show #clear-continue')).toBeVisible();
   const owned = await page.evaluate(() => document.querySelectorAll('#charms [data-charm]').length);
   expect(owned).toBe(1);
+  // クリア画面はお祝いだけ（詳しい結果は出さない）。終えると結果画面が1回だけ出る
+  await expect(page.locator('#overlay.show .clear-modal .rs-sec')).toHaveCount(0);
+  await expect(page.locator('#overlay.show #clear-end')).toBeEnabled();
+  await page.click('#overlay.show #clear-end');
+  await expect(page.locator('#overlay.show .result-modal')).toHaveCount(1);
+  await expect(page.locator('#overlay.show .clear-modal')).toHaveCount(0);
+  await expect(page.locator('#overlay.show .rs-title')).toHaveText('クリア！');
   expect(errors).toEqual([]);
 });
 
