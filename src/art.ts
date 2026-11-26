@@ -1150,6 +1150,46 @@ const LORD_ART = {
 
 const fly = (x: number, y: number) => `<g><ellipse cx="${x - 2.5}" cy="${y - 2}" rx="2.6" ry="1.6" fill="#d8e4ea" opacity="0.85"/><ellipse cx="${x + 2.5}" cy="${y - 2}" rx="2.6" ry="1.6" fill="#d8e4ea" opacity="0.85"/><ellipse cx="${x}" cy="${y}" rx="2.4" ry="3" fill="#1d1a16"/></g>`;
 const coinDrop = (x: number, y: number, r = 6) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#f2c230" stroke="${INK}" stroke-width="1.8"/><rect x="${x - r * 0.35}" y="${y - r * 0.35}" width="${r * 0.7}" height="${r * 0.7}" fill="none" stroke="${INK}" stroke-width="1.3"/>`;
+/** 裏（妖怪退治）の妖怪。顔を大きく、何の妖怪か形で分かるように */
+const YOKAI_ART = {
+  // 狐火：白い狐の面に赤い隈取り、まわりに青い鬼火
+  yKitsune: `
+    <path d="M10 18Q6 10 12 6Q14 12 12 18Z M54 18Q58 10 52 6Q50 12 52 18Z" fill="#7fd0ff" opacity="0.85"/>
+    ${face('M14 10L24 26L40 26L50 10L48 34Q44 50 32 56Q20 50 16 34Z', C.white, 32, 30, 0.88)}
+    <path d="M18 14L24 26M46 14L40 26" stroke="#d8322a" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M22 34Q26 31 30 34M34 34Q38 31 42 34" fill="none" stroke="${INK}" stroke-width="2.6" stroke-linecap="round"/>
+    <path d="M24 38L28 40M40 38L36 40" stroke="#d8322a" stroke-width="2" stroke-linecap="round"/>
+    <path d="M30 46Q32 48 34 46" fill="none" stroke="${INK}" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="32" cy="44" r="1.8" fill="${INK}"/>
+    <path d="M6 40Q2 32 8 26Q10 32 6 40Z M58 40Q62 32 56 26Q54 32 58 40Z" fill="#4fb4ff" opacity="0.9"/>`,
+  // 雪女：白い顔、長い黒髪、青い着物の襟、雪の結晶
+  yYukionna: `
+    ${face('M14 22Q14 6 32 6Q50 6 50 22L52 58L40 58L40 30L24 30L24 58L12 58Z', C.black, 32, 30, 0.9)}
+    ${face('M22 18Q22 10 32 10Q42 10 42 18L42 34Q42 44 32 46Q22 44 22 34Z', ['#f4f8ff', '#cfdbee', '#ffffff'], 32, 26, 0.9, S2)}
+    <path d="M26 26Q28 24 30 26M34 26Q36 24 38 26" fill="none" stroke="${INK}" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M29 36Q32 38 35 36" fill="none" stroke="#8a2a4a" stroke-width="2" stroke-linecap="round"/>
+    <path d="M22 50L32 58L42 50L42 58L22 58Z" fill="#7fb6ff" stroke="${INK}" stroke-width="2"/>
+    <g stroke="#bfe6ff" stroke-width="1.6" stroke-linecap="round"><path d="M6 12V20M2 16H10M3 13L9 19M9 13L3 19"/><path d="M56 34V40M53 37H59"/></g>`,
+  // 河童：緑の顔、頭の皿、黄色いくちばし、髪のふち
+  yKappa: `
+    ${face('M10 34Q10 14 32 14Q54 14 54 34Q54 56 32 56Q10 56 10 34Z', C.green, 32, 34, 0.88)}
+    <ellipse cx="32" cy="15" rx="15" ry="5" fill="#e8f4ff" stroke="${INK}" stroke-width="2.4"/>
+    <path d="M14 20Q18 24 20 18Q24 24 27 18Q30 24 32 18Q35 24 38 18Q41 24 44 18Q47 24 50 20" fill="none" stroke="#2f6a2a" stroke-width="2.4" stroke-linecap="round"/>
+    <circle cx="23" cy="32" r="4.2" fill="#fff" stroke="${INK}" stroke-width="2"/><circle cx="41" cy="32" r="4.2" fill="#fff" stroke="${INK}" stroke-width="2"/>
+    <circle cx="24" cy="33" r="2" fill="${INK}"/><circle cx="40" cy="33" r="2" fill="${INK}"/>
+    ${face('M22 40Q32 36 42 40Q40 50 32 50Q24 50 22 40Z', C.gold, 32, 44, 0.86, S2)}
+    <path d="M24 42Q32 45 40 42" fill="none" stroke="${INK}" stroke-width="1.8"/>`,
+  // 大蛇：三つ首の大きな蛇、赤い目
+  yOrochi: `
+    ${face('M8 60Q6 40 14 30Q18 24 16 16Q22 12 26 18Q26 30 22 40Q20 50 24 60Z', C.purple, 18, 40, 0.88)}
+    ${face('M40 60Q44 50 42 40Q38 30 38 18Q42 12 48 16Q46 24 50 30Q58 40 56 60Z', C.purple, 46, 40, 0.88)}
+    ${face('M22 60Q24 44 28 34Q30 24 26 12Q32 4 38 12Q34 24 36 34Q40 44 42 60Z', ['#7d58b8', '#5a3b8f', '#b294e4'], 32, 36, 0.88)}
+    <circle cx="29" cy="12" r="2" fill="#ff2a2a"/><circle cx="35" cy="12" r="2" fill="#ff2a2a"/>
+    <circle cx="19" cy="18" r="1.8" fill="#ff2a2a"/><circle cx="45" cy="18" r="1.8" fill="#ff2a2a"/>
+    <path d="M32 16L32 22M30 22L32 20L34 22" stroke="#e8304a" stroke-width="1.6" stroke-linecap="round"/>
+    <path d="M26 40Q32 44 38 40M27 48Q32 52 37 48" fill="none" stroke="#3a2466" stroke-width="1.6" opacity="0.7"/>`,
+};
+
 const DREAD_MORE = {
   // 8：小屋から金貨が出ていく（毎週の維持費）
   dread8: `${G('translate(6 6) scale(0.62)', SCENE_ART.henhouse ?? '')}<path d="M44 40 L58 54" stroke="#ff4a3a" stroke-width="3" stroke-linecap="round" stroke-dasharray="4 4"/>${coinDrop(48, 44)}${coinDrop(56, 56, 5)}`,
@@ -1180,6 +1220,7 @@ export const ART = {
   ...LORD_ART,
   ...DREAD_ART,
   ...DREAD_MORE,
+  ...YOKAI_ART,
   ...SUPER_ART,
   ...CROP_ART,
   ...SYMBOL_ART,

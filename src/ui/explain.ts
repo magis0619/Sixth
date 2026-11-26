@@ -229,6 +229,16 @@ export function overviewCard(start = true): string {
 
 // ---- 初めての場面のカード ----
 
+/** 初めての裏：売った額で妖怪をたたく・期限までに倒す */
+export function uraCard(): string {
+  return `<p class="ex-kicker">${L('裏の畑', 'Night farm')}</p>
+    <h2 class="ex-title">${L('妖怪退治', 'Yokai hunt')}</h2>
+    <div class="ex-row">${big('tomato', 'small')}<span class="ex-arrow">▶</span>${big('coin', 'small')}<span class="ex-arrow">▶</span>${big('yKitsune')}</div>
+    <p class="ex-line">${L('<b>売った額</b>がダメージになる', '<b>Sales</b> become damage')}</p>
+    <p class="ex-line">${L('<b>回転の期限</b>までに倒す', 'Defeat it <b>before time runs out</b>')}</p>
+    <p class="ex-note">${L('倒すとごほうびを1つ選べる', 'Pick a reward after each win')}</p>`;
+}
+
 /** 初めての「タダで1つ選ぶ」（市の日の朝。選ばないと先に進めない） */
 export function offerCard(): string {
   return `<p class="ex-kicker">${L('市の日の朝', 'Market morning')}</p>

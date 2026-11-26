@@ -6,12 +6,12 @@
 //   試し：DIFF=難しさ / TAX=年貢の表 / DMULT=難しさごとの年貢の倍率 / REELUP=2,4（その回数の年貢でリール+1）/ SEEDW=トマトの種の出やすさ
 //   smart: 列を狙って置き、列がそろうまで待つ / random: 置き場所・使う場所・買い物を適当に決め、実ったらすぐ売る
 
-import { CHARMS, CHARM_ORDER, CONFIG, FARMERS, CROPS, META, PLACES, SEEDS, SYMBOLS, type CropKind, type PlaceId, type UpgradeId } from '../src/config.ts';
+import { CHARMS, CHARM_ORDER, CONFIG, FARMERS, CROPS, META, PLACES, SEEDS, SYMBOLS, type CropKind, type PlaceId, type UpgradeId , URA } from '../src/config.ts';
 import {
   animalGold,
   shopMult,
   takeOffer,
-  buy, buyPlace, canBuy, canBuyPlace, canExpand, canPlace, expand, expandPrice, canUse, cellAt, cellX, cellY, chooseCharm, fieldCells,
+  buy, buyPlace, takeUraReward, canBuy, canBuyPlace, canExpand, canPlace, expand, expandPrice, canUse, cellAt, cellX, cellY, chooseCharm, fieldCells,
   isOpen, isRipe, newGame, nextTax, place, placePrice, pullWeed, resolveAllAuto, resolveFever, ripeGroup, sell, shapeCells,
   startDay, takeContract, logSnapshot, mergeable, mergeSymbol, upgradePrice, useSymbol, validTargets, type GameState,
 } from '../src/game.ts';
@@ -169,6 +169,8 @@ const setup = mode === 'full'
       difficulty: Number(process.env.DIFF ?? 0),
       // LORD=1〜3 で殿様モード（年貢の条件・殿様の気まぐれ）
       lord: Number(process.env.LORD ?? 0),
+      // URA=1 で裏（妖怪退治）
+      ura: Number(process.env.URA ?? 0),
       // FARMER=berry などで農家を選ぶ（市に出やすい品も農家のもの）
       farmer: process.env.FARMER ?? 'basic',
       // MASTERY=0〜3 で農家の腕前の段
@@ -182,11 +184,14 @@ if (process.env.SEEDW) (CONFIG.offerWeights as Record<string, number>).addSeed =
 // HSTEP / HEXTRA で難しい3以上のお邪魔（早さ・枚数）を差し替えて試す
 if (process.env.HSTEP) (CONFIG as { hardObstacleStep: number }).hardObstacleStep = Number(process.env.HSTEP);
 if (process.env.HEXTRA) (CONFIG as { hardObstacleExtra: number }).hardObstacleExtra = Number(process.env.HEXTRA);
+// URAH=0 で裏の妨害を止めて比べる
+if (process.env.URAH === '0') (URA as { harassEvery: number; firstHarass: number }).harassEvery = (URA as { firstHarass: number }).firstHarass = 999;
 if (process.env.DMULT) (CONFIG as { difficultyTaxMult: number[] }).difficultyTaxMult = process.env.DMULT.split(',').map(Number);
 // DAILY=0 で前の「週替わりの3品をショップで買う」と比べる
 if (process.env.DAILY === '0') (CONFIG as { dailyPick: boolean }).dailyPick = false;
 console.log(`mode=${mode} bot=${bot} daily=${CONFIG.dailyPick}`);
 const days: number[] = [];
+const uraDone: number[] = [];
 const dump: unknown[] = [];
 const taxes: number[] = [];
 const goldAtTax: number[][] = [];
@@ -196,7 +201,10 @@ const cell: Record<string, number> = { days: 0, cropCells: 0, openCells: 0, crop
 for (let n = 0; n < runs; n++) {
   const s = newGame(setup);
   if (process.env.REELS) s.reels = Number(process.env.REELS);
-  while (!s.over && s.day < 200 && !(process.env.STOPCLEAR && s.taxesPaid >= CONFIG.winTaxes)) {
+  while (!s.over && s.day < 200 && !(process.env.STOPCLEAR && s.taxesPaid >= CONFIG.winTaxes) && !s.ura?.won) {
+    // 裏：倒したあとの3択（畑を広げる・置き物があれば先に、なければ次の弱点の種）
+    // URAPICK=seed なら次の弱点の種（1つ目）を取る
+    if (s.ura?.reward) takeUraReward(s, process.env.URAPICK === 'seed' ? 0 : Math.max(0, s.ura.reward.findIndex((r) => r.kind === 'expand' || r.kind === 'place')));
     if (s.day > 0 && s.day % CONFIG.taxPeriod === 0) (goldAtTax[s.day / CONFIG.taxPeriod - 1] ??= []).push(s.gold);
     // 試し：REELUP=2,4 で、その回数の年貢を納めたらリール+1
     if (process.env.REELUP) s.reels = Math.max(s.reels, 3 + process.env.REELUP.split(',').map(Number).filter((k) => s.taxesPaid >= k).length);
@@ -289,6 +297,7 @@ for (let n = 0; n < runs; n++) {
   }
   days.push(s.day);
   taxes.push(s.taxesPaid);
+  if (s.ura) (uraDone[s.ura.won ? 4 : s.ura.defeated] = (uraDone[s.ura.won ? 4 : s.ura.defeated] ?? 0) + 1);
   // 週ごとの稼ぎ（生きていた週だけ）
   for (let w = 0; w * CONFIG.taxPeriod < s.day; w++) {
     const sum = s.stats.earnedByDay.slice(w * CONFIG.taxPeriod + 1, (w + 1) * CONFIG.taxPeriod + 1).reduce((a: number, b) => a + (b ?? 0), 0);
@@ -301,6 +310,11 @@ if (process.env.DUMP) (await import('node:fs')).writeFileSync(process.env.DUMP, 
 
 const pct = (a: number[], p: number) => [...a].sort((x, y) => x - y)[Math.floor(a.length * p)];
 const passed = (k: number) => ((taxes.filter((t) => t >= k).length / runs) * 100).toFixed(0);
+if (setup?.ura) {
+  // 裏：何匹目まで倒せたか（4＝大蛇まで倒してクリア）
+  const at = (k: number) => (((uraDone.slice(k).reduce((a, b) => a + (b ?? 0), 0)) / runs) * 100).toFixed(1);
+  console.log(`runs=${runs} 裏${setup.ura} クリア率=${at(4)}%  狐火を倒した=${at(1)}% 雪女=${at(2)}% 河童=${at(3)}% 大蛇=${at(4)}%`);
+}
 console.log(`runs=${runs} クリア率=${passed(CONFIG.winTaxes)}%`);
 console.log(`到達日数 p10=${pct(days, 0.1)} p50=${pct(days, 0.5)} p90=${pct(days, 0.9)}`);
 console.log(`年貢の通過率 ${CONFIG.taxSchedule.map((a, i) => `${i + 1}回目(${a})=${passed(i + 1)}%`).join(' ')}`);

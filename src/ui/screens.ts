@@ -3,16 +3,16 @@
 import { L } from '../i18n.ts';
 import {
   ACHIEVE_ADDS, PLACES, CHARM_ORDER, FARMERS, COMBOS, CUT, isCutAdd, type CharmId, type SymbolId, PAUSED_CHARMS, CHARM_TIER_NAMES, CHARMS, CONFIG, DIFFICULTIES, FEEDBACK_URL, META, SHARE_URL, SYMBOL_ORDER, SYMBOLS, THUNDER_LINES, UPGRADES,
-  UPGRADE_SYMBOL, SEEDS, type FarmerPerk,
+  UPGRADE_SYMBOL, SEEDS, type FarmerPerk, URA, YOKAI,
 } from '../config.ts';
 import { difficultyTaxMult, lordPenalty, nextTax, placePrice, rateRun, taxCondGot, taxPlan } from '../game.ts';
 import { condText } from './lord.ts';
 import {
-  affordableUnlocks, awardPoints, buyComboHint, buyLineFx, buyMastery, capacity, masteryPrice, nextComboHint, farmerUnlocked, isAchieveAdd, loadoutCost, maxDifficulty, lordMax, recordRun, saveMeta, toggleLoadout, unlockAdd, unlockCharm,
+  affordableUnlocks, setupFrom, awardPoints, buyComboHint, buyLineFx, buyMastery, capacity, masteryPrice, nextComboHint, farmerUnlocked, isAchieveAdd, loadoutCost, maxDifficulty, lordMax, recordRun, saveMeta, toggleLoadout, unlockAdd, unlockCharm,
 } from '../meta.ts';
 import { art, type ArtId } from '../art.ts';
 import { sfx, unlockAudio } from '../audio.ts';
-import { burst, center, confetti, firework, flash, floatText, isCalm, shake, toggleCalm, vibrate } from '../fx.ts';
+import { burst, center, confetti, firework, flash, floatText, isCalm, pop, shake, toggleCalm, vibrate } from '../fx.ts';
 import { track } from '../telemetry.ts';
 import { $, el, hooks, meta, state, TW } from './store.ts';
 import { PLACE_ART, say, symHtml, upgradeArt } from './view.ts';
@@ -25,7 +25,7 @@ import { showShareSheet } from './share-card.ts';
 import { recordsBodyHtml } from './records.ts';
 import { addRunRecord, makeRunRecord } from '../history.ts';
 import { bindChallengeTitle, challengeResultHtml, challengeTitleHtml } from './challenge.ts';
-import { explainOnce, overviewCard, showExplain, symbolCard } from './explain.ts';
+import { explainOnce, overviewCard, showExplain, symbolCard, uraCard } from './explain.ts';
 
 /** 結果画面。cleared=true はクリア後にここで終えたとき */
 
@@ -49,7 +49,32 @@ function bestDay(): { day: number; gold: number } {
 /** 数字のあとの単位（細く小さめ） */
 const u = (t: string) => `<i class="u">${t}</i>`;
 
+/** 裏の結果：倒した数・最後の妖怪の残りの体力・与えたダメージ */
+function uraResultBody(kind: 'fail' | 'clear' | 'endless', opts: { earned: number; newly: string[] }): string {
+  const u = state.ura!;
+  const win = kind !== 'fail';
+  const def = YOKAI[u.foe];
+  const line = URA.order
+    .map((id, i) => `<span class="ul-foe${i < u.defeated ? ' done' : ''}${i === u.idx && !win ? ' here' : ''}${YOKAI[id].boss ? ' boss' : ''}">${art(YOKAI[id].art as ArtId)}<small>${YOKAI[id].name}</small></span>`)
+    .join('<i>▶</i>');
+  return `<div class="rs">
+    <section class="rs-sec rs-result ${win ? 'is-clear' : 'is-fail'}">
+      <p class="rs-badge">${win ? `${art('trophy')}<b>${L('退治', 'Cleared')}</b>` : `${art('warn')}<b>${L('失敗', 'Failed')}</b>`}</p>
+      <h2 class="rs-title">${win ? L(`裏${u.level} クリア！`, `Ura ${u.level} cleared!`) : L(`${def.name}を倒せなかった…`, `${def.name} survived…`)}</h2>
+      <div class="ura-line">${line}</div>
+      <div class="rs-money">
+        <p><span>${art('yKitsune')}${L('倒した妖怪', 'Defeated')}</span><b>${u.defeated}/${URA.order.length}</b></p>
+        <p><span>${art('coin')}${L('与えたダメージ', 'Damage dealt')}</span><b>${state.stats.totalEarned}</b></p>
+        ${win ? '' : `<p class="neg"><span>${art('heart')}${L(`${def.name}の残り体力`, `${def.name}'s HP left`)}</span><b>${u.hp}</b></p>`}
+      </div>
+    </section>
+    <p class="rs-pt">${art('sprout')}<b>+${opts.earned}pt</b><span>${L('計', 'Total')} ${meta.points}pt</span></p>
+    ${opts.newly.length ? `<p class="rs-newly">${art('sparkle')}${L('解放', 'Unlocked')}：${opts.newly.map((x) => `<b>${x}</b>`).join('')}</p>` : ''}
+  </div>`;
+}
+
 function resultBody(kind: 'fail' | 'clear' | 'endless', opts: { taxAmount: number; isNew: boolean; earned: number; newly: string[]; total?: boolean }): string {
+  if (state.ura) return uraResultBody(kind, opts);
   const st = state.stats;
   const r = rateRun(state);
   const short = Math.max(0, opts.taxAmount - state.gold);
@@ -369,23 +394,27 @@ export function showClear(): Promise<boolean> {
   vibrate([60, 40, 60, 40, 200]);
   // クリアのお祝いだけ（結果の詳しい中身は、終えたときの結果画面に1回だけ出す。前は同じ中身が2回続いていた）
   const r = rateRun(state);
-  const mode = state.lordLevel ? L(`殿様モード 段${state.lordLevel}`, `Lord mode ${state.lordLevel}`) : DIFFICULTIES[state.difficulty]?.name ?? '';
+  const mode = state.ura ? L(`裏${state.ura.level}`, `Ura ${state.ura.level}`) : state.lordLevel ? L(`殿様モード 段${state.lordLevel}`, `Lord mode ${state.lordLevel}`) : DIFFICULTIES[state.difficulty]?.name ?? '';
+  const ura = !!state.ura;
   el.overlay.innerHTML = `
     <div class="modal clear-modal" role="dialog" aria-label="${L('クリア', 'Win')}">
       <div class="cl-body">
         <div class="cl-cup">${art('trophy')}</div>
         <h2 class="cl-title">${L('クリア！', 'You win!')}</h2>
-        <p class="cl-mode" style="--c:${state.lordLevel ? '#7a2b1d' : DIFF_COLOR[state.difficulty] ?? '#5fae3c'}">${mode}</p>
-        <div class="cl-rows">
+        <p class="cl-mode" style="--c:${ura ? '#5b3a9e' : state.lordLevel ? '#7a2b1d' : DIFF_COLOR[state.difficulty] ?? '#5fae3c'}">${mode}</p>
+        ${ura ? `<div class="cl-rows">
+          <p>${art('yKitsune')}<span>${L('倒した妖怪', 'Defeated')}</span><b>${URA.order.length}</b></p>
+          <p>${art('coin')}<span>${L('与えたダメージ', 'Damage')}</span><b>${state.stats.totalEarned}</b></p>
+        </div>` : `<div class="cl-rows">
           <p>${art('star')}<span>${L('評価', 'Rank')}</span><b class="rank-${r.rank}">${r.rank}<i class="u">${r.score}${L('点', '')}</i></b></p>
           <p>${art('coin')}<span>${L('稼いだ合計', 'Earned')}</span><b>${state.stats.totalEarned}</b></p>
           <p>${art('sprout')}<span>${L('豊穣ポイント', 'Points')}</span><b>+${META.clearBonus}</b></p>
         </div>
-        <p class="cl-note">${L('エンドレスは、ノルマが毎週1.5倍', 'Endless: quota ×1.5 each week')}</p>
+        <p class="cl-note">${L('エンドレスは、ノルマが毎週1.5倍', 'Endless: quota ×1.5 each week')}</p>`}
       </div>
       <div class="rs-foot">
-        <button class="rs-main" id="clear-continue" disabled>${L('エンドレスへ', 'Keep going (endless)')}</button>
-        <div class="rs-sub one"><button id="clear-end" disabled>${L('ここで終える（結果を見る）', 'Finish (see result)')}</button></div>
+        ${ura ? `<button class="rs-main" id="clear-end" disabled>${L('結果を見る', 'See result')}</button>` : `<button class="rs-main" id="clear-continue" disabled>${L('エンドレスへ', 'Keep going (endless)')}</button>
+        <div class="rs-sub one"><button id="clear-end" disabled>${L('ここで終える（結果を見る）', 'Finish (see result)')}</button></div>`}
       </div>
     </div>`;
   el.overlay.classList.add('show');
@@ -396,7 +425,7 @@ export function showClear(): Promise<boolean> {
       el.overlay.innerHTML = '';
       resolve(v);
     };
-    $('clear-continue').addEventListener('click', () => close(true));
+    document.getElementById('clear-continue')?.addEventListener('click', () => close(true));
     $('clear-end').addEventListener('click', () => close(false));
   });
 }
@@ -418,7 +447,7 @@ export function showTitle(): void {
   const canBuy = affordableUnlocks(meta);
   el.overlay.innerHTML = `
     <div class="title-scene" aria-hidden="true">
-      <span class="ts-sun">${art('sun')}</span>
+      <button class="ts-sun" id="ts-sun" aria-label="${meta.uraMode ? L('月', 'Moon') : L('太陽', 'Sun')}">${art(meta.uraMode ? 'moon' : 'sun')}</button>
       <span class="ts-cloud a">${art('puff')}</span><span class="ts-cloud b">${art('puff')}</span>
       <span class="ts-hill back"></span><span class="ts-hill front"></span>
     </div>
@@ -429,11 +458,11 @@ export function showTitle(): void {
         <span class="board-post l"></span><span class="board-post r"></span>
         <span class="board-crow">${art('crow')}</span>
       </div>
-      <p class="title-tag">${L(`借りた畑で、${CONFIG.winTaxes}週のノルマを払いきろう`, `Rent a farm. Pay the quota for ${CONFIG.winTaxes} weeks`)}</p>
+      <p class="title-tag">${meta.uraMode ? L('夜の畑で、妖怪を退治しきろう', 'Defeat the yokai on the night farm') : L(`借りた畑で、${CONFIG.winTaxes}週のノルマを払いきろう`, `Rent a farm. Pay the quota for ${CONFIG.winTaxes} weeks`)}</p>
       ${challengeTitleHtml()}
       <div class="title-actions">
         <button class="primary title-start" id="title-start">${L('スタート', 'Start')}</button>
-        ${lordMax(meta) > 0 ? `<button class="secondary title-lord" id="title-lord">${art('lord')}<span>${L('殿様モード', 'Lord mode')}</span></button>` : ''}
+        ${lordMax(meta) > 0 && !meta.uraMode ? `<button class="secondary title-lord" id="title-lord">${art('lord')}<span>${L('殿様モード', 'Lord mode')}</span></button>` : ''}
         ${saved ? `<button class="secondary" id="title-resume">${L('続きから', 'Continue')} ${L(`（${saved.day}日目）`, `(day ${saved.day})`)}</button>` : ''}
       </div>
       <div class="title-sub">
@@ -444,7 +473,25 @@ export function showTitle(): void {
       </div>
     </div>`;
   el.overlay.classList.add('show', 'title');
+  el.overlay.classList.toggle('ura-title', !!meta.uraMode);
   bindChallengeTitle(showTitle);
+  // 隠し入口：太陽（裏では月）を続けて5回たたくと、裏と表が入れ替わる（チュートリアルを終えた人だけ）
+  let sunTaps = 0;
+  let sunAt = 0;
+  $('ts-sun').addEventListener('click', () => {
+    const now = performance.now();
+    sunTaps = now - sunAt < 900 ? sunTaps + 1 : 1;
+    sunAt = now;
+    pop($('ts-sun'), 1.15);
+    sfx.tick();
+    if (sunTaps < 5 || !meta.tutorialDone) return;
+    meta.uraMode = !meta.uraMode;
+    if (meta.uraMode) meta.lordMode = false;
+    saveMeta(meta);
+    sfx.reach();
+    flash(meta.uraMode ? '#1a1030' : '#fff6c8', 500);
+    showTitle();
+  });
   $('title-start').addEventListener('click', async () => {
     unlockAudio();
     sfx.select();
@@ -529,7 +576,7 @@ export function showRecords(): void {
 }
 
 export function leaveTitle(): void {
-  el.overlay.classList.remove('title');
+  el.overlay.classList.remove('title', 'ura-title');
 }
 
 /** 図鑑：達成で解放されるもの。未達成は影絵と短いヒント。[カードのhtml, 達成した数, 全部の数] */
@@ -851,8 +898,9 @@ export function showPrep(): void {
         return;
       }
       sfx.select();
-      // 殿様モードなら段の画面、難しさを解放していれば難しさの画面へ（農家選びと分ける）
-      if (meta.lordMode && lordMax(meta) > 0) showLord();
+      // 裏なら裏の段の画面、殿様モードなら段の画面、難しさを解放していれば難しさの画面へ（農家選びと分ける）
+      if (meta.uraMode) showUra();
+      else if (meta.lordMode && lordMax(meta) > 0) showLord();
       else if (maxDifficulty(meta) > 0) showDifficulty();
       else hooks.startGame();
     });
@@ -975,6 +1023,46 @@ export function showDifficulty(): void {
     });
   };
   paint();
+}
+
+// ---- 裏：段を選ぶ（いまは裏1だけ遊べる）----
+
+const URA_RULES: { ico: ArtId; text: string }[] = [
+  { ico: 'calendar', text: L('週・ノルマ・市はない', 'No weeks, quota or market') },
+  { ico: 'coin', text: L('売った額がダメージになる', 'Sales become damage') },
+  { ico: 'tomato', text: L(`弱点の作物はダメージ×${URA.weakMult}`, `Weak crop: damage ×${URA.weakMult}`) },
+  { ico: 'warn', text: L('回転の期限までに倒せないと負け', 'Lose if time runs out') },
+  { ico: 'flame', text: L(`${URA.harassEvery}回転ごとに妖怪の妨害`, `A yokai trick every ${URA.harassEvery} spins`) },
+  { ico: 'gift', text: L('倒すとごほうびを1つ選ぶ', 'Defeat it, pick a reward') },
+];
+
+export function showUra(): void {
+  const farmer = FARMERS.find((f) => f.id === meta.farmer) ?? FARMERS[0];
+  const lv = 1;
+  el.overlay.innerHTML = `
+    <div class="diff-screen ura-screen" data-sky="ura" style="--dc:#5b3a9e" role="dialog" aria-label="${L('裏', 'Ura')}">
+      <div class="ds-top">
+        <button class="ds-back" id="diff-back" aria-label="${L('もどる', 'Back')}">←</button>
+        <b class="ds-title">${L('裏の畑', 'Night farm')}</b>
+        <span class="ds-farmer">${art(farmer.art as ArtId)}${farmer.name}</span>
+      </div>
+      <div class="ds-chips">${Array.from({ length: URA.levels }, (_, i) => i + 1).map((k) => `<button class="ds-chip${k === lv ? ' on' : ''}${k > URA.playable ? ' locked' : ''}${(meta.uraCleared ?? 0) >= k ? ' cleared' : ''}" style="--c:#5b3a9e" aria-label="${L(`裏${k}`, `Ura ${k}`)}" ${k > URA.playable ? 'disabled' : ''}>${k > URA.playable ? art('lock') : `<b>${k}</b>`}</button>`).join('')}</div>
+      <div class="ura-line">${URA.order.map((id) => `<span class="ul-foe${YOKAI[id].boss ? ' boss' : ''}">${art(YOKAI[id].art as ArtId)}<small>${YOKAI[id].name}</small></span>`).join('<i>▶</i>')}</div>
+      <h2 class="ds-name">${L(`裏${lv}`, `Ura ${lv}`)}</h2>
+      <div class="ds-rules"><ul>${URA_RULES.map((r) => `<li>${art(r.ico)}<span>${r.text}</span></li>`).join('')}</ul></div>
+      <p class="ds-lock">${art('lock')} ${L('裏2〜5は準備中', 'Ura 2–5 coming soon')}</p>
+      <div class="ds-foot"><button class="primary ds-go" id="diff-start">${L('はじめる！', 'Start!')}</button></div>
+    </div>`;
+  el.overlay.classList.add('show');
+  $('diff-back').addEventListener('click', () => {
+    sfx.cancel();
+    showPrep();
+  });
+  $('diff-start').addEventListener('click', async () => {
+    sfx.select();
+    await explainOnce('ex:ura', uraCard());
+    hooks.startGame(null, { ...setupFrom(meta), difficulty: 0, lord: 0, ura: lv });
+  });
 }
 
 // ---- 殿様モード：段を選ぶ（難しさの画面と同じ形）----
@@ -1160,7 +1248,7 @@ export function showFarmerScreen(dir = 0): void {
         <div class="ds-top">
           <button class="ds-back" id="prep-back" aria-label="${L('もどる', 'Back')}">←</button>
           <b class="ds-title">${art('bargain')} ${L('開店準備', 'Opening the stall')}</b>
-          ${nextIsDiff ? `<span class="fs-step">1 / 2</span>` : '<span></span>'}
+          ${nextIsDiff || meta.uraMode ? `<span class="fs-step">1 / 2</span>` : '<span></span>'}
         </div>
         <p class="fs-lead">${L('農家を選ぶ', 'Choose your farmer')}</p>
         <div class="ds-stage">
@@ -1184,7 +1272,7 @@ export function showFarmerScreen(dir = 0): void {
         </div>` : `<div class="ds-rules fs-info fs-info-locked">${art('lock')}</div>`}
         <div class="fs-roster">${list.map((x) => `<button class="fs-face${x.id === f.id ? ' on' : ''}${farmerUnlocked(meta, x.id) ? '' : ' locked'}" data-farmer="${x.id}" style="--c:${FARMER_COLOR[x.id] ?? '#5fae3c'}" aria-label="${farmerUnlocked(meta, x.id) ? x.name : '？？？'}">${farmerUnlocked(meta, x.id) ? art(x.art as ArtId) : art('lock')}</button>`).join('')}</div>
         <div class="ds-foot">
-          <button class="primary ds-go" id="prep-start" ${unlocked ? '' : 'disabled'}>${saved && confirmNew ? L('次へ（続きは消えます）', 'Next (erases saved game)') : nextIsLord ? `${L('段を選ぶ', 'Choose level')} ▶` : nextIsDiff ? `${L('難しさを選ぶ', 'Choose difficulty')} ▶` : L('はじめる！', 'Start!')}</button>
+          <button class="primary ds-go" id="prep-start" ${unlocked ? '' : 'disabled'}>${saved && confirmNew ? L('次へ（続きは消えます）', 'Next (erases saved game)') : meta.uraMode || nextIsLord ? `${L('段を選ぶ', 'Choose level')} ▶` : nextIsDiff ? `${L('難しさを選ぶ', 'Choose difficulty')} ▶` : L('はじめる！', 'Start!')}</button>
         </div>
       </div>`;
     el.overlay.classList.add('show');
@@ -1238,7 +1326,8 @@ export function showFarmerScreen(dir = 0): void {
         return;
       }
       sfx.select();
-      if (nextIsLord) showLord();
+      if (meta.uraMode) showUra();
+      else if (nextIsLord) showLord();
       else if (nextIsDiff) showDifficulty();
       else hooks.startGame();
     });

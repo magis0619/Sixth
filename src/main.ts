@@ -19,11 +19,12 @@ import {
 import { applySkin, showClear, showGameOver, showHelp, showTitle } from './ui/screens.ts';
 import { clearRun, saveRun } from './ui/save.ts';
 import { $, el, hooks, meta, rng, setState, state, ui, TW } from './ui/store.ts';
-import { done, play } from './ui/play.ts';
+import { done, harvestPlaying, play } from './ui/play.ts';
 import { lordWeekCard } from './ui/lord.ts';
 import { armFresh, installTapGuards } from './ui/tapguard.ts';
 import { readChallengeFromUrl } from './ui/challenge.ts';
 import { breadcrumb, installCrashWatch } from './ui/crashwatch.ts';
+import { renderUraHud, showUraHarass, showUraReward, uraIntro } from './ui/ura.ts';
 import { pressable } from './ui/press.ts';
 import { applySettings, showSettings } from './ui/settings.ts';
 import { reject } from './ui/states.ts';
@@ -61,6 +62,7 @@ function holdCoach(): () => void {
 // ---- 描画 ----
 
 function render(): void {
+  renderUraHud();
   el.day.textContent = String(state.day);
   syncGold();
   renderTax();
@@ -517,6 +519,16 @@ async function onSpin(): Promise<void> {
     await sleep(EVENT_GAP);
   }
   await showNightIncome();
+  // 裏：妨害が起きた夜。期限までに倒せなかったら負け
+  if (state.ura) {
+    if (state.ura.lastHarass) await showUraHarass();
+    if (!res.ok) {
+      await witherField();
+      endBusy();
+      showGameOver();
+      return;
+    }
+  }
   if (res.tax !== null) {
     await sleep(EVENT_GAP);
     if (res.ok) track('progress', state, { tax: res.tax });
@@ -619,6 +631,7 @@ async function spinMorning(): Promise<void> {
   endBusy();
   autoSelect();
   render();
+  await uraCheck();
   // 初めての年貢の日：一枚絵で（日曜の終わりに払う・足りないと終わり）
   if (nextTax(state).daysLeft === 0) await explainOnce('ex:tax', taxCard(nextTax(state).amount), !!play.tut);
 }
@@ -1484,6 +1497,35 @@ function cropCenter(cell: number): { x: number; y: number } {
   return { x: pts.reduce((n, q) => n + q.x, 0) / pts.length, y: pts.reduce((n, q) => n + q.y, 0) / pts.length };
 }
 
+/** 裏：妖怪を倒していたら3択、大蛇を倒していたらクリア（売ったあと・朝の回転のあとに呼ぶ） */
+let uraChecking = false;
+async function uraCheck(): Promise<void> {
+  const u = state.ura;
+  if (!u || uraChecking || state.over) return;
+  if (!u.reward && !u.won) return;
+  uraChecking = true;
+  try {
+    // 演出が終わるまで待つ
+    while (ui.busy || harvestPlaying()) await sleep(120);
+    if (u.won) {
+      ui.busy = true;
+      await showClear();
+      endBusy();
+      showGameOver(true);
+      return;
+    }
+    ui.busy = true;
+    await showUraReward();
+    render();
+    await uraIntro();
+    endBusy();
+    autoSelect();
+    render();
+  } finally {
+    uraChecking = false;
+  }
+}
+
 function sellCrop(cell: number): void {
   const p = cropCenter(cell);
   const centers = state.field.map((_, i) => center(el.field.children[i]));
@@ -1526,6 +1568,7 @@ function sellCrop(cell: number): void {
       release();
       landSale();
       orderDone();
+      void uraCheck();
     });
   } else {
     sfx.sell(price, play.combo);
@@ -1537,6 +1580,7 @@ function sellCrop(cell: number): void {
   if (play.combo >= 2) floatText(p.x, p.y - 60, `COMBO ×${play.combo}`, { cls: 'combo', size: 0.7 + Math.min(play.combo, 6) * 0.08, dur: 900 });
   if (res.line) return;
   flyTo(p, el.goldBox, '🪙', Math.min(10, Math.ceil(price / 6)), landSale);
+  if (state.ura) later(() => void uraCheck(), 650);
   if (big) {
     flash('#ffe680', 500);
     confetti(36);
@@ -1574,7 +1618,7 @@ function startGame(resume: GameState | null = null, setup?: GameSetup): void {
   window.clearInterval(play.tutSpotTimer);
   document.getElementById('coach')?.remove();
   // 挑戦状のプレイはチュートリアルを出さない（決まった出目に差し替えると、相手と同じ出目にならない）
-  if (!resume && !meta.tutorialDone && !state.challenge) startTutorial();
+  if (!resume && !meta.tutorialDone && !state.challenge && !state.ura) startTutorial();
   // 初めて遊ぶ農家は、最初にその農家のこつを出す
   const farmer = FARMERS.find((f) => f.id === state.farmer);
   if (!resume && farmer?.tip && !meta.farmersPlayed.includes(farmer.id)) {
@@ -1583,7 +1627,7 @@ function startGame(resume: GameState | null = null, setup?: GameSetup): void {
     later(() => showHintCard(`${art(farmer.art as ArtId)} <b>${farmer.name}</b>：${farmer.tip}`, 8000), 500);
   }
   if (resume) autoSelect();
-  el.overlay.classList.remove('show', 'title');
+  el.overlay.classList.remove('show', 'title', 'ura-title');
   el.overlay.innerHTML = '';
   el.reels.innerHTML = '';
   el.shop.innerHTML = '';
@@ -1592,6 +1636,8 @@ function startGame(resume: GameState | null = null, setup?: GameSetup): void {
   // 市の朝に閉じていたら、続きは市から
   if (resume && state.morning && state.offer.length && isMarketDay(state.day)) openMarket();
   if (resume && state.morning && state.contractOffer.length) void explainOnce('ex:contract', contractCard(), !!play.tut).then(() => showContractOffer());
+  // 裏：3択を選ぶ前に閉じていたら、続きは3択から
+  if (resume && state.ura) void uraCheck();
 }
 // ---- 押す回数を減らす：なぞって植える・リールから畑へ引っぱる・使える出目が1つなら選んでおく ----
 

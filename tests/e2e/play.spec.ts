@@ -790,3 +790,26 @@ test('絵柄袋の板を開いたあとに市を開いても、畑の品の段�
   expect(await page.evaluate(() => (window as unknown as { __marketEmpty?: number }).__marketEmpty ?? 0)).toBe(0);
   expect(errors).toEqual([]);
 });
+
+test('タイトルの太陽を5回たたくと裏（夜）になり、裏1を始めると妖怪の札が出る', async ({ page }) => {
+  const errors = await boot(page);
+  await expect(page.locator('#ts-sun')).toBeVisible();
+  for (let k = 0; k < 5; k++) await page.click('#ts-sun', { force: true });
+  await expect(page.locator('#overlay.ura-title')).toHaveCount(1);
+  await page.click('#title-start', { force: true });
+  await expect(page.locator('#prep-start')).toBeVisible();
+  await ready(page);
+  await page.click('#prep-start', { force: true });
+  await expect(page.locator('.ura-screen')).toBeVisible();
+  // 裏2〜5は準備中で押せない
+  await expect(page.locator('.ura-screen .ds-chip.locked')).toHaveCount(4);
+  await ready(page);
+  await page.click('#diff-start', { force: true });
+  await expect(page.locator('#ura-hud')).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('#gold-box')).toBeHidden();
+  await expect(page.locator('#ura-hud .uh-name b')).toHaveText('狐火');
+  // 1回まわすと、裏1のプレイとして保存される
+  await page.locator('#reels .reel').first().click({ force: true });
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('hatake-slot:run') ?? '{}').ura?.level), { timeout: 15_000 }).toBe(1);
+  expect(errors).toEqual([]);
+});

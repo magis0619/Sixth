@@ -268,6 +268,55 @@ export type TaxCondKind = 'crop' | 'line' | 'sameLine' | 'big' | 'keep';
 /** 殿様の気まぐれ：質素倹約（市が開かない）・派手好き（単品がさらに半分）・見回り（毎晩実りを1つ持っていく）・豊作を見たい（日曜に畑の半分） */
 export type WhimId = 'frugal' | 'flashy' | 'patrol' | 'harvest';
 
+// ---- 裏（妖怪退治）：太陽を5回たたくと入れる、もう1つの畑スロット ----
+// 週もノルマもない。作物を売った額がそのまま妖怪へのダメージ。決まった回転数のうちに倒せなければ負け。
+// 妖怪は弱点の作物（ダメージ×weakMult）と、2回転ごとの妨害（1回転前に予告）を持つ。
+// 置き物・お守り・絵柄は、妖怪を倒したときの3択だけで手に入る（市・仕入れ・お金はない）
+export type YokaiId = 'kitsune' | 'yukionna' | 'kappa' | 'orochi';
+/** 妨害：列を燃やす・お邪魔を混ぜる・縦の列を凍らせる・一番高い実りを盗む・体力が戻る */
+export type HarassId = 'burnRow' | 'pests' | 'frost' | 'steal' | 'heal';
+export interface YokaiDef {
+  name: string;
+  art: string;
+  /** 体力（裏1） */
+  hp: number;
+  /** 倒すまでの回転数 */
+  limit: number;
+  /** 弱点の作物。rotate は数回転ごとに入れ替わる（最後の大蛇） */
+  weak: CropKind | 'rotate';
+  harass: HarassId[];
+  boss?: boolean;
+}
+export const YOKAI: Record<YokaiId, YokaiDef> = {
+  kitsune: { name: '狐火', art: 'yKitsune', hp: 60, limit: 7, weak: 'tomato', harass: ['burnRow', 'pests'] },
+  yukionna: { name: '雪女', art: 'yYukionna', hp: 95, limit: 7, weak: 'strawberry', harass: ['frost', 'pests'] },
+  kappa: { name: '河童', art: 'yKappa', hp: 110, limit: 7, weak: 'pumpkin', harass: ['steal', 'heal'] },
+  orochi: { name: '大蛇', art: 'yOrochi', hp: 220, limit: 10, weak: 'rotate', harass: ['burnRow', 'frost', 'steal', 'heal'], boss: true },
+};
+export const URA = {
+  /** 出てくる順（最後が大蛇） */
+  order: ['kitsune', 'yukionna', 'kappa', 'orochi'] as YokaiId[],
+  /** 弱点の作物のダメージ倍率 */
+  weakMult: 2,
+  /** 妨害の間隔（回転） */
+  harassEvery: 2,
+  /** 体力が戻る妨害で戻る割合（最大体力に対して） */
+  healRate: 0.1,
+  /** 大蛇の弱点が入れ替わる間隔（回転）と、入れ替わる作物 */
+  rotateEvery: 3,
+  rotateKinds: ['tomato', 'strawberry', 'pumpkin'] as CropKind[],
+  /** お邪魔を混ぜる妨害で袋に入る枚数・凍らせる日数 */
+  pestCount: 2,
+  frostDays: 1,
+  /** 最初の妨害までの回転（2回目からは harassEvery ごと） */
+  firstHarass: 3,
+  /** 裏の始めに袋に足す育てる絵柄（市も仕入れもないので、育てる手を最初に持たせる） */
+  startBag: { rain: 2, sun: 1, thunder: 1 } as Partial<Record<SymbolId, number>>,
+  /** 裏の段の数（いまは裏1だけ遊べる） */
+  levels: 5,
+  playable: 1,
+};
+
 export type ShapeId = 'cross' | 'column' | 'row' | 'x' | 'all' | 'one' | 'col3' | 'xline' | 'box' | 'plus';
 
 export const SHAPE_NAMES: Record<ShapeId, string> = { cross: '縦横十字', column: '縦一列', row: '横一列', x: '斜め', all: '畑全体', one: '1マス', col3: '縦3列', xline: '斜めの線', box: '周り9マス', plus: '十字の5マス' };

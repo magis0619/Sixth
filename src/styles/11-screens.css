@@ -1343,3 +1343,90 @@ html.idle *, html.idle *::before, html.idle *::after { animation-play-state: pau
 .clear-modal .cl-note { margin: 0; font-size: 0.8125rem; color: var(--ink-soft, #54473a); }
 @keyframes cl-cup { from { transform: scale(0.3) rotate(-20deg); opacity: 0; } }
 .calm .clear-modal .cl-cup { animation: none; }
+
+/* ==== 裏（妖怪退治）：夜のタイトル・月・裏の段の画面・妖怪の札・ごほうびの3択 ==== */
+.ts-sun { z-index: 2; pointer-events: auto; padding: 0; border: 0; background: none; line-height: 1; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+#overlay.title.ura-title { background: linear-gradient(#0d1030, #2a2458 62%); }
+#overlay.ura-title .ts-sun { filter: drop-shadow(0 0 18px rgba(255, 240, 180, 0.7)); }
+#overlay.ura-title .ts-cloud { opacity: 0.35; filter: brightness(0.6); }
+#overlay.ura-title .ts-hill.back { background: repeating-linear-gradient(100deg, transparent 0 34px, rgba(0, 0, 0, 0.18) 34px 37px), #2f4a2a; }
+#overlay.ura-title .ts-hill.front { background: repeating-linear-gradient(80deg, transparent 0 28px, rgba(0, 0, 0, 0.2) 28px 31px), #243d20; }
+#overlay.ura-title .title-tag { color: #fff3c8; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.6); }
+
+.diff-screen[data-sky='ura'] {
+  --s1: #0b0d24; --s2: #2c2152; --h1: #1c2a18; --h2: #162214;
+  color: #fff8e7;
+  --deco:
+    radial-gradient(circle at 82% 66%, #fff6c8 0 26px, rgba(255, 246, 200, 0.25) 27px 40px, transparent 41px),
+    radial-gradient(circle at 18px 22px, rgba(255, 255, 255, 0.85) 0 1.5px, transparent 2.5px) 0 0 / 97px 83px,
+    radial-gradient(circle at 60px 50px, rgba(255, 255, 255, 0.55) 0 1px, transparent 2px) 0 0 / 131px 71px;
+}
+.ura-screen .ds-chip.locked { opacity: 0.55; }
+.ura-line { display: flex; align-items: center; justify-content: center; gap: 4px; margin: 8px 0; }
+.ura-line > i { font-style: normal; font-size: 0.8125rem; opacity: 0.7; }
+.ul-foe { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 2.4rem; }
+.ul-foe small { font-size: 0.8125rem; font-weight: 700; }
+.ul-foe.boss { font-size: 3rem; }
+.ul-foe.done { opacity: 0.45; filter: grayscale(0.8); }
+.ul-foe.here { outline: 3px solid #e0503c; border-radius: 10px; }
+.rs .ura-line { color: var(--ink); }
+
+/* ゲーム中：お金・ノルマ・週・注文・市は出さない（妖怪の札が上に出る） */
+html.ura-game #gold-box, html.ura-game #tax, html.ura-game #week, html.ura-game #order { display: none !important; }
+.ura-hud {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 6px;
+  color: #fff8e7;
+}
+html.ura-game .hud-bar { align-items: center; background: linear-gradient(#2c2152, #1b1638); box-shadow: 0 3px 0 #0d0a1f, inset 0 0 0 2px rgba(200, 180, 255, 0.3); }
+html.ura-game .hud-bar #menu-btn { align-self: flex-start; }
+/* 夜の畑：空と草の色を夜にする */
+html.ura-game.ura-game.ura-game :is(body, .scene-hill) { --sky: #1b1840; --sky2: #3a3470; --grass: #3f6a34; --grass2: #375e2d; }
+.ura-hud[hidden] { display: none; }
+.uh-foe { font-size: 3.4rem; line-height: 1; }
+.uh-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.uh-name { display: flex; justify-content: space-between; align-items: baseline; margin: 0; font-size: 1rem; }
+.uh-name span { font-size: 0.875rem; opacity: 0.85; }
+.uh-hp { position: relative; height: 22px; border: 2px solid #120e26; border-radius: 11px; background: #3b2f63; overflow: hidden; }
+.uh-hp i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(#ff7a6a, #d23b3b); transition: width 0.4s ease; }
+.uh-hp b { position: relative; display: block; text-align: center; font-size: 0.9375rem; line-height: 18px; font-variant-numeric: tabular-nums; text-shadow: 0 1px 0 #000; }
+.uh-hp b small { font-size: 0.8125rem; opacity: 0.85; }
+.uh-row { display: flex; gap: 12px; margin: 0; }
+.uh-row > span { display: inline-flex; align-items: center; gap: 4px; font-size: 1.5rem; }
+.uh-row small { font-size: 0.875rem; font-weight: 700; }
+.uh-harass.soon { color: #ffb08a; animation: uh-blink 1s ease-in-out infinite; }
+@keyframes uh-blink { 50% { opacity: 0.55; } }
+.uh-turns { display: flex; flex-direction: column; align-items: center; min-width: 54px; padding: 4px 6px; border-radius: 10px; background: #fff8e7; color: var(--ink, #3d3326); }
+.uh-turns b { font-family: var(--font-pop); font-size: 1.75rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.uh-turns small { font-size: 0.8125rem; font-weight: 700; }
+.uh-turns.danger { background: #e0503c; color: #fff; animation: uh-blink 0.8s ease-in-out infinite; }
+.calm .uh-turns.danger, .calm .uh-harass.soon { animation: none; }
+
+.ura-reward { text-align: center; }
+.ur-head { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.ur-head h2 { margin: 0; font-size: 1.375rem; }
+.ur-foe { font-size: 3rem; filter: grayscale(0.7); }
+.ur-lead { margin: 6px 0 10px; font-size: 1rem; font-weight: 700; }
+.ur-cards { display: flex; flex-direction: column; gap: 10px; }
+.ur-card {
+  display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px;
+  border: var(--line, 3px solid #3d3326); border-radius: 14px; background: #fff8e7; color: var(--ink, #3d3326); text-align: left;
+  box-shadow: 0 3px 0 rgba(61, 51, 38, 0.35);
+}
+.ur-card:active { transform: translateY(2px); box-shadow: none; }
+.ur-ico { flex: none; font-size: 2.6rem; line-height: 1; }
+.ur-text { display: flex; flex-direction: column; gap: 2px; }
+.ur-text b { font-size: 1.0625rem; }
+.ur-text small { font-size: 0.875rem; color: var(--ink-soft, #54473a); }
+html.ura-game body {
+  background-image:
+    radial-gradient(circle at 84% 70px, #fff6c8 0 18px, rgba(255, 246, 200, 0.2) 19px 30px, transparent 31px),
+    radial-gradient(ellipse 70% 40px at 20% 132px, #34572b 98%, transparent 100%),
+    radial-gradient(ellipse 80% 50px at 85% 140px, #2f5127 98%, transparent 100%),
+    linear-gradient(var(--sky) 0, var(--sky2) 120px, var(--grass) 150px, var(--grass2) 100%);
+}

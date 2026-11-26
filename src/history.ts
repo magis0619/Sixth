@@ -16,6 +16,8 @@ export interface RunRecord {
   seed: number;
   diff: number;
   lord: number;
+  /** 裏の段（0か無し＝裏ではない） */
+  ura?: number;
   farmer: string;
   day: number;
   taxes: number;
@@ -65,6 +67,7 @@ export function makeRunRecord(state: GameState, taxAmount: number): RunRecord {
     seed: state.seed ?? 0,
     diff: state.difficulty,
     lord: state.lordLevel ?? 0,
+    ura: state.ura?.level ?? 0,
     farmer: state.farmer,
     day: state.day,
     taxes: state.taxesPaid,
@@ -121,7 +124,7 @@ export interface HistoryAnalysis {
   wins: number;
   /** 新しい順の最近の回（最大20） */
   recent: RunRecord[];
-  /** 難しさごと（殿様モードは除く） */
+  /** 難しさごと（殿様モード・裏は除く） */
   byDiff: (WinLoss & { diff: number })[];
   /** 農家ごと */
   byFarmer: (WinLoss & { farmer: string })[];
@@ -152,7 +155,7 @@ const avgParts = (list: RunRecord[]): RunRecord['parts'] | null => {
 };
 
 export function analyzeHistory(list: RunRecord[]): HistoryAnalysis {
-  const normal = list.filter((r) => !r.lord);
+  const normal = list.filter((r) => !r.lord && !r.ura);
   const wl = (rs: RunRecord[]): WinLoss => ({ plays: rs.length, wins: rs.filter((r) => r.cleared).length });
   const diffs = [...new Set(normal.map((r) => r.diff))].sort((a, b) => a - b);
   const farmers = [...new Set(list.map((r) => r.farmer))];

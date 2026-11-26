@@ -63,6 +63,9 @@ function summary(state: GameState): Record<string, unknown> {
     gold: state.gold,
     difficulty: state.difficulty,
     lord: state.lordLevel ?? 0,
+    // 裏：段と倒した数（0＝裏ではない）
+    ura: state.ura?.level ?? 0,
+    uraDefeated: state.ura?.defeated ?? 0,
     farmer: state.farmer,
     mastery: meta.mastery[state.farmer] ?? 0,
     earned: state.stats.totalEarned,

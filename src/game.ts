@@ -4,6 +4,7 @@ import { L } from './i18n.ts';
 import {
   BAG_CONDITIONS, CHARM_CURSE, COMBOS, CUT, MERGES, cropBase, symbolBase, FARMERS, PAUSED_CHARMS, isCutAdd, COMBO_POWER, CHARMS, CHARM_ORDER, CHARM_PLACE, CONFIG, CROPS, EVENT_CONDITIONS, PLACE_ORDER, PLACES, SEEDS, SYMBOLS, SYMBOL_ORDER, TOOL_EVOLVE, UPGRADE_SYMBOL,
   type AddUpgradeId, type CharmId, type CropKind, type PlaceId, type ShapeId, type SymbolId, type TaxCondKind, type UpgradeId, type WhimId,
+  URA, YOKAI, type HarassId, type YokaiId,
 } from './config.ts';
 import { CONTRACTS, CONTRACT_ORDER, CONTRACT_STAR_WEIGHTS, contractGold, contractMaxStars, type ContractId } from './contracts.ts';
 
@@ -101,6 +102,8 @@ export interface GameState {
   rngState?: number;
   /** 挑戦状から始めたプレイ：送ってきた人の結果（結果画面で比べる） */
   challenge?: ChallengeFrom | null;
+  /** 裏（妖怪退治）のプレイ。ふつうのプレイは null */
+  ura?: UraState | null;
   /** 殿様モードの段（0＝殿様モードではない、1〜3） */
   lordLevel: number;
   /** 今週の年貢の条件（殿様モード） */
@@ -293,6 +296,8 @@ export interface GameSetup {
   seed?: number;
   /** 挑戦状から始めるとき：送ってきた人の結果 */
   challenge?: ChallengeFrom;
+  /** 裏（妖怪退治）の段。0・省略はふつうのプレイ */
+  ura?: number;
   shop: AddUpgradeId[];
   charmPool: CharmId[];
   /** 週替わりの候補（解放済み）。省略時は shop と同じ */
@@ -326,6 +331,7 @@ export function newGame(setup: GameSetup = { shop: ALL_ADDS, charmPool: CHARM_OR
     });
     if (setup.mastery) glog(state, `腕前 段${setup.mastery}`);
   }
+  if (setup.ura) startUra(state, setup.ura);
   return state;
 }
 
@@ -739,7 +745,7 @@ export function nextTax(state: GameState): TaxInfo {
 
 export type EndDayResult =
   | { ok: true; tax: number | null; expired: number; cleared: boolean; seedGold: number; forfeited?: number }
-  | { ok: false; tax: number; expired: number; cleared: false; seedGold: number };
+  | { ok: false; tax: number; expired: number; cleared: false; seedGold: number; ura?: boolean };
 
 /**
  * 今日を終える。期日なら年貢を徴収し、払えればお守りの候補を用意する（charmOffer）。
@@ -787,6 +793,14 @@ function endDayRaw(state: GameState, rng: Rng): EndDayResult {
   state.fever = [];
   state.bred = [];
   state.priceMult = 1;
+  // 裏：ノルマはない。妖怪の残りの回転を減らし、妨害を起こす。期限が来たら負け
+  if (state.ura) {
+    if (state.day > 0 && !uraNight(state)) {
+      state.over = true;
+      return { ok: false, tax: 0, expired, cleared: false, seedGold, ura: true };
+    }
+    return { ok: true, tax: null, expired, cleared: false, seedGold };
+  }
   if (!(state.day > 0 && state.day % CONFIG.taxPeriod === 0)) return { ok: true, tax: null, expired, cleared: false, seedGold };
   const t = nextTax(state);
   if (state.gold < t.amount) {
@@ -871,7 +885,7 @@ export function beginDay(state: GameState, rng: Rng): void {
   state.offer = CONFIG.dailyPick && (!CONFIG.marketDays.length || isMarketDay(state.day)) ? rollOffer(state, rng) : [];
   // 新しい週には新しい注文と週替わりの品が来る（注文がない週は、月曜を週の始まりとして数える）
   if (state.order ? state.order.dueDay < state.day : state.day === 1 || weekDay(state.day) === 1) {
-    state.order = makeOrder(state, rng);
+    state.order = state.ura ? null : makeOrder(state, rng);
     state.weekly = rollWeekly(state, rng);
     state.weeklyPlaces = rollWeeklyPlaces(state, rng);
     state.removedThisWeek = 0;
@@ -955,6 +969,8 @@ export function isMarketDay(day: number): boolean {
 
 /** 今、買い物ができるか（市の日がない設定ならいつでも）。市が閉まる週は開かない */
 export function shopOpen(state: GameState): boolean {
+  // 裏：市・仕入れはない（手に入れるのは妖怪を倒したときの3択だけ）
+  if (state.ura) return false;
   if (state.contract === 'marketClosed' || state.marketClosed || state.whim === 'frugal') return false;
   return !CONFIG.marketDays.length || isMarketDay(state.day);
 }
@@ -1397,7 +1413,7 @@ function discardRaw(state: GameState, sym: SymbolId): boolean {
 
 /** 雑草を抜く（草よけのお守りがあれば無料） */
 export function weedCost(state: GameState): number {
-  return state.charms.bugWard > 0 ? 0 : CONFIG.weedPullCost;
+  return state.charms.bugWard > 0 || state.ura ? 0 : CONFIG.weedPullCost;
 }
 
 function pullWeedRaw(state: GameState, cell: number): boolean {
@@ -1537,7 +1553,9 @@ export function crowEatChance(state: GameState, power: number): number {
 }
 
 function earn(state: GameState, amount: number): void {
-  state.gold += amount;
+  // 裏：お金はなく、稼いだ額がそのまま妖怪へのダメージ
+  if (state.ura) uraHit(state, amount);
+  else state.gold += amount;
   state.stats.totalEarned += amount;
   state.stats.earnedByDay[state.day] = (state.stats.earnedByDay[state.day] ?? 0) + amount;
 }
@@ -2036,7 +2054,9 @@ export function cropPrice(state: GameState, crop: Crop, cell?: number): number {
   // 組み合わせ：秋の月（かぼちゃ）・豊年祭（全部）
   const combo = (cropBase(crop.kind) === 'pumpkin' && comboOn(state, 'harvestMoon') ? COMBO_POWER.harvestMoon : 1) * (comboOn(state, 'festival') ? COMBO_POWER.festival : 1);
   // 市の日は高く売れる（市が閉まる週は除く）。牧場主の代償で作物が安くなる
-  const marketDay = isMarketDay(state.day) && state.contract !== 'marketClosed' ? CONFIG.marketDaySell : 1;
+  const marketDay = isMarketDay(state.day) && state.contract !== 'marketClosed' && !state.ura ? CONFIG.marketDaySell : 1;
+  // 裏：今の妖怪の弱点の作物はダメージ×weakMult
+  const weak = state.ura && state.ura.weak === cropBase(crop.kind) ? URA.weakMult : 1;
   const rancher = Math.max(0.5, 1 - 0.1 * state.charms.rancher);
   // 大きな買い物：豊穣の像は1つにつき売値+10%。早生の代償で売値−25%
   const statue = (1 + 0.1 * (state.premium?.statue ?? 0)) * (state.charms.earlyCrop > 0 ? 0.75 : 1);
@@ -2046,7 +2066,7 @@ export function cropPrice(state: GameState, crop: Crop, cell?: number): number {
   // 月見の代償：満月を使った日は−20%。大判振る舞いの代償：良い絵柄のフィーバーがない日は−10%
   const moonDay = state.charms.moonViewing > 0 && state.moonUsedDay === state.day && state.day > 0 ? 0.8 : 1;
   const quiet = state.charms.bigSpender > 0 && !state.fever.some((s) => SYMBOLS[s].rarity !== 'bad') ? 0.9 : 1;
-  return Math.round((def.price + charm + crop.bonus + hive) * fert * tile * state.priceMult * marketMult(state, crop.kind) * fair * combo * marketDay * rancher * statue * autumn * moonDay * quiet);
+  return Math.round((def.price + charm + crop.bonus + hive) * fert * tile * state.priceMult * marketMult(state, crop.kind) * fair * combo * marketDay * rancher * statue * autumn * moonDay * quiet * weak);
 }
 
 /** 難しい6：傷んだ作物か（実ってから spoilDays 夜を越した）。売れず、列にも入らない */
@@ -3066,4 +3086,216 @@ export function upkeep(state: GameState): number {
 /** 難しい9：年貢を払ったあとに持ち越せるお金（次の年貢の額×carryCapMult） */
 export function carryCap(state: GameState): number {
   return Math.round(nextTax(state).amount * CONFIG.carryCapMult);
+}
+
+// ---- 裏（妖怪退治） ----
+// 週もノルマもない。稼いだ額（作物の売上など）がそのまま妖怪へのダメージ（earn）。
+// 妖怪ごとに回転の期限があり、期限までに倒せなければ負け。2回転ごとに妨害（1回転前に予告）。
+// 倒すと3択（種・絵柄・お守り・置き物・畑を広げる・お邪魔を払う）から1つ。最後の大蛇を倒せばクリア
+
+export interface UraState {
+  level: number;
+  /** 今の妖怪（URA.order の何番目か） */
+  idx: number;
+  foe: YokaiId;
+  hp: number;
+  maxHp: number;
+  /** 残りの回転（夜を越すたびに1減る） */
+  turnsLeft: number;
+  limit: number;
+  /** 今の弱点の作物（大蛇は入れ替わる） */
+  weak: CropKind;
+  /** 次の妨害と、それまでの回転 */
+  harass: HarassId;
+  harassIn: number;
+  /** 倒したあとの3択（選ぶまで次の妖怪は来ない） */
+  reward: UraReward[] | null;
+  /** 最後の大蛇を倒した */
+  won: boolean;
+  /** 倒した数・最後の妨害（演出と記録用） */
+  defeated: number;
+  lastHarass: { id: HarassId; cells: number[] } | null;
+}
+
+export type UraReward =
+  | { kind: 'seed'; sym: SymbolId; n: number }
+  | { kind: 'symbol'; sym: SymbolId; n: number }
+  | { kind: 'charm'; id: CharmId }
+  | { kind: 'place'; id: PlaceId }
+  | { kind: 'expand' }
+  | { kind: 'clean'; n: number };
+
+/** 作物の種の絵柄 */
+function seedOf(kind: CropKind): SymbolId {
+  return ((Object.keys(SEEDS) as SymbolId[]).find((id) => SEEDS[id]!.crop === kind) ?? 'seed') as SymbolId;
+}
+
+/** 段に合わせた体力（いまは裏1だけ） */
+const uraHp = (def: (typeof YOKAI)[YokaiId], level: number): number => Math.round(def.hp * (1 + 0.25 * (level - 1)));
+
+function spawnFoe(state: GameState, idx: number): void {
+  const u = state.ura!;
+  const id = URA.order[Math.min(idx, URA.order.length - 1)];
+  const def = YOKAI[id];
+  u.idx = idx;
+  u.foe = id;
+  u.maxHp = u.hp = uraHp(def, u.level);
+  u.limit = u.turnsLeft = def.limit;
+  u.weak = def.weak === 'rotate' ? URA.rotateKinds[0] : def.weak;
+  u.harass = def.harass[0];
+  u.harassIn = URA.firstHarass;
+  glog(state, `裏 ${def.name}が来た 体力${u.hp} 期限${u.limit}回転 弱点:${CROPS[u.weak].name}`);
+}
+
+export function startUra(state: GameState, level: number): void {
+  state.ura = { level, idx: 0, foe: URA.order[0], hp: 0, maxHp: 0, turnsLeft: 0, limit: 0, weak: 'tomato', harass: 'pests', harassIn: URA.harassEvery, reward: null, won: false, defeated: 0, lastHarass: null };
+  state.order = null;
+  (Object.entries(URA.startBag) as [SymbolId, number][]).forEach(([sym, n]) => (state.bag[sym] = (state.bag[sym] ?? 0) + n));
+  spawnFoe(state, 0);
+}
+
+/** 稼いだ額で妖怪をたたく（earn から呼ぶ） */
+function uraHit(state: GameState, amount: number): void {
+  const u = state.ura;
+  if (!u || u.reward || u.won || u.hp <= 0 || amount <= 0) return;
+  u.hp = Math.max(0, u.hp - amount);
+  if (u.hp > 0) return;
+  u.defeated++;
+  glog(state, `裏 ${YOKAI[u.foe].name}を倒した（残り${u.turnsLeft}回転）`);
+  if (YOKAI[u.foe].boss || u.idx >= URA.order.length - 1) {
+    u.won = true;
+    state.cleared = true;
+    return;
+  }
+  u.reward = rollUraReward(state);
+}
+
+/** 倒したあとの3択：①次の妖怪の弱点の種 ②置き物・畑を広げる・お守り ③育てる絵柄・お邪魔を払う・お守り */
+export function rollUraReward(state: GameState): UraReward[] {
+  const r = () => nextRand(state);
+  const pick = <T>(a: T[]): T => a[Math.floor(r() * a.length)];
+  const next = YOKAI[URA.order[Math.min(state.ura!.idx + 1, URA.order.length - 1)]];
+  const nextWeak = next.weak === 'rotate' ? URA.rotateKinds[0] : next.weak;
+  const out: UraReward[] = [{ kind: 'seed', sym: seedOf(nextWeak), n: CROPS[nextWeak].big || SEEDS[seedOf(nextWeak)]?.single ? 2 : 3 }];
+  const places = PLACE_ORDER.filter((id) => PLACES[id].price !== null && roomLeft(state, id) > 0);
+  const charms = rollCharmOffer(state, r).filter((id) => state.charms[id] < CHARMS[id].max);
+  const canExpand = !(state.cols >= CONFIG.fieldCols && state.rows >= CONFIG.fieldRows);
+  const second: UraReward[] = [...(places.length ? [{ kind: 'place', id: pick(places) } as UraReward] : []), ...(canExpand ? [{ kind: 'expand' } as UraReward] : []), ...(charms[0] ? [{ kind: 'charm', id: charms[0] } as UraReward] : [])];
+  out.push(second.length ? pick(second) : { kind: 'symbol', sym: 'rain', n: 2 });
+  const pests = (Object.keys(state.bag) as SymbolId[]).filter((id) => SYMBOLS[id]?.rarity === 'bad' && state.bag[id] > 0);
+  const grow = (['rain', 'sun', 'thunder', 'can', 'fertilizer'] as SymbolId[]).filter((id) => id in state.bag);
+  const third: UraReward[] = [{ kind: 'symbol', sym: pick(grow), n: 2 }, ...(pests.length ? [{ kind: 'clean', n: 2 } as UraReward] : []), ...(charms[1] ? [{ kind: 'charm', id: charms[1] } as UraReward] : [])];
+  out.push(pick(third));
+  return out;
+}
+
+/** 3択から1つ受け取り、次の妖怪を呼ぶ */
+export function takeUraReward(state: GameState, index: number): boolean {
+  const u = state.ura;
+  const rw = u?.reward?.[index];
+  if (!u || !rw) return false;
+  if (rw.kind === 'seed' || rw.kind === 'symbol') state.bag[rw.sym] = (state.bag[rw.sym] ?? 0) + rw.n;
+  else if (rw.kind === 'charm') {
+    state.charmOffer = [rw.id];
+    chooseCharm(state, rw.id);
+  } else if (rw.kind === 'place') state.stock.push(rw.id);
+  else if (rw.kind === 'expand') {
+    if (state.cols <= state.rows) state.cols = Math.min(CONFIG.fieldCols, state.cols + 1);
+    else state.rows = Math.min(CONFIG.fieldRows, state.rows + 1);
+    state.bought.expand = (state.bought.expand ?? 0) + 1;
+  } else if (rw.kind === 'clean') {
+    for (let k = 0; k < rw.n; k++) {
+      const pests = (Object.keys(state.bag) as SymbolId[]).filter((id) => SYMBOLS[id]?.rarity === 'bad' && state.bag[id] > 0).sort((a, b) => state.bag[b] - state.bag[a]);
+      if (pests[0]) state.bag[pests[0]]--;
+    }
+  }
+  glog(state, `裏 ごほうび ${uraRewardName(rw)}`);
+  u.reward = null;
+  spawnFoe(state, u.idx + 1);
+  return true;
+}
+
+/** ごほうびの名前（記録用） */
+export function uraRewardName(rw: UraReward): string {
+  switch (rw.kind) {
+    case 'seed':
+    case 'symbol':
+      return `${SYMBOLS[rw.sym].name}×${rw.n}`;
+    case 'charm':
+      return CHARMS[rw.id].name;
+    case 'place':
+      return PLACES[rw.id].name;
+    case 'expand':
+      return '畑を広げる';
+    case 'clean':
+      return `お邪魔を${rw.n}枚払う`;
+  }
+}
+
+/** 夜：残りの回転を減らし、妨害を起こす。期限が来ても倒せていなければ false（負け） */
+function uraNight(state: GameState): boolean {
+  const u = state.ura!;
+  if (u.won || u.reward) return true;
+  u.turnsLeft--;
+  u.harassIn--;
+  u.lastHarass = null;
+  if (u.harassIn <= 0 && u.hp > 0) {
+    u.lastHarass = { id: u.harass, cells: applyHarass(state, u.harass) };
+    const list = YOKAI[u.foe].harass;
+    u.harass = list[(list.indexOf(u.harass) + 1) % list.length];
+    u.harassIn = URA.harassEvery;
+  }
+  // 大蛇：弱点が数回転ごとに入れ替わる
+  if (YOKAI[u.foe].weak === 'rotate' && (u.limit - u.turnsLeft) % URA.rotateEvery === 0) {
+    u.weak = URA.rotateKinds[(URA.rotateKinds.indexOf(u.weak) + 1) % URA.rotateKinds.length];
+    glog(state, `裏 大蛇の弱点が${CROPS[u.weak].name}に変わった`);
+  }
+  if (u.turnsLeft <= 0 && u.hp > 0) {
+    glog(state, `裏 ${YOKAI[u.foe].name}を倒せず終わり（残り体力${u.hp}）`);
+    return false;
+  }
+  return true;
+}
+
+/** 妨害を起こす。荒らしたマスを返す（演出用） */
+function applyHarass(state: GameState, id: HarassId): number[] {
+  const u = state.ura!;
+  const cells = fieldCells(state);
+  const name = YOKAI[u.foe].name;
+  if (id === 'burnRow') {
+    // 実りが一番多い横一列の、実った作物を燃やす（予告を見て、その日のうちに売れば守れる）
+    const ripeAt = (i: number) => !!state.field[i] && state.field[i]!.anchor === undefined && isRipe(state.field[i]!) && !CROPS[state.field[i]!.kind].big;
+    const rows = Array.from({ length: state.rows }, (_, y) => cells.filter((i) => cellY(i) === y && ripeAt(i)));
+    const hit = rows.reduce((a, b) => (b.length > a.length ? b : a), [] as number[]);
+    hit.forEach((i) => removeCrop(state, i));
+    glog(state, `裏 ${name}が横一列の実りを燃やした（${hit.length}個）`);
+    return hit;
+  }
+  if (id === 'frost') {
+    // 作物が一番多い縦一列を凍らせる（次の日は売れず、育たない）
+    const cols = Array.from({ length: state.cols }, (_, x) => cells.filter((i) => cellX(i) === x));
+    const col = cols.reduce((a, b) => (b.filter((i) => state.field[i]).length > a.filter((i) => state.field[i]).length ? b : a));
+    col.forEach((i) => (state.frost[i] = URA.frostDays));
+    glog(state, `裏 ${name}が縦一列を凍らせた`);
+    return col;
+  }
+  if (id === 'steal') {
+    const ripe = cells.filter((i) => state.field[i] && state.field[i]!.anchor === undefined && isRipe(state.field[i]!));
+    if (!ripe.length) return [];
+    const cell = ripe.reduce((a, b) => (cropPrice(state, state.field[b]!, b) > cropPrice(state, state.field[a]!, a) ? b : a));
+    glog(state, `裏 ${name}が${CROPS[state.field[cell]!.kind].name}を盗んだ`);
+    removeCrop(state, cell);
+    return [cell];
+  }
+  if (id === 'heal') {
+    const back = Math.round(u.maxHp * URA.healRate);
+    u.hp = Math.min(u.maxHp, u.hp + back);
+    glog(state, `裏 ${name}の体力が${back}戻った`);
+    return [];
+  }
+  // お邪魔を混ぜる
+  const pool: SymbolId[] = ['crow', 'bug', 'weed'];
+  for (let k = 0; k < URA.pestCount; k++) state.bag[pool[Math.floor(nextRand(state) * pool.length)]]++;
+  glog(state, `裏 ${name}が袋にお邪魔を${URA.pestCount}枚混ぜた`);
+  return [];
 }

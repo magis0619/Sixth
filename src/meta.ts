@@ -53,6 +53,9 @@ export interface MetaState {
   lordPick: number;
   /** 殿様モードでクリアした一番上の段（0＝まだ） */
   lordCleared: number;
+  /** 裏（タイトルの太陽を5回たたくと夜になる）を選んでいるか・クリアした一番上の段 */
+  uraMode?: boolean;
+  uraCleared?: number;
   /** 解放の画面を開いた回数・解放で買った回数（記録用） */
   unlockOpens: number;
   unlockBuys: number;
@@ -272,7 +275,13 @@ export function recordRun(meta: MetaState, state: GameState, final: boolean): st
     meta.unlockedAdds.push(id);
     newly.push(label);
   };
-  if (state.cleared && state.lordLevel > 0) {
+  if (state.cleared && state.ura) {
+    // 裏：クリアした段を残す（いまは裏1だけ）
+    if (state.ura.level > (meta.uraCleared ?? 0)) {
+      meta.uraCleared = state.ura.level;
+      newly.push(L(`裏${state.ura.level}をクリア`, `Cleared Ura ${state.ura.level}`));
+    }
+  } else if (state.cleared && state.lordLevel > 0) {
     // 殿様モード：次の段が開く
     if (state.lordLevel > meta.lordCleared) {
       meta.lordCleared = state.lordLevel;
